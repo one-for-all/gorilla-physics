@@ -1,3 +1,5 @@
+#include <math.h>
+
 #include "precision.h"
 
 namespace gorilla {
@@ -25,6 +27,77 @@ namespace gorilla {
         y = -y;
         z = -z;
       }
-            
-    }
+      
+      real magnitude() const
+      {
+        return real_sqrt(x*x + y*y + z*z);
+      }
+
+      real squareMagnitude() const
+      {
+        return x*x + y*y + z*z;
+      }
+
+      void normalize()
+      {
+        real l = magnitude();
+        if (l > 0)
+          (*this) *= 1.0/l;
+      }
+
+      void operator *=(const real value)
+      {
+        x *= value;
+        y *= value;
+        z *= value;
+      }
+
+      Vector3 operator *(const real value) const
+      {
+        return Vector3(x*value, y*value, z*value);
+      }
+
+      void operator +=(const Vector3 &v)
+      {
+        x += v.x;
+        y += v.y;
+        z += v.z;
+      }
+
+      Vector3 operator +(const Vector3 &v) const
+      {
+        return Vector3(x+v.x, y+v.y, z+v.z);
+      }
+
+      void operator -=(const Vector3 &v)
+      {
+        x -= v.x;
+        y -= v.y;
+        z -= v.z;
+      }
+
+      Vector3 operator -(const Vector3 &v) const
+      {
+        return Vector3(x-v.x, y-v.y, z-v.z);
+      }
+
+      real operator *(const Vector3 &v) const
+      {
+        return x*v.x + y*v.y + z*v.z;
+      }
+
+      Vector3 vectorProduct(const Vector3 &v) const
+      {
+        return Vector3(y*v.z - z*v.y,
+                       z*v.x - x*v.z,
+                       x*v.y - y*v.x);
+      }
+
+      Vector3 addScaledVector(const Vector3 &v, const real alpha) const
+      {
+        return Vector3(x + alpha*v.x,
+                       y + alpha*v.y,
+                       z + alpha*v.z);
+      }
+  }
 }
