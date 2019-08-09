@@ -93,11 +93,11 @@ namespace gorilla {
                        x*v.y - y*v.x);
       }
 
-      Vector3 addScaledVector(const Vector3 &v, const real alpha) const
+      void addScaledVector(const Vector3 &v, const real alpha)
       {
-        return Vector3(x + alpha*v.x,
-                       y + alpha*v.y,
-                       z + alpha*v.z);
+        x += alpha*v.x;
+        y += alpha*v.y;
+        z += alpha*v.z;
       }
-  }
+  };
 }
