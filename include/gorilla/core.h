@@ -1,3 +1,6 @@
+#ifndef GORILLA_CORE_H
+#define GORILLA_CORE_H
+
 #include <math.h>
 
 #include "precision.h"
@@ -20,6 +23,8 @@ namespace gorilla {
       Vector3(const real x, const real y, const real z):
         x(x), y(y), z(z) 
       {}
+
+      const static Vector3 GRAVITY;
 
       void invert()
       {
@@ -99,5 +104,12 @@ namespace gorilla {
         y += alpha*v.y;
         z += alpha*v.z;
       }
+
+      void clear()
+      {
+        x = y = z = 0;
+      }
   };
 }
+
+#endif // GORILLA_CORE_H
