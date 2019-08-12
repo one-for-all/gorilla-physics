@@ -1,5 +1,3 @@
-#include <cstdlib>
-#include <ctime>
 #include <gorilla/random.h>
 
 using namespace gorilla;
