@@ -99,7 +99,6 @@ struct FireworkRule
     firework->setMass(1);
     firework->setDamping(damping);
     firework->setAcceleration(gorilla::GRAVITY);
-    firework->clearAccumulator();
   }
 };
 
