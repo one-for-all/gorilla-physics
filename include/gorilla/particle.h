@@ -5,6 +5,7 @@
 
 namespace gorilla {
 
+/// \brief Simulate point masses
 class Particle
 {
 protected:

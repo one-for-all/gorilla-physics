@@ -7,6 +7,7 @@
 
 namespace gorilla {
 
+/// \brief Utility for generating random numbers
 class Random
 {
 public:

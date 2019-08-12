@@ -3,23 +3,32 @@
 #include "app.h"
 #include "timing.h"
 
+//////////////////////////////////////////////////////////////////
 void Application::initGraphics()
 {
+  // Set background color
   glClearColor(0.9f, 0.95f, 1.0f, 1.0f);
+  
+  // Enable depth comparison and depth buffer update
   glEnable(GL_DEPTH_TEST);
+
+  // Smooth shading
   glShadeModel(GL_SMOOTH);
 
   setView();
 }
 
+//////////////////////////////////////////////////////////////////
 void Application::setView()
 {
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
+  // Set up field of view angle, aspect ratio, near and far clipping planes
   gluPerspective(60.0, (double)width/(double)height, 1.0, 500);
   glMatrixMode(GL_MODELVIEW);
 }
 
+//////////////////////////////////////////////////////////////////
 void Application::display()
 {
   glClear(GL_COLOR_BUFFER_BIT);
@@ -30,76 +39,47 @@ void Application::display()
   glEnd();
 }
 
+//////////////////////////////////////////////////////////////////
 const char* Application::getTitle()
 {
-  return "Gorilla Physics Engine Demo";
+  return "Gorilla Physics Engine Base Example";
 }
 
+//////////////////////////////////////////////////////////////////
 void Application::deinit()
 {
 }
 
+//////////////////////////////////////////////////////////////////
 void Application::update()
 {
+  // Mark current window as needing to be redisplayed
   glutPostRedisplay();
 }
 
+//////////////////////////////////////////////////////////////////
 void Application::key(unsigned char /*key*/)
 {
 }
 
+//////////////////////////////////////////////////////////////////
 void Application::resize(int width, int height)
 {
   if (height <= 0) height = 1;
 
-  Application::width = width;
-  Application::height = height;
+  this->width = width;
+  this->height = height;
   glViewport(0, 0, width, height);
   setView();
 }
 
+//////////////////////////////////////////////////////////////////
 void Application::mouse(int /* button */, int /* state */, 
                         int /* x */, int /* y */)
 {
 }
 
+//////////////////////////////////////////////////////////////////
 void Application::mouseDrag(int /* x */, int /* y */)
 {
-}
-
-void Application::renderText(float x, float y, const char *text, void *font)
-{
-  glDisable(GL_DEPTH_TEST);
-
-  glMatrixMode(GL_PROJECTION);
-  glPushMatrix();
-  glLoadIdentity();
-  glOrtho(0.0, (double)width, 0.0, (double)height, -1.0, 1.0);
-
-  glMatrixMode(GL_MODELVIEW);
-  glPushMatrix();
-  glLoadIdentity();
-
-  if (font == nullptr)
-    font = GLUT_BITMAP_HELVETICA_10;
-  
-  size_t len = strlen(text);
-
-  glRasterPos2f(x, y);
-  for (const char *letter = text; letter < text+len; ++letter)
-  {
-    if (*letter == '\n')
-    {
-      y -= 12.0f;
-      glRasterPos2f(x, y);
-    }
-    glutBitmapCharacter(font, *letter);
-  }
-
-  glPopMatrix();
-  glMatrixMode(GL_PROJECTION);
-  glPopMatrix();
-  glMatrixMode(GL_MODELVIEW);
-
-  glEnable(GL_DEPTH_TEST);
 }
