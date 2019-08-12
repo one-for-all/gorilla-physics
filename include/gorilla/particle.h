@@ -1,7 +1,7 @@
 #ifndef GORILLA_PARTICLE_H
 #define GORILLA_PARTICLE_H
 
-#include "core.h"
+#include "math.h"
 
 namespace gorilla {
   class Particle

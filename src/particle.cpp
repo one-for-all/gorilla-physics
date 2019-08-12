@@ -9,10 +9,10 @@ void Particle::integrate(real duration)
     return;
   assert(duration > 0.0);
 
-  position.addScaledVector(velocity, duration);
+  position += velocity*duration;
 
   Vector3 resultingAcc = acceleration;
-  velocity.addScaledVector(resultingAcc, duration);
+  velocity += resultingAcc*duration;
 
   velocity *= pow(damping, duration);
 
@@ -57,5 +57,5 @@ void Particle::setDamping(const real damping)
 
 void Particle::clearAccumulator()
 {
-  forceAccum.clear();
+  forceAccum.setZero();
 }

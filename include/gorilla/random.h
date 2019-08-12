@@ -3,7 +3,7 @@
 
 #include <random>
 
-#include "core.h"
+#include "math.h"
 
 namespace gorilla {
   class Random

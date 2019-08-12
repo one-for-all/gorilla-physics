@@ -26,8 +26,8 @@ unsigned Random::randomInt(unsigned max)
 Vector3 Random::randomVector(const Vector3 &min, const Vector3 &max)
 {
   return Vector3(
-    randomReal(min.x, max.x),
-    randomReal(min.y, max.y),
-    randomReal(min.z, max.z)
+    randomReal(min.x(), max.x()),
+    randomReal(min.y(), max.y()),
+    randomReal(min.z(), max.z())
   );
 }

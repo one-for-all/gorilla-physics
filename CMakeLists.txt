@@ -21,6 +21,14 @@ add_library(gorilla SHARED
 target_include_directories(gorilla PUBLIC
     include)
 
+#---------------------------------------------
+# Link Eigen library
+find_package(Eigen3 REQUIRED)
+target_include_directories(gorilla PUBLIC
+    ${EIGEN3_INCLUDE_DIR})
+target_link_libraries(gorilla PUBLIC
+    Eigen3::Eigen)
+
 #--------------------------------------------
-# Compile examples
+# Build examples
 add_subdirectory(src/examples examples)

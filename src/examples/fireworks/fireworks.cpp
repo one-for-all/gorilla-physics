@@ -18,7 +18,7 @@ public:
   {
     integrate(duration);
     age -= duration;
-    return (age < 0) || (position.y < 0);
+    return (age < 0) || (position.y() < 0);
   }
 };
 
@@ -89,7 +89,7 @@ struct FireworkRule
     {
       gorilla::Vector3 start;
       int x = (int)grandom.randomInt(3) - 1;
-      start.x = 5.0f * gorilla::real(x);
+      start.x() = 5.0f * gorilla::real(x);
       firework->setPosition(start);
     }
 
@@ -98,7 +98,7 @@ struct FireworkRule
 
     firework->setMass(1);
     firework->setDamping(damping);
-    firework->setAcceleration(gorilla::Vector3::GRAVITY);
+    firework->setAcceleration(gorilla::GRAVITY);
     firework->clearAccumulator();
   }
 };
@@ -346,16 +346,16 @@ void FireworksDemo::display()
       };
 
       const gorilla::Vector3 &pos = firework->getPosition();
-      glVertex3f(pos.x - size, pos.y - size, pos.z);
-      glVertex3f(pos.x + size, pos.y - size, pos.z);
-      glVertex3f(pos.x + size, pos.y + size, pos.z);
-      glVertex3f(pos.x - size, pos.y + size, pos.z);
+      glVertex3f(pos.x() - size, pos.y() - size, pos.z());
+      glVertex3f(pos.x() + size, pos.y() - size, pos.z());
+      glVertex3f(pos.x() + size, pos.y() + size, pos.z());
+      glVertex3f(pos.x() - size, pos.y() + size, pos.z());
 
       // Render the firework's reflection
-      glVertex3f(pos.x - size, -pos.y - size, pos.z);
-      glVertex3f(pos.x + size, -pos.y - size, pos.z);
-      glVertex3f(pos.x + size, -pos.y + size, pos.z);
-      glVertex3f(pos.x - size, -pos.y + size, pos.z);
+      glVertex3f(pos.x() - size, -pos.y() - size, pos.z());
+      glVertex3f(pos.x() + size, -pos.y() - size, pos.z());
+      glVertex3f(pos.x() + size, -pos.y() + size, pos.z());
+      glVertex3f(pos.x() - size, -pos.y() + size, pos.z());
     }
   }
   glEnd();
