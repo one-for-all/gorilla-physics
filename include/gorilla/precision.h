@@ -1,13 +1,12 @@
 #ifndef GORILLA_PRECISION_H
 #define GORILLA_PRECISION_H
 
-#include <float.h>
-
 namespace gorilla {
+#ifndef SINGLE_PRECISION
+    typedef double real;
+#else
     typedef float real;
-
-    #define real_sqrt sqrtf
-    #define real_pow powf
+#endif
 }
 
 #endif // GORILLA_PRECISION_H

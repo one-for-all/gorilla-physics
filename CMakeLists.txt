@@ -4,6 +4,11 @@ project(gorilla)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -fPIC")
 
+# Check if use single precision for floats
+if(USE_SINGLE_PRECISION)
+    add_definitions(-DSINGLE_PRECISION)
+endif(USE_SINGLE_PRECISION)
+
 file(GLOB sources
     "src/*"
 )

@@ -35,7 +35,7 @@ namespace gorilla {
       
       real magnitude() const
       {
-        return real_sqrt(x*x + y*y + z*z);
+        return sqrt(x*x + y*y + z*z);
       }
 
       real squareMagnitude() const
