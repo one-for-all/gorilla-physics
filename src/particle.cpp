@@ -16,7 +16,7 @@ void Particle::integrate(real duration)
 
   velocity *= real_pow(damping, duration);
 
-  // clearAccumulator();
+  clearAccumulator();
 }
 
 void Particle::setPosition(const Vector3 &position)

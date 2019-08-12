@@ -15,7 +15,7 @@ namespace gorilla {
     private:
       // Padding to ensure alignment
       real pad;
-        
+
     public:
       Vector3() : x(0), y(0), z(0)
       {}
