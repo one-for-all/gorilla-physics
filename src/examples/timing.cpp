@@ -1,7 +1,10 @@
 #include "timing.h"
 
-// Hold internal timing data for the performance counter
+/// \brief Whether holding internal timing data for the performance counter
 static bool qpcFlag;
+
+/// \brief Shared global timing data
+static TimingData *timingData = nullptr;
 
 #if (__APPLE__ || __unix)
   #define TIMING_UNIX 1
@@ -19,6 +22,7 @@ static bool qpcFlag;
   static double qpcFrequency;
 #endif 
 
+/// \brief Get system time
 unsigned systemTime()
 {
 #if TIMING_UNIX
@@ -40,6 +44,7 @@ unsigned systemTime()
 
 }
 
+//////////////////////////////////////////////////////////////////
 unsigned TimingData::getTime()
 {
   return systemTime();
@@ -54,6 +59,7 @@ unsigned long systemClock()
 }
 #endif
 
+//////////////////////////////////////////////////////////////////
 unsigned long TimingData::getClock()
 {
 #if TIMING_UNIX
@@ -65,6 +71,7 @@ unsigned long TimingData::getClock()
 #endif
 }
 
+/// \brief Initialize performance frequency if available
 void initTime()
 {
 #if TIMING_UNIX
@@ -77,13 +84,13 @@ void initTime()
 #endif
 }
 
-static TimingData *timingData = nullptr;
-
+///////////////////////////////////////////////////////////////////
 TimingData& TimingData::get()
 {
   return (TimingData&)*timingData;
 }
 
+///////////////////////////////////////////////////////////////////
 void TimingData::update()
 {
   if (!timingData) return;
@@ -91,6 +98,7 @@ void TimingData::update()
   if (!timingData->isPaused)
     timingData->frameNumber++;
 
+  // Get time
   unsigned thisTime = systemTime();
   timingData->lastFrameDuration = thisTime - timingData->lastFrameTimestamp;
   timingData->lastFrameTimestamp = thisTime;
@@ -99,23 +107,26 @@ void TimingData::update()
   timingData->lastFrameClockTicks = thisClock - timingData->lastFrameClockstamp;
   timingData->lastFrameClockstamp = thisClock;
 
+  // Update average frame duration
   if (timingData->frameNumber > 1)
   {
     if (timingData->averageFrameDuration <= 0)
     {
-      timingData->averageFrameDuration = (double)timingData->lastFrameDuration;
+      timingData->averageFrameDuration =  
+        static_cast<double>(timingData->lastFrameDuration);
     }
     else
     {
       timingData->averageFrameDuration *= 0.99;
       timingData->averageFrameDuration += 
-        0.01 * (double)timingData->lastFrameDuration;
+        0.01 * static_cast<double>(timingData->lastFrameDuration);
       
-      timingData->fps = (float)(1000.0/timingData->averageFrameDuration);
+      timingData->fps = 1000.0/timingData->averageFrameDuration;
     }
   }
 }
 
+/////////////////////////////////////////////////////////////////////
 void TimingData::init()
 {
   initTime();
@@ -136,6 +147,7 @@ void TimingData::init()
   timingData->fps = 0;      
 }
 
+/////////////////////////////////////////////////////////////////////
 void TimingData::deinit()
 {
   delete timingData;

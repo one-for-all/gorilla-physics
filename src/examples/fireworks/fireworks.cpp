@@ -6,7 +6,6 @@
 #include <stdio.h>
 
 static gorilla::Random grandom;
-using namespace gorilla;
 
 class Firework : public gorilla::Particle
 {
@@ -62,7 +61,7 @@ struct FireworkRule
       delete[] payloads;
   }
 
-  void setParameters(unsigned type, real minAge, real maxAge,
+  void setParameters(unsigned type, gorilla::real minAge, gorilla::real maxAge,
                      const gorilla::Vector3 &minVelocity, const gorilla::Vector3 &maxVelocity,
                      gorilla::real damping)
   {
