@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <gorilla/particle.h>
 
 using namespace gorilla;
@@ -6,65 +5,56 @@ using namespace gorilla;
 /////////////////////////////////////////////////////
 void Particle::integrate(real duration)
 {
-  if (inverseMass <= 0)
-    return;
-  assert(duration > 0.0);
+  assert(duration >= 0.0);
 
-  position += velocity*duration;
+  this->position += this->velocity*duration;
 
-  Vector3 resultingAcc = acceleration;
-  velocity += resultingAcc*duration;
+  Vector3 resultingAcc = this->acceleration;
+  this->velocity += resultingAcc*duration;
 
-  velocity *= pow(damping, duration);
-
-  clearAccumulator();
+  // Damp with duration seconds
+  this->velocity *= pow(this->damping, duration);
 }
 
 /////////////////////////////////////////////////////
 void Particle::setPosition(const Vector3 &position)
 {
-  Particle::position = position;
+  this->position = position;
 }
 
 /////////////////////////////////////////////////////
 void Particle::setVelocity(const Vector3 &velocity)
 {
-  Particle::velocity = velocity;
+  this->velocity = velocity;
 }
 
 /////////////////////////////////////////////////////
 void Particle::setAcceleration(const Vector3 &acceleration)
 {
-  Particle::acceleration = acceleration;
+  this->acceleration = acceleration;
 }
 
 /////////////////////////////////////////////////////
 Vector3 Particle::getPosition() const
 {
-  return position;
+  return this->position;
 }
 
 /////////////////////////////////////////////////////
 Vector3 Particle::getVelocity() const
 {
-  return velocity;
+  return this->velocity;
 }
 
 /////////////////////////////////////////////////////
 void Particle::setMass(const real mass)
 {
-  assert(mass != 0);
-  Particle::inverseMass = ((real)1.0)/mass;
+  assert(mass > 0);
+  this->inverseMass = 1.0/mass;
 }
 
 /////////////////////////////////////////////////////
 void Particle::setDamping(const real damping)
 {
-  Particle::damping = damping;
-}
-
-/////////////////////////////////////////////////////
-void Particle::clearAccumulator()
-{
-  forceAccum.setZero();
+  this->damping = damping;
 }

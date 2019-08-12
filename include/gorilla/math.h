@@ -1,5 +1,5 @@
-#ifndef GORILLA_PRECISION_H
-#define GORILLA_PRECISION_H
+#ifndef GORILLA_MATH_H
+#define GORILLA_MATH_H
 
 #include <Eigen/Dense>
 
@@ -20,4 +20,4 @@ typedef Eigen::Matrix<real, 3, 1> Vector3;
 
 } // namespace gorilla
 
-#endif // GORILLA_PRECISION_H
+#endif // GORILLA_MATH_H

@@ -25,9 +25,6 @@ protected:
   /// so as to be able to represent infinity and avoid zero
   real inverseMass;
 
-  /// \brief Total force exerted on the particle
-  Vector3 forceAccum;
-
 public:
   /// \brief Integrate particle dynamics for duration time
   void integrate(real duration);
@@ -52,9 +49,6 @@ public:
 
   /// \brief Set particle damping value
   void setDamping(const real damping);
-
-  /// \brief Clear all the forces exerted
-  void clearAccumulator();
 };
 
 } // namespace gorilla
