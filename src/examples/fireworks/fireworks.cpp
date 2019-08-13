@@ -7,76 +7,112 @@
 
 static gorilla::Random grandom;
 
+/// \brief Firework particle
 class Firework : public gorilla::Particle
 {
 public:
+  /// \brief Type of firework
   unsigned type;
+
+  /// \brief Gradually decreasing
+  /// Explode when age passes zero
   gorilla::real age;
 
+  /// \brief Simulate firework for duration time
+  /// \returns True if firework should be removed
   bool update(gorilla::real duration)
   {
-    integrate(duration);
-    age -= duration;
+    this->integrate(duration);
+    this->age -= duration;
     return (age < 0) || (position.y() < 0);
   }
 };
 
+/// \brief Firework rules that specify firework characteristics
 struct FireworkRule
 {
+  /// \brief Type of firework
   unsigned type;
+
+  /// \brief Min age for explosion
   gorilla::real minAge;
+
+  /// \brief Max age for explosion
   gorilla::real maxAge;
+
+  /// \brief Min initial relative velocity to parent
   gorilla::Vector3 minVelocity;
+
+  /// \brief max initial relative velocity to parent
   gorilla::Vector3 maxVelocity;
+
+  /// \brief Damping for firework particle
   gorilla::real damping;
 
+  /// \brief The new firework type to create when current explodes
   struct Payload
   {
+    /// \brief Type of new firework
     unsigned type;
+
+    /// \brief Number of new firework particles
     unsigned count;
 
+    /// \brief Set payload characteristics
     void set(unsigned type, unsigned count)
     {
-      Payload::type = type;
-      Payload::count = count;
+      this->type = type;
+      this->count = count;
     }
   };
 
+  /// \brief Number of payloads
   unsigned payloadCount;
+
+  /// \brief Set of payloads
   Payload *payloads;
 
+  /// \brief Constructor
   FireworkRule() : payloadCount(0), payloads(nullptr)
   {
   }
 
+  /// \brief Initialize payloads
   void init(unsigned payloadCount)
   {
-    FireworkRule::payloadCount = payloadCount;
+    this->payloadCount = payloadCount;
     payloads = new Payload[payloadCount];
   }
 
+  /// \brief Destructor
   ~FireworkRule()
   {
     if (payloads != nullptr)
+    {
       delete[] payloads;
+      payloads = nullptr;
+    }
   }
 
+  /// \brief Set firework characteristics
   void setParameters(unsigned type, gorilla::real minAge, gorilla::real maxAge,
                      const gorilla::Vector3 &minVelocity, const gorilla::Vector3 &maxVelocity,
                      gorilla::real damping)
   {
-    FireworkRule::type = type;
-    FireworkRule::minAge = minAge;
-    FireworkRule::maxAge = maxAge;
-    FireworkRule::minVelocity = minVelocity;
-    FireworkRule::maxVelocity = maxVelocity;
-    FireworkRule::damping = damping;
+    this->type = type;
+    this->minAge = minAge;
+    this->maxAge = maxAge;
+    this->minVelocity = minVelocity;
+    this->maxVelocity = maxVelocity;
+    this->damping = damping;
   }
 
+  /// \brief Create firework of this rule
   void create(Firework *firework, const Firework *parent = nullptr) const
   {
-    firework->type = type;
-    firework->age = grandom.randomReal(minAge, maxAge);
+    assert(firework != nullptr);
+    firework->type = this->type;
+    firework->age = grandom.randomReal(this->minAge, this->maxAge);
 
     gorilla::Vector3 vel;
     if (parent)
@@ -88,7 +124,7 @@ struct FireworkRule
     {
       gorilla::Vector3 start;
       int x = (int)grandom.randomInt(3) - 1;
-      start.x() = 5.0f * gorilla::real(x);
+      start.x() = 5.0 * gorilla::real(x);
       firework->setPosition(start);
     }
 
@@ -96,43 +132,64 @@ struct FireworkRule
     firework->setVelocity(vel);
 
     firework->setMass(1);
-    firework->setDamping(damping);
+    firework->setDamping(this->damping);
     firework->setAcceleration(gorilla::GRAVITY);
   }
 };
 
+/// \brief Firework application
 class FireworksDemo : public Application
 {
+private:
+  /// \brief Max number of fireworks that can exist
   const static unsigned maxFireworks = 1024;
+
+  /// \brief Hold the firework particles
   Firework fireworks[maxFireworks];
-  unsigned nextFirework;
+
+  /// \brief Index of next firework slot to use
+  unsigned nextFireworkIndex;
+
+  /// \brief Number of rules
   const static unsigned ruleCount = 9;
+
+  /// \brief Hold all the rules
   FireworkRule rules[ruleCount];
 
+  /// \brief Dispatch a firework particle
   void create(unsigned type, const Firework *parent = nullptr);
+
+  /// \brief Dispatch a number of firework particles
   void create(unsigned type, unsigned number, const Firework *parent);
 
+  /// \brief Initialize firework rules
   void initFireworkRules();
 
 public:
   FireworksDemo();
   ~FireworksDemo();
 
-  virtual void initGraphics();
+  // Documentation inherited
+  virtual void initGraphics() override;
 
-  virtual const char *getTitle();
+  // Documentation inherited
+  virtual const char *getTitle() override;
 
+  // Documentation inherited
   virtual void update();
 
+  // Documentation inherited
   virtual void display();
 
+  // Documentation inherited
   virtual void key(unsigned char key);
 };
 
-FireworksDemo::FireworksDemo() : nextFirework(0)
+///////////////////////////////////////////////////////////////////////////
+FireworksDemo::FireworksDemo() : nextFireworkIndex(0)
 {
-  for (Firework *firework = fireworks;
-       firework < fireworks + maxFireworks; ++firework)
+  for (Firework *firework = this->fireworks;
+       firework < this->fireworks + this->maxFireworks; ++firework)
   {
     firework->type = 0;
   }
@@ -140,10 +197,12 @@ FireworksDemo::FireworksDemo() : nextFirework(0)
   initFireworkRules();
 }
 
+///////////////////////////////////////////////////////////////////////////
 FireworksDemo::~FireworksDemo()
 {
 }
 
+///////////////////////////////////////////////////////////////////////////
 void FireworksDemo::initFireworkRules()
 {
   rules[0].init(2);
@@ -230,41 +289,46 @@ void FireworksDemo::initFireworkRules()
   );
 }
 
+///////////////////////////////////////////////////////////////////////////
 void FireworksDemo::initGraphics()
 {
   Application::initGraphics();
   glClearColor(0.0f, 0.0f, 0.1f, 1.0f);
 }
 
+///////////////////////////////////////////////////////////////////////////
 const char *FireworksDemo::getTitle()
 {
-  return "Gorilla Physics Engine > Fireworks Demo";
+  return "Gorilla Physics Engine Example > Fireworks";
 }
 
+///////////////////////////////////////////////////////////////////////////
 void FireworksDemo::create(unsigned type, const Firework *parent)
 {
-  FireworkRule *rule = rules + (type - 1);
-  rule->create(fireworks + nextFirework, parent);
-  nextFirework = (nextFirework + 1) % maxFireworks;
+  FireworkRule *rule = this->rules + (type - 1);
+  rule->create(this->fireworks + this->nextFireworkIndex, parent);
+  this->nextFireworkIndex = (this->nextFireworkIndex + 1) % this->maxFireworks;
 }
 
+///////////////////////////////////////////////////////////////////////////
 void FireworksDemo::create(unsigned type, unsigned number,
                            const Firework *parent)
 {
   for (unsigned i = 0; i < number; ++i)
-    create(type, parent);
+    this->create(type, parent);
 }
 
+///////////////////////////////////////////////////////////////////////////
 void FireworksDemo::update()
 {
   // Find the duration of the last frame in seconds
-  float duration = (float)TimingData::get().lastFrameDuration * 0.001f;
-  if (duration <= 0.0f)
+  gorilla::real duration = TimingData::get().lastFrameDuration * 0.001;
+  if (duration <= 0.0)
     return;
 
-  for (Firework *firework = fireworks;
-       firework < fireworks + maxFireworks;
-       firework++)
+  for (Firework *firework = this->fireworks;
+       firework < this->fireworks + this->maxFireworks;
+       ++firework)
   {
     // Check if we need to process this firework.
     if (firework->type > 0)
@@ -273,7 +337,7 @@ void FireworksDemo::update()
       if (firework->update(duration))
       {
         // Find the appropriate rule
-        FireworkRule *rule = rules + (firework->type - 1);
+        FireworkRule *rule = this->rules + (firework->type - 1);
 
         // Delete the current firework (this doesn't affect its
         // position and velocity for passing to the create function,
@@ -281,11 +345,11 @@ void FireworksDemo::update()
         // physics.
         firework->type = 0;
 
-        // Add the payload
+        // Add the payloads
         for (unsigned i = 0; i < rule->payloadCount; i++)
         {
           FireworkRule::Payload *payload = rule->payloads + i;
-          create(payload->type, payload->count, firework);
+          this->create(payload->type, payload->count, firework);
         }
       }
     }
@@ -294,9 +358,10 @@ void FireworksDemo::update()
   Application::update();
 }
 
+///////////////////////////////////////////////////////////////////////////
 void FireworksDemo::display()
 {
-  const static gorilla::real size = 0.1f;
+  const static gorilla::real size = 0.1;
 
   // Clear the viewport and set the camera direction
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -305,8 +370,8 @@ void FireworksDemo::display()
 
   // Render each firework in turn
   glBegin(GL_QUADS);
-  for (Firework *firework = fireworks;
-       firework < fireworks + maxFireworks;
+  for (Firework *firework = this->fireworks;
+       firework < this->fireworks + this->maxFireworks;
        firework++)
   {
     // Check if we need to process this firework.
@@ -343,6 +408,7 @@ void FireworksDemo::display()
         break;
       };
 
+      // Draw four corners
       const gorilla::Vector3 &pos = firework->getPosition();
       glVertex3f(pos.x() - size, pos.y() - size, pos.z());
       glVertex3f(pos.x() + size, pos.y() - size, pos.z());
@@ -359,26 +425,25 @@ void FireworksDemo::display()
   glEnd();
 }
 
+///////////////////////////////////////////////////////////////////////////
 void FireworksDemo::key(unsigned char key)
 {
   switch (key)
   {
-  case '1': create(1, 1, NULL); break;
-  case '2': create(2, 1, NULL); break;
-  case '3': create(3, 1, NULL); break;
-  case '4': create(4, 1, NULL); break;
-  case '5': create(5, 1, NULL); break;
-  case '6': create(6, 1, NULL); break;
-  case '7': create(7, 1, NULL); break;
-  case '8': create(8, 1, NULL); break;
-  case '9': create(9, 1, NULL); break;
+  case '1': create(1, 1, nullptr); break;
+  case '2': create(2, 1, nullptr); break;
+  case '3': create(3, 1, nullptr); break;
+  case '4': create(4, 1, nullptr); break;
+  case '5': create(5, 1, nullptr); break;
+  case '6': create(6, 1, nullptr); break;
+  case '7': create(7, 1, nullptr); break;
+  case '8': create(8, 1, nullptr); break;
+  case '9': create(9, 1, nullptr); break;
   }
 }
 
-/**
- * Called by the common demo framework to create an application
- * object (with new) and return a pointer.
- */
+/// \brief Called by the common application framework to create an application
+/// object (with new) and return a pointer.
 Application* getApplication()
 {
   return new FireworksDemo();
