@@ -46,3 +46,9 @@ public:
   /// \brief Destructor
   virtual ~Application() = default;
 };
+
+
+/// \brief Base class for mass-aggregate applications
+class MassAggregateApplication : public Application
+{
+};

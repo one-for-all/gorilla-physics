@@ -26,6 +26,9 @@ protected:
   /// so as to be able to represent infinity and avoid zero
   real inverseMass;
 
+  /// \brief Accumulator of forces applied for the next iteration
+  Vector3 forceAccum;
+
 public:
   /// \brief Integrate particle dynamics for duration time
   void integrate(real duration);
@@ -50,6 +53,12 @@ public:
 
   /// \brief Set particle damping value
   void setDamping(const real damping);
+
+  /// \brief Clear out all forces;
+  void clearAccumulator();
+
+  /// \brief Add force to be applied at next iteration
+  void addForce(const Vector3 &force);
 };
 
 } // namespace gorilla

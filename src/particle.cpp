@@ -10,10 +10,14 @@ void Particle::integrate(real duration)
   this->position += this->velocity*duration;
 
   Vector3 resultingAcc = this->acceleration;
+  resultingAcc += this->forceAccum*this->inverseMass;
+
   this->velocity += resultingAcc*duration;
 
   // Damp with duration seconds
   this->velocity *= pow(this->damping, duration);
+
+  this->clearAccumulator();
 }
 
 /////////////////////////////////////////////////////
@@ -57,4 +61,16 @@ void Particle::setMass(const real mass)
 void Particle::setDamping(const real damping)
 {
   this->damping = damping;
+}
+
+/////////////////////////////////////////////////////
+void Particle::clearAccumulator()
+{
+  this->forceAccum.setZero();
+}
+
+/////////////////////////////////////////////////////
+void Particle::addForce(const Vector3 &force)
+{
+  forceAccum += force;
 }
