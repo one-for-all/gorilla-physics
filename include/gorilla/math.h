@@ -2,14 +2,17 @@
 #define GORILLA_MATH_H
 
 #include <Eigen/Dense>
+#include <float.h>
 
 namespace gorilla {
 
 /// \brief precision definitions
 #ifndef SINGLE_PRECISION
 typedef double real;
+#define REAL_MAX DBL_MAX
 #else
 typedef float real;
+#define REAL_MAX FLT_MAX
 #endif
 
 /// \brief Math types

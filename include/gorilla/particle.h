@@ -48,8 +48,14 @@ public:
   /// \brief Get particle current velocity
   Vector3 getVelocity() const;
 
+  /// \brief Get particle current acceleration
+  Vector3 getAcceleration() const;
+
   /// \brief Set particle mass value
   void setMass(const real mass);
+
+  /// \brief Get particle mass inverse value
+  real getInverseMass() const;
 
   /// \brief Set particle damping value
   void setDamping(const real damping);

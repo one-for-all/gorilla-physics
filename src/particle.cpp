@@ -51,10 +51,22 @@ Vector3 Particle::getVelocity() const
 }
 
 /////////////////////////////////////////////////////
+Vector3 Particle::getAcceleration() const
+{
+  return this->acceleration;
+}
+
+/////////////////////////////////////////////////////
 void Particle::setMass(const real mass)
 {
   assert(mass > 0);
   this->inverseMass = 1.0/mass;
+}
+
+/////////////////////////////////////////////////////
+real Particle::getInverseMass() const
+{
+  return this->inverseMass;
 }
 
 /////////////////////////////////////////////////////
