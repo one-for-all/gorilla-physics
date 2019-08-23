@@ -176,13 +176,13 @@ public:
   virtual const char *getTitle() override;
 
   // Documentation inherited
-  virtual void update();
+  virtual void update() override;
 
   // Documentation inherited
-  virtual void display();
+  virtual void display() override;
 
   // Documentation inherited
-  virtual void key(unsigned char key);
+  virtual void key(unsigned char key) override;
 };
 
 ///////////////////////////////////////////////////////////////////////////
