@@ -7,7 +7,28 @@ namespace gorilla {
 
 class ParticleLink : public ParticleContactGenerator
 {
-    
+protected:
+  /// \brief Get current length of link
+  real currentLength() const;
+
+public:
+  /// \brief Particles connected by the link
+  Particle* particles[2];
+
+  /// \brief Documentation inherited
+  virtual std::size_t addContact(ParticleContact *contact,
+                                 std::size_t limit) const = 0;
+};
+
+class ParticleRod : public ParticleLink
+{
+public:
+  /// \brief Length of rod
+  real length;
+
+  /// \brief Documentation inherited
+  virtual std::size_t addContact(ParticleContact *contact,
+                                 std::size_t limit) const;
 };
 }
 

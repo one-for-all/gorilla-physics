@@ -71,7 +71,7 @@ void ParticleContact::resolveVelocity(real duration)
 }
 
 /////////////////////////////////////////////////////////
-void ParticleContact::resolvePenetration(real duration)
+void ParticleContact::resolvePenetration(real /* duration */)
 {
   if (this->penetration <= 0)
     return;
