@@ -52,15 +52,30 @@ public:
   /// \brief Initialize the world for the next frame
   void startFrame();
 
-  /// \brief Get all the particles
+  /// \brief Get particles reference
   Particles& getParticles();
 
-  /// \brief Get all contact generators
+  /// \brief Get contact generators reference
   ContactGenerators& getContactGenerators();
 
-  /// \brief Get force registry
+  /// \brief Get force registry reference
   ParticleForceRegistry& getForceRegistry();
+};
 
+/// \brief Generator for contact with ground
+class GroundContactsGenerator : public ParticleContactGenerator
+{
+protected:
+  /// \brief Particles for contact
+  ParticleWorld::Particles *particles;
+
+public:
+  /// \brief Init generator
+  void init(ParticleWorld::Particles *particles);
+
+  /// Documentation inherited
+  virtual std::size_t addContact(ParticleContact *contact,
+                                 std::size_t limit) const;
 };
 }
 

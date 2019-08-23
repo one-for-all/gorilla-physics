@@ -85,3 +85,35 @@ ParticleForceRegistry& ParticleWorld::getForceRegistry()
 {
   return this->registry;
 }
+
+///////////////////////////////////////////////////////////////////
+void GroundContactsGenerator::init(ParticleWorld::Particles *particles)
+{
+  this->particles = particles;
+}
+
+///////////////////////////////////////////////////////////////////
+std::size_t GroundContactsGenerator::addContact(ParticleContact *contact,
+                                                std::size_t limit) const
+{
+  std::size_t count = 0;
+  for (auto &particle : *(this->particles))
+  {
+    real y = particle->getPosition().y();
+    if (y < 0)
+    {
+      contact->contactNormal = gorilla::UP;
+      contact->particles[0] = particle;
+      contact->particles[1] = nullptr;
+      contact->penetration = -y;
+      contact->restitution = 0.2;
+      contact++;
+      count++;
+    }
+
+    if (count >= limit)
+      return count;
+  }
+
+  return count;
+}

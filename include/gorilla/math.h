@@ -21,6 +21,9 @@ typedef Eigen::Matrix<real, 3, 1> Vector3;
 /// \brief Physics constants
 #define GRAVITY Vector3(0, -9.81, 0)
 
+/// \brief Updward unit vector
+#define UP Vector3(0, 1, 0);
+
 } // namespace gorilla
 
 #endif // GORILLA_MATH_H

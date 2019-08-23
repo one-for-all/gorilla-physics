@@ -15,7 +15,7 @@ public:
   /// \brief Particles connected by the link
   Particle* particles[2];
 
-  /// \brief Documentation inherited
+  /// Documentation inherited
   virtual std::size_t addContact(ParticleContact *contact,
                                  std::size_t limit) const = 0;
 };
@@ -26,7 +26,7 @@ public:
   /// \brief Length of rod
   real length;
 
-  /// \brief Documentation inherited
+  /// Documentation inherited
   virtual std::size_t addContact(ParticleContact *contact,
                                  std::size_t limit) const;
 };
