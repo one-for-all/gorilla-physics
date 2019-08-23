@@ -51,4 +51,28 @@ public:
 /// \brief Base class for mass-aggregate applications
 class MassAggregateApplication : public Application
 {
+protected:
+  /// \brief Application physics world
+  gorilla::ParticleWorld world;
+
+  /// \brief Particles in the world
+  gorilla::Particle *particleArray;
+
+  /// \brief Generator for ground contacts
+  gorilla::GroundContactsGenerator groundContactGenerator;
+public:
+  /// \brief Constructor
+  MassAggregateApplication(std::size_t ParticleCount);
+
+  /// \brief Destructor
+  virtual ~MassAggregateApplication();
+
+  /// Documentation inherited
+  virtual void update();
+
+  /// Documentation inherited
+  virtual void initGraphics();
+
+  /// Documentation inherited
+  virtual void display();
 };

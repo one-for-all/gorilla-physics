@@ -8,7 +8,7 @@ void Application::initGraphics()
 {
   // Set background color
   glClearColor(0.9f, 0.95f, 1.0f, 1.0f);
-  
+
   // Enable depth comparison and depth buffer update
   glEnable(GL_DEPTH_TEST);
 
@@ -74,7 +74,7 @@ void Application::resize(int width, int height)
 }
 
 //////////////////////////////////////////////////////////////////
-void Application::mouse(int /* button */, int /* state */, 
+void Application::mouse(int /* button */, int /* state */,
                         int /* x */, int /* y */)
 {
 }
@@ -82,4 +82,65 @@ void Application::mouse(int /* button */, int /* state */,
 //////////////////////////////////////////////////////////////////
 void Application::mouseDrag(int /* x */, int /* y */)
 {
+}
+
+//////////////////////////////////////////////////////////////////
+MassAggregateApplication::MassAggregateApplication(std::size_t particleCount)
+: world(particleCount*10)
+{
+  this->particleArray = new gorilla::Particle[particleCount];
+  for (std::size_t i = 0; i < particleCount; ++i)
+  {
+    this->world.getParticles().push_back(particleArray + i);
+  }
+
+  this->groundContactGenerator.init( &(this->world.getParticles()) );
+  this->world.getContactGenerators().push_back(&this->groundContactGenerator);
+}
+
+//////////////////////////////////////////////////////////////////
+MassAggregateApplication::~MassAggregateApplication()
+{
+  delete[] this->particleArray;
+}
+
+//////////////////////////////////////////////////////////////////
+void MassAggregateApplication::initGraphics()
+{
+  Application::initGraphics();
+}
+
+//////////////////////////////////////////////////////////////////
+void MassAggregateApplication::display()
+{
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glLoadIdentity();
+  gluLookAt(0.0, 3.5, 8.0, 0.0, 3.5, 0.0, 0.0, 1.0, 0.0);
+
+  glColor3f(0, 0, 0);
+
+  gorilla::ParticleWorld::Particles &particles = this->world.getParticles();
+
+  for (auto &particle : particles)
+  {
+    const auto &pos = particle->getPosition();
+    glPushMatrix();
+    glTranslatef(pos.x(), pos.y(), pos.z());
+    glutSolidSphere(0.1, 20, 10);
+    glPopMatrix();
+  }
+}
+
+//////////////////////////////////////////////////////////////////
+void MassAggregateApplication::update()
+{
+  this->world.startFrame();
+
+  double duration = TimingData::get().lastFrameDuration * 0.001;
+  if (duration <= 0)
+    return;
+
+  this->world.runPhysics(duration);
+
+  Application::update();
 }
