@@ -33,11 +33,17 @@ public:
   /// \brief Integrate particle dynamics for duration time
   void integrate(real duration);
 
-  /// \brief Set particle position
+  /// \brief Set particle position w/ vector
   void setPosition(const Vector3 &position);
 
-  /// \brief Set particle velocity
+  /// \brief Set particle position w/ x, y, z
+  void setPosition(const real x, const real y, const real z);
+
+  /// \brief Set particle velocity w/ vector
   void setVelocity(const Vector3 &velocity);
+
+  /// \brief Set particle velocity w/ x, y, z
+  void setVelocity(const real x, const real y, const real z);
 
   /// \brief Set particle acceleration
   void setAcceleration(const Vector3 &acceleration);

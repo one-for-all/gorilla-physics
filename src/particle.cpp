@@ -27,9 +27,21 @@ void Particle::setPosition(const Vector3 &position)
 }
 
 /////////////////////////////////////////////////////
+void Particle::setPosition(const real x, const real y, const real z)
+{
+  this->position = Vector3(x, y, z);
+}
+
+/////////////////////////////////////////////////////
 void Particle::setVelocity(const Vector3 &velocity)
 {
   this->velocity = velocity;
+}
+
+/////////////////////////////////////////////////////
+void Particle::setVelocity(const real x, const real y, const real z)
+{
+  this->velocity = Vector3(x, y, z);
 }
 
 /////////////////////////////////////////////////////

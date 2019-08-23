@@ -4,7 +4,7 @@ using namespace gorilla;
 
 ///////////////////////////////////////////////////////////////////
 ParticleWorld::ParticleWorld(std::size_t maxContacts)
-: maxContacts(maxContacts), resolver(2*maxContacts)
+: resolver(2*maxContacts), maxContacts(maxContacts)
 {
   this->contacts = new ParticleContact[maxContacts];
 }
