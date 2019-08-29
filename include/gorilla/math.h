@@ -15,8 +15,14 @@ typedef float real;
 #define REAL_MAX FLT_MAX
 #endif
 
-/// \brief Math types
+/// \brief Vector of size 3
 typedef Eigen::Matrix<real, 3, 1> Vector3;
+
+/// \brief 3x3 Matrix
+typedef Eigen::Matrix<real, 3, 3> Matrix3;
+
+/// \brief Quaternion
+typedef Eigen::Quaternion<real> Quaternion;
 
 /// \brief Physics constants
 #define GRAVITY Vector3(0, -9.81, 0)

@@ -1,3 +1,5 @@
+#include "body.h"
+#include "fgen.h"
 #include "math.h"
 #include "particle.h"
 #include "pworld.h"
