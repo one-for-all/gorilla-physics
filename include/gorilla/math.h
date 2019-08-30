@@ -33,7 +33,10 @@ typedef Eigen::Matrix<real, 4, 4> Matrix4;
 typedef Eigen::Quaternion<real> Quaternion;
 
 /// \brief Updward unit vector
-#define UP Vector3(0, 1, 0);
+#define UP Vector3(0, 1, 0)
+
+Matrix3 matrixLinearInterpolate(const Matrix3 &a, const Matrix3 &b,
+                                const real amount);
 
 } // namespace gorilla
 

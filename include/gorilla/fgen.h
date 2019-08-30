@@ -38,6 +38,33 @@ class Aero : public ForceGenerator
   public: virtual void updateForce(RigidBody *body, const real duration);
 };
 
+/// \brief Aerodynamic force generator with controllable surface
+class AeroControl : public Aero
+{
+  /// \brief Aerodynamic tensor when control at minimum
+  protected: Matrix3 minTensor;
+
+  /// \brief Aerodynamic tensor when control at maximum
+  protected: Matrix3 maxTensor;
+
+  /// \brief Current control value, in range [-1, 1]
+  protected: real controlSetting;
+
+  /// \brief Compute tensor value with current control value
+  private: Matrix3 getTensor();
+
+  /// \brief Constructor
+  public: AeroControl(const Matrix3 &base, const Matrix3 &min,
+                      const Matrix3 &max, const Vector3 &position,
+                      const Vector3 *windSpeed);
+
+  /// \brief Set control value
+  public: void setControl(const real value);
+
+  // Documentation inherited
+  public: virtual void updateForce(RigidBody *body, const real duration);
+};
+
 /// \brief Registry for force generators and their applied bodies
 class ForceRegistry
 {
