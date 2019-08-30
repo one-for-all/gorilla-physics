@@ -14,6 +14,30 @@ class ForceGenerator
   public: virtual void updateForce(RigidBody *body, real duration) = 0;
 };
 
+/// \brief Aerodynamic force generator
+class Aero : public ForceGenerator
+{
+  /// \brief Aerodynamic tensor for the surface in body frame
+  protected: Matrix3 tensor;
+
+  /// \brief Relative position of aerodynamic surface in body frame
+  protected: Vector3 position;
+
+  /// \brief Pointer to the wind speed of the environment
+  protected: const Vector3* windSpeed;
+
+  /// \brief Use explicit tensor matrix to update force
+  protected: void updateForceFromTensor(RigidBody *body, const real duration,
+                                        const Matrix3 &tensor);
+
+  /// \brief Constructor
+  public: Aero(const Matrix3 &tensor, const Vector3 &position,
+               const Vector3 *windSpeed);
+
+  // Documentation inherited
+  public: virtual void updateForce(RigidBody *body, const real duration);
+};
+
 /// \brief Registry for force generators and their applied bodies
 class ForceRegistry
 {

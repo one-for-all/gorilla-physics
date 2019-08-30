@@ -1,6 +1,7 @@
 #include "body.h"
 #include "fgen.h"
 #include "math.h"
+#include "physics.h"
 #include "particle.h"
 #include "pworld.h"
 #include "random.h"
