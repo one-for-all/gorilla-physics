@@ -45,6 +45,9 @@ public:
 
   /// \brief Destructor
   virtual ~Application() = default;
+
+  /// \brief Render text on screen
+  void renderText(float x, float y, const char *text, void* font=NULL);
 };
 
 

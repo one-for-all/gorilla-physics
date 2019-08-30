@@ -11,3 +11,4 @@ file(GLOB shared_srcs "*.cpp" "*.h")
 # Compile examples
 add_subdirectory(fireworks)
 add_subdirectory(platform)
+add_subdirectory(flightsim)
