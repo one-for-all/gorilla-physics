@@ -1,5 +1,5 @@
 use crate::{
-    dynamics::newton_euler,
+    dynamics::{dynamics, newton_euler},
     mechanism::MechanismState,
     spatial_acceleration::SpatialAcceleration,
     spatial_force::compute_torques,
@@ -8,7 +8,7 @@ use crate::{
     types::Float,
 };
 use itertools::izip;
-use na::DVector;
+use na::{dvector, DVector};
 use std::collections::HashMap;
 
 pub struct DynamicsResult {}
@@ -106,20 +106,85 @@ pub fn integrate(result: &DynamicsResult, state: &MechanismState, final_time: Fl
     }
 }
 
-pub fn simulate(state: &MechanismState, final_time: Float, dt: Float) {
-    let result = DynamicsResult::new();
-    integrate(&result, &state, final_time, dt);
+/// Simulate the mechanism state from 0 to final_time with a time step of dt.
+/// Returns the joint configurations at each time step.
+pub fn simulate(
+    state: &mut MechanismState,
+    final_time: Float,
+    dt: Float,
+) -> (DVector<DVector<Float>>, DVector<DVector<Float>>) {
+    let mut t = 0.0;
+    let mut qs: DVector<DVector<Float>> = dvector![];
+    let mut vs: DVector<DVector<Float>> = dvector![];
+    qs.extend([state.q.clone()]);
+    vs.extend([state.v.clone()]);
+    while t < final_time {
+        let vdot = dynamics(state);
+
+        // Not exactly Euler integration
+        // Note: this actually turns out to be stable for pendulum system
+        let v = state.v.clone() + vdot * dt;
+        let q = state.q.clone() + v.clone() * dt;
+
+        qs.extend([q.clone()]);
+        vs.extend([v.clone()]);
+
+        state.update(&q, &v);
+        t += dt;
+    }
+
+    (qs, vs)
 }
 
 #[cfg(test)]
-mod tests {
-
-    use crate::rigid_body::RigidBody;
-    use crate::{inertia::SpatialInertia, joint::RevoluteJoint};
+mod simulate_tests {
+    use crate::{GRAVITY, PI};
 
     use super::*;
     use na::Matrix4;
     use nalgebra::{dvector, vector, Matrix3};
+
+    #[test]
+    fn simulate_horizontal_right_rod() {
+        // Arrange
+        let m = 5.0; // Mass of rod
+        let l: Float = 7.0; // Length of rod
+
+        let moment_x = 0.0;
+        let moment_y = 1.0 / 3.0 * m * l * l;
+        let moment_z = 1.0 / 3.0 * m * l * l;
+        let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
+        let cross_part = vector![m * l / 2.0, 0.0, 0.0];
+
+        let rod_to_world = Matrix4::identity(); // transformation from rod to world frame
+        let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
+
+        let mut state =
+            crate::test_helpers::build_rod_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+
+        let initial_energy = 0.0 + 0.0; // E = PE + KE, both are zero at the start.
+
+        // Act
+        let final_time = 10.0;
+        let dt = 0.02;
+        let (qs, vs) = simulate(&mut state, final_time, dt);
+
+        // Assert
+        let max_q = qs
+            .iter()
+            .map(|q| q[0])
+            .fold(Float::NEG_INFINITY, Float::max);
+        assert!((max_q - PI).abs() < 1e-3); // Check highest point of swing
+
+        let q_final = qs[qs.len() - 1][0];
+        let v_final = vs[vs.len() - 1][0];
+
+        let potential_energy = m * GRAVITY * l / 2.0 * (-q_final.sin()); // mgh
+        let kinetic_energy = 0.5 * (m * l * l / 3.0) * v_final * v_final; // 1/2 I ω^2
+        assert!((initial_energy - (potential_energy + kinetic_energy)).abs() < 1.0);
+        // Sanity check that energy is conserved. Not exact due to numerical integration.
+        // Note: this is potentially flaky test depending on parameters
+    }
 
     #[test]
     fn inverse_dynamics_upright_rod() {
@@ -129,25 +194,15 @@ mod tests {
         let moment_x = 1.0 / 3.0 * m * l * l;
         let moment_y = moment_x;
         let moment_z = 0.0;
+        let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
         let cross_part = vector![0.0, 0.0, l / 2.0];
 
-        let mut state = MechanismState {
-            treejoints: dvector![RevoluteJoint {
-                transform: Transform3D::new("rod", "world", &Matrix4::identity()),
-                axis: vector![0.0, 1.0, 0.0]
-            }],
-            treejointids: dvector![1],
-            bodies: dvector![RigidBody {
-                inertia: SpatialInertia {
-                    frame: "rod".to_string(),
-                    moment: Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]),
-                    cross_part: cross_part,
-                    mass: m
-                }
-            }],
-            q: dvector![0.0],
-            v: dvector![0.0],
-        };
+        let rod_to_world = Matrix4::identity(); // transformation from rod to world frame
+        let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
+
+        let mut state =
+            crate::test_helpers::build_rod_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+
         let vdot = dvector![-1.0]; // acceleration around -y axis
 
         // Act

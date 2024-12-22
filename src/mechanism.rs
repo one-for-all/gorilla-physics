@@ -9,7 +9,7 @@ use crate::rigid_body::RigidBody;
 use crate::transform::Transform3D;
 use crate::types::Float;
 use itertools::izip;
-use na::{zero, DMatrix};
+use na::DMatrix;
 use nalgebra::{dvector, DVector};
 
 /// MechanismState stores the state information about the mechanism
@@ -39,6 +39,14 @@ impl MechanismState {
             bodies: dvector![RigidBody::default()],
             q: DVector::zeros(0),
             v: DVector::zeros(0),
+        }
+    }
+
+    pub fn update(&mut self, q: &DVector<Float>, v: &DVector<Float>) {
+        self.q = q.clone();
+        self.v = v.clone();
+        for (joint, q) in izip!(self.treejoints.iter_mut(), q.iter()) {
+            joint.update(q);
         }
     }
 }

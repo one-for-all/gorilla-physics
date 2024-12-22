@@ -67,6 +67,24 @@ impl Transform3D {
                 0., 0., 0., 1.,
         )
     }
+
+    /// Returns a transformation matrix from axis-angle
+    /// https://en.wikipedia.org/wiki/Rotation_matrix
+    #[rustfmt::skip]
+    pub fn rotation(axis: &Vector3<Float>, theta: &Float) -> Matrix4<Float> {
+        let x = axis.x;
+        let y = axis.y;
+        let z = axis.z;
+        let c = theta.cos();
+        let s = theta.sin();
+        let t = 1.0 - c;
+        Matrix4::new(
+            t * x * x + c,      t * x * y - s * z,  t * x * z + s * y,  0.0,
+            t * x * y + s * z,  t * y * y + c,      t * y * z - s * x,  0.0,
+            t * x * z - s * y,  t * y * z + s * x,  t * z * z + c,      0.0,
+            0.0,                0.0,                0.0,                1.0,
+        )
+    }
 }
 
 impl Mul for Transform3D {

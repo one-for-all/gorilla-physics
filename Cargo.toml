@@ -8,12 +8,13 @@ name = "gorilla_physics"
 path = "src/lib.rs"
 
 [[bin]]
-name = "ball_drop"
-path = "examples/ball_drop.rs"
+name = "horizontal_rod_pendulum"
+path = "examples/horizontal_rod_pendulum.rs"
 
 [dependencies]
 itertools = "0.13.0"
 nalgebra = "0.33"
+plotters = "0.3.7"
 
 [build]
 # rustflags = ["-Awarnings"]

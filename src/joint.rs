@@ -1,4 +1,4 @@
-use na::zero;
+use na::{zero, Matrix4};
 use nalgebra::Vector3;
 use std::ops::Mul;
 
@@ -11,13 +11,15 @@ use crate::{
 ///
 /// Note: joint frame is defined as the child body frame
 pub struct RevoluteJoint {
-    pub transform: Transform3D, // transform from successor frame to predecessor frame
-    pub axis: Vector3<Float>,   // axis of rotation expressed in successor body frame
+    pub init_mat: Matrix4<Float>, // initial transform from successor frame to predecessor frame
+    pub transform: Transform3D,   // transform from successor frame to predecessor frame
+    pub axis: Vector3<Float>,     // axis of rotation expressed in successor body frame
 }
 
 impl RevoluteJoint {
     pub fn default() -> Self {
         RevoluteJoint {
+            init_mat: Matrix4::identity(),
             transform: Transform3D::default(),
             axis: Vector3::z(),
         }
@@ -43,6 +45,15 @@ impl RevoluteJoint {
             angular: self.axis,
             linear: zero(),
         }
+    }
+
+    /// Update the transform to be intial transform rotated around axis by q
+    pub fn update(&mut self, q: &Float) {
+        self.transform = Transform3D {
+            from: self.transform.from.clone(),
+            to: self.transform.to.clone(),
+            mat: self.init_mat * Transform3D::rotation(&self.axis, q),
+        };
     }
 }
 

@@ -164,13 +164,9 @@ pub fn dynamics(state: &MechanismState) -> DVector<Float> {
 
 #[cfg(test)]
 mod dynamics_tests {
-    use std::error;
-
     use na::{dvector, vector, Matrix3, Matrix4};
 
-    use crate::{
-        inertia::SpatialInertia, joint::RevoluteJoint, rigid_body::RigidBody, GRAVITY, PI,
-    };
+    use crate::{test_helpers::build_rod_pendulum, GRAVITY, PI};
 
     use super::*;
 
@@ -186,28 +182,11 @@ mod dynamics_tests {
         let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
         let cross_part = vector![m * l / 2.0, 0.0, 0.0];
 
-        let rod_frame = "rod";
-        let world_frame = "world";
-        let rod_to_world = Transform3D::new(rod_frame, world_frame, &Matrix4::identity());
-        let axis = vector![0.0, 1.0, 0.0];
+        let rod_to_world = Matrix4::identity(); // transformation from rod to world frame
+        let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
-        let state = MechanismState {
-            treejoints: dvector![RevoluteJoint {
-                transform: rod_to_world,
-                axis
-            }],
-            treejointids: dvector![1],
-            bodies: dvector![RigidBody {
-                inertia: SpatialInertia {
-                    frame: rod_frame.to_string(),
-                    moment,
-                    cross_part,
-                    mass: m
-                }
-            }],
-            q: dvector![0.0],
-            v: dvector![0.0],
-        };
+        let state =
+            crate::test_helpers::build_rod_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         // Act
         let joint_accels = dynamics(&state);
@@ -233,28 +212,10 @@ mod dynamics_tests {
         let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
         let cross_part = vector![m * l / 2.0, 0.0, 0.0];
 
-        let rod_frame = "rod";
-        let world_frame = "world";
-        let rod_to_world = Transform3D::new(rod_frame, world_frame, &Transform3D::rot_x(PI / 2.0));
+        let rod_to_world = Transform3D::rot_x(PI / 2.0);
         let axis = vector![0.0, 0.0, 1.0];
 
-        let state = MechanismState {
-            treejoints: dvector![RevoluteJoint {
-                transform: rod_to_world,
-                axis
-            }],
-            treejointids: dvector![1],
-            bodies: dvector![RigidBody {
-                inertia: SpatialInertia {
-                    frame: rod_frame.to_string(),
-                    moment,
-                    cross_part,
-                    mass: m
-                }
-            }],
-            q: dvector![0.0],
-            v: dvector![0.0],
-        };
+        let state = build_rod_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         // Act
         let joint_accels = dynamics(&state);
@@ -282,32 +243,10 @@ mod dynamics_tests {
         let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
         let cross_part = vector![m * l / 2.0, 0.0, 0.0];
 
-        let rod_frame = "rod";
-        let world_frame = "world";
-        let rod_to_world = Transform3D::new(
-            rod_frame,
-            world_frame,
-            &(Transform3D::move_x(d) * Transform3D::rot_x(PI / 2.0)),
-        );
+        let rod_to_world = Transform3D::move_x(d) * Transform3D::rot_x(PI / 2.0);
         let axis = vector![0.0, 0.0, 1.0];
 
-        let state = MechanismState {
-            treejoints: dvector![RevoluteJoint {
-                transform: rod_to_world,
-                axis
-            }],
-            treejointids: dvector![1],
-            bodies: dvector![RigidBody {
-                inertia: SpatialInertia {
-                    frame: rod_frame.to_string(),
-                    moment,
-                    cross_part,
-                    mass: m
-                }
-            }],
-            q: dvector![0.0],
-            v: dvector![0.0],
-        };
+        let state = build_rod_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         // Act
         let joint_accels = dynamics(&state);

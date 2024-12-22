@@ -1,4 +1,4 @@
-use std::{convert::identity, ops::Add};
+use std::ops::Add;
 
 use na::{DMatrix, Point3, SMatrix, Vector3};
 use nalgebra::{vector, Matrix3};

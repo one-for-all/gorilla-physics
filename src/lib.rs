@@ -18,6 +18,9 @@ pub mod twist;
 pub mod types;
 pub mod util;
 
+#[cfg(test)]
+pub mod test_helpers;
+
 const GRAVITY: Float = 9.81;
 
 const PI: Float = std::f32::consts::PI;
