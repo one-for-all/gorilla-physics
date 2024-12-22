@@ -1,0 +1,19 @@
+[package]
+name = "gorilla-physics"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "gorilla_physics"
+path = "src/lib.rs"
+
+[[bin]]
+name = "ball_drop"
+path = "examples/ball_drop.rs"
+
+[dependencies]
+itertools = "0.13.0"
+nalgebra = "0.33"
+
+[build]
+# rustflags = ["-Awarnings"]
