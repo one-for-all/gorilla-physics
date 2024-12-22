@@ -58,7 +58,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Configure the chart
     let mut chart = ChartBuilder::on(&root)
-        .caption("DVector Plot", ("sans-serif", 20))
+        .caption("Angle vs. Time plot", ("sans-serif", 20))
         .x_label_area_size(30)
         .y_label_area_size(40)
         .build_cartesian_2d(0.0..final_time, min_y..max_y)
