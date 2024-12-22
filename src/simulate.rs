@@ -121,7 +121,7 @@ pub fn simulate(
     while t < final_time {
         let vdot = dynamics(state);
 
-        // Not exactly Euler integration
+        // Semi-implicit Euler integration
         // Note: this actually turns out to be stable for pendulum system
         let v = state.v.clone() + vdot * dt;
         let q = state.q.clone() + v.clone() * dt;
