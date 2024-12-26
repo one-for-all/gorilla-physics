@@ -18,7 +18,8 @@ It should generate a plot that plots angle of the rod against the time axis.
 
 ## TODO
 
-- Add visualization through webassembly, javascript and browser.
+- Deploy the visualization to github page
+- Add section on visualization in README
 - Verify that multi-joint robot works. (currently only tested against single revolute joint)
 
 ## References
