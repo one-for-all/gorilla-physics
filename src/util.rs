@@ -1,4 +1,5 @@
 use nalgebra::{Matrix3, Vector3};
+use web_sys::{self};
 
 use crate::types::Float;
 
@@ -15,4 +16,9 @@ pub fn mul_inertia(
     let angular = J * w + c.cross(v);
     let linear = m * v - c.cross(w);
     (angular, linear)
+}
+
+// Helper function to log to the browser console
+fn console_log(message: &str) {
+    web_sys::console::log_1(&message.into());
 }

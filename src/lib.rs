@@ -19,7 +19,7 @@ pub mod types;
 pub mod util;
 
 // Wasm bindings
-pub mod ui;
+pub mod interface;
 
 #[cfg(test)]
 pub mod test_helpers;

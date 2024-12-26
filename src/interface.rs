@@ -1,26 +1,41 @@
 use na::{dvector, vector, Matrix3, Matrix4};
 use wasm_bindgen::prelude::*;
-use web_sys;
+use web_sys::js_sys;
 
 use crate::{
     inertia::SpatialInertia, joint::RevoluteJoint, mechanism::MechanismState,
-    rigid_body::RigidBody, simulate::simulate, transform::Transform3D, types::Float,
+    rigid_body::RigidBody, simulate::step, transform::Transform3D, types::Float,
 };
-
-// Helper function to log to the console
-fn console_log(message: &str) {
-    web_sys::console::log_1(&message.into());
-}
 
 #[wasm_bindgen]
 extern "C" {
     fn alert(s: &str);
 }
 
+/// WebAssembly interface to the MechanismState struct.
 #[wasm_bindgen]
-pub fn run() {
+pub struct InterfaceMechanismState(pub(crate) MechanismState);
+
+#[wasm_bindgen]
+impl InterfaceMechanismState {
+    #[wasm_bindgen]
+    pub fn step(&mut self, dt: Float) -> js_sys::Float32Array {
+        let (q, _v) = step(&mut self.0, dt);
+
+        // Convert to a format that Javascript can take
+        let q_js = js_sys::Float32Array::new_with_length(q.len() as u32);
+        for (i, v) in q.iter().enumerate() {
+            q_js.set_index(i as u32, *v);
+        }
+
+        q_js
+    }
+}
+
+#[wasm_bindgen]
+pub fn createRodPendulum(length: Float) -> InterfaceMechanismState {
     let m = 5.0; // Mass of rod
-    let l: Float = 7.0; // Length of rod
+    let l: Float = length; // Length of rod
 
     let moment_x = 0.0;
     let moment_y = 1.0 / 3.0 * m * l * l;
@@ -33,7 +48,7 @@ pub fn run() {
     let rod_to_world = Transform3D::new(rod_frame, world_frame, &Matrix4::identity());
     let axis = vector![0.0, 1.0, 0.0];
 
-    let mut state = MechanismState {
+    let state = MechanismState {
         treejoints: dvector![RevoluteJoint {
             init_mat: rod_to_world.mat.clone(),
             transform: rod_to_world,
@@ -52,14 +67,5 @@ pub fn run() {
         v: dvector![0.0],
     };
 
-    // Simulate
-    let final_time = 10.0;
-    let dt = 0.02;
-
-    let (qs, vs) = simulate(&mut state, final_time, dt);
-    let data = qs.iter().map(|q| q[0]).collect::<Vec<Float>>();
-
-    let message = format!("qs: {:?}", data);
-    alert(&message);
-    // console_log(&format!("qs: {:?}", qs));
+    InterfaceMechanismState(state)
 }

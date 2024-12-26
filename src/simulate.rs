@@ -96,15 +96,26 @@ pub fn inverse_dynamics(state: &mut MechanismState, vdot: &DVector<Float>) -> DV
     torquesout
 }
 
-pub fn step(result: &DynamicsResult, state: &MechanismState, t: Float, dt: Float) {}
+/// Step the mechanism state forward by dt seconds.
+pub fn step(state: &mut MechanismState, dt: Float) -> (DVector<Float>, DVector<Float>) {
+    let vdot = dynamics(state);
 
-pub fn integrate(result: &DynamicsResult, state: &MechanismState, final_time: Float, dt: Float) {
-    let mut t = 0.0;
-    while t < final_time {
-        step(&result, &state, t, dt);
-        t += dt;
-    }
+    // Semi-implicit Euler integration
+    // Note: this actually turns out to be stable for pendulum system
+    let v = state.v.clone() + vdot * dt;
+    let q = state.q.clone() + v.clone() * dt;
+
+    state.update(&q, &v);
+    (q, v)
 }
+
+// pub fn integrate(result: &DynamicsResult, state: &MechanismState, final_time: Float, dt: Float) {
+//     let mut t = 0.0;
+//     while t < final_time {
+//         step(&result, &state, t, dt);
+//         t += dt;
+//     }
+// }
 
 /// Simulate the mechanism state from 0 to final_time with a time step of dt.
 /// Returns the joint configurations at each time step.
@@ -119,17 +130,10 @@ pub fn simulate(
     qs.extend([state.q.clone()]);
     vs.extend([state.v.clone()]);
     while t < final_time {
-        let vdot = dynamics(state);
+        let (q, v) = step(state, dt);
+        qs.extend([q]);
+        vs.extend([v]);
 
-        // Semi-implicit Euler integration
-        // Note: this actually turns out to be stable for pendulum system
-        let v = state.v.clone() + vdot * dt;
-        let q = state.q.clone() + v.clone() * dt;
-
-        qs.extend([q.clone()]);
-        vs.extend([v.clone()]);
-
-        state.update(&q, &v);
         t += dt;
     }
 
