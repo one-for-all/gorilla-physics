@@ -6,6 +6,7 @@ edition = "2021"
 [lib]
 name = "gorilla_physics"
 path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
 
 [[bin]]
 name = "horizontal_rod_pendulum"
@@ -15,6 +16,8 @@ path = "examples/horizontal_rod_pendulum.rs"
 itertools = "0.13.0"
 nalgebra = "0.33"
 plotters = "0.3.7"
+wasm-bindgen = "0.2.84"
+web-sys = { version = "0.3.69", features = ['console'] }
 
 [build]
 # rustflags = ["-Awarnings"]

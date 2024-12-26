@@ -18,6 +18,9 @@ pub mod twist;
 pub mod types;
 pub mod util;
 
+// Wasm bindings
+pub mod ui;
+
 #[cfg(test)]
 pub mod test_helpers;
 

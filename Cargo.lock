@@ -328,6 +328,8 @@ dependencies = [
  "itertools",
  "nalgebra",
  "plotters",
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]
