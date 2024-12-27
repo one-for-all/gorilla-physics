@@ -32,6 +32,7 @@ impl InterfaceMechanismState {
     }
 }
 
+/// Create a uniform rod pendulum that hangs horizontally to the right.
 #[wasm_bindgen]
 pub fn createRodPendulum(length: Float) -> InterfaceMechanismState {
     let m = 5.0; // Mass of rod

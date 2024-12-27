@@ -98,7 +98,7 @@ pub fn inverse_dynamics(state: &mut MechanismState, vdot: &DVector<Float>) -> DV
 
 /// Step the mechanism state forward by dt seconds.
 pub fn step(state: &mut MechanismState, dt: Float) -> (DVector<Float>, DVector<Float>) {
-    let vdot = dynamics(state);
+    let vdot = dynamics(state, &dvector![0.0]);
 
     // Semi-implicit Euler integration
     // Note: this actually turns out to be stable for pendulum system

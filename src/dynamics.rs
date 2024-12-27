@@ -120,20 +120,26 @@ pub fn dynamics_bias(
 }
 
 /// Solves the dynamics equation:
-/// M(q) vdot + c(q, v) = 0
+/// M(q) vdot + c(q, v) = τ
+///
+/// Note: mass_matrix is lower-triangular matrix
 pub fn dynamics_solve(
     mass_matrix: &DMatrix<Float>,
     dynamics_bias: &DVector<Float>,
+    tau: &DVector<Float>,
 ) -> DVector<Float> {
-    // Convert lower-triangular matrix to full symmetric matrix
-    let mut full_mass_matrix = mass_matrix.clone();
+    // Convert lower-triangular matrix to full symmetric matrix M
+    let mut M = mass_matrix.clone();
     for i in 0..mass_matrix.nrows() {
         for j in (i + 1)..mass_matrix.nrows() {
-            full_mass_matrix[(i, j)] = mass_matrix[(j, i)];
+            M[(i, j)] = mass_matrix[(j, i)];
         }
     }
 
-    if let Some(vdot) = full_mass_matrix.clone().lu().solve(&(-dynamics_bias)) {
+    // dynamics bias term
+    let c = dynamics_bias;
+
+    if let Some(vdot) = M.clone().lu().solve(&(tau - c)) {
         vdot
     } else {
         panic!(
@@ -141,7 +147,7 @@ pub fn dynamics_solve(
         where M = {}, 
               c = {}
         "#,
-            full_mass_matrix, dynamics_bias
+            M, dynamics_bias
         )
     }
 }
@@ -150,15 +156,23 @@ pub fn dynamics_solve(
 /// equations of motion:
 ///     M(q)vdot + c(q, v) = τ
 /// given joint configuration vector q, joint velocity vector v, and joint
-/// torques τ which is 0 for now.
-pub fn dynamics(state: &MechanismState) -> DVector<Float> {
+/// torques τ.
+pub fn dynamics(state: &MechanismState, tau: &DVector<Float>) -> DVector<Float> {
+    if state.v.len() != tau.len() {
+        panic!(
+            "Joint velocity vector v length {} and joint torques vector τ length {} diff!",
+            state.v.len(),
+            tau.len()
+        );
+    }
+
     // Compute the body to root frame transform for each body
     let bodies_to_root = compute_bodies_to_root(state);
 
     let dynamics_bias = dynamics_bias(state, &bodies_to_root); // c(q, v)
     let mass_matrix = mass_matrix(state, &bodies_to_root);
 
-    let vdot = dynamics_solve(&mass_matrix, &dynamics_bias);
+    let vdot = dynamics_solve(&mass_matrix, &dynamics_bias, tau);
     vdot
 }
 
@@ -189,7 +203,7 @@ mod dynamics_tests {
             crate::test_helpers::build_rod_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         // Act
-        let joint_accels = dynamics(&state);
+        let joint_accels = dynamics(&state, &dvector![0.0]);
 
         // Assert
         assert_eq!(joint_accels, dvector![3.0 * GRAVITY / (2.0 * l)]);
@@ -218,7 +232,7 @@ mod dynamics_tests {
         let state = build_rod_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         // Act
-        let joint_accels = dynamics(&state);
+        let joint_accels = dynamics(&state, &dvector![0.0]);
 
         // Assert
         assert_eq!(joint_accels, dvector![-3.0 * GRAVITY / (2.0 * l)]);
@@ -249,7 +263,7 @@ mod dynamics_tests {
         let state = build_rod_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         // Act
-        let joint_accels = dynamics(&state);
+        let joint_accels = dynamics(&state, &dvector![0.0]);
 
         // Assert
         let error = (joint_accels - dvector![-3.0 * GRAVITY / (2.0 * l)]).abs();
@@ -257,5 +271,37 @@ mod dynamics_tests {
         // Note: Needs to check for close equality because of numerical error
         // TODO: Handle this such that can check for exact equality?
         // assert_eq!(joint_accels, dvector![-3.0 * GRAVITY / (2.0 * l)]);
+    }
+
+    /// Apply a torque that should hold the rod at horizontal position
+    #[test]
+    fn dynamics_hold_horizontal_rod() {
+        // Arrange
+        let m = 5.0; // Mass of rod
+        let l: Float = 7.0; // Length of rod
+
+        let moment_x = 0.0;
+        let moment_y = 1.0 / 3.0 * m * l * l;
+        let moment_z = 1.0 / 3.0 * m * l * l;
+        let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
+        let cross_part = vector![m * l / 2.0, 0.0, 0.0];
+
+        let rod_to_world = Matrix4::identity(); // transformation from rod to world frame
+        let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
+
+        let state =
+            crate::test_helpers::build_rod_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+
+        // Act
+        let torque = -m * GRAVITY * l / 2.0;
+        let joint_accels = dynamics(&state, &dvector![torque]);
+
+        // Assert
+        let error = (joint_accels - dvector![0.0]).abs();
+        assert!(
+            error < dvector![1e-6],
+            "\njoint accel error too large: {:#?}",
+            error
+        );
     }
 }
