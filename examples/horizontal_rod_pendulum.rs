@@ -45,7 +45,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     let dt = 0.02;
     let num_steps = (final_time / dt) as usize;
 
-    let (qs, vs) = simulate(&mut state, final_time, dt);
+    let (qs, vs) = simulate(&mut state, final_time, dt, |_state| dvector![0.0]);
     let data = qs.iter().map(|q| q[0]).collect::<Vec<Float>>();
 
     // Determine y-axis limits based on the minimum and maximum values in the data

@@ -43,8 +43,7 @@ pub fn spatial_accelerations(
 
     // Compute the joint spatial accelerations of each body expressed in body frame
     let mut joint_accels: HashMap<u32, SpatialAcceleration> = HashMap::new();
-    // joint_accels.insert(rootid, SpatialAcceleration::zero("world", "world"));
-    for (jointid, joint, q, v, vdot) in izip!(
+    for (jointid, joint, _q, _v, vdot) in izip!(
         jointids.iter(),
         joints.iter(),
         qs.iter(),
@@ -97,8 +96,12 @@ pub fn inverse_dynamics(state: &mut MechanismState, vdot: &DVector<Float>) -> DV
 }
 
 /// Step the mechanism state forward by dt seconds.
-pub fn step(state: &mut MechanismState, dt: Float) -> (DVector<Float>, DVector<Float>) {
-    let vdot = dynamics(state, &dvector![0.0]);
+pub fn step(
+    state: &mut MechanismState,
+    dt: Float,
+    tau: &DVector<Float>,
+) -> (DVector<Float>, DVector<Float>) {
+    let vdot = dynamics(state, tau);
 
     // Semi-implicit Euler integration
     // Note: this actually turns out to be stable for pendulum system
@@ -123,6 +126,7 @@ pub fn simulate(
     state: &mut MechanismState,
     final_time: Float,
     dt: Float,
+    control_fn: fn(&MechanismState) -> DVector<Float>,
 ) -> (DVector<DVector<Float>>, DVector<DVector<Float>>) {
     let mut t = 0.0;
     let mut qs: DVector<DVector<Float>> = dvector![];
@@ -130,7 +134,8 @@ pub fn simulate(
     qs.extend([state.q.clone()]);
     vs.extend([state.v.clone()]);
     while t < final_time {
-        let (q, v) = step(state, dt);
+        let tau = control_fn(state);
+        let (q, v) = step(state, dt, &tau);
         qs.extend([q]);
         vs.extend([v]);
 
@@ -164,21 +169,21 @@ mod simulate_tests {
         let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
         let mut state =
-            crate::test_helpers::build_rod_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+            crate::helpers::build_rod_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         let initial_energy = 0.0 + 0.0; // E = PE + KE, both are zero at the start.
 
         // Act
         let final_time = 10.0;
         let dt = 0.02;
-        let (qs, vs) = simulate(&mut state, final_time, dt);
+        let (qs, vs) = simulate(&mut state, final_time, dt, |_state| dvector![0.0]);
 
         // Assert
-        let max_q = qs
+        let q_max = qs
             .iter()
             .map(|q| q[0])
             .fold(Float::NEG_INFINITY, Float::max);
-        assert!((max_q - PI).abs() < 1e-3); // Check highest point of swing
+        assert!((q_max - PI).abs() < 1e-3); // Check highest point of swing
 
         let q_final = qs[qs.len() - 1][0];
         let v_final = vs[vs.len() - 1][0];
@@ -205,7 +210,7 @@ mod simulate_tests {
         let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
         let mut state =
-            crate::test_helpers::build_rod_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+            crate::helpers::build_rod_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         let vdot = dvector![-1.0]; // acceleration around -y axis
 

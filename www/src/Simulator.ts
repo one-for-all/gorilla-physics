@@ -49,7 +49,7 @@ export class Simulator {
     // TODO: measure and use the actual time elapsed
     const dt = 1 / this.fps;
 
-    let angle = -(this.mechanismState.step(dt)[0] - Math.PI / 2); // Coordinate transform
+    let angle = -this.mechanismState.step(dt)[0]; // Coordinate transform
 
     this.updateRodPose(angle);
 

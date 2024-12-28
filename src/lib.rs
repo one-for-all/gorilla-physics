@@ -3,6 +3,7 @@
 use types::Float;
 pub extern crate nalgebra as na;
 
+pub mod control;
 pub mod dynamics;
 pub mod geometric_jacobian;
 pub mod inertia;
@@ -21,8 +22,7 @@ pub mod util;
 // Wasm bindings
 pub mod interface;
 
-#[cfg(test)]
-pub mod test_helpers;
+pub mod helpers;
 
 const GRAVITY: Float = 9.81;
 

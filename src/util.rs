@@ -19,6 +19,6 @@ pub fn mul_inertia(
 }
 
 // Helper function to log to the browser console
-fn console_log(message: &str) {
+pub fn console_log(message: &str) {
     web_sys::console::log_1(&message.into());
 }

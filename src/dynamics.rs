@@ -180,7 +180,7 @@ pub fn dynamics(state: &MechanismState, tau: &DVector<Float>) -> DVector<Float> 
 mod dynamics_tests {
     use na::{dvector, vector, Matrix3, Matrix4};
 
-    use crate::{test_helpers::build_rod_pendulum, GRAVITY, PI};
+    use crate::{helpers::build_rod_pendulum, GRAVITY, PI};
 
     use super::*;
 
@@ -200,7 +200,7 @@ mod dynamics_tests {
         let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
         let state =
-            crate::test_helpers::build_rod_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+            crate::helpers::build_rod_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         // Act
         let joint_accels = dynamics(&state, &dvector![0.0]);
@@ -290,7 +290,7 @@ mod dynamics_tests {
         let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
         let state =
-            crate::test_helpers::build_rod_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+            crate::helpers::build_rod_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         // Act
         let torque = -m * GRAVITY * l / 2.0;

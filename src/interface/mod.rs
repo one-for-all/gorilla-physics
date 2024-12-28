@@ -3,8 +3,9 @@ use wasm_bindgen::prelude::*;
 use web_sys::js_sys;
 
 use crate::{
-    inertia::SpatialInertia, joint::RevoluteJoint, mechanism::MechanismState,
-    rigid_body::RigidBody, simulate::step, transform::Transform3D, types::Float,
+    control::pendulum_swing_up_and_balance, inertia::SpatialInertia, joint::RevoluteJoint,
+    mechanism::MechanismState, rigid_body::RigidBody, simulate::step, transform::Transform3D,
+    types::Float, GRAVITY,
 };
 
 #[wasm_bindgen]
@@ -20,7 +21,9 @@ pub struct InterfaceMechanismState(pub(crate) MechanismState);
 impl InterfaceMechanismState {
     #[wasm_bindgen]
     pub fn step(&mut self, dt: Float) -> js_sys::Float32Array {
-        let (q, _v) = step(&mut self.0, dt);
+        let torque = pendulum_swing_up_and_balance(&self.0);
+
+        let (q, _v) = step(&mut self.0, dt, &torque);
 
         // Convert to a format that Javascript can take
         let q_js = js_sys::Float32Array::new_with_length(q.len() as u32);
@@ -30,6 +33,30 @@ impl InterfaceMechanismState {
 
         q_js
     }
+}
+
+#[wasm_bindgen]
+pub fn createRodPendulumAtBottom(length: Float) -> InterfaceMechanismState {
+    let m = 5.0;
+    let l: Float = length;
+
+    let moment_x = 1.0 / 3.0 * m * l * l;
+    let moment_y = 1.0 / 3.0 * m * l * l;
+    let moment_z = 0.0;
+    let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
+    let cross_part = vector![0.0, 0.0, -m * l / 2.0];
+
+    let rod_to_world = Matrix4::identity(); // transformation from rod to world frame
+    let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
+
+    let mut state =
+        crate::helpers::build_rod_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+
+    let q_init = dvector![0.1];
+    let v_init = dvector![0.0];
+    state.update(&q_init, &v_init);
+
+    InterfaceMechanismState(state)
 }
 
 /// Create a uniform rod pendulum that hangs horizontally to the right.
