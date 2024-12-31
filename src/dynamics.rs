@@ -180,12 +180,15 @@ pub fn dynamics(state: &MechanismState, tau: &DVector<Float>) -> DVector<Float> 
 mod dynamics_tests {
     use na::{dvector, vector, Matrix3, Matrix4};
 
-    use crate::{helpers::build_rod_pendulum, GRAVITY, PI};
+    use crate::{
+        helpers::build_pendulum, inertia::SpatialInertia, joint::RevoluteJoint,
+        rigid_body::RigidBody, util::assert_close, GRAVITY, PI,
+    };
 
     use super::*;
 
     #[test]
-    fn dynamics_horizontal_right_rod() {
+    fn dynamics_rod_pendulum_horizontal() {
         // Arrange
         let m = 5.0; // Mass of rod
         let l: Float = 7.0; // Length of rod
@@ -199,8 +202,7 @@ mod dynamics_tests {
         let rod_to_world = Matrix4::identity(); // transformation from rod to world frame
         let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
-        let state =
-            crate::helpers::build_rod_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+        let state = crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         // Act
         let joint_accels = dynamics(&state, &dvector![0.0]);
@@ -215,7 +217,7 @@ mod dynamics_tests {
     ///             |/                       |
     ///             +----> x                 +---->x
     #[test]
-    fn dynamics_horizontal_right_rod_rotated_frame() {
+    fn dynamics_rod_pendulum_horizontal_rotated_frame() {
         // Arrange
         let m = 5.0; // Mass of rod
         let l: Float = 7.0; // Length of rod
@@ -229,7 +231,7 @@ mod dynamics_tests {
         let rod_to_world = Transform3D::rot_x(PI / 2.0);
         let axis = vector![0.0, 0.0, 1.0];
 
-        let state = build_rod_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+        let state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         // Act
         let joint_accels = dynamics(&state, &dvector![0.0]);
@@ -245,7 +247,7 @@ mod dynamics_tests {
     ///             +----> x                 +---->x
     /// separated by some distance in x
     #[test]
-    fn dynamics_horizontal_right_rod_rotated_moved_rod() {
+    fn dynamics_rod_pendulum_horizontal_moved_frame() {
         // Arrange
         let m = 5.0; // Mass of rod
         let l: Float = 7.0; // Length of rod
@@ -260,7 +262,7 @@ mod dynamics_tests {
         let rod_to_world = Transform3D::move_x(d) * Transform3D::rot_x(PI / 2.0);
         let axis = vector![0.0, 0.0, 1.0];
 
-        let state = build_rod_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+        let state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         // Act
         let joint_accels = dynamics(&state, &dvector![0.0]);
@@ -275,7 +277,7 @@ mod dynamics_tests {
 
     /// Apply a torque that should hold the rod at horizontal position
     #[test]
-    fn dynamics_hold_horizontal_rod() {
+    fn dynamics_hold_horizontal_rod_pendulum() {
         // Arrange
         let m = 5.0; // Mass of rod
         let l: Float = 7.0; // Length of rod
@@ -289,8 +291,7 @@ mod dynamics_tests {
         let rod_to_world = Matrix4::identity(); // transformation from rod to world frame
         let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
-        let state =
-            crate::helpers::build_rod_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+        let state = crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         // Act
         let torque = -m * GRAVITY * l / 2.0;
@@ -303,5 +304,91 @@ mod dynamics_tests {
             "\njoint accel error too large: {:#?}",
             error
         );
+    }
+
+    /// A pendulum of point mass
+    #[test]
+    fn dynamics_simple_pendulum_horizontal() {
+        // Arrange
+        let m = 5.0;
+        let l: Float = 7.0;
+
+        let moment_x = 0.0;
+        let moment_y = m * l * l;
+        let moment_z = m * l * l;
+        let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
+        let cross_part = vector![m * l, 0., 0.];
+
+        let rod_to_world = Matrix4::identity();
+        let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
+
+        let state = crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+
+        // Act
+        let joint_accels = dynamics(&state, &dvector![0.0]);
+
+        // Assert
+        assert_eq!(joint_accels, dvector![GRAVITY / l]);
+    }
+
+    /// Release a double pendulum (point masses on massless rods) from
+    /// horizontal position.
+    #[test]
+    fn dynamics_double_pendulum_horizontal() {
+        // Arrange
+        let m = 5.0;
+        let l: Float = 7.0;
+
+        let moment_x = 0.0;
+        let moment_y = m * l * l;
+        let moment_z = m * l * l;
+        let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
+        let cross_part = vector![m * l, 0., 0.];
+
+        let rod1_to_world = Matrix4::identity();
+        let rod2_to_rod1 = Transform3D::move_x(l);
+        let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
+
+        let state = MechanismState {
+            treejoints: dvector![
+                RevoluteJoint {
+                    init_mat: rod1_to_world,
+                    transform: Transform3D::new("rod1", "world", &rod1_to_world),
+                    axis: axis.clone(),
+                },
+                RevoluteJoint {
+                    init_mat: rod2_to_rod1,
+                    transform: Transform3D::new("rod2", "rod1", &rod2_to_rod1),
+                    axis: axis.clone(),
+                }
+            ],
+            treejointids: dvector![1, 2],
+            bodies: dvector![
+                RigidBody {
+                    inertia: SpatialInertia {
+                        frame: "rod1".to_string(),
+                        moment: moment.clone(),
+                        cross_part: cross_part.clone(),
+                        mass: m,
+                    }
+                },
+                RigidBody {
+                    inertia: SpatialInertia {
+                        frame: "rod2".to_string(),
+                        moment: moment.clone(),
+                        cross_part: cross_part.clone(),
+                        mass: m,
+                    }
+                }
+            ],
+            q: dvector![0.0, 0.0],
+            v: dvector![0.0, 0.0],
+        };
+
+        // Act
+        let joint_accels = dynamics(&state, &dvector![0.0, 0.0]);
+
+        // Assert
+        assert_close(joint_accels, dvector![GRAVITY / l, -GRAVITY / l], 1e-6);
     }
 }

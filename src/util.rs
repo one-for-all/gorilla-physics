@@ -1,3 +1,4 @@
+use na::DVector;
 use nalgebra::{Matrix3, Vector3};
 use web_sys::{self};
 
@@ -21,4 +22,10 @@ pub fn mul_inertia(
 // Helper function to log to the browser console
 pub fn console_log(message: &str) {
     web_sys::console::log_1(&message.into());
+}
+
+pub fn assert_close(a: DVector<Float>, b: DVector<Float>, tol: Float) {
+    for (a, b) in a.iter().zip(b.iter()) {
+        assert!((a - b).abs() < tol);
+    }
 }

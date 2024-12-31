@@ -83,7 +83,7 @@ mod control_tests {
         let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
         let mut state =
-            crate::helpers::build_rod_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+            crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         let q_init = dvector![0.1]; // give it some initial displacement
         let v_init = dvector![0.0];
@@ -127,7 +127,7 @@ mod control_tests {
         let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
         let mut state =
-            crate::helpers::build_rod_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+            crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         let q_init = dvector![0.0];
         let v_init = dvector![0.1]; // give it some initial velocity

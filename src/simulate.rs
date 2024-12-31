@@ -169,7 +169,7 @@ mod simulate_tests {
         let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
         let mut state =
-            crate::helpers::build_rod_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+            crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         let initial_energy = 0.0 + 0.0; // E = PE + KE, both are zero at the start.
 
@@ -210,7 +210,7 @@ mod simulate_tests {
         let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
         let mut state =
-            crate::helpers::build_rod_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+            crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         let vdot = dvector![-1.0]; // acceleration around -y axis
 

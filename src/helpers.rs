@@ -5,8 +5,8 @@ use crate::{
     rigid_body::RigidBody, transform::Transform3D, types::Float,
 };
 
-/// Build a mechanism state of a rod pendulum for testing.
-pub fn build_rod_pendulum(
+/// Build a mechanism state of a pendulum for testing.
+pub fn build_pendulum(
     mass: &Float,
     moment: &Matrix3<Float>,
     cross_part: &Vector3<Float>,

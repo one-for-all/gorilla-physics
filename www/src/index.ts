@@ -2,10 +2,10 @@ import { Simulator } from "./Simulator";
 
 import("gorilla-physics").then((gorilla) => {
   const length = 7.0;
-  let mechanismState = gorilla.createRodPendulumAtBottom(length);
+  let mechanismState = gorilla.createDoublePendulum(length);
   let simulator = new Simulator(mechanismState);
   // Add a rod pendulum
-  simulator.addRodPendulum(length);
+  simulator.addDoublemPendulum(length);
 
   // Important: Set initial camera position
   let cameraPosition = {

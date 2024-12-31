@@ -21,9 +21,9 @@ pub struct InterfaceMechanismState(pub(crate) MechanismState);
 impl InterfaceMechanismState {
     #[wasm_bindgen]
     pub fn step(&mut self, dt: Float) -> js_sys::Float32Array {
-        let torque = pendulum_swing_up_and_balance(&self.0);
+        // let torque = pendulum_swing_up_and_balance(&self.0);
 
-        let (q, _v) = step(&mut self.0, dt, &torque);
+        let (q, _v) = step(&mut self.0, dt, &dvector![0.0, 0.0]);
 
         // Convert to a format that Javascript can take
         let q_js = js_sys::Float32Array::new_with_length(q.len() as u32);
@@ -49,8 +49,7 @@ pub fn createRodPendulumAtBottom(length: Float) -> InterfaceMechanismState {
     let rod_to_world = Matrix4::identity(); // transformation from rod to world frame
     let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
-    let mut state =
-        crate::helpers::build_rod_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+    let mut state = crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
     let q_init = dvector![0.1];
     let v_init = dvector![0.0];
@@ -93,6 +92,60 @@ pub fn createRodPendulum(length: Float) -> InterfaceMechanismState {
         }],
         q: dvector![0.0],
         v: dvector![0.0],
+    };
+
+    InterfaceMechanismState(state)
+}
+
+#[wasm_bindgen]
+pub fn createDoublePendulum(length: Float) -> InterfaceMechanismState {
+    let m = 5.0;
+    let l = length;
+
+    let moment_x = 0.0;
+    let moment_y = m * l * l;
+    let moment_z = m * l * l;
+    let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
+    let cross_part = vector![m * l, 0., 0.];
+
+    let rod1_to_world = Matrix4::identity();
+    let rod2_to_rod1 = Transform3D::move_x(l);
+    let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
+
+    let state = MechanismState {
+        treejoints: dvector![
+            RevoluteJoint {
+                init_mat: rod1_to_world,
+                transform: Transform3D::new("rod1", "world", &rod1_to_world),
+                axis: axis.clone(),
+            },
+            RevoluteJoint {
+                init_mat: rod2_to_rod1,
+                transform: Transform3D::new("rod2", "rod1", &rod2_to_rod1),
+                axis: axis.clone(),
+            }
+        ],
+        treejointids: dvector![1, 2],
+        bodies: dvector![
+            RigidBody {
+                inertia: SpatialInertia {
+                    frame: "rod1".to_string(),
+                    moment: moment.clone(),
+                    cross_part: cross_part.clone(),
+                    mass: m,
+                }
+            },
+            RigidBody {
+                inertia: SpatialInertia {
+                    frame: "rod2".to_string(),
+                    moment: moment.clone(),
+                    cross_part: cross_part.clone(),
+                    mass: m,
+                }
+            }
+        ],
+        q: dvector![0.0, 0.0],
+        v: dvector![0.0, 0.0],
     };
 
     InterfaceMechanismState(state)
