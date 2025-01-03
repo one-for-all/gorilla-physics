@@ -3,9 +3,9 @@ use wasm_bindgen::prelude::*;
 use web_sys::js_sys;
 
 use crate::{
-    control::pendulum_swing_up_and_balance, inertia::SpatialInertia, joint::RevoluteJoint,
+    control::lqr, helpers::build_double_pendulum, inertia::SpatialInertia, joint::RevoluteJoint,
     mechanism::MechanismState, rigid_body::RigidBody, simulate::step, transform::Transform3D,
-    types::Float, GRAVITY,
+    types::Float, PI,
 };
 
 #[wasm_bindgen]
@@ -21,9 +21,8 @@ pub struct InterfaceMechanismState(pub(crate) MechanismState);
 impl InterfaceMechanismState {
     #[wasm_bindgen]
     pub fn step(&mut self, dt: Float) -> js_sys::Float32Array {
-        // let torque = pendulum_swing_up_and_balance(&self.0);
-
-        let (q, _v) = step(&mut self.0, dt, &dvector![0.0, 0.0]);
+        let torque = lqr(&self.0);
+        let (q, _v) = step(&mut self.0, dt, &torque);
 
         // Convert to a format that Javascript can take
         let q_js = js_sys::Float32Array::new_with_length(q.len() as u32);
@@ -98,7 +97,7 @@ pub fn createRodPendulum(length: Float) -> InterfaceMechanismState {
 }
 
 #[wasm_bindgen]
-pub fn createDoublePendulum(length: Float) -> InterfaceMechanismState {
+pub fn createDoublePendulumHorizontal(length: Float) -> InterfaceMechanismState {
     let m = 5.0;
     let l = length;
 
@@ -112,41 +111,49 @@ pub fn createDoublePendulum(length: Float) -> InterfaceMechanismState {
     let rod2_to_rod1 = Transform3D::move_x(l);
     let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
-    let state = MechanismState {
-        treejoints: dvector![
-            RevoluteJoint {
-                init_mat: rod1_to_world,
-                transform: Transform3D::new("rod1", "world", &rod1_to_world),
-                axis: axis.clone(),
-            },
-            RevoluteJoint {
-                init_mat: rod2_to_rod1,
-                transform: Transform3D::new("rod2", "rod1", &rod2_to_rod1),
-                axis: axis.clone(),
-            }
-        ],
-        treejointids: dvector![1, 2],
-        bodies: dvector![
-            RigidBody {
-                inertia: SpatialInertia {
-                    frame: "rod1".to_string(),
-                    moment: moment.clone(),
-                    cross_part: cross_part.clone(),
-                    mass: m,
-                }
-            },
-            RigidBody {
-                inertia: SpatialInertia {
-                    frame: "rod2".to_string(),
-                    moment: moment.clone(),
-                    cross_part: cross_part.clone(),
-                    mass: m,
-                }
-            }
-        ],
-        q: dvector![0.0, 0.0],
-        v: dvector![0.0, 0.0],
-    };
+    let mut state = build_double_pendulum(
+        &m,
+        &moment,
+        &cross_part,
+        &rod1_to_world,
+        &rod2_to_rod1,
+        &axis,
+    );
+
+    let q_init = dvector![-PI / 2.0 + 0.1, 0.0];
+    let v_init = dvector![0.0, 0.0];
+    state.update(&q_init, &v_init);
+
+    InterfaceMechanismState(state)
+}
+
+#[wasm_bindgen]
+pub fn createDoublePendulum(length: Float) -> InterfaceMechanismState {
+    let m = 5.0;
+    let l = length;
+
+    let moment_x = m * l * l;
+    let moment_y = m * l * l;
+    let moment_z = 0.;
+    let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
+    let cross_part = vector![0., 0., -m * l];
+
+    let rod1_to_world = Matrix4::identity();
+    let rod2_to_rod1 = Transform3D::move_z(-l);
+    let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
+
+    let mut state = build_double_pendulum(
+        &m,
+        &moment,
+        &cross_part,
+        &rod1_to_world,
+        &rod2_to_rod1,
+        &axis,
+    );
+
+    let q_init = dvector![-PI + -0.015, 0.];
+    let v_init = dvector![0., 0.];
+    state.update(&q_init, &v_init); // Set to near upright position
 
     InterfaceMechanismState(state)
 }

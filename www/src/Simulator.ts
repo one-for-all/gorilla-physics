@@ -84,8 +84,8 @@ export class Simulator {
     const dt = 1 / this.fps;
 
     let angles = this.mechanismState.step(dt);
-    // Coordinate transform
-    let angle1 = -(angles[0] - Math.PI / 2);
+    // Coordinate transform from mechanism to graphics
+    let angle1 = -angles[0];
     let angle2 = -angles[1];
 
     this.updateDoublemPendulumPose(angle1, angle2);

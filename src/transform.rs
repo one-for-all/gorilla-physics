@@ -68,6 +68,17 @@ impl Transform3D {
         )
     }
 
+    /// Create the transformation matrix for a linear translation along the z-axis
+    #[rustfmt::skip]
+    pub fn move_z(distance: Float) -> Matrix4<Float> {
+        Matrix4::new(
+                1., 0., 0., 0., 
+                0., 1., 0., 0., 
+                0., 0., 1., distance,
+                0., 0., 0., 1.,
+        )
+    }
+
     /// Returns a transformation matrix from axis-angle
     /// https://en.wikipedia.org/wiki/Rotation_matrix
     #[rustfmt::skip]

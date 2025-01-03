@@ -389,6 +389,6 @@ mod dynamics_tests {
         let joint_accels = dynamics(&state, &dvector![0.0, 0.0]);
 
         // Assert
-        assert_close(joint_accels, dvector![GRAVITY / l, -GRAVITY / l], 1e-6);
+        assert_close(&joint_accels, &dvector![GRAVITY / l, -GRAVITY / l], 1e-6);
     }
 }
