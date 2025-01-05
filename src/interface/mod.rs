@@ -3,9 +3,16 @@ use wasm_bindgen::prelude::*;
 use web_sys::js_sys;
 
 use crate::{
-    control::lqr, helpers::build_double_pendulum, inertia::SpatialInertia, joint::RevoluteJoint,
-    mechanism::MechanismState, rigid_body::RigidBody, simulate::step, transform::Transform3D,
-    types::Float, PI,
+    control::{double_pendulum_swingup, lqr},
+    helpers::build_double_pendulum,
+    inertia::SpatialInertia,
+    joint::RevoluteJoint,
+    mechanism::MechanismState,
+    rigid_body::RigidBody,
+    simulate::step,
+    transform::Transform3D,
+    types::Float,
+    PI,
 };
 
 #[wasm_bindgen]
@@ -21,7 +28,9 @@ pub struct InterfaceMechanismState(pub(crate) MechanismState);
 impl InterfaceMechanismState {
     #[wasm_bindgen]
     pub fn step(&mut self, dt: Float) -> js_sys::Float32Array {
-        let torque = lqr(&self.0);
+        // let torque = lqr(&self.0);
+        // let torque = dvector![0., 0.];
+        let torque = double_pendulum_swingup(&self.0, &5., &7.);
         let (q, _v) = step(&mut self.0, dt, &torque);
 
         // Convert to a format that Javascript can take
@@ -151,9 +160,10 @@ pub fn createDoublePendulum(length: Float) -> InterfaceMechanismState {
         &axis,
     );
 
-    let q_init = dvector![-PI + -0.015, 0.];
+    let q_init = dvector![0.1, 0.];
+    // let q_init = dvector![-PI + 0.015, 0.]; // Set to near upright position
     let v_init = dvector![0., 0.];
-    state.update(&q_init, &v_init); // Set to near upright position
+    state.update(&q_init, &v_init);
 
     InterfaceMechanismState(state)
 }

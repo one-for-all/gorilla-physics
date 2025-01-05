@@ -2,11 +2,14 @@ use std::collections::HashMap;
 
 use crate::geometric_jacobian::GeometricJacobian;
 use crate::inertia::compute_inertias;
+use crate::inertia::kinetic_energy;
 use crate::inertia::SpatialInertia;
 use crate::joint::RevoluteJoint;
 use crate::momentum::MomentumMatrix;
 use crate::rigid_body::RigidBody;
+use crate::transform::compute_bodies_to_root;
 use crate::transform::Transform3D;
+use crate::twist::compute_twists_wrt_world;
 use crate::types::Float;
 use itertools::izip;
 use na::DMatrix;
@@ -48,6 +51,22 @@ impl MechanismState {
         for (joint, q) in izip!(self.treejoints.iter_mut(), q.iter()) {
             joint.update(q);
         }
+    }
+
+    /// Computes the total kinetic energy of the system
+    pub fn kinetic_energy(&self) -> Float {
+        let mut KE = 0.0;
+        let bodies_to_root = compute_bodies_to_root(self);
+        let twists = compute_twists_wrt_world(self, &bodies_to_root);
+        for (jointid, body) in izip!(self.treejointids.iter(), self.bodies.iter()) {
+            let bodyid = jointid;
+            let twist = twists.get(bodyid).unwrap();
+            let body_to_root = bodies_to_root.get(bodyid).unwrap();
+            let spatial_inertia = body.inertia.transform(&body_to_root);
+
+            KE += kinetic_energy(&spatial_inertia, &twist);
+        }
+        KE
     }
 }
 

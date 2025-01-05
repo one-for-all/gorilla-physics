@@ -5,8 +5,6 @@ use crate::{transform::Transform3D, types::Float};
 
 /// A geometric Jacobian maps a vector of joint velocities to a twist.
 /// Currently, it only supports revolute joints.
-///
-/// Given a joint velocity value, it gives out the corresponding twist.
 #[derive(PartialEq, Debug)]
 pub struct GeometricJacobian {
     pub body: String,

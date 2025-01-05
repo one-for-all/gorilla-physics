@@ -12,6 +12,10 @@ crate-type = ["cdylib", "rlib"]
 name = "horizontal_rod_pendulum"
 path = "examples/horizontal_rod_pendulum.rs"
 
+[[bin]]
+name = "pendulum_energy"
+path = "examples/pendulum_energy.rs"
+
 [dependencies]
 itertools = "0.13.0"
 nalgebra = "0.33"

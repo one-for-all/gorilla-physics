@@ -24,6 +24,7 @@ pub mod interface;
 
 pub mod helpers;
 
-const GRAVITY: Float = 9.81;
+pub const GRAVITY: Float = 9.81;
 
-const PI: Float = std::f32::consts::PI;
+pub const PI: Float = std::f32::consts::PI;
+pub const TWO_PI: Float = 2.0 * PI;

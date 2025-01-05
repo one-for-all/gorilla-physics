@@ -3,7 +3,7 @@ use std::ops::Add;
 use na::{DMatrix, Point3, SMatrix, Vector3};
 use nalgebra::{vector, Matrix3};
 
-use crate::{transform::Transform3D, types::Float};
+use crate::{transform::Transform3D, twist::Twist, types::Float};
 use itertools::izip;
 use std::collections::HashMap;
 
@@ -23,7 +23,7 @@ use crate::mechanism::MechanismState;
 /// !!! Warning
 ///     The __moment__ field of a __SpatialInertia__ is the moment of inertia
 ///     about the origin of its __frame__, not about the center of mass.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SpatialInertia {
     pub frame: String,
     pub moment: Matrix3<Float>,
@@ -55,6 +55,7 @@ impl SpatialInertia {
         }
     }
 
+    // Tranform the spatial inertia to be expressed in world frame
     pub fn transform(&self, transform: &Transform3D) -> SpatialInertia {
         if self.frame != transform.from {
             panic!(
@@ -115,4 +116,28 @@ pub fn compute_inertias(
     }
 
     inertias
+}
+
+/// Computes the kinetic energy of a body
+/// Essentially implements KE = 1/2 * v^T * M * v
+pub fn kinetic_energy(inertia: &SpatialInertia, twist: &Twist) -> Float {
+    // Ensure both are expressed in world frame
+    if inertia.frame != "world" {
+        panic!("spatial inertia frame {} is not world.", inertia.frame);
+    }
+    if twist.frame != "world" {
+        panic!("twist frame {} is not world.", twist.frame);
+    }
+
+    if twist.base != "world" {
+        panic!("twist base {} is not world.", twist.base);
+    }
+
+    let w = twist.angular;
+    let v = twist.linear;
+    let J = inertia.moment;
+    let c = inertia.cross_part;
+    let m = inertia.mass;
+
+    (w.dot(&(J * w)) + v.dot(&(m * v + 2.0 * w.cross(&c)))) / 2.0
 }

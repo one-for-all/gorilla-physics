@@ -1,5 +1,6 @@
 use crate::inertia::SpatialInertia;
 
+#[derive(Clone, PartialEq, Debug)]
 pub struct RigidBody {
     pub inertia: SpatialInertia,
 }

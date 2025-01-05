@@ -122,12 +122,15 @@ pub fn step(
 
 /// Simulate the mechanism state from 0 to final_time with a time step of dt.
 /// Returns the joint configurations at each time step.
-pub fn simulate(
+pub fn simulate<F>(
     state: &mut MechanismState,
     final_time: Float,
     dt: Float,
-    control_fn: fn(&MechanismState) -> DVector<Float>,
-) -> (DVector<DVector<Float>>, DVector<DVector<Float>>) {
+    control_fn: F,
+) -> (DVector<DVector<Float>>, DVector<DVector<Float>>)
+where
+    F: Fn(&MechanismState) -> DVector<Float>,
+{
     let mut t = 0.0;
     let mut qs: DVector<DVector<Float>> = dvector![];
     let mut vs: DVector<DVector<Float>> = dvector![];

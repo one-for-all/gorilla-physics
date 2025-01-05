@@ -28,6 +28,8 @@ pub struct Twist {
 impl Twist {
     /// Computes the twist of the successor frame wrt. predecessor frame,
     /// expressed in successor frame
+    ///
+    /// Given a joint velocity value, it gives out the corresponding twist.
     pub fn new(joint: &RevoluteJoint, v: Float) -> Twist {
         Twist {
             body: joint.transform.from.clone(),
