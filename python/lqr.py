@@ -45,8 +45,10 @@ B_lin = np.zeros((4, 1))
 B_lin[2:, :] = np.linalg.inv(M) @ B
 
 # 2. Define cost matrices Q and R
-Q = np.eye(4)              # Penalize state deviations equally
+Q = np.eye(4)               # Penalize state deviations equally
 R = np.array([[10.0]])      # Penalize control effort
+                            # NOTE: Peculiar thing is that relative scale
+                            # between Q and R seems to not matter.
 
 # 3. Compute the LQR controller gain K
 K, S, E = control.lqr(A_lin, B_lin, Q, R)
