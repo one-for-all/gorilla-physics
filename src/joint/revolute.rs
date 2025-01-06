@@ -58,7 +58,7 @@ impl RevoluteJoint {
 }
 
 #[cfg(test)]
-mod tests {
+mod revolute_tests {
     use super::*;
 
     #[test]

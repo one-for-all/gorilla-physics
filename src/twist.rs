@@ -7,8 +7,8 @@ use itertools::izip;
 use nalgebra::{zero, Vector3};
 
 use crate::{
-    joint::RevoluteJoint, mechanism::MechanismState, spatial_acceleration::SpatialAcceleration,
-    transform::Transform3D, types::Float,
+    joint::revolute::RevoluteJoint, mechanism::MechanismState,
+    spatial_acceleration::SpatialAcceleration, transform::Transform3D, types::Float,
 };
 
 /// A twist represents the relative angular and linear velocity between two bodies.

@@ -1,7 +1,7 @@
 use na::{dvector, Matrix3, Matrix4, Vector3};
 
 use crate::{
-    inertia::SpatialInertia, joint::RevoluteJoint, mechanism::MechanismState,
+    inertia::SpatialInertia, joint::revolute::RevoluteJoint, mechanism::MechanismState,
     rigid_body::RigidBody, transform::Transform3D, types::Float,
 };
 

@@ -1,5 +1,5 @@
 use gorilla_physics::{
-    inertia::SpatialInertia, joint::RevoluteJoint, mechanism::MechanismState,
+    inertia::SpatialInertia, joint::revolute::RevoluteJoint, mechanism::MechanismState,
     rigid_body::RigidBody, simulate::simulate, transform::Transform3D, types::Float,
 };
 use nalgebra::{dvector, vector, Matrix3, Matrix4};

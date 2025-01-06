@@ -6,7 +6,7 @@ use crate::{
     control::{double_pendulum_swingup, lqr},
     helpers::build_double_pendulum,
     inertia::SpatialInertia,
-    joint::RevoluteJoint,
+    joint::revolute::RevoluteJoint,
     mechanism::MechanismState,
     rigid_body::RigidBody,
     simulate::step,

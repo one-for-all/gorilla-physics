@@ -4,7 +4,7 @@ use crate::geometric_jacobian::GeometricJacobian;
 use crate::inertia::compute_inertias;
 use crate::inertia::kinetic_energy;
 use crate::inertia::SpatialInertia;
-use crate::joint::RevoluteJoint;
+use crate::joint::revolute::RevoluteJoint;
 use crate::momentum::MomentumMatrix;
 use crate::rigid_body::RigidBody;
 use crate::transform::compute_bodies_to_root;

@@ -181,7 +181,7 @@ mod dynamics_tests {
     use na::{dvector, vector, Matrix3, Matrix4};
 
     use crate::{
-        helpers::build_pendulum, inertia::SpatialInertia, joint::RevoluteJoint,
+        helpers::build_pendulum, inertia::SpatialInertia, joint::revolute::RevoluteJoint,
         rigid_body::RigidBody, util::assert_close, GRAVITY, PI,
     };
 
