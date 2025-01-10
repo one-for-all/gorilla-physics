@@ -7,8 +7,8 @@ use itertools::izip;
 use nalgebra::{zero, Vector3};
 
 use crate::{
-    joint::revolute::RevoluteJoint, mechanism::MechanismState,
-    spatial_acceleration::SpatialAcceleration, transform::Transform3D, types::Float,
+    joint::Joint, mechanism::MechanismState, spatial_acceleration::SpatialAcceleration,
+    transform::Transform3D, types::Float,
 };
 
 /// A twist represents the relative angular and linear velocity between two bodies.
@@ -30,13 +30,22 @@ impl Twist {
     /// expressed in successor frame
     ///
     /// Given a joint velocity value, it gives out the corresponding twist.
-    pub fn new(joint: &RevoluteJoint, v: Float) -> Twist {
-        Twist {
-            body: joint.transform.from.clone(),
-            base: joint.transform.to.clone(),
-            frame: joint.transform.from.clone(),
-            angular: joint.axis * v,
-            linear: zero(),
+    pub fn new(joint: &Joint, v: Float) -> Twist {
+        match joint {
+            Joint::RevoluteJoint(joint) => Twist {
+                body: joint.transform.from.clone(),
+                base: joint.transform.to.clone(),
+                frame: joint.transform.from.clone(),
+                angular: joint.axis * v,
+                linear: zero(),
+            },
+            Joint::PrismaticJoint(joint) => Twist {
+                body: joint.transform.from.clone(),
+                base: joint.transform.to.clone(),
+                frame: joint.transform.from.clone(),
+                angular: zero(),
+                linear: joint.axis * v,
+            },
         }
     }
 

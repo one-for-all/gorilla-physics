@@ -96,6 +96,18 @@ impl Transform3D {
             0.0,                0.0,                0.0,                1.0,
         )
     }
+
+    /// Returns a transformation matrix of translation by amount
+    #[rustfmt::skip]
+    pub fn translation(axis: &Vector3<Float>, distance: &Float) -> Matrix4<Float> {
+        let p = axis * (*distance);
+        Matrix4::new(
+            1.0, 0.0, 0.0, p.x,
+            0.0, 1.0, 0.0, p.y,
+            0.0, 0.0, 1.0, p.z,
+            0.0, 0.0, 0.0, 1.0,
+        )
+    }
 }
 
 impl Mul for Transform3D {
@@ -135,7 +147,7 @@ pub fn compute_bodies_to_root(state: &MechanismState) -> HashMap<u32, Transform3
         let parentbodyid = jointid - 1;
         let bodyid = jointid;
         let parent_to_root = bodies_to_root.get(&parentbodyid).unwrap();
-        let body_to_root = parent_to_root * &joint.transform;
+        let body_to_root = parent_to_root * &joint.transform();
         bodies_to_root.insert(*bodyid, body_to_root);
     }
 

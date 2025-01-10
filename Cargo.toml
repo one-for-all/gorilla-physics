@@ -16,6 +16,10 @@ path = "examples/horizontal_rod_pendulum.rs"
 name = "pendulum_energy"
 path = "examples/pendulum_energy.rs"
 
+[[bin]]
+name = "cart"
+path = "examples/cart.rs"
+
 [dependencies]
 itertools = "0.13.0"
 nalgebra = "0.33"

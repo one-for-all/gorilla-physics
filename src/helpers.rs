@@ -1,8 +1,12 @@
 use na::{dvector, Matrix3, Matrix4, Vector3};
 
 use crate::{
-    inertia::SpatialInertia, joint::revolute::RevoluteJoint, mechanism::MechanismState,
-    rigid_body::RigidBody, transform::Transform3D, types::Float,
+    inertia::SpatialInertia,
+    joint::{revolute::RevoluteJoint, Joint},
+    mechanism::MechanismState,
+    rigid_body::RigidBody,
+    transform::Transform3D,
+    types::Float,
 };
 
 /// Build a mechanism state of a pendulum
@@ -18,11 +22,11 @@ pub fn build_pendulum(
     let rod_to_world = Transform3D::new(rod_frame, world_frame, &rod_to_world);
 
     let state = MechanismState {
-        treejoints: dvector![RevoluteJoint {
+        treejoints: dvector![Joint::RevoluteJoint(RevoluteJoint {
             init_mat: rod_to_world.mat.clone(),
             transform: rod_to_world,
             axis: axis.clone(),
-        }],
+        })],
         treejointids: dvector![1],
         bodies: dvector![RigidBody {
             inertia: SpatialInertia {
@@ -57,16 +61,16 @@ pub fn build_double_pendulum(
 
     let state = MechanismState {
         treejoints: dvector![
-            RevoluteJoint {
+            Joint::RevoluteJoint(RevoluteJoint {
                 init_mat: rod1_to_world.mat.clone(),
                 transform: rod1_to_world,
                 axis: axis.clone(),
-            },
-            RevoluteJoint {
+            }),
+            Joint::RevoluteJoint(RevoluteJoint {
                 init_mat: rod2_to_rod1.mat.clone(),
                 transform: rod2_to_rod1,
                 axis: axis.clone(),
-            }
+            })
         ],
         treejointids: dvector![1, 2],
         bodies: dvector![

@@ -4,7 +4,7 @@ use crate::geometric_jacobian::GeometricJacobian;
 use crate::inertia::compute_inertias;
 use crate::inertia::kinetic_energy;
 use crate::inertia::SpatialInertia;
-use crate::joint::revolute::RevoluteJoint;
+use crate::joint::Joint;
 use crate::momentum::MomentumMatrix;
 use crate::rigid_body::RigidBody;
 use crate::transform::compute_bodies_to_root;
@@ -13,11 +13,11 @@ use crate::twist::compute_twists_wrt_world;
 use crate::types::Float;
 use itertools::izip;
 use na::DMatrix;
-use nalgebra::{dvector, DVector};
+use nalgebra::DVector;
 
 /// MechanismState stores the state information about the mechanism
 pub struct MechanismState {
-    pub treejoints: DVector<RevoluteJoint>,
+    pub treejoints: DVector<Joint>,
     pub treejointids: DVector<u32>,
     pub bodies: DVector<RigidBody>,
     pub q: DVector<Float>, // joint configuration vector
@@ -25,31 +25,14 @@ pub struct MechanismState {
 }
 
 impl MechanismState {
-    pub fn new() -> Self {
-        MechanismState {
-            treejoints: dvector![RevoluteJoint::default()],
-            treejointids: dvector![1],
-            bodies: dvector![],
-            q: DVector::zeros(0),
-            v: DVector::zeros(0),
-        }
-    }
-
-    pub fn sample() -> Self {
-        MechanismState {
-            treejoints: dvector![RevoluteJoint::default()],
-            treejointids: dvector![1],
-            bodies: dvector![RigidBody::default()],
-            q: DVector::zeros(0),
-            v: DVector::zeros(0),
-        }
-    }
-
     pub fn update(&mut self, q: &DVector<Float>, v: &DVector<Float>) {
         self.q = q.clone();
         self.v = v.clone();
         for (joint, q) in izip!(self.treejoints.iter_mut(), q.iter()) {
-            joint.update(q);
+            match joint {
+                Joint::RevoluteJoint(j) => j.update(q),
+                Joint::PrismaticJoint(j) => j.update(q),
+            }
         }
     }
 
@@ -87,7 +70,11 @@ pub fn compute_motion_subspaces(
         //     angular: joint.axis,
         //     linear: zero(),
         // };
-        let ms_in_body = joint.motion_subspace();
+
+        let ms_in_body = match joint {
+            Joint::RevoluteJoint(j) => j.motion_subspace(),
+            Joint::PrismaticJoint(j) => j.motion_subspace(),
+        };
         motion_subspaces.insert(*bodyid, ms_in_body.transform(body_to_root));
     }
     motion_subspaces

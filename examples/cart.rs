@@ -1,48 +1,54 @@
 use gorilla_physics::{
     inertia::SpatialInertia,
-    joint::{revolute::RevoluteJoint, Joint},
+    joint::{prismatic::PrismaticJoint, Joint},
     mechanism::MechanismState,
     rigid_body::RigidBody,
-    simulate::simulate,
     transform::Transform3D,
-    types::Float,
 };
 use nalgebra::{dvector, vector, Matrix3, Matrix4};
+
+use gorilla_physics::{simulate::simulate, types::Float};
 use plotters::prelude::*;
 
-/// Release a horizontal rod pendulum from rest and simulate its motion.
-pub fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let m = 5.0; // Mass of rod
-    let l: Float = 7.0; // Length of rod
+/// Run simulation of a cart, which moves along the x-axis
+///
+///              z
+///              |
+///              |----> x
+///          _________
+///         |_________|
+pub fn main() {
+    let m = 3.0; // mass of cart
+    let l = 5.0; // length of cart
 
     let moment_x = 0.0;
-    let moment_y = 1.0 / 3.0 * m * l * l;
-    let moment_z = 1.0 / 3.0 * m * l * l;
+    let moment_y = m * l * l / 12.0;
+    let moment_z = m * l * l / 12.0;
     let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
-    let cross_part = vector![m * l / 2.0, 0.0, 0.0];
+    let cross_part = vector![0.0, 0.0, 0.0];
 
-    let rod_frame = "rod";
+    let cart_frame = "cart";
     let world_frame = "world";
-    let rod_to_world = Transform3D::new(rod_frame, world_frame, &Matrix4::identity());
-    let axis = vector![0.0, 1.0, 0.0];
+    let cart_to_world = Transform3D::new(cart_frame, world_frame, &Matrix4::identity());
+    let axis = vector![1.0, 0.0, 0.0];
 
     let mut state = MechanismState {
-        treejoints: dvector![Joint::RevoluteJoint(RevoluteJoint {
-            init_mat: rod_to_world.mat.clone(),
-            transform: rod_to_world,
-            axis
+        treejoints: dvector![Joint::PrismaticJoint(PrismaticJoint {
+            init_mat: cart_to_world.mat.clone(),
+            transform: cart_to_world,
+            axis: axis
         })],
         treejointids: dvector![1],
         bodies: dvector![RigidBody {
             inertia: SpatialInertia {
-                frame: rod_frame.to_string(),
+                frame: cart_frame.to_string(),
                 moment,
                 cross_part,
                 mass: m
             }
         }],
         q: dvector![0.0],
-        v: dvector![0.0],
+        v: dvector![1.0],
     };
 
     // Simulate
@@ -63,7 +69,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Configure the chart
     let mut chart = ChartBuilder::on(&root)
-        .caption("Angle vs. Time plot", ("sans-serif", 20))
+        .caption("Position vs. Time plot", ("sans-serif", 20))
         .x_label_area_size(30)
         .y_label_area_size(40)
         .build_cartesian_2d(0.0..final_time, min_y..max_y)
@@ -81,8 +87,4 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Present the result
     root.present()
         .expect("Unable to present the result to the screen");
-
-    // println!("vs: {:#?}", vs);
-
-    Ok(())
 }

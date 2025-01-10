@@ -34,7 +34,7 @@ pub fn pendulum_energy_shaping(state: &MechanismState) -> DVector<Float> {
     let length_to_com = state.bodies[0].inertia.center_of_mass().coords.norm();
     let moment = state.bodies[0].inertia.moment;
 
-    let axis = state.treejoints[0].axis;
+    let axis = state.treejoints[0].axis();
 
     let q = state.q[0];
     let v = state.v[0];

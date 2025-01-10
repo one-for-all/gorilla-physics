@@ -6,7 +6,7 @@ use crate::{
     control::{double_pendulum_swingup, lqr},
     helpers::build_double_pendulum,
     inertia::SpatialInertia,
-    joint::revolute::RevoluteJoint,
+    joint::{revolute::RevoluteJoint, Joint},
     mechanism::MechanismState,
     rigid_body::RigidBody,
     simulate::step,
@@ -84,11 +84,11 @@ pub fn createRodPendulum(length: Float) -> InterfaceMechanismState {
     let axis = vector![0.0, 1.0, 0.0];
 
     let state = MechanismState {
-        treejoints: dvector![RevoluteJoint {
+        treejoints: dvector![Joint::RevoluteJoint(RevoluteJoint {
             init_mat: rod_to_world.mat.clone(),
             transform: rod_to_world,
             axis
-        }],
+        })],
         treejointids: dvector![1],
         bodies: dvector![RigidBody {
             inertia: SpatialInertia {

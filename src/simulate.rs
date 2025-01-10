@@ -150,7 +150,13 @@ where
 
 #[cfg(test)]
 mod simulate_tests {
-    use crate::{GRAVITY, PI};
+    use crate::{
+        inertia::SpatialInertia,
+        joint::{prismatic::PrismaticJoint, Joint},
+        rigid_body::RigidBody,
+        util::assert_close,
+        GRAVITY, PI,
+    };
 
     use super::*;
     use na::Matrix4;
@@ -222,5 +228,59 @@ mod simulate_tests {
 
         // Assert
         assert_eq!(torquesout, dvector![-1.0 / 3.0 * m * l * l]);
+    }
+
+    #[test]
+    fn cart() {
+        // Arrange
+        let m = 3.0; // mass of cart
+        let l = 5.0; // length of cart
+
+        let moment_x = 0.0;
+        let moment_y = m * l * l / 12.0;
+        let moment_z = m * l * l / 12.0;
+        let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
+        let cross_part = vector![0.0, 0.0, 0.0];
+
+        let cart_frame = "cart";
+        let world_frame = "world";
+        let cart_to_world = Transform3D::new(cart_frame, world_frame, &Matrix4::identity());
+        let axis = vector![1.0, 0.0, 0.0];
+
+        let mut state = MechanismState {
+            treejoints: dvector![Joint::PrismaticJoint(PrismaticJoint {
+                init_mat: cart_to_world.mat.clone(),
+                transform: cart_to_world,
+                axis: axis
+            })],
+            treejointids: dvector![1],
+            bodies: dvector![RigidBody {
+                inertia: SpatialInertia {
+                    frame: cart_frame.to_string(),
+                    moment,
+                    cross_part,
+                    mass: m
+                }
+            }],
+            q: dvector![0.0],
+            v: dvector![0.0],
+        };
+
+        let q_init = dvector![2.0];
+        let v_init = dvector![-1.0];
+        state.update(&q_init, &v_init);
+
+        // Act
+        let final_time = 10.0;
+        let dt = 0.02;
+        let (qs, vs) = simulate(&mut state, final_time, dt, |_state| dvector![0.0]);
+
+        // Assert
+        let q_final = &qs[qs.len() - 1];
+        let v_final = &vs[vs.len() - 1];
+
+        let q_calc = q_init + v_init.clone() * final_time;
+        assert_close(q_final, &q_calc, 1e-4);
+        assert_eq!(*v_final, v_init);
     }
 }

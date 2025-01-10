@@ -83,7 +83,7 @@ pub fn bias_accelerations(state: &MechanismState) -> HashMap<u32, SpatialAcceler
     let mut bias_accels = HashMap::new();
     for (jointid, joint) in izip!(state.treejointids.iter(), state.treejoints.iter()) {
         let bodyid = jointid;
-        let body_name = &joint.transform.from;
+        let body_name = &joint.transform().from;
         let inv_gravity_accel = SpatialAcceleration {
             body: body_name.clone(),
             base: "world".to_string(),
@@ -181,8 +181,12 @@ mod dynamics_tests {
     use na::{dvector, vector, Matrix3, Matrix4};
 
     use crate::{
-        helpers::build_pendulum, inertia::SpatialInertia, joint::revolute::RevoluteJoint,
-        rigid_body::RigidBody, util::assert_close, GRAVITY, PI,
+        helpers::build_pendulum,
+        inertia::SpatialInertia,
+        joint::{revolute::RevoluteJoint, Joint},
+        rigid_body::RigidBody,
+        util::assert_close,
+        GRAVITY, PI,
     };
 
     use super::*;
@@ -351,16 +355,16 @@ mod dynamics_tests {
 
         let state = MechanismState {
             treejoints: dvector![
-                RevoluteJoint {
+                Joint::RevoluteJoint(RevoluteJoint {
                     init_mat: rod1_to_world,
                     transform: Transform3D::new("rod1", "world", &rod1_to_world),
                     axis: axis.clone(),
-                },
-                RevoluteJoint {
+                }),
+                Joint::RevoluteJoint(RevoluteJoint {
                     init_mat: rod2_to_rod1,
                     transform: Transform3D::new("rod2", "rod1", &rod2_to_rod1),
                     axis: axis.clone(),
-                }
+                })
             ],
             treejointids: dvector![1, 2],
             bodies: dvector![

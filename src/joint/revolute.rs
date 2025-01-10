@@ -9,7 +9,7 @@ use crate::{
 
 /// Represents a revolute joint connecting a predecessor and a successor body.
 ///
-/// Note: joint frame is defined as the child body frame
+/// Note: joint frame is defined as the successor body frame
 pub struct RevoluteJoint {
     pub init_mat: Matrix4<Float>, // initial transform from successor frame to predecessor frame
     pub transform: Transform3D,   // transform from successor frame to predecessor frame
