@@ -1,4 +1,4 @@
-use crate::{mechanism, PI, TWO_PI};
+use crate::{PI, TWO_PI};
 use na::{dvector, DMatrix, DVector, Matrix1x4};
 
 use crate::{mechanism::MechanismState, types::Float, GRAVITY};
