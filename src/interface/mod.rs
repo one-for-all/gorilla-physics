@@ -44,7 +44,7 @@ impl InterfaceMechanismState {
     pub fn step(&mut self, dt: Float) -> js_sys::Float32Array {
         // let torque = lqr(&self.0);
         // let torque = double_pendulum_swingup(&self.0, &5., &7.);
-        let torque = dvector![sin_torque(), 0.];
+        let torque = dvector![0., 0.];
         let (q, _v) = step(&mut self.0, dt, &torque);
 
         // Convert to a format that Javascript can take

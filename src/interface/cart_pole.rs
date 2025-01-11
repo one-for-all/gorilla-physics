@@ -1,5 +1,6 @@
 use super::InterfaceMechanismState;
-use crate::helpers::build_cart_pole;
+use crate::{helpers::build_cart_pole, PI};
+use na::dvector;
 use nalgebra::{vector, Matrix3};
 use wasm_bindgen::prelude::*;
 
@@ -23,7 +24,7 @@ pub fn createCartPole(length: Float) -> InterfaceMechanismState {
     let moment_pole = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
     let cross_part_pole = vector![0.0, 0.0, -l_pole * m_pole];
 
-    let state = build_cart_pole(
+    let mut state = build_cart_pole(
         &m_cart,
         &m_pole,
         &moment_cart,
@@ -31,6 +32,10 @@ pub fn createCartPole(length: Float) -> InterfaceMechanismState {
         &cross_part_cart,
         &cross_part_pole,
     );
+
+    let q_init = dvector![0.0, PI + 0.001];
+    let v_init = dvector![0.0, 0.0];
+    state.update(&q_init, &v_init);
 
     InterfaceMechanismState(state)
 }
