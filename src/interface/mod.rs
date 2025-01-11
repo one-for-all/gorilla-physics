@@ -6,6 +6,7 @@ pub mod cart;
 pub mod cart_pole;
 
 use crate::{
+    control::lqr::lqr_cart_pole,
     helpers::build_double_pendulum,
     inertia::SpatialInertia,
     joint::{revolute::RevoluteJoint, Joint},
@@ -44,7 +45,8 @@ impl InterfaceMechanismState {
     pub fn step(&mut self, dt: Float) -> js_sys::Float32Array {
         // let torque = lqr(&self.0);
         // let torque = double_pendulum_swingup(&self.0, &5., &7.);
-        let torque = dvector![0., 0.];
+        // let torque = dvector![0., 0.];
+        let torque = lqr_cart_pole(&self.0);
         let (q, _v) = step(&mut self.0, dt, &torque);
 
         // Convert to a format that Javascript can take

@@ -33,7 +33,7 @@ pub fn createCartPole(length: Float) -> InterfaceMechanismState {
         &cross_part_pole,
     );
 
-    let q_init = dvector![0.0, PI + 0.001];
+    let q_init = dvector![5.0, PI + 0.5];
     let v_init = dvector![0.0, 0.0];
     state.update(&q_init, &v_init);
 

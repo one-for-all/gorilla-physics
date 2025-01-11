@@ -1,5 +1,6 @@
-import control
 import numpy as np
+
+import control
 
 # Compute LQR controller for an cart-pole
 
@@ -39,14 +40,14 @@ B_lin[2:, :] = np.linalg.inv(M) @ B
 
 # 2. Define cost matrices Q and R
 Q = np.eye(4)               # Penalize state deviations equally
-R = np.array([[10.0]])      # Penalize control effort
+R = np.array([[1.0]])      # Penalize control effort
 
 # 3. Compute the LQR controller gain K
 K, S, E = control.lqr(A_lin, B_lin, Q, R)
 
 print("LQR Gain K:")
 print(K)
-print("\nSolution to Riccati Equation S:")
-print(S)
-print("\nClosed-loop eigenvalues E:")
-print(E)
+# print("\nSolution to Riccati Equation S:")
+# print(S)
+# print("\nClosed-loop eigenvalues E:")
+# print(E)
