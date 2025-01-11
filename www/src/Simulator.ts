@@ -10,6 +10,8 @@ export class Simulator {
   rod: THREE.Mesh;
   rod2: THREE.Mesh;
   bob: THREE.Mesh;
+  cart: THREE.Mesh;
+  meshes: Map<string, THREE.Mesh>;
 
   fps: number;
 
@@ -17,7 +19,31 @@ export class Simulator {
     this.mechanismState = mechanismState;
 
     this.graphics = new Graphics();
+    this.meshes = new Map();
     this.fps = 60;
+  }
+
+  addCart(length: number) {
+    this.length = length;
+    const cartGeometry = new THREE.BoxGeometry(length, 1, 1);
+    const cartMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    this.cart = new THREE.Mesh(cartGeometry, cartMaterial);
+    this.graphics.scene.add(this.cart);
+  }
+
+  addCartPole(length: number) {
+    const cartGeometry = new THREE.BoxGeometry(5, 1, 1);
+    const cartMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    const cart = new THREE.Mesh(cartGeometry, cartMaterial);
+    this.meshes.set("cart", cart);
+    this.graphics.scene.add(cart);
+
+    const poleGeometry = new THREE.CylinderGeometry(0.1, 0.1, length, 32);
+    const poleMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const pole = new THREE.Mesh(poleGeometry, poleMaterial);
+    pole.position.y = -length / 2;
+    this.meshes.set("pole", pole);
+    this.graphics.scene.add(pole);
   }
 
   addDoublemPendulum(length: number) {
@@ -77,18 +103,36 @@ export class Simulator {
     this.rod2.rotation.z = angle1 + angle2;
   }
 
+  updateCartPose(pos: number) {
+    this.cart.position.x = pos;
+  }
+
+  updateCartPole(cart_pos: number, pole_angle: number) {
+    let cart = this.meshes.get("cart");
+    cart.position.x = cart_pos;
+
+    let pole = this.meshes.get("pole");
+    const length = (pole.geometry as THREE.CylinderGeometry).parameters.height;
+    pole.position.x = cart_pos - (length / 2) * Math.sin(pole_angle);
+    pole.position.y = -(length / 2) * Math.cos(pole_angle);
+    pole.rotation.z = -pole_angle;
+  }
+
   run(timestamp?: number) {
     this.graphics.render();
 
     // TODO: measure and use the actual time elapsed
     const dt = 1 / this.fps;
 
-    let angles = this.mechanismState.step(dt);
-    // Coordinate transform from mechanism to graphics
-    let angle1 = -angles[0];
-    let angle2 = -angles[1];
+    let qs = this.mechanismState.step(dt);
+    // this.updateCartPose(pos);
+    this.updateCartPole(qs[0], qs[1]);
 
-    this.updateDoublemPendulumPose(angle1, angle2);
+    // let angles = this.mechanismState.step(dt);
+    // // Coordinate transform from mechanism to graphics
+    // let angle1 = -angles[0];
+    // let angle2 = -angles[1];
+    // this.updateDoublemPendulumPose(angle1, angle2);
 
     requestAnimationFrame((t) => this.run(t));
   }

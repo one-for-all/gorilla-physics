@@ -1,8 +1,8 @@
-use na::{dvector, Matrix3, Matrix4, Vector3};
+use na::{dvector, vector, Matrix3, Matrix4, Vector3};
 
 use crate::{
     inertia::SpatialInertia,
-    joint::{revolute::RevoluteJoint, Joint},
+    joint::{prismatic::PrismaticJoint, revolute::RevoluteJoint, Joint},
     mechanism::MechanismState,
     rigid_body::RigidBody,
     transform::Transform3D,
@@ -88,6 +88,97 @@ pub fn build_double_pendulum(
                     moment: moment.clone(),
                     cross_part: cross_part.clone(),
                     mass: mass.clone(),
+                }
+            }
+        ],
+        q: dvector![0.0, 0.0],
+        v: dvector![0.0, 0.0],
+    };
+
+    state
+}
+
+/// Build the mechanism state of a cart system
+pub fn build_cart(
+    mass: &Float,
+    moment: &Matrix3<Float>,
+    cross_part: &Vector3<Float>,
+) -> MechanismState {
+    let cart_frame = "cart";
+    let world_frame = "world";
+
+    let cart_to_world = Transform3D::new(cart_frame, world_frame, &Matrix4::identity());
+    let axis = vector![1.0, 0.0, 0.0];
+
+    let state = MechanismState {
+        treejoints: dvector![Joint::PrismaticJoint(PrismaticJoint {
+            init_mat: cart_to_world.mat.clone(),
+            transform: cart_to_world,
+            axis: axis
+        })],
+        treejointids: dvector![1],
+        bodies: dvector![RigidBody {
+            inertia: SpatialInertia {
+                frame: cart_frame.to_string(),
+                moment: *moment,
+                cross_part: *cross_part,
+                mass: *mass
+            }
+        }],
+        q: dvector![0.0],
+        v: dvector![1.0],
+    };
+    state
+}
+
+/// Build the mechanism state of a cart pole system
+pub fn build_cart_pole(
+    mass_cart: &Float,
+    mass_pole: &Float,
+    moment_cart: &Matrix3<Float>,
+    moment_pole: &Matrix3<Float>,
+    cross_part_cart: &Vector3<Float>,
+    cross_part_pole: &Vector3<Float>,
+) -> MechanismState {
+    let world_frame = "world";
+    let cart_frame = "cart";
+    let pole_frame = "pole";
+
+    let cart_to_world = Transform3D::new(cart_frame, world_frame, &Matrix4::identity());
+    let axis_cart = vector![1.0, 0.0, 0.0];
+
+    let pole_to_cart = Transform3D::new(pole_frame, cart_frame, &Matrix4::identity());
+    let axis_pole = vector![0.0, 1.0, 0.0];
+
+    let state = MechanismState {
+        treejoints: dvector![
+            Joint::PrismaticJoint(PrismaticJoint {
+                init_mat: cart_to_world.mat.clone(),
+                transform: cart_to_world,
+                axis: axis_cart
+            }),
+            Joint::RevoluteJoint(RevoluteJoint {
+                init_mat: pole_to_cart.mat.clone(),
+                transform: pole_to_cart,
+                axis: axis_pole
+            })
+        ],
+        treejointids: dvector![1, 2],
+        bodies: dvector![
+            RigidBody {
+                inertia: SpatialInertia {
+                    frame: cart_frame.to_string(),
+                    moment: *moment_cart,
+                    cross_part: *cross_part_cart,
+                    mass: *mass_cart
+                }
+            },
+            RigidBody {
+                inertia: SpatialInertia {
+                    frame: pole_frame.to_string(),
+                    moment: *moment_pole,
+                    cross_part: *cross_part_pole,
+                    mass: *mass_pole
                 }
             }
         ],

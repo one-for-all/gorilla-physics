@@ -1,11 +1,5 @@
-use gorilla_physics::{
-    inertia::SpatialInertia,
-    joint::{prismatic::PrismaticJoint, Joint},
-    mechanism::MechanismState,
-    rigid_body::RigidBody,
-    transform::Transform3D,
-};
-use nalgebra::{dvector, vector, Matrix3, Matrix4};
+use gorilla_physics::helpers::build_cart;
+use nalgebra::{dvector, vector, Matrix3};
 
 use gorilla_physics::{simulate::simulate, types::Float};
 use plotters::prelude::*;
@@ -27,29 +21,7 @@ pub fn main() {
     let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
     let cross_part = vector![0.0, 0.0, 0.0];
 
-    let cart_frame = "cart";
-    let world_frame = "world";
-    let cart_to_world = Transform3D::new(cart_frame, world_frame, &Matrix4::identity());
-    let axis = vector![1.0, 0.0, 0.0];
-
-    let mut state = MechanismState {
-        treejoints: dvector![Joint::PrismaticJoint(PrismaticJoint {
-            init_mat: cart_to_world.mat.clone(),
-            transform: cart_to_world,
-            axis: axis
-        })],
-        treejointids: dvector![1],
-        bodies: dvector![RigidBody {
-            inertia: SpatialInertia {
-                frame: cart_frame.to_string(),
-                moment,
-                cross_part,
-                mass: m
-            }
-        }],
-        q: dvector![0.0],
-        v: dvector![1.0],
-    };
+    let mut state = build_cart(&m, &moment, &cross_part);
 
     // Simulate
     let final_time = 10.0;

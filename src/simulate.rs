@@ -151,9 +151,7 @@ where
 #[cfg(test)]
 mod simulate_tests {
     use crate::{
-        inertia::SpatialInertia,
-        joint::{prismatic::PrismaticJoint, Joint},
-        rigid_body::RigidBody,
+        helpers::{build_cart, build_cart_pole},
         util::assert_close,
         GRAVITY, PI,
     };
@@ -242,29 +240,7 @@ mod simulate_tests {
         let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
         let cross_part = vector![0.0, 0.0, 0.0];
 
-        let cart_frame = "cart";
-        let world_frame = "world";
-        let cart_to_world = Transform3D::new(cart_frame, world_frame, &Matrix4::identity());
-        let axis = vector![1.0, 0.0, 0.0];
-
-        let mut state = MechanismState {
-            treejoints: dvector![Joint::PrismaticJoint(PrismaticJoint {
-                init_mat: cart_to_world.mat.clone(),
-                transform: cart_to_world,
-                axis: axis
-            })],
-            treejointids: dvector![1],
-            bodies: dvector![RigidBody {
-                inertia: SpatialInertia {
-                    frame: cart_frame.to_string(),
-                    moment,
-                    cross_part,
-                    mass: m
-                }
-            }],
-            q: dvector![0.0],
-            v: dvector![0.0],
-        };
+        let mut state = build_cart(&m, &moment, &cross_part);
 
         let q_init = dvector![2.0];
         let v_init = dvector![-1.0];
@@ -282,5 +258,55 @@ mod simulate_tests {
         let q_calc = q_init + v_init.clone() * final_time;
         assert_close(q_final, &q_calc, 1e-4);
         assert_eq!(*v_final, v_init);
+    }
+
+    /// A cart pole system where a simple pendulum is dangled from a cart
+    #[test]
+    fn cart_pole() {
+        // Arrange
+        let m_cart = 3.0;
+        let l_cart = 1.0;
+        let moment_x = 0.0;
+        let moment_y = m_cart * l_cart * l_cart / 12.0;
+        let moment_z = m_cart * l_cart * l_cart / 12.0;
+        let moment_cart = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
+        let cross_part_cart = vector![0.0, 0.0, 0.0];
+
+        let m_pole = 5.0;
+        let l_pole = 7.0;
+        let moment_x = m_pole * l_pole * l_pole;
+        let moment_y = m_pole * l_pole * l_pole;
+        let moment_z = 0.0;
+        let moment_pole = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
+        let cross_part_pole = vector![0.0, 0.0, -l_pole * m_pole];
+
+        let mut state = build_cart_pole(
+            &m_cart,
+            &m_pole,
+            &moment_cart,
+            &moment_pole,
+            &cross_part_cart,
+            &cross_part_pole,
+        );
+
+        let F_cart = 1.0; // force to be exerted on the cart
+        let acc = F_cart / (m_cart + m_pole);
+        let pole_theta_expected = acc.atan2(GRAVITY); // steady state pole joint angle
+
+        let q_init = dvector![0.0, pole_theta_expected]; // set to steady state
+        let v_init = dvector![0.0, 0.0];
+        state.update(&q_init, &v_init);
+
+        // Act
+        let final_time = 20.0;
+        let dt = 0.02;
+        let (qs, vs) = simulate(&mut state, final_time, dt, |_state| dvector![F_cart, 0.0]);
+
+        // Assert
+        let v_final = vs[vs.len() - 1][0];
+        assert!((v_final - acc * final_time).abs() < 1e-5);
+
+        let pole_theta_final = qs[qs.len() - 1][1];
+        assert!((pole_theta_final - pole_theta_expected).abs() < 1e-5);
     }
 }

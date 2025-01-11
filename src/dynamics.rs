@@ -160,7 +160,7 @@ pub fn dynamics_solve(
 pub fn dynamics(state: &MechanismState, tau: &DVector<Float>) -> DVector<Float> {
     if state.v.len() != tau.len() {
         panic!(
-            "Joint velocity vector v length {} and joint torques vector τ length {} diff!",
+            "Joint velocity vector v length {} and joint torques vector τ length {} differ!",
             state.v.len(),
             tau.len()
         );

@@ -2,8 +2,10 @@ use na::{dvector, vector, Matrix3, Matrix4};
 use wasm_bindgen::prelude::*;
 use web_sys::js_sys;
 
+pub mod cart;
+pub mod cart_pole;
+
 use crate::{
-    control::{double_pendulum_swingup, lqr},
     helpers::build_double_pendulum,
     inertia::SpatialInertia,
     joint::{revolute::RevoluteJoint, Joint},
@@ -20,17 +22,29 @@ extern "C" {
     fn alert(s: &str);
 }
 
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = performance)]
+    fn now() -> Float; // Returns milliseconds since epoch
+}
+
 /// WebAssembly interface to the MechanismState struct.
 #[wasm_bindgen]
 pub struct InterfaceMechanismState(pub(crate) MechanismState);
+
+fn sin_torque() -> Float {
+    let now = now() / 1000.0;
+    let f = 10.0 * now.sin();
+    f
+}
 
 #[wasm_bindgen]
 impl InterfaceMechanismState {
     #[wasm_bindgen]
     pub fn step(&mut self, dt: Float) -> js_sys::Float32Array {
         // let torque = lqr(&self.0);
-        // let torque = dvector![0., 0.];
-        let torque = double_pendulum_swingup(&self.0, &5., &7.);
+        // let torque = double_pendulum_swingup(&self.0, &5., &7.);
+        let torque = dvector![sin_torque(), 0.];
         let (q, _v) = step(&mut self.0, dt, &torque);
 
         // Convert to a format that Javascript can take
