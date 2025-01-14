@@ -35,6 +35,14 @@ impl Transform3D {
         Transform3D::new(from, to, &Matrix4::identity())
     }
 
+    pub fn inv(&self) -> Self {
+        Transform3D {
+            from: self.to.clone(),
+            to: self.from.clone(),
+            mat: self.mat.try_inverse().unwrap(),
+        }
+    }
+
     pub fn rot(&self) -> Matrix3<Float> {
         self.mat.fixed_view::<3, 3>(0, 0).into()
     }

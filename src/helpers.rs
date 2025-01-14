@@ -139,6 +139,7 @@ pub fn build_cart_pole(
     moment_pole: &Matrix3<Float>,
     cross_part_cart: &Vector3<Float>,
     cross_part_pole: &Vector3<Float>,
+    axis_pole: &Vector3<Float>,
 ) -> MechanismState {
     let world_frame = "world";
     let cart_frame = "cart";
@@ -148,7 +149,6 @@ pub fn build_cart_pole(
     let axis_cart = vector![1.0, 0.0, 0.0];
 
     let pole_to_cart = Transform3D::new(pole_frame, cart_frame, &Matrix4::identity());
-    let axis_pole = vector![0.0, 1.0, 0.0];
 
     let state = MechanismState {
         treejoints: dvector![
@@ -160,7 +160,7 @@ pub fn build_cart_pole(
             Joint::RevoluteJoint(RevoluteJoint {
                 init_mat: pole_to_cart.mat.clone(),
                 transform: pole_to_cart,
-                axis: axis_pole
+                axis: *axis_pole
             })
         ],
         treejointids: dvector![1, 2],

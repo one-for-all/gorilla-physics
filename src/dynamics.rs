@@ -1,16 +1,15 @@
 use crate::{
     inertia::compute_inertias,
     mechanism::mass_matrix,
-    spatial_force::compute_torques,
-    spatial_force::Wrench,
+    spatial_force::{compute_torques, Wrench},
     transform::{compute_bodies_to_root, Transform3D},
-    twist::{compute_twists_wrt_world, Twist},
+    twist::{compute_joint_twists, compute_twists_wrt_world, Twist},
     types::Float,
-    util::mul_inertia,
+    util::{mul_inertia, se3_commutator},
     GRAVITY,
 };
 use itertools::izip;
-use na::{DMatrix, DVector};
+use na::{zero, DMatrix, DVector};
 use nalgebra::Vector3;
 use std::collections::HashMap;
 
@@ -73,14 +72,113 @@ pub fn newton_euler(
     wrenches
 }
 
+/// Compute the coriolis bias acceleration that results from the body velocity
+/// and joint velocity, expressed in body frame.
+/// Reference: Chapter 5.3 The Recursive Newton-Euler Algorithm in "Robot Dynamics Algorithms" by Roy Featherstone
+pub fn coriolis_accel(body_twist: &Twist, joint_twist: &Twist) -> SpatialAcceleration {
+    if body_twist.frame != joint_twist.frame {
+        panic!(
+            "body_twist frame {}  is not equal to joint_twist frame {} !",
+            body_twist.frame, joint_twist.frame
+        );
+    }
+    if body_twist.body != joint_twist.body {
+        panic!(
+            "body_twist body frame {}  is not equal to joint_twist body frame {} !",
+            body_twist.body, joint_twist.body
+        )
+    }
+    if body_twist.base != "world" {
+        panic!(
+            "body_twist base frame {}  is not equal to world frame {} !",
+            body_twist.base, "world"
+        )
+    }
+
+    let (ang, lin) = se3_commutator(
+        &body_twist.angular,
+        &body_twist.linear,
+        &joint_twist.angular,
+        &joint_twist.linear,
+    );
+
+    SpatialAcceleration {
+        body: body_twist.body.clone(),
+        base: body_twist.base.clone(),
+        frame: body_twist.frame.clone(),
+        angular: ang,
+        linear: lin,
+    }
+}
+
+/// Compute the coriolis bias acceleration for all bodies.
+/// Reference: Chapter 5.3 The Recursive Newton-Euler Algorithm in "Robot Dynamics Algorithms" by Roy Featherstone
+pub fn compute_coriolis_bias_accelerations(
+    state: &MechanismState,
+    bodies_to_root: &HashMap<u32, Transform3D>,
+    twists: &HashMap<u32, Twist>,
+    joint_twists: &HashMap<u32, Twist>,
+) -> HashMap<u32, SpatialAcceleration> {
+    let mut coriolis_bias_accels = HashMap::new();
+    let rootid = 0;
+    coriolis_bias_accels.insert(
+        rootid,
+        SpatialAcceleration {
+            body: "world".to_string(),
+            base: "world".to_string(),
+            frame: "world".to_string(),
+            angular: zero(),
+            linear: zero(),
+        },
+    );
+    for jointid in state.treejointids.iter() {
+        let bodyid = jointid;
+        let parentid = bodyid - 1;
+
+        let body_to_root = bodies_to_root.get(bodyid).unwrap();
+        let root_to_body = body_to_root.inv();
+
+        // body twist wrt. world expressed in body frame
+        let body_twist = twists.get(bodyid).unwrap().transform(&root_to_body);
+        // joint twist expressed in body frame
+        let joint_twist = joint_twists.get(bodyid).unwrap();
+        let coriolis_accel = coriolis_accel(&body_twist, joint_twist).transform(body_to_root);
+
+        let parent_bias_accel = coriolis_bias_accels.get(&parentid).unwrap();
+
+        // rename the body frame so that it can be added to additionally
+        // computed coriolis accel
+        let parent_bias_accel = SpatialAcceleration {
+            body: coriolis_accel.body.clone(), // rename to current body frame
+            base: parent_bias_accel.base.clone(),
+            frame: parent_bias_accel.frame.clone(),
+            angular: parent_bias_accel.angular,
+            linear: parent_bias_accel.linear,
+        };
+        coriolis_bias_accels.insert(*bodyid, &parent_bias_accel + &coriolis_accel);
+        // Note: joint bias is zero for all of our current joint types, since
+        // the apparent derivative of motion subspace S is zero.
+        // Therefore, we don't add it here.
+    }
+
+    coriolis_bias_accels
+}
+
 /// Compute the bias acceleration for each body in world frame.
 /// Bias acceleration is the acceleration that the body would have under no
 /// external force.
 ///
 /// Here, we add the inv gravity acceleration term to simulate gravity.
 /// Imagine the whole system is in a elevator accelerating upwards at 9.81 m/s^2.
-pub fn bias_accelerations(state: &MechanismState) -> HashMap<u32, SpatialAcceleration> {
+pub fn bias_accelerations(
+    state: &MechanismState,
+    bodies_to_root: &HashMap<u32, Transform3D>,
+    twists: &HashMap<u32, Twist>,
+    joint_twists: &HashMap<u32, Twist>,
+) -> HashMap<u32, SpatialAcceleration> {
     let mut bias_accels = HashMap::new();
+    let coriolis_bias_accels =
+        compute_coriolis_bias_accelerations(state, bodies_to_root, twists, joint_twists);
     for (jointid, joint) in izip!(state.treejointids.iter(), state.treejoints.iter()) {
         let bodyid = jointid;
         let body_name = &joint.transform().from;
@@ -91,7 +189,8 @@ pub fn bias_accelerations(state: &MechanismState) -> HashMap<u32, SpatialAcceler
             angular: Vector3::zeros(),
             linear: Vector3::new(0.0, 0.0, GRAVITY),
         };
-        bias_accels.insert(*bodyid, inv_gravity_accel);
+
+        bias_accels.insert(*bodyid, &inv_gravity_accel + &coriolis_bias_accels[bodyid]);
     }
 
     bias_accels
@@ -107,10 +206,13 @@ pub fn dynamics_bias(
     state: &MechanismState,
     bodies_to_root: &HashMap<u32, Transform3D>,
 ) -> DVector<Float> {
-    let bias_accels = bias_accelerations(&state);
+    // Compute the twist of each joint
+    let joint_twists = compute_joint_twists(state);
 
     // Compute the twist of the each body with respect to the world frame
-    let twists = compute_twists_wrt_world(state, &bodies_to_root);
+    let twists = compute_twists_wrt_world(state, &bodies_to_root, &joint_twists);
+
+    let bias_accels = bias_accelerations(&state, bodies_to_root, &twists, &joint_twists);
 
     let wrenches = newton_euler(&state, &bias_accels, &bodies_to_root, &twists);
 
@@ -181,7 +283,8 @@ mod dynamics_tests {
     use na::{dvector, vector, Matrix3, Matrix4};
 
     use crate::{
-        helpers::build_pendulum,
+        double_pendulum::SimpleDoublePendulum,
+        helpers::{build_double_pendulum, build_pendulum},
         inertia::SpatialInertia,
         joint::{revolute::RevoluteJoint, Joint},
         rigid_body::RigidBody,
@@ -394,5 +497,47 @@ mod dynamics_tests {
 
         // Assert
         assert_close(&joint_accels, &dvector![GRAVITY / l, -GRAVITY / l], 1e-6);
+    }
+
+    #[test]
+    fn double_pendulum_dynamics() {
+        // Arrange
+        let m = 3.0;
+        let l: Float = 5.0;
+
+        let moment_x = m * l * l;
+        let moment_y = m * l * l;
+        let moment_z = 0.;
+        let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
+        let cross_part = vector![0., 0., -m * l];
+
+        let rod1_to_world = Matrix4::identity();
+        let rod2_to_rod1 = Transform3D::move_z(-l);
+        let axis = vector![0.0, 1.0, 0.0];
+
+        let mut state = build_double_pendulum(
+            &m,
+            &moment,
+            &cross_part,
+            &rod1_to_world,
+            &rod2_to_rod1,
+            &axis,
+        );
+
+        let q1 = 3.0;
+        let q2 = 5.0;
+        let q1dot = 3.0;
+        let q2dot = 5.0;
+        let q_init = dvector![q1, q2];
+        let v_init = dvector![q1dot, q2dot];
+        state.update(&q_init, &v_init);
+
+        // Act
+        let vdot = dynamics(&state, &dvector![0.0, 0.0]);
+
+        // Assert
+        let double_pendulum = SimpleDoublePendulum::new(m, m, l, l, q1, q2, q1dot, q2dot);
+        let vdot_ref = DVector::from_column_slice(double_pendulum.dynamics().as_slice());
+        assert_close(&vdot, &vdot_ref, 1e-5);
     }
 }

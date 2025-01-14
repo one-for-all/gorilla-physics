@@ -130,13 +130,8 @@ impl<'a, 'b> Add<&'b Twist> for &'a Twist {
     }
 }
 
-/// Compute the twist of each body with respect to the world frame, expressed in
-/// the world frame
-pub fn compute_twists_wrt_world(
-    state: &MechanismState,
-    bodies_to_root: &HashMap<u32, Transform3D>,
-) -> HashMap<u32, Twist> {
-    // Compute the twist of each joint expressed in body frame
+/// Compute the joint twist of each joint expressed in body frame
+pub fn compute_joint_twists(state: &MechanismState) -> HashMap<u32, Twist> {
     let mut joint_twists: HashMap<u32, Twist> = HashMap::new();
     for (jointid, joint, v) in izip!(
         state.treejointids.iter(),
@@ -146,7 +141,16 @@ pub fn compute_twists_wrt_world(
         let bodyid = jointid;
         joint_twists.insert(*bodyid, Twist::new(&joint, *v));
     }
+    joint_twists
+}
 
+/// Compute the twist of each body with respect to the world frame, expressed in
+/// the world frame
+pub fn compute_twists_wrt_world(
+    state: &MechanismState,
+    bodies_to_root: &HashMap<u32, Transform3D>,
+    joint_twists: &HashMap<u32, Twist>,
+) -> HashMap<u32, Twist> {
     let mut twists: HashMap<u32, Twist> = HashMap::new();
     let rootid = 0;
     twists.insert(rootid, Twist::zero("world", "world"));

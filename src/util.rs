@@ -19,6 +19,19 @@ pub fn mul_inertia(
     (angular, linear)
 }
 
+/// Also known as spatial motion cross product
+/// Reference: Chapter 2.9 Spatial Cross Products in "Robot Dynamics Algorithms" by Roy Featherstone
+pub fn se3_commutator(
+    xw: &Vector3<Float>,
+    xv: &Vector3<Float>,
+    yw: &Vector3<Float>,
+    yv: &Vector3<Float>,
+) -> (Vector3<Float>, Vector3<Float>) {
+    let anguar = xw.cross(yw);
+    let linear = xw.cross(yv) + xv.cross(yw);
+    (anguar, linear)
+}
+
 // Helper function to log to the browser console
 pub fn console_log(message: &str) {
     web_sys::console::log_1(&message.into());

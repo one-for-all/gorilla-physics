@@ -8,7 +8,7 @@ use crate::types::Float;
 use crate::GRAVITY;
 
 /// A spatial acceleration is the time derivative of a twist
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct SpatialAcceleration {
     pub body: String,
     pub base: String,
