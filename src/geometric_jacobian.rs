@@ -4,7 +4,6 @@ use std::ops::Mul;
 use crate::{transform::Transform3D, types::Float};
 
 /// A geometric Jacobian maps a vector of joint velocities to a twist.
-/// Currently, it only supports revolute joints.
 #[derive(PartialEq, Debug)]
 pub struct GeometricJacobian {
     pub body: String,

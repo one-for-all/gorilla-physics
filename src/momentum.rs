@@ -3,8 +3,6 @@ use na::Vector3;
 use crate::{geometric_jacobian::GeometricJacobian, inertia::SpatialInertia, types::Float};
 
 /// A momentum matrix maps a joint velocity vector to a momentum.
-///
-/// currently it only supports revolute joint.
 pub struct MomentumMatrix {
     frame: String,
     angular: Vector3<Float>,
