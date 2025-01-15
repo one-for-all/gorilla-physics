@@ -86,16 +86,6 @@ pub fn pid(state: &MechanismState) -> DVector<Float> {
     dvector![torque1, torque2]
 }
 
-/// Compute the gravitational potential energy of a simple double pendulum system
-fn double_pendulum_potential_energy(state: &MechanismState, m: &Float, l: &Float) -> Float {
-    let q1 = state.q[0];
-    let q2 = state.q[1];
-
-    let h1 = -l * q1.cos();
-    let h2 = -l * q1.cos() - l * (q1 + q2).cos();
-    m * GRAVITY * (h1 + h2)
-}
-
 #[cfg(test)]
 mod control_tests {
     use na::{dvector, vector, Matrix3, Matrix4};

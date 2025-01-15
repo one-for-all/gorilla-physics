@@ -4,7 +4,9 @@ use types::Float;
 pub extern crate nalgebra as na;
 
 pub mod control;
+pub mod double_pendulum;
 pub mod dynamics;
+pub mod energy;
 pub mod geometric_jacobian;
 pub mod inertia;
 pub mod joint;

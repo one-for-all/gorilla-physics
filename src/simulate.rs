@@ -4,7 +4,7 @@ use crate::{
     spatial_acceleration::SpatialAcceleration,
     spatial_force::compute_torques,
     transform::{compute_bodies_to_root, Transform3D},
-    twist::{compute_twists_wrt_world, Twist},
+    twist::{compute_joint_twists, compute_twists_wrt_world, Twist},
     types::Float,
 };
 use itertools::izip;
@@ -38,8 +38,11 @@ pub fn spatial_accelerations(
     // Compute the body to root frame transform for each body
     let bodies_to_root = compute_bodies_to_root(state);
 
+    // Compute the joint twists of each joint, expressed in body frame
+    let joint_twists = compute_joint_twists(state);
+
     // Compute the twist of the each body with respect to the world frame
-    let twists = compute_twists_wrt_world(state, &bodies_to_root);
+    let twists = compute_twists_wrt_world(state, &bodies_to_root, &joint_twists);
 
     // Compute the joint spatial accelerations of each body expressed in body frame
     let mut joint_accels: HashMap<u32, SpatialAcceleration> = HashMap::new();
@@ -279,6 +282,7 @@ mod simulate_tests {
         let moment_z = 0.0;
         let moment_pole = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
         let cross_part_pole = vector![0.0, 0.0, -l_pole * m_pole];
+        let axis_pole = vector![0.0, 1.0, 0.0];
 
         let mut state = build_cart_pole(
             &m_cart,
@@ -287,6 +291,7 @@ mod simulate_tests {
             &moment_pole,
             &cross_part_cart,
             &cross_part_pole,
+            &axis_pole,
         );
 
         let F_cart = 1.0; // force to be exerted on the cart

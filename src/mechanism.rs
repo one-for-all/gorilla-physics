@@ -9,6 +9,7 @@ use crate::momentum::MomentumMatrix;
 use crate::rigid_body::RigidBody;
 use crate::transform::compute_bodies_to_root;
 use crate::transform::Transform3D;
+use crate::twist::compute_joint_twists;
 use crate::twist::compute_twists_wrt_world;
 use crate::types::Float;
 use itertools::izip;
@@ -40,22 +41,22 @@ impl MechanismState {
     pub fn kinetic_energy(&self) -> Float {
         let mut KE = 0.0;
         let bodies_to_root = compute_bodies_to_root(self);
-        let twists = compute_twists_wrt_world(self, &bodies_to_root);
+        let joint_twists = compute_joint_twists(self);
+        let twists = compute_twists_wrt_world(self, &bodies_to_root, &joint_twists);
         for (jointid, body) in izip!(self.treejointids.iter(), self.bodies.iter()) {
             let bodyid = jointid;
             let twist = twists.get(bodyid).unwrap();
             let body_to_root = bodies_to_root.get(bodyid).unwrap();
             let spatial_inertia = body.inertia.transform(&body_to_root);
 
-            KE += kinetic_energy(&spatial_inertia, &twist);
+            let ke = kinetic_energy(&spatial_inertia, &twist);
+            KE += ke;
         }
         KE
     }
 }
 
 /// Computes the motion space of each joint, expressed in world frame.
-/// We only have revolute joint now, so its motion subspace in body frame is
-/// [rotation axis; 0]
 pub fn compute_motion_subspaces(
     state: &MechanismState,
     bodies_to_root: &HashMap<u32, Transform3D>,
@@ -63,14 +64,6 @@ pub fn compute_motion_subspaces(
     let mut motion_subspaces = HashMap::new();
     for (bodyid, joint) in izip!(state.treejointids.iter(), state.treejoints.iter()) {
         let body_to_root = bodies_to_root.get(bodyid).unwrap();
-        // let ms_in_body = GeometricJacobian {
-        //     body: body_to_root.from.clone(),
-        //     base: "world".to_string(),
-        //     frame: body_to_root.from.clone(),
-        //     angular: joint.axis,
-        //     linear: zero(),
-        // };
-
         let ms_in_body = match joint {
             Joint::RevoluteJoint(j) => j.motion_subspace(),
             Joint::PrismaticJoint(j) => j.motion_subspace(),
@@ -112,11 +105,12 @@ pub fn mass_matrix(
     state: &MechanismState,
     bodies_to_root: &HashMap<u32, Transform3D>,
 ) -> DMatrix<Float> {
-    let n_v = state.treejointids.len(); // n_v = number of joints because every joint is a revolute joint
+    let n_v = state.treejointids.len(); // NOTE: n_v = number of joints because every joint type has single degree of freedom for now
     let mut mass_matrix = DMatrix::zeros(n_v, n_v);
     let motion_subspaces = compute_motion_subspaces(state, bodies_to_root);
     let inertias = compute_inertias(state, bodies_to_root);
     let crb_inertias = compute_crb_inertias(state, &inertias);
+
     for i in state.treejointids.iter() {
         let Ici = crb_inertias.get(i).unwrap();
         let Si = motion_subspaces.get(i).unwrap();
