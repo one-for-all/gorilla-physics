@@ -38,7 +38,7 @@ pub fn lqr_cart_pole(state: &MechanismState) -> DVector<Float> {
     // Hard-code with value from lqr_cart_pole.py
     // Invert the sign of 2nd and 4th values, because the axis in the book formulation is
     // opposite to the system defined here.
-    let K = Matrix1x4::<Float>::new(-1., -210.06025784, -5.27501096, -129.54543534);
+    let K = Matrix1x4::<Float>::new(-1., 210.06025784, -5.27501096, 129.54543534);
 
     // Stack the position and velocity vectors into a single state vector
     let mut stacked_data = Vec::new();
@@ -98,8 +98,8 @@ mod lqr_tests {
         );
 
         let q1_upright = -PI;
-        let q_init = dvector![q1_upright - 0.015, 0.];
-        let v_init = dvector![0., 0.];
+        let q_init = dvector![q1_upright - 0.03, 0.03];
+        let v_init = dvector![0.03, 0.03];
         state.update(&q_init, &v_init); // Set to near upright position
 
         // Act
@@ -132,6 +132,7 @@ mod lqr_tests {
         let moment_z = 0.0;
         let moment_pole = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
         let cross_part_pole = vector![0.0, 0.0, -l_pole * m_pole];
+        let axis_pole = vector![0.0, -1.0, 0.0];
 
         let mut state = build_cart_pole(
             &m_cart,
@@ -140,11 +141,12 @@ mod lqr_tests {
             &moment_pole,
             &cross_part_cart,
             &cross_part_pole,
+            &axis_pole,
         );
 
         let angle_upright = PI;
-        let q_init = dvector![-1., angle_upright + 0.01]; // Set to near upright position
-        let v_init = dvector![1., 0.01];
+        let q_init = dvector![-1., angle_upright + 0.5]; // Set to near upright position
+        let v_init = dvector![1., 0.5];
         state.update(&q_init, &v_init);
 
         // Act
