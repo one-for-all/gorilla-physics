@@ -14,6 +14,7 @@ export class Simulator {
   meshes: Map<string, THREE.Mesh>;
 
   fps: number;
+  time: number;
 
   constructor(mechanismState: InterfaceMechanismState) {
     this.mechanismState = mechanismState;
@@ -21,6 +22,7 @@ export class Simulator {
     this.graphics = new Graphics();
     this.meshes = new Map();
     this.fps = 60;
+    this.time = 0.0;
   }
 
   addCart(length: number) {
@@ -32,7 +34,7 @@ export class Simulator {
   }
 
   addCartPole(length: number) {
-    const cartGeometry = new THREE.BoxGeometry(5, 1, 1);
+    const cartGeometry = new THREE.BoxGeometry(3, 0.1, 0.1);
     const cartMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
     const cart = new THREE.Mesh(cartGeometry, cartMaterial);
     this.meshes.set("cart", cart);
@@ -113,9 +115,9 @@ export class Simulator {
 
     let pole = this.meshes.get("pole");
     const length = (pole.geometry as THREE.CylinderGeometry).parameters.height;
-    pole.position.x = cart_pos - (length / 2) * Math.sin(pole_angle);
+    pole.position.x = cart_pos + (length / 2) * Math.sin(pole_angle);
     pole.position.y = -(length / 2) * Math.cos(pole_angle);
-    pole.rotation.z = -pole_angle;
+    pole.rotation.z = pole_angle;
   }
 
   run(timestamp?: number) {
@@ -126,13 +128,14 @@ export class Simulator {
 
     let qs = this.mechanismState.step(dt);
     // this.updateCartPose(pos);
-    this.updateCartPole(qs[0], qs[1]);
+    // this.updateCartPole(qs[0], qs[1]);
+    this.time += dt;
+    // console.log("t :", this.time.toFixed(2));
 
-    // let angles = this.mechanismState.step(dt);
-    // // Coordinate transform from mechanism to graphics
-    // let angle1 = -angles[0];
-    // let angle2 = -angles[1];
-    // this.updateDoublemPendulumPose(angle1, angle2);
+    // Coordinate transform from mechanism to graphics
+    let angle1 = qs[0] + Math.PI / 2;
+    let angle2 = qs[1];
+    this.updateDoublemPendulumPose(angle1, angle2);
 
     requestAnimationFrame((t) => this.run(t));
   }

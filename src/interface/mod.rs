@@ -2,11 +2,8 @@ use na::{dvector, vector, Matrix3, Matrix4};
 use wasm_bindgen::prelude::*;
 use web_sys::js_sys;
 
-pub mod cart;
-pub mod cart_pole;
-
 use crate::{
-    control::lqr::lqr_cart_pole,
+    control::swingup::swingup_acrobot,
     helpers::build_double_pendulum,
     inertia::SpatialInertia,
     joint::{revolute::RevoluteJoint, Joint},
@@ -17,6 +14,10 @@ use crate::{
     types::Float,
     PI,
 };
+
+pub mod cart;
+pub mod cart_pole;
+pub mod double_pendulum;
 
 #[wasm_bindgen]
 extern "C" {
@@ -44,9 +45,10 @@ impl InterfaceMechanismState {
     #[wasm_bindgen]
     pub fn step(&mut self, dt: Float) -> js_sys::Float32Array {
         // let torque = lqr(&self.0);
-        // let torque = double_pendulum_swingup(&self.0, &5., &7.);
+        let torque = swingup_acrobot(&self.0, &1., &7.);
         // let torque = dvector![0., 0.];
-        let torque = lqr_cart_pole(&self.0);
+        // let torque = lqr_cart_pole(&self.0);
+        // let torque = swingup_cart_pole(&self.0, &3.0, &5.0, &7.0);
         let (q, _v) = step(&mut self.0, dt, &torque);
 
         // Convert to a format that Javascript can take
@@ -147,38 +149,6 @@ pub fn createDoublePendulumHorizontal(length: Float) -> InterfaceMechanismState 
 
     let q_init = dvector![-PI / 2.0 + 0.1, 0.0];
     let v_init = dvector![0.0, 0.0];
-    state.update(&q_init, &v_init);
-
-    InterfaceMechanismState(state)
-}
-
-#[wasm_bindgen]
-pub fn createDoublePendulum(length: Float) -> InterfaceMechanismState {
-    let m = 5.0;
-    let l = length;
-
-    let moment_x = m * l * l;
-    let moment_y = m * l * l;
-    let moment_z = 0.;
-    let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
-    let cross_part = vector![0., 0., -m * l];
-
-    let rod1_to_world = Matrix4::identity();
-    let rod2_to_rod1 = Transform3D::move_z(-l);
-    let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
-
-    let mut state = build_double_pendulum(
-        &m,
-        &moment,
-        &cross_part,
-        &rod1_to_world,
-        &rod2_to_rod1,
-        &axis,
-    );
-
-    let q_init = dvector![0.1, 0.];
-    // let q_init = dvector![-PI + 0.015, 0.]; // Set to near upright position
-    let v_init = dvector![0., 0.];
     state.update(&q_init, &v_init);
 
     InterfaceMechanismState(state)
