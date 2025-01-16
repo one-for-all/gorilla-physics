@@ -1,4 +1,4 @@
-use crate::{energy::double_pendulum_potential_energy, PI, TWO_PI};
+use crate::{energy::double_pendulum_potential_energy2, PI, TWO_PI};
 use na::{dvector, DVector};
 
 use crate::{mechanism::MechanismState, types::Float, GRAVITY};
@@ -7,34 +7,65 @@ use crate::{mechanism::MechanismState, types::Float, GRAVITY};
 /// Reference: ENERGY BASED CONTROL OF A CLASS OF UNDERACTUATED MECHANICAL
 /// SYSTEMS by Mark W. Spong, 1996
 pub fn swingup_acrobot(state: &MechanismState, m: &Float, l: &Float) -> DVector<Float> {
+    let q1 = state.q[0];
+    let q2 = state.q[1];
+    let q1dot = state.v[0];
+    let q2dot = state.v[1];
+
     let KE = state.kinetic_energy();
-    let PE = double_pendulum_potential_energy(&state, m, l);
+    let PE = double_pendulum_potential_energy2(&state, m, l);
 
     let E_target = m * GRAVITY * (l + 2.0 * l);
     let dE = KE + PE - E_target;
 
     // Nominal control for swinging up
-    let v1 = state.v[0];
     let k3 = 2.0;
-    let mut ubar = k3 * (dE * v1);
-    let cap = 100.; // capping nominal control
-    if ubar > cap {
-        ubar = cap;
-    } else if ubar < -cap {
-        ubar = -cap;
+    let mut u_bar = k3 * (dE * q1dot);
+    let cap = 10.; // capping nominal control, important
+    if u_bar > cap {
+        u_bar = cap;
+    } else if u_bar < -cap {
+        u_bar = -cap;
     }
 
     // PD closing of 2nd joint towards zero position
-    let mut q2 = state.q[1].rem_euclid(TWO_PI);
+    let mut q2 = q2.rem_euclid(TWO_PI);
     if q2 > PI {
         q2 -= TWO_PI;
     }
-    let v2 = state.v[1];
-    let k1 = 10.0;
-    let k2 = 10.0;
-    let u_pd = -k1 * q2 - k2 * v2;
+    let k1 = 2.0;
+    let k2 = 2.0;
+    let u_pd = -k1 * q2 - k2 * q2dot;
 
-    dvector![0., (u_pd + ubar)]
+    // Define parameters
+    let q1 = q1;
+    let m1 = m;
+    let m2 = m;
+    let lc1 = l;
+    let lc2 = l;
+    let l1 = l;
+    let I1 = 0.0; // moment of inertia about center-of-mass
+    let I2 = 0.0; // moment of inertia about center-of-mass
+    let c1 = q1.cos();
+    let s2 = q2.sin();
+    let c2 = q2.cos();
+    let c12 = (q1 + q2).cos();
+    let m11 = m1 * lc1 * lc1 + m2 * (l1 * l1 + lc2 * lc2 + 2. * l1 * lc2 * c2) + I1 + I2;
+    let m22 = m2 * lc2 * lc2 + I2;
+    let m12 = m2 * (lc2 * lc2 + l1 * lc2 * c2) + I2;
+    let m21 = m12;
+    let h1 = -m2 * l1 * lc2 * s2 * q2dot * q2dot - 2. * m2 * l1 * lc2 * s2 * q2dot * q1dot;
+    let h2 = m2 * l1 * lc2 * s2 * q1dot * q1dot;
+    let phi1 = (m1 * lc1 + m2 * l1) * GRAVITY * c1 + m2 * lc2 * GRAVITY * c12;
+    let phi2 = m2 * lc2 * GRAVITY * c12;
+
+    let m22_bar = m22 - m21 * m12 / m11;
+    let h2_bar = h2 - m21 * h1 / m11;
+    let phi2_bar = phi2 - m21 * phi1 / m11;
+
+    // Computes the torque that sets second joint acceleration to u_bar+u_pd
+    let tau = m22_bar * (u_bar + u_pd) + h2_bar + phi2_bar;
+    dvector![0., tau]
 }
 
 /// Swing-up controller for cart-pole system
@@ -93,22 +124,21 @@ mod swingup_tests {
 
     use super::*;
 
-    #[ignore]
     #[test]
     fn acrobot_swingup() {
         // Arrange
-        let m = 5.0;
+        let m = 1.0;
         let l: Float = 7.0;
 
-        let moment_x = m * l * l;
+        let moment_x = 0.0;
         let moment_y = m * l * l;
-        let moment_z = 0.;
+        let moment_z = m * l * l;
         let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
-        let cross_part = vector![0., 0., -m * l];
+        let cross_part = vector![m * l, 0., 0.];
 
         let rod1_to_world = Matrix4::identity();
-        let rod2_to_rod1 = Transform3D::move_z(-l);
-        let axis = vector![0.0, 1.0, 0.0];
+        let rod2_to_rod1 = Transform3D::move_x(l);
+        let axis = vector![0.0, -1.0, 0.0];
 
         let mut state = build_double_pendulum(
             &m,
@@ -119,13 +149,13 @@ mod swingup_tests {
             &axis,
         );
 
-        let q_init = dvector![0.01, 0.];
+        let q_init = dvector![-PI / 2.0 + 0.1, 0.];
         let v_init = dvector![0., 0.];
         state.update(&q_init, &v_init);
 
         // Act
         let final_time = 50.0;
-        let dt = 0.01;
+        let dt = 1.0 / 60.0;
         let swingup = |state: &MechanismState| swingup_acrobot(state, &m, &l);
         let (qs, vs) = simulate(&mut state, final_time, dt, swingup);
 
@@ -136,7 +166,7 @@ mod swingup_tests {
             let v1 = v[0];
             let v2 = v[1];
             // A very relaxed check of being swungup
-            (q1 - PI).abs() < 1. && q2.abs() < 1. && v1.abs() < 0.8 && v2.abs() < 0.8
+            (q1 - (PI / 2.0)).abs() < 0.5 && q2.abs() < 0.5 && v1.abs() < 0.3 && v2.abs() < 0.3
         }
 
         let mut swungup = false;

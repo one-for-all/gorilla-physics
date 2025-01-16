@@ -10,6 +10,17 @@ pub fn double_pendulum_potential_energy(state: &MechanismState, m: &Float, l: &F
     m * GRAVITY * (h1 + h2)
 }
 
+/// Compute the gravitational potential energy of a simple double pendulum
+/// system, where the q=0 pose is horizontal
+pub fn double_pendulum_potential_energy2(state: &MechanismState, m: &Float, l: &Float) -> Float {
+    let q1 = state.q[0];
+    let q2 = state.q[1];
+
+    let h1 = l * q1.sin();
+    let h2 = l * q1.sin() + l * (q1 + q2).sin();
+    m * GRAVITY * (h1 + h2)
+}
+
 /// Compute double pendulum system total energy
 pub fn double_pendulum_energy(state: &MechanismState, m: &Float, l: &Float) -> Float {
     state.kinetic_energy() + double_pendulum_potential_energy(state, m, l)
