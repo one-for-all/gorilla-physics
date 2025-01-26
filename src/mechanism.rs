@@ -62,10 +62,10 @@ impl MechanismState {
         self.halfspaces = self.halfspaces.push(*halfspace);
     }
 
-    /// Add contact point to rigid body of frame `frame`.
-    pub fn add_contact_point(&mut self, frame: &str, point: &ContactPoint) {
+    /// Add contact point to rigid body.
+    pub fn add_contact_point(&mut self, point: &ContactPoint) {
         for body in self.bodies.iter_mut() {
-            if body.inertia.frame == frame {
+            if body.inertia.frame == point.frame {
                 body.add_contact_point(point);
             }
         }
