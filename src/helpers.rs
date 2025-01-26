@@ -21,6 +21,13 @@ pub fn build_pendulum(
     let world_frame = "world";
     let rod_to_world = Transform3D::new(rod_frame, world_frame, &rod_to_world);
 
+    let rod = RigidBody::new(SpatialInertia {
+        frame: rod_frame.to_string(),
+        moment: moment.clone(),
+        cross_part: cross_part.clone(),
+        mass: mass.clone(),
+    });
+
     let state = MechanismState {
         treejoints: dvector![Joint::RevoluteJoint(RevoluteJoint {
             init_mat: rod_to_world.mat.clone(),
@@ -28,16 +35,10 @@ pub fn build_pendulum(
             axis: axis.clone(),
         })],
         treejointids: dvector![1],
-        bodies: dvector![RigidBody {
-            inertia: SpatialInertia {
-                frame: rod_frame.to_string(),
-                moment: moment.clone(),
-                cross_part: cross_part.clone(),
-                mass: mass.clone(),
-            }
-        }],
+        bodies: dvector![rod],
         q: dvector![0.0],
         v: dvector![0.0],
+        halfspaces: dvector![],
     };
 
     state
@@ -74,25 +75,22 @@ pub fn build_double_pendulum(
         ],
         treejointids: dvector![1, 2],
         bodies: dvector![
-            RigidBody {
-                inertia: SpatialInertia {
-                    frame: rod1_frame.to_string(),
-                    moment: moment.clone(),
-                    cross_part: cross_part.clone(),
-                    mass: mass.clone(),
-                }
-            },
-            RigidBody {
-                inertia: SpatialInertia {
-                    frame: rod2_frame.to_string(),
-                    moment: moment.clone(),
-                    cross_part: cross_part.clone(),
-                    mass: mass.clone(),
-                }
-            }
+            RigidBody::new(SpatialInertia {
+                frame: rod1_frame.to_string(),
+                moment: moment.clone(),
+                cross_part: cross_part.clone(),
+                mass: mass.clone(),
+            }),
+            RigidBody::new(SpatialInertia {
+                frame: rod2_frame.to_string(),
+                moment: moment.clone(),
+                cross_part: cross_part.clone(),
+                mass: mass.clone(),
+            })
         ],
         q: dvector![0.0, 0.0],
         v: dvector![0.0, 0.0],
+        halfspaces: dvector![],
     };
 
     state
@@ -117,16 +115,15 @@ pub fn build_cart(
             axis: axis
         })],
         treejointids: dvector![1],
-        bodies: dvector![RigidBody {
-            inertia: SpatialInertia {
-                frame: cart_frame.to_string(),
-                moment: *moment,
-                cross_part: *cross_part,
-                mass: *mass
-            }
-        }],
+        bodies: dvector![RigidBody::new(SpatialInertia {
+            frame: cart_frame.to_string(),
+            moment: *moment,
+            cross_part: *cross_part,
+            mass: *mass
+        })],
         q: dvector![0.0],
         v: dvector![1.0],
+        halfspaces: dvector![],
     };
     state
 }
@@ -165,25 +162,22 @@ pub fn build_cart_pole(
         ],
         treejointids: dvector![1, 2],
         bodies: dvector![
-            RigidBody {
-                inertia: SpatialInertia {
-                    frame: cart_frame.to_string(),
-                    moment: *moment_cart,
-                    cross_part: *cross_part_cart,
-                    mass: *mass_cart
-                }
-            },
-            RigidBody {
-                inertia: SpatialInertia {
-                    frame: pole_frame.to_string(),
-                    moment: *moment_pole,
-                    cross_part: *cross_part_pole,
-                    mass: *mass_pole
-                }
-            }
+            RigidBody::new(SpatialInertia {
+                frame: cart_frame.to_string(),
+                moment: *moment_cart,
+                cross_part: *cross_part_cart,
+                mass: *mass_cart
+            }),
+            RigidBody::new(SpatialInertia {
+                frame: pole_frame.to_string(),
+                moment: *moment_pole,
+                cross_part: *cross_part_pole,
+                mass: *mass_pole
+            })
         ],
         q: dvector![0.0, 0.0],
         v: dvector![0.0, 0.0],
+        halfspaces: dvector![],
     };
 
     state

@@ -3,7 +3,7 @@ use wasm_bindgen::prelude::*;
 use web_sys::js_sys;
 
 use crate::{
-    control::swingup::swingup_acrobot,
+    contact::HalfSpace,
     helpers::build_double_pendulum,
     inertia::SpatialInertia,
     joint::{revolute::RevoluteJoint, Joint},
@@ -18,6 +18,7 @@ use crate::{
 pub mod cart;
 pub mod cart_pole;
 pub mod double_pendulum;
+pub mod pendulum;
 
 #[wasm_bindgen]
 extern "C" {
@@ -44,12 +45,18 @@ fn sin_torque() -> Float {
 impl InterfaceMechanismState {
     #[wasm_bindgen]
     pub fn step(&mut self, dt: Float) -> js_sys::Float32Array {
-        // let torque = lqr(&self.0);
-        let torque = swingup_acrobot(&self.0, &1., &7.);
-        // let torque = dvector![0., 0.];
-        // let torque = lqr_cart_pole(&self.0);
-        // let torque = swingup_cart_pole(&self.0, &3.0, &5.0, &7.0);
-        let (q, _v) = step(&mut self.0, dt, &torque);
+        let n_substep = 10;
+        let mut q = dvector![];
+        for _ in 0..n_substep {
+            // let torque = lqr(&self.0);
+            // let torque = swingup_acrobot(&self.0, &1., &7.);
+            // let torque = dvector![0., 0.];
+            // let torque = lqr_cart_pole(&self.0);
+            // let torque = swingup_cart_pole(&self.0, &3.0, &5.0, &7.0);
+            let torque = dvector![0.];
+            let (_q, _v) = step(&mut self.0, dt / (n_substep as Float), &torque);
+            q = _q
+        }
 
         // Convert to a format that Javascript can take
         let q_js = js_sys::Float32Array::new_with_length(q.len() as u32);
@@ -58,6 +65,12 @@ impl InterfaceMechanismState {
         }
 
         q_js
+    }
+
+    #[wasm_bindgen]
+    pub fn addHalfSpace(&mut self, normal: Vec<Float>, distance: Float) {
+        let halfspace = HalfSpace::new(vector![normal[0], normal[1], normal[2]], distance);
+        self.0.add_halfspace(&halfspace);
     }
 }
 
@@ -108,16 +121,15 @@ pub fn createRodPendulum(length: Float) -> InterfaceMechanismState {
             axis
         })],
         treejointids: dvector![1],
-        bodies: dvector![RigidBody {
-            inertia: SpatialInertia {
-                frame: rod_frame.to_string(),
-                moment,
-                cross_part,
-                mass: m
-            }
-        }],
+        bodies: dvector![RigidBody::new(SpatialInertia {
+            frame: rod_frame.to_string(),
+            moment,
+            cross_part,
+            mass: m
+        })],
         q: dvector![0.0],
         v: dvector![0.0],
+        halfspaces: dvector![],
     };
 
     InterfaceMechanismState(state)

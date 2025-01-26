@@ -7,8 +7,8 @@ use itertools::izip;
 use nalgebra::{zero, Vector3};
 
 use crate::{
-    joint::Joint, mechanism::MechanismState, spatial_acceleration::SpatialAcceleration,
-    transform::Transform3D, types::Float,
+    contact::ContactPoint, joint::Joint, mechanism::MechanismState,
+    spatial_acceleration::SpatialAcceleration, transform::Transform3D, types::Float,
 };
 
 /// A twist represents the relative angular and linear velocity between two bodies.
@@ -103,6 +103,17 @@ impl Twist {
             angular,
             linear,
         }
+    }
+
+    /// Compute the velocity of the point that has this twist
+    pub fn point_velocity(&self, contact_point: &ContactPoint) -> Vector3<Float> {
+        if self.frame != contact_point.frame {
+            panic!(
+                "Twist frame {} is not equal to contact point frame {}!",
+                self.frame, contact_point.frame
+            );
+        }
+        self.linear + self.angular.cross(&contact_point.location)
     }
 }
 

@@ -69,6 +69,41 @@ export class Simulator {
     this.graphics.scene.add(this.rod2);
   }
 
+  addPendulum(length: number) {
+    const pivotGeometry = new THREE.SphereGeometry(0.2, 32, 32);
+    const pivotMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    const pivot = new THREE.Mesh(pivotGeometry, pivotMaterial);
+    this.meshes.set("pivot", pivot);
+    this.graphics.scene.add(pivot);
+
+    const rodGeometry = new THREE.CylinderGeometry(0.1, 0.1, length, 32);
+    const rodMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const rod = new THREE.Mesh(rodGeometry, rodMaterial);
+    this.meshes.set("rod", rod);
+    this.graphics.scene.add(rod);
+  }
+
+  addPlane(normalArray: Float32Array, distance: number, size: number) {
+    const quaternion = new THREE.Quaternion();
+    quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
+
+    const normal = new THREE.Vector3()
+      .fromArray(normalArray)
+      .applyQuaternion(quaternion);
+    const position = normal.clone().multiplyScalar(distance);
+
+    const planeGeometry = new THREE.PlaneGeometry(size, size);
+    const planeMaterial = new THREE.MeshPhongMaterial({
+      color: 0x808080,
+      side: THREE.DoubleSide, // Ensure it can be viewed from both sides
+    });
+
+    const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+    plane.position.copy(position);
+    plane.lookAt(position.clone().add(normal));
+    this.graphics.scene.add(plane);
+  }
+
   addRodPendulum(length: number) {
     this.length = length;
 
@@ -120,6 +155,14 @@ export class Simulator {
     pole.rotation.z = pole_angle;
   }
 
+  updatePendulumPose(angle: number) {
+    let rod = this.meshes.get("rod");
+    const length = (rod.geometry as THREE.CylinderGeometry).parameters.height;
+    rod.position.x = (length / 2) * Math.sin(angle);
+    rod.position.y = (-length / 2) * Math.cos(angle);
+    rod.rotation.z = angle;
+  }
+
   run(timestamp?: number) {
     this.graphics.render();
 
@@ -133,9 +176,11 @@ export class Simulator {
     // console.log("t :", this.time.toFixed(2));
 
     // Coordinate transform from mechanism to graphics
-    let angle1 = qs[0] + Math.PI / 2;
-    let angle2 = qs[1];
-    this.updateDoublemPendulumPose(angle1, angle2);
+    let angle = -qs[0] + Math.PI / 2;
+    this.updatePendulumPose(angle);
+    // let angle1 = qs[0] + Math.PI / 2;
+    // let angle2 = qs[1];
+    // this.updateDoublemPendulumPose(angle1, angle2);
 
     requestAnimationFrame((t) => this.run(t));
   }

@@ -1,4 +1,7 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    ops::{AddAssign, Sub},
+};
 
 use itertools::izip;
 use na::{dvector, DVector};
@@ -16,6 +19,52 @@ pub struct Wrench {
     pub frame: String,
     pub angular: Vector3<Float>,
     pub linear: Vector3<Float>,
+}
+
+impl Wrench {
+    pub fn zero(frame: &str) -> Self {
+        Wrench {
+            frame: frame.to_string(),
+            angular: Vector3::zeros(),
+            linear: Vector3::zeros(),
+        }
+    }
+
+    /// Return the wrench of a force applied at point
+    pub fn from_force(point: &Vector3<Float>, force: &Vector3<Float>, frame: &str) -> Self {
+        Wrench {
+            frame: frame.to_string(),
+            angular: point.cross(&force),
+            linear: *force,
+        }
+    }
+}
+
+impl AddAssign for Wrench {
+    fn add_assign(&mut self, rhs: Self) {
+        if self.frame != rhs.frame {
+            panic!("lhs frame {} != rhs frame {}!", self.frame, rhs.frame);
+        }
+
+        self.angular += rhs.angular;
+        self.linear += rhs.linear;
+    }
+}
+
+impl<'a, 'b> Sub<&'b Wrench> for &'a Wrench {
+    type Output = Wrench;
+
+    fn sub(self, rhs: &Wrench) -> Wrench {
+        if self.frame != rhs.frame {
+            panic!("lhs frame {} != rhs frame {}!", self.frame, rhs.frame);
+        }
+
+        Wrench {
+            frame: self.frame.clone(),
+            angular: self.angular - rhs.angular,
+            linear: self.linear - rhs.linear,
+        }
+    }
 }
 
 /// Compute the torques at each joint that are required to produce the given wrenches.

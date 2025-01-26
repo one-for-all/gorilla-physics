@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use crate::contact::ContactPoint;
+use crate::contact::HalfSpace;
 use crate::geometric_jacobian::GeometricJacobian;
 use crate::inertia::compute_inertias;
 use crate::inertia::kinetic_energy;
@@ -23,6 +25,7 @@ pub struct MechanismState {
     pub bodies: DVector<RigidBody>,
     pub q: DVector<Float>, // joint configuration vector
     pub v: DVector<Float>, // joint velocity vector
+    pub halfspaces: DVector<HalfSpace>,
 }
 
 impl MechanismState {
@@ -53,6 +56,18 @@ impl MechanismState {
             KE += ke;
         }
         KE
+    }
+
+    pub fn add_halfspace(&mut self, halfspace: &HalfSpace) {
+        self.halfspaces = self.halfspaces.push(*halfspace);
+    }
+
+    pub fn add_contact_point(&mut self, frame: &str, point: &ContactPoint) {
+        for body in self.bodies.iter_mut() {
+            if body.inertia.frame == frame {
+                body.add_contact_point(point);
+            }
+        }
     }
 }
 

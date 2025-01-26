@@ -1,4 +1,5 @@
 use crate::{
+    contact::contact_dynamics,
     inertia::compute_inertias,
     mechanism::mass_matrix,
     spatial_force::{compute_torques, Wrench},
@@ -196,25 +197,27 @@ pub fn bias_accelerations(
     bias_accels
 }
 
-/// Compute the 'dynamics bias term', i.e. the term
-///     c(q, v)
+/// Compute the 'dynamics bias term' and 'contact torque' term , i.e. the
+/// combination of terms
+///     c(q, v) - τ_c
 /// in the unconstrained joint-space equations of motion
-///     M(q) vdot + c(q, v) = τ
+///     M(q) vdot + c(q, v) = τ + τ_c
 /// given joint configuration vector q, joint velocity vector v, joint
-/// acceleration vector vdot.
+/// acceleration vector vdot, and contact wrenches.
 pub fn dynamics_bias(
     state: &MechanismState,
     bodies_to_root: &HashMap<u32, Transform3D>,
+    joint_twists: &HashMap<u32, Twist>,
+    twists: &HashMap<u32, Twist>,
+    contact_wrenches: &HashMap<u32, Wrench>,
 ) -> DVector<Float> {
-    // Compute the twist of each joint
-    let joint_twists = compute_joint_twists(state);
-
-    // Compute the twist of the each body with respect to the world frame
-    let twists = compute_twists_wrt_world(state, &bodies_to_root, &joint_twists);
-
     let bias_accels = bias_accelerations(&state, bodies_to_root, &twists, &joint_twists);
 
-    let wrenches = newton_euler(&state, &bias_accels, &bodies_to_root, &twists);
+    let mut wrenches = newton_euler(&state, &bias_accels, &bodies_to_root, &twists);
+
+    for (bodyid, contact_wrench) in contact_wrenches {
+        wrenches.insert(*bodyid, &wrenches[bodyid] - contact_wrench);
+    }
 
     let torques = compute_torques(state, &wrenches, &bodies_to_root);
 
@@ -271,7 +274,23 @@ pub fn dynamics(state: &MechanismState, tau: &DVector<Float>) -> DVector<Float> 
     // Compute the body to root frame transform for each body
     let bodies_to_root = compute_bodies_to_root(state);
 
-    let dynamics_bias = dynamics_bias(state, &bodies_to_root); // c(q, v)
+    // Compute the twist of each joint
+    let joint_twists = compute_joint_twists(state);
+
+    // Compute the twist of the each body with respect to the world frame
+    let twists = compute_twists_wrt_world(state, &bodies_to_root, &joint_twists);
+
+    // Compute the contact wrenches resulting from contacts
+    let contact_wrenches = contact_dynamics(state, &bodies_to_root, &twists);
+
+    let dynamics_bias = dynamics_bias(
+        state,
+        &bodies_to_root,
+        &joint_twists,
+        &twists,
+        &contact_wrenches,
+    ); // c(q, v) - τ_contact
+
     let mass_matrix = mass_matrix(state, &bodies_to_root);
 
     let vdot = dynamics_solve(&mass_matrix, &dynamics_bias, tau);
@@ -471,25 +490,22 @@ mod dynamics_tests {
             ],
             treejointids: dvector![1, 2],
             bodies: dvector![
-                RigidBody {
-                    inertia: SpatialInertia {
-                        frame: "rod1".to_string(),
-                        moment: moment.clone(),
-                        cross_part: cross_part.clone(),
-                        mass: m,
-                    }
-                },
-                RigidBody {
-                    inertia: SpatialInertia {
-                        frame: "rod2".to_string(),
-                        moment: moment.clone(),
-                        cross_part: cross_part.clone(),
-                        mass: m,
-                    }
-                }
+                RigidBody::new(SpatialInertia {
+                    frame: "rod1".to_string(),
+                    moment: moment.clone(),
+                    cross_part: cross_part.clone(),
+                    mass: m,
+                }),
+                RigidBody::new(SpatialInertia {
+                    frame: "rod2".to_string(),
+                    moment: moment.clone(),
+                    cross_part: cross_part.clone(),
+                    mass: m,
+                })
             ],
             q: dvector![0.0, 0.0],
             v: dvector![0.0, 0.0],
+            halfspaces: dvector![],
         };
 
         // Act

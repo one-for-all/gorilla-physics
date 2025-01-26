@@ -1,14 +1,24 @@
 import { Simulator } from "./Simulator";
 
 import("gorilla-physics").then((gorilla) => {
+  const mass = 1.0;
   const length = 10.0;
-  let mechanismState = gorilla.createDoublePendulum(length);
+  let mechanismState = gorilla.createSimplePendulum(mass, length);
+
+  // let point = new Float32Array([0.0, 0.0, -5.0]);
+  let normal = new Float32Array([0.0, 0.0, 1.0]);
+  let distance = -5.0;
+  mechanismState.addHalfSpace(normal, distance);
+
+  // let mechanismState = gorilla.createDoublePendulum(length);
   // let mechanismState = gorilla.createCart(length);
   // let mechanismState = gorilla.createCartPole(length);
   let simulator = new Simulator(mechanismState);
   // simulator.addCart(length);
   // simulator.addCartPole(length);
-  simulator.addDoublemPendulum(length);
+  // simulator.addDoublemPendulum(length);
+  simulator.addPendulum(length);
+  simulator.addPlane(normal, distance, 100);
 
   // Important: Set initial camera position
   let cameraPosition = {
