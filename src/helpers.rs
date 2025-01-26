@@ -101,18 +101,18 @@ pub fn build_cart(
     mass: &Float,
     moment: &Matrix3<Float>,
     cross_part: &Vector3<Float>,
+    axis: &Vector3<Float>,
 ) -> MechanismState {
     let cart_frame = "cart";
     let world_frame = "world";
 
     let cart_to_world = Transform3D::new(cart_frame, world_frame, &Matrix4::identity());
-    let axis = vector![1.0, 0.0, 0.0];
 
     let state = MechanismState {
         treejoints: dvector![Joint::PrismaticJoint(PrismaticJoint {
             init_mat: cart_to_world.mat.clone(),
             transform: cart_to_world,
-            axis: axis
+            axis: *axis
         })],
         treejointids: dvector![1],
         bodies: dvector![RigidBody::new(SpatialInertia {
@@ -122,7 +122,7 @@ pub fn build_cart(
             mass: *mass
         })],
         q: dvector![0.0],
-        v: dvector![1.0],
+        v: dvector![0.0],
         halfspaces: dvector![],
     };
     state

@@ -15,8 +15,9 @@ pub fn createCart(length: Float) -> InterfaceMechanismState {
     let moment_z = m * l * l / 12.0;
     let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
     let cross_part = vector![0.0, 0.0, 0.0];
+    let axis = vector![1.0, 0.0, 0.0];
 
-    let mut state = build_cart(&m, &moment, &cross_part);
+    let mut state = build_cart(&m, &moment, &cross_part, &axis);
 
     let q_init = dvector![0.0];
     let v_init = dvector![1.0];
