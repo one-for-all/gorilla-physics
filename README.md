@@ -1,6 +1,6 @@
 # Gorilla Physics Engine (for robotics in Rust)
 
-I used [Rapier](https://github.com/dimforge/rapier) before, but it does not seem to be quite made for robotics, and misses some features I needed, so I embarked on this journey to build a physics engine myself.
+I used [Rapier](https://github.com/dimforge/rapier) before, but it did not seem to be quite made for robotics, and was missing some features I needed, so I embarked on this journey to build a physics engine myself.
 
 I am learning a lot as I build it, so it is also a learning project for me.
 
