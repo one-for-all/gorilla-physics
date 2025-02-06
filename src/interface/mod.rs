@@ -1,3 +1,14 @@
+use crate::contact::ContactPoint;
+use crate::joint::floating::FloatingJoint;
+use crate::joint::JointTorque;
+use crate::joint::JointVelocity;
+use crate::joint::ToFloatDVec;
+use crate::joint::ToJointPositionVec;
+use crate::joint::ToJointVelocityVec;
+use crate::pose::Pose;
+use crate::spatial_vector::SpatialVector;
+use na::UnitQuaternion;
+use na::Vector3;
 use na::{dvector, vector, Matrix3, Matrix4};
 use wasm_bindgen::prelude::*;
 use web_sys::js_sys;
@@ -6,7 +17,7 @@ use crate::{
     contact::HalfSpace,
     helpers::build_double_pendulum,
     inertia::SpatialInertia,
-    joint::{revolute::RevoluteJoint, Joint},
+    joint::{revolute::RevoluteJoint, Joint, JointPosition},
     mechanism::MechanismState,
     rigid_body::RigidBody,
     simulate::step,
@@ -46,22 +57,23 @@ impl InterfaceMechanismState {
     #[wasm_bindgen]
     pub fn step(&mut self, dt: Float) -> js_sys::Float32Array {
         let n_substep = 10;
-        let mut q = dvector![];
+        let mut q = vec![];
         for _ in 0..n_substep {
             // let torque = lqr(&self.0);
             // let torque = swingup_acrobot(&self.0, &1., &7.);
             // let torque = dvector![0., 0.];
             // let torque = lqr_cart_pole(&self.0);
             // let torque = swingup_cart_pole(&self.0, &3.0, &5.0, &7.0);
-            let torque = dvector![0.];
+            let torque = vec![JointTorque::Spatial(SpatialVector::zero())];
             let (_q, _v) = step(&mut self.0, dt / (n_substep as Float), &torque);
             q = _q
         }
 
         // Convert to a format that Javascript can take
+        let q = q.to_float_dvec();
         let q_js = js_sys::Float32Array::new_with_length(q.len() as u32);
-        for (i, v) in q.iter().enumerate() {
-            q_js.set_index(i as u32, *v);
+        for (i, q) in q.iter().enumerate() {
+            q_js.set_index(i as u32, *q);
         }
 
         q_js
@@ -90,8 +102,8 @@ pub fn createRodPendulumAtBottom(length: Float) -> InterfaceMechanismState {
 
     let mut state = crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
-    let q_init = dvector![0.1];
-    let v_init = dvector![0.0];
+    let q_init = vec![JointPosition::Float(0.1)];
+    let v_init = vec![0.0].to_joint_vel_vec();
     state.update(&q_init, &v_init);
 
     InterfaceMechanismState(state)
@@ -127,8 +139,8 @@ pub fn createRodPendulum(length: Float) -> InterfaceMechanismState {
             cross_part,
             mass: m
         })],
-        q: dvector![0.0],
-        v: dvector![0.0],
+        q: vec![0.0].to_joint_pos_vec(),
+        v: vec![0.0].to_joint_vel_vec(),
         halfspaces: dvector![],
     };
 
@@ -159,9 +171,67 @@ pub fn createDoublePendulumHorizontal(length: Float) -> InterfaceMechanismState 
         &axis,
     );
 
-    let q_init = dvector![-PI / 2.0 + 0.1, 0.0];
-    let v_init = dvector![0.0, 0.0];
+    let q_init = vec![
+        JointPosition::Float(-PI / 2.0 + 0.1),
+        JointPosition::Float(0.0),
+    ];
+    let v_init = vec![0.0, 0.0].to_joint_vel_vec();
     state.update(&q_init, &v_init);
+
+    InterfaceMechanismState(state)
+}
+
+#[wasm_bindgen]
+pub fn createSphere(mass: Float, radius: Float) -> InterfaceMechanismState {
+    let m = mass;
+    let r = radius;
+
+    let moment_x = 2.0 / 5.0 * m * r * r;
+    let moment_y = 2.0 / 5.0 * m * r * r;
+    let moment_z = 2.0 / 5.0 * m * r * r;
+    let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
+    let cross_part = vector![0.0, 0.0, 0.0];
+
+    let ball_frame = "ball";
+    let world_frame = "world";
+    let ball_to_world = Transform3D::identity(&ball_frame, &world_frame);
+
+    let ball = RigidBody::new(SpatialInertia {
+        frame: ball_frame.to_string(),
+        moment,
+        cross_part,
+        mass: m,
+    });
+
+    let mut state = MechanismState {
+        treejoints: dvector![Joint::FloatingJoint(FloatingJoint {
+            init_mat: ball_to_world.mat.clone(),
+            transform: ball_to_world,
+        })],
+        treejointids: dvector![1],
+        bodies: dvector![ball],
+        q: vec![JointPosition::Pose(Pose::identity())],
+        v: vec![JointVelocity::Spatial(SpatialVector {
+            angular: vector![0.0, 0.0, 0.0],
+            linear: vector![0.0, 0.0, 0.0],
+        })],
+        halfspaces: dvector![],
+    };
+
+    let q_init = vec![JointPosition::Pose(Pose {
+        rotation: UnitQuaternion::from_axis_angle(&Vector3::x_axis(), 0.0),
+        translation: vector![0.0, 0.0, 1.0],
+    })];
+    let v_init = vec![JointVelocity::Spatial(SpatialVector {
+        angular: vector![0.0, 0.0, 0.0],
+        linear: vector![0.0, 0.0, 10.0],
+    })];
+    state.update(&q_init, &v_init);
+
+    state.add_contact_point(&ContactPoint {
+        frame: "ball".to_string(),
+        location: vector![0., 0., -r],
+    });
 
     InterfaceMechanismState(state)
 }

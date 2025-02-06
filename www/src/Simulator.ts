@@ -119,6 +119,14 @@ export class Simulator {
     this.graphics.scene.add(this.rod);
   }
 
+  addSphere(radius: number) {
+    const sphereGeometry = new THREE.SphereGeometry(radius, 32, 32);
+    const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+    this.meshes.set("sphere", sphere);
+    this.graphics.scene.add(sphere);
+  }
+
   updateRodPose(angle: number) {
     // Update rod center-of-shape position
     this.rod.position.x = (this.length / 2) * Math.sin(angle);
@@ -163,6 +171,11 @@ export class Simulator {
     rod.rotation.z = angle;
   }
 
+  updateSpherePose(x: number, y: number, z: number) {
+    let sphere = this.meshes.get("sphere");
+    sphere.position.set(x, y, z);
+  }
+
   run(timestamp?: number) {
     this.graphics.render();
 
@@ -176,11 +189,13 @@ export class Simulator {
     // console.log("t :", this.time.toFixed(2));
 
     // Coordinate transform from mechanism to graphics
-    let angle = -qs[0] + Math.PI / 2;
-    this.updatePendulumPose(angle);
+    // let angle = -qs[0] + Math.PI / 2;
+    // this.updatePendulumPose(angle);
     // let angle1 = qs[0] + Math.PI / 2;
     // let angle2 = qs[1];
     // this.updateDoublemPendulumPose(angle1, angle2);
+    // console.log(qs[4]);
+    this.updateSpherePose(qs[4], qs[6], -qs[5]);
 
     requestAnimationFrame((t) => this.run(t));
   }

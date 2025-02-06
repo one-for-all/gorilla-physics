@@ -1,5 +1,7 @@
 use super::InterfaceMechanismState;
 use crate::helpers::build_cart_pole;
+use crate::joint::ToJointPositionVec;
+use crate::joint::ToJointVelocityVec;
 use crate::types::Float;
 use na::dvector;
 use nalgebra::{vector, Matrix3};
@@ -34,8 +36,8 @@ pub fn createCartPole(length: Float) -> InterfaceMechanismState {
         &axis_pole,
     );
 
-    let q_init = dvector![0.0, 0.1]; // -(PI / 2.0 + 1.5)
-    let v_init = dvector![0.0, 0.0];
+    let q_init = vec![0.0, 0.1].to_joint_pos_vec(); // -(PI / 2.0 + 1.5)
+    let v_init = vec![0.0, 0.0].to_joint_vel_vec();
     state.update(&q_init, &v_init);
 
     InterfaceMechanismState(state)
