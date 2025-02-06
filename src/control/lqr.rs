@@ -1,11 +1,11 @@
+use crate::joint::{JointTorque, ToFloatDVec, ToJointTorqueVec};
 use crate::PI;
-use na::{dvector, DMatrix, DVector, Matrix1x4};
-
 use crate::{mechanism::MechanismState, types::Float};
+use na::{DMatrix, Matrix1x4};
 
 /// Linear Quadratic Regulator for acrobot
 /// Reference: https://underactuated.csail.mit.edu/lqr.html
-pub fn lqr_acrobot(state: &MechanismState) -> DVector<Float> {
+pub fn lqr_acrobot(state: &MechanismState) -> Vec<JointTorque> {
     // Hard-code with value from lqr_acrobot.py
     let K = Matrix1x4::<Float>::new(
         -14067.26123453,
@@ -15,9 +15,9 @@ pub fn lqr_acrobot(state: &MechanismState) -> DVector<Float> {
     );
 
     // Stack the position and velocity vectors into a single state vector
-    let mut stacked_data = Vec::new();
-    stacked_data.extend_from_slice(state.q.as_slice());
-    stacked_data.extend_from_slice(state.v.as_slice());
+    let mut stacked_data: Vec<Float> = Vec::new();
+    stacked_data.extend_from_slice(state.q.to_float_dvec().as_slice());
+    stacked_data.extend_from_slice(state.v.to_float_dvec().as_slice());
     let x = DMatrix::from_column_slice(4, 1, &stacked_data);
 
     // Controller takes the form:
@@ -29,21 +29,21 @@ pub fn lqr_acrobot(state: &MechanismState) -> DVector<Float> {
     xbar[(0, 0)] = x[(0, 0)] - q1_target;
 
     let u = -K * xbar;
-    dvector![0., u[0]]
+    vec![0., u[0]].to_joint_torque_vec()
 }
 
 /// Linear Quadratic Regulator for cart-pole
 /// Reference: https://underactuated.csail.mit.edu/lqr.html
-pub fn lqr_cart_pole(state: &MechanismState) -> DVector<Float> {
+pub fn lqr_cart_pole(state: &MechanismState) -> Vec<JointTorque> {
     // Hard-code with value from lqr_cart_pole.py
     // Invert the sign of 2nd and 4th values, because the axis in the book formulation is
     // opposite to the system defined here.
     let K = Matrix1x4::<Float>::new(-1., 210.06025784, -5.27501096, 129.54543534);
 
     // Stack the position and velocity vectors into a single state vector
-    let mut stacked_data = Vec::new();
-    stacked_data.extend_from_slice(state.q.as_slice());
-    stacked_data.extend_from_slice(state.v.as_slice());
+    let mut stacked_data: Vec<Float> = Vec::new();
+    stacked_data.extend_from_slice(state.q.to_float_dvec().as_slice());
+    stacked_data.extend_from_slice(state.v.to_float_dvec().as_slice());
     let x = DMatrix::from_column_slice(4, 1, &stacked_data);
 
     // Controller takes the form:
@@ -55,18 +55,20 @@ pub fn lqr_cart_pole(state: &MechanismState) -> DVector<Float> {
     xbar[(1, 0)] = x[(1, 0)] - angle_target;
 
     let u = -K * xbar;
-    dvector![u[0], 0.]
+    vec![u[0], 0.].to_joint_torque_vec()
 }
 
 #[cfg(test)]
 mod lqr_tests {
     use na::{dvector, vector, Matrix3, Matrix4};
 
+    use crate::joint::ToJointVelocityVec;
     use crate::{
         helpers::{build_cart_pole, build_double_pendulum},
+        joint::{JointPosition, ToFloatDVec, ToJointPositionVec},
         simulate::simulate,
         transform::Transform3D,
-        util::assert_close,
+        util::assert_dvec_close,
         PI,
     };
 
@@ -98,8 +100,8 @@ mod lqr_tests {
         );
 
         let q1_upright = -PI;
-        let q_init = dvector![q1_upright - 0.03, 0.03];
-        let v_init = dvector![0.03, 0.03];
+        let q_init = vec![q1_upright - 0.03, 0.03].to_joint_pos_vec();
+        let v_init = vec![0.03, 0.03].to_joint_vel_vec();
         state.update(&q_init, &v_init); // Set to near upright position
 
         // Act
@@ -108,10 +110,10 @@ mod lqr_tests {
         let (qs, vs) = simulate(&mut state, final_time, dt, lqr_acrobot);
 
         // Assert
-        let q_final = &qs[qs.len() - 1];
-        let v_final = &vs[vs.len() - 1];
-        assert_close(q_final, &dvector![q1_upright, 0.0], 1e-3);
-        assert_close(v_final, &dvector![0.0, 0.0], 1e-3);
+        let q_final = &qs[qs.len() - 1].to_float_dvec();
+        let v_final = &vs[vs.len() - 1].to_float_dvec();
+        assert_dvec_close(q_final, &dvector![q1_upright, 0.0], 1e-3);
+        assert_dvec_close(v_final, &dvector![0.0, 0.0], 1e-3);
     }
 
     #[test]
@@ -145,8 +147,8 @@ mod lqr_tests {
         );
 
         let angle_upright = PI;
-        let q_init = dvector![-1., angle_upright + 0.5]; // Set to near upright position
-        let v_init = dvector![1., 0.5];
+        let q_init = vec![-1., angle_upright + 0.5].to_joint_pos_vec(); // Set to near upright position
+        let v_init = vec![1., 0.5].to_joint_vel_vec();
         state.update(&q_init, &v_init);
 
         // Act
@@ -155,9 +157,9 @@ mod lqr_tests {
         let (qs, vs) = simulate(&mut state, final_time, dt, lqr_cart_pole);
 
         // Assert
-        let q_final = &qs[qs.len() - 1];
-        let v_final = &vs[vs.len() - 1];
-        assert_close(q_final, &dvector![0.0, angle_upright], 2e-3);
-        assert_close(v_final, &dvector![0.0, 0.0], 1e-3);
+        let q_final = &qs[qs.len() - 1].to_float_dvec();
+        let v_final = &vs[vs.len() - 1].to_float_dvec();
+        assert_dvec_close(q_final, &dvector![0.0, angle_upright], 2e-3);
+        assert_dvec_close(v_final, &dvector![0.0, 0.0], 1e-3);
     }
 }

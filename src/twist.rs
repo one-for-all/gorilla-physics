@@ -7,8 +7,12 @@ use itertools::izip;
 use nalgebra::{zero, Vector3};
 
 use crate::{
-    contact::ContactPoint, joint::Joint, mechanism::MechanismState,
-    spatial_acceleration::SpatialAcceleration, transform::Transform3D, types::Float,
+    contact::ContactPoint,
+    joint::{Joint, JointVelocity},
+    mechanism::MechanismState,
+    spatial_acceleration::SpatialAcceleration,
+    transform::Transform3D,
+    types::Float,
 };
 
 /// A twist represents the relative angular and linear velocity between two bodies.
@@ -16,7 +20,7 @@ use crate::{
 /// defined as:
 ///     T_j^(k,i) = (w_j^(k,i)  v_j^(k,i)) \in R^6
 /// Twist is a spatial vector.
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct Twist {
     pub body: String,
     pub base: String,
@@ -30,13 +34,13 @@ impl Twist {
     /// expressed in successor frame
     ///
     /// Given a joint velocity value, it gives out the corresponding twist.
-    pub fn new(joint: &Joint, v: Float) -> Twist {
+    pub fn new(joint: &Joint, v: &JointVelocity) -> Twist {
         match joint {
             Joint::RevoluteJoint(joint) => Twist {
                 body: joint.transform.from.clone(),
                 base: joint.transform.to.clone(),
                 frame: joint.transform.from.clone(),
-                angular: joint.axis * v,
+                angular: joint.axis * *v.float(),
                 linear: zero(),
             },
             Joint::PrismaticJoint(joint) => Twist {
@@ -44,7 +48,14 @@ impl Twist {
                 base: joint.transform.to.clone(),
                 frame: joint.transform.from.clone(),
                 angular: zero(),
-                linear: joint.axis * v,
+                linear: joint.axis * *v.float(),
+            },
+            Joint::FloatingJoint(joint) => Twist {
+                body: joint.transform.from.clone(),
+                base: joint.transform.to.clone(),
+                frame: joint.transform.from.clone(),
+                angular: v.spatial().angular,
+                linear: v.spatial().linear,
             },
         }
     }
@@ -150,7 +161,7 @@ pub fn compute_joint_twists(state: &MechanismState) -> HashMap<u32, Twist> {
         state.v.iter()
     ) {
         let bodyid = jointid;
-        joint_twists.insert(*bodyid, Twist::new(&joint, *v));
+        joint_twists.insert(*bodyid, Twist::new(&joint, v));
     }
     joint_twists
 }

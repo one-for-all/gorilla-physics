@@ -1,16 +1,11 @@
+use crate::joint::JointTorque;
+use crate::joint::JointVelocity;
+use crate::util::quaternion_derivative;
 use crate::{
-    dynamics::{dynamics, newton_euler},
-    mechanism::MechanismState,
-    spatial_acceleration::SpatialAcceleration,
-    spatial_force::compute_torques,
-    transform::{compute_bodies_to_root, Transform3D},
-    twist::{compute_joint_twists, compute_twists_wrt_world, Twist},
-    types::Float,
+    dynamics::dynamics, joint::JointPosition, mechanism::MechanismState, pose::Pose, types::Float,
 };
 use itertools::izip;
-use na::{dvector, DVector};
-use std::collections::HashMap;
-
+use na::UnitQuaternion;
 pub struct DynamicsResult {}
 
 impl DynamicsResult {
@@ -19,109 +14,52 @@ impl DynamicsResult {
     }
 }
 
-pub fn spatial_accelerations(
-    state: &mut MechanismState,
-    vdot: &DVector<Float>,
-) -> (
-    HashMap<u32, SpatialAcceleration>,
-    HashMap<u32, Transform3D>,
-    HashMap<u32, Twist>,
-) {
-    let joints = &state.treejoints;
-    let jointids = &state.treejointids;
-    let qs = &state.q;
-    let vs = &state.v;
-    let vdots = vdot;
-
-    let rootid = 0; // root has body id 0 by convention
-
-    // Compute the body to root frame transform for each body
-    let bodies_to_root = compute_bodies_to_root(state);
-
-    // Compute the joint twists of each joint, expressed in body frame
-    let joint_twists = compute_joint_twists(state);
-
-    // Compute the twist of the each body with respect to the world frame
-    let twists = compute_twists_wrt_world(state, &bodies_to_root, &joint_twists);
-
-    // Compute the joint spatial accelerations of each body expressed in body frame
-    let mut joint_accels: HashMap<u32, SpatialAcceleration> = HashMap::new();
-    for (jointid, joint, _q, _v, vdot) in izip!(
-        jointids.iter(),
-        joints.iter(),
-        qs.iter(),
-        vs.iter(),
-        vdots.iter()
-    ) {
-        let bodyid = jointid;
-        joint_accels.insert(*bodyid, joint.spatial_acceleration(vdot));
-    }
-
-    // Compute the spatial acceleration of each body wrt. world frame, expressed
-    // in world frame
-    let mut accels: HashMap<u32, SpatialAcceleration> = HashMap::new();
-    accels.insert(
-        rootid,
-        SpatialAcceleration::inv_gravitational_spatial_acceleration(),
-    ); // simulates the effect of gravity
-    for jointid in jointids.iter() {
-        let parentbodyid = jointid - 1;
-        let bodyid = jointid;
-        let parent_acc = accels.get(&parentbodyid).unwrap();
-        let parent_twist = twists.get(&parentbodyid).unwrap();
-        let body_twist = twists.get(bodyid).unwrap();
-
-        let body_to_root = bodies_to_root.get(bodyid).unwrap();
-        let joint_acc = joint_accels.get(bodyid).unwrap().transform(body_to_root);
-
-        let body_acc = &(parent_acc + &joint_acc) + &parent_twist.cross(body_twist);
-        accels.insert(*bodyid, body_acc);
-    }
-
-    (accels, bodies_to_root, twists)
-}
-
-/// Do inverse dynamics, i.e. compute τ in the unconstrained joint-space
-/// equations of motion
-///
-/// M(q) vdot + c(q, v) = τ
-///
-/// given joint configuration vector q, joint velocity vector v, joint
-/// acceleration vector vdot.
-///
-/// This method implements the recursive Newton-Euler algorithm.
-pub fn inverse_dynamics(state: &mut MechanismState, vdot: &DVector<Float>) -> DVector<Float> {
-    let (accels, bodies_to_root, twists) = spatial_accelerations(state, &vdot);
-    let wrenches = newton_euler(&state, &accels, &bodies_to_root, &twists);
-    let torquesout = compute_torques(state, &wrenches, &bodies_to_root);
-
-    torquesout
-}
-
 /// Step the mechanism state forward by dt seconds.
 pub fn step(
     state: &mut MechanismState,
     dt: Float,
-    tau: &DVector<Float>,
-) -> (DVector<Float>, DVector<Float>) {
+    tau: &Vec<JointTorque>,
+) -> (Vec<JointPosition>, Vec<JointVelocity>) {
     let vdot = dynamics(state, tau);
 
     // Semi-implicit Euler integration
-    // Note: this actually turns out to be stable for pendulum system
-    let v = state.v.clone() + vdot * dt;
-    let q = state.q.clone() + v.clone() * dt;
+    // Note: this actually turns out to be energy conserving for Hamiltonian systems,
+    // informally meaning systems that are not subject to velocity-dependent
+    // forces. E.g. single pendulum
+    //
+    // Ref: Drake Doc, https://drake.mit.edu/doxygen_cxx/classdrake_1_1systems_1_1_semi_explicit_euler_integrator.html
+    let mut new_v = vec![];
+    let mut new_q = vec![];
+    for (qi, vi, vdot) in izip!(state.q.iter(), state.v.iter(), vdot.iter()) {
+        match qi {
+            JointPosition::Float(qi) => {
+                let vdot = vdot.float();
+                let new_vi = vi.float() + vdot * dt;
+                new_v.push(JointVelocity::Float(new_vi));
+                new_q.push(JointPosition::Float(qi + new_vi * dt));
+            }
+            JointPosition::Pose(qi) => {
+                let vdot = vdot.spatial();
+                let new_vi = vi.spatial() + &(vdot * dt);
 
-    state.update(&q, &v);
-    (q, v)
+                let quaternion_dot = quaternion_derivative(&qi.rotation, &new_vi.angular);
+                let translation_dot = qi.rotation.to_rotation_matrix() * new_vi.linear;
+                let new_qi = Pose {
+                    translation: qi.translation + translation_dot * dt,
+                    rotation: UnitQuaternion::from_quaternion(
+                        qi.rotation.quaternion() + quaternion_dot * dt,
+                    ),
+                };
+
+                new_v.push(JointVelocity::Spatial(new_vi));
+                new_q.push(JointPosition::Pose(new_qi));
+            }
+        }
+    }
+
+    state.update(&new_q, &new_v);
+    (new_q, new_v)
 }
-
-// pub fn integrate(result: &DynamicsResult, state: &MechanismState, final_time: Float, dt: Float) {
-//     let mut t = 0.0;
-//     while t < final_time {
-//         step(&result, &state, t, dt);
-//         t += dt;
-//     }
-// }
 
 /// Simulate the mechanism state from 0 to final_time with a time step of dt.
 /// Returns the joint configurations at each time step.
@@ -130,20 +68,20 @@ pub fn simulate<F>(
     final_time: Float,
     dt: Float,
     control_fn: F,
-) -> (DVector<DVector<Float>>, DVector<DVector<Float>>)
+) -> (Vec<Vec<JointPosition>>, Vec<Vec<JointVelocity>>)
 where
-    F: Fn(&MechanismState) -> DVector<Float>,
+    F: Fn(&MechanismState) -> Vec<JointTorque>,
 {
     let mut t = 0.0;
-    let mut qs: DVector<DVector<Float>> = dvector![];
-    let mut vs: DVector<DVector<Float>> = dvector![];
-    qs.extend([state.q.clone()]);
-    vs.extend([state.v.clone()]);
+    let mut qs: Vec<Vec<JointPosition>> = vec![];
+    let mut vs: Vec<Vec<JointVelocity>> = vec![];
+    qs.push(state.q.clone());
+    vs.push(state.v.clone());
     while t < final_time {
         let tau = control_fn(state);
         let (q, v) = step(state, dt, &tau);
-        qs.extend([q]);
-        vs.extend([v]);
+        qs.push(q);
+        vs.push(v);
 
         t += dt;
     }
@@ -153,15 +91,17 @@ where
 
 #[cfg(test)]
 mod simulate_tests {
+    use crate::joint::ToJointPositionVec;
+    use crate::joint::{ToFloatDVec, ToJointTorqueVec, ToJointVelocityVec};
     use crate::{
         helpers::{build_cart, build_cart_pole},
-        util::assert_close,
+        util::assert_dvec_close,
         GRAVITY, PI,
     };
 
     use super::*;
     use na::Matrix4;
-    use nalgebra::{dvector, vector, Matrix3};
+    use nalgebra::{vector, Matrix3};
 
     #[test]
     fn simulate_horizontal_right_rod() {
@@ -186,49 +126,25 @@ mod simulate_tests {
         // Act
         let final_time = 10.0;
         let dt = 0.02;
-        let (qs, vs) = simulate(&mut state, final_time, dt, |_state| dvector![0.0]);
+        let (qs, vs) = simulate(&mut state, final_time, dt, |_state| {
+            vec![0.0].to_joint_torque_vec()
+        });
 
         // Assert
         let q_max = qs
             .iter()
-            .map(|q| q[0])
+            .map(|q| q[0].float().clone())
             .fold(Float::NEG_INFINITY, Float::max);
         assert!((q_max - PI).abs() < 1e-3); // Check highest point of swing
 
-        let q_final = qs[qs.len() - 1][0];
-        let v_final = vs[vs.len() - 1][0];
+        let q_final = qs[qs.len() - 1][0].float();
+        let v_final = vs[vs.len() - 1][0].float();
 
         let potential_energy = m * GRAVITY * l / 2.0 * (-q_final.sin()); // mgh
         let kinetic_energy = 0.5 * (m * l * l / 3.0) * v_final * v_final; // 1/2 I ω^2
         assert!((initial_energy - (potential_energy + kinetic_energy)).abs() < 1.0);
         // Sanity check that energy is conserved. Not exact due to numerical integration.
         // Note: this is potentially flaky test depending on parameters
-    }
-
-    #[test]
-    fn inverse_dynamics_upright_rod() {
-        // Arrange
-        let m = 5.0; // Mass of rod
-        let l: Float = 3.0; // Length of rod
-        let moment_x = 1.0 / 3.0 * m * l * l;
-        let moment_y = moment_x;
-        let moment_z = 0.0;
-        let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
-        let cross_part = vector![0.0, 0.0, l / 2.0];
-
-        let rod_to_world = Matrix4::identity(); // transformation from rod to world frame
-        let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
-
-        let mut state =
-            crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
-
-        let vdot = dvector![-1.0]; // acceleration around -y axis
-
-        // Act
-        let torquesout = inverse_dynamics(&mut state, &vdot);
-
-        // Assert
-        assert_eq!(torquesout, dvector![-1.0 / 3.0 * m * l * l]);
     }
 
     #[test]
@@ -246,22 +162,24 @@ mod simulate_tests {
 
         let mut state = build_cart(&m, &moment, &cross_part, &axis);
 
-        let q_init = dvector![2.0];
-        let v_init = dvector![-1.0];
+        let q_init = vec![2.0].to_joint_pos_vec();
+        let v_init = vec![-1.0].to_joint_vel_vec();
         state.update(&q_init, &v_init);
 
         // Act
         let final_time = 10.0;
         let dt = 0.02;
-        let (qs, vs) = simulate(&mut state, final_time, dt, |_state| dvector![0.0]);
+        let (qs, vs) = simulate(&mut state, final_time, dt, |_state| {
+            vec![0.0].to_joint_torque_vec()
+        });
 
         // Assert
-        let q_final = &qs[qs.len() - 1];
-        let v_final = &vs[vs.len() - 1];
+        let q_final = &qs[qs.len() - 1].to_float_dvec();
+        let v_final = &vs[vs.len() - 1].to_float_dvec();
 
-        let q_calc = q_init + v_init.clone() * final_time;
-        assert_close(q_final, &q_calc, 1e-4);
-        assert_eq!(*v_final, v_init);
+        let q_calc = q_init.to_float_dvec() + v_init.to_float_dvec() * final_time;
+        assert_dvec_close(q_final, &q_calc, 1e-4);
+        assert_dvec_close(v_final, &v_init.to_float_dvec(), 1e-4);
     }
 
     /// A cart pole system where a simple pendulum is dangled from a cart
@@ -299,20 +217,22 @@ mod simulate_tests {
         let acc = F_cart / (m_cart + m_pole);
         let pole_theta_expected = acc.atan2(GRAVITY); // steady state pole joint angle
 
-        let q_init = dvector![0.0, pole_theta_expected]; // set to steady state
-        let v_init = dvector![0.0, 0.0];
+        let q_init = vec![0.0, pole_theta_expected].to_joint_pos_vec(); // set to steady state
+        let v_init = vec![0.0, 0.0].to_joint_vel_vec();
         state.update(&q_init, &v_init);
 
         // Act
         let final_time = 20.0;
         let dt = 0.02;
-        let (qs, vs) = simulate(&mut state, final_time, dt, |_state| dvector![F_cart, 0.0]);
+        let (qs, vs) = simulate(&mut state, final_time, dt, |_state| {
+            vec![F_cart, 0.0].to_joint_torque_vec()
+        });
 
         // Assert
-        let v_final = vs[vs.len() - 1][0];
+        let v_final = vs[vs.len() - 1][0].float();
         assert!((v_final - acc * final_time).abs() < 1e-5);
 
-        let pole_theta_final = qs[qs.len() - 1][1];
+        let pole_theta_final = qs[qs.len() - 1][1].float();
         assert!((pole_theta_final - pole_theta_expected).abs() < 1e-5);
     }
 }

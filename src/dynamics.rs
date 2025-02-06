@@ -1,8 +1,10 @@
 use crate::{
     contact::contact_dynamics,
     inertia::compute_inertias,
+    joint::{JointAcceleration, JointTorque, JointVelocity, ToFloatDVec},
     mechanism::mass_matrix,
     spatial_force::{compute_torques, Wrench},
+    spatial_vector::SpatialVector,
     transform::{compute_bodies_to_root, Transform3D},
     twist::{compute_joint_twists, compute_twists_wrt_world, Twist},
     types::Float,
@@ -10,7 +12,7 @@ use crate::{
     GRAVITY,
 };
 use itertools::izip;
-use na::{zero, DMatrix, DVector};
+use na::{vector, zero, DMatrix, DVector};
 use nalgebra::Vector3;
 use std::collections::HashMap;
 
@@ -262,7 +264,7 @@ pub fn dynamics_solve(
 ///     M(q)vdot + c(q, v) = τ
 /// given joint configuration vector q, joint velocity vector v, and joint
 /// torques τ.
-pub fn dynamics(state: &MechanismState, tau: &DVector<Float>) -> DVector<Float> {
+pub fn dynamics(state: &MechanismState, tau: &Vec<JointTorque>) -> Vec<JointAcceleration> {
     if state.v.len() != tau.len() {
         panic!(
             "Joint velocity vector v length {} and joint torques vector τ length {} differ!",
@@ -293,21 +295,43 @@ pub fn dynamics(state: &MechanismState, tau: &DVector<Float>) -> DVector<Float> 
 
     let mass_matrix = mass_matrix(state, &bodies_to_root);
 
-    let vdot = dynamics_solve(&mass_matrix, &dynamics_bias, tau);
-    vdot
+    let vdot = dynamics_solve(&mass_matrix, &dynamics_bias, &tau.to_float_dvec());
+
+    // Convert from raw floats to joint acceleration types
+    let mut vdot_out = vec![];
+    let mut i = 0;
+    for v in state.v.iter() {
+        match v {
+            JointVelocity::Float(_) => {
+                vdot_out.push(JointAcceleration::Float(vdot[i]));
+                i += 1;
+            }
+            JointVelocity::Spatial(_) => {
+                let angular = vector![vdot[i], vdot[i + 1], vdot[i + 2]];
+                let linear = vector![vdot[i + 3], vdot[i + 4], vdot[i + 5]];
+                vdot_out.push(JointAcceleration::Spatial(SpatialVector {
+                    angular,
+                    linear,
+                }));
+                i += 6;
+            }
+        }
+    }
+    vdot_out
 }
 
 #[cfg(test)]
 mod dynamics_tests {
+    use crate::joint::ToJointTorqueVec;
     use na::{dvector, vector, Matrix3, Matrix4};
 
     use crate::{
         double_pendulum::SimpleDoublePendulum,
         helpers::{build_double_pendulum, build_pendulum},
         inertia::SpatialInertia,
-        joint::{revolute::RevoluteJoint, Joint},
+        joint::{revolute::RevoluteJoint, Joint, ToJointPositionVec, ToJointVelocityVec},
         rigid_body::RigidBody,
-        util::assert_close,
+        util::assert_dvec_close,
         GRAVITY, PI,
     };
 
@@ -331,10 +355,13 @@ mod dynamics_tests {
         let state = crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         // Act
-        let joint_accels = dynamics(&state, &dvector![0.0]);
+        let joint_accels = dynamics(&state, &vec![0.0].to_joint_torque_vec());
 
         // Assert
-        assert_eq!(joint_accels, dvector![3.0 * GRAVITY / (2.0 * l)]);
+        assert_eq!(
+            joint_accels.to_float_dvec(),
+            dvector![3.0 * GRAVITY / (2.0 * l)]
+        );
     }
 
     /// world frame ^z       rod/joint frame ^y
@@ -360,10 +387,13 @@ mod dynamics_tests {
         let state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         // Act
-        let joint_accels = dynamics(&state, &dvector![0.0]);
+        let joint_accels = dynamics(&state, &vec![0.0].to_joint_torque_vec());
 
         // Assert
-        assert_eq!(joint_accels, dvector![-3.0 * GRAVITY / (2.0 * l)]);
+        assert_eq!(
+            joint_accels.to_float_dvec(),
+            dvector![-3.0 * GRAVITY / (2.0 * l)]
+        );
     }
 
     /// world frame ^z       rod/joint frame ^y
@@ -391,10 +421,10 @@ mod dynamics_tests {
         let state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         // Act
-        let joint_accels = dynamics(&state, &dvector![0.0]);
+        let joint_accels = dynamics(&state, &vec![0.0].to_joint_torque_vec());
 
         // Assert
-        let error = (joint_accels - dvector![-3.0 * GRAVITY / (2.0 * l)]).abs();
+        let error = (joint_accels.to_float_dvec() - dvector![-3.0 * GRAVITY / (2.0 * l)]).abs();
         assert!(error < dvector![1e-6], "\nError too large: {:#?}", error);
         // Note: Needs to check for close equality because of numerical error
         // TODO: Handle this such that can check for exact equality?
@@ -421,10 +451,10 @@ mod dynamics_tests {
 
         // Act
         let torque = -m * GRAVITY * l / 2.0;
-        let joint_accels = dynamics(&state, &dvector![torque]);
+        let joint_accels = dynamics(&state, &vec![torque].to_joint_torque_vec());
 
         // Assert
-        let error = (joint_accels - dvector![0.0]).abs();
+        let error = (joint_accels.to_float_dvec() - dvector![0.0]).abs();
         assert!(
             error < dvector![1e-6],
             "\njoint accel error too large: {:#?}",
@@ -451,10 +481,10 @@ mod dynamics_tests {
         let state = crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         // Act
-        let joint_accels = dynamics(&state, &dvector![0.0]);
+        let joint_accels = dynamics(&state, &vec![0.0].to_joint_torque_vec());
 
         // Assert
-        assert_eq!(joint_accels, dvector![GRAVITY / l]);
+        assert_eq!(joint_accels.to_float_dvec(), dvector![GRAVITY / l]);
     }
 
     /// Release a double pendulum (point masses on massless rods) from
@@ -503,16 +533,20 @@ mod dynamics_tests {
                     mass: m,
                 })
             ],
-            q: dvector![0.0, 0.0],
-            v: dvector![0.0, 0.0],
+            q: vec![0.0, 0.0].to_joint_pos_vec(),
+            v: vec![0.0, 0.0].to_joint_vel_vec(),
             halfspaces: dvector![],
         };
 
         // Act
-        let joint_accels = dynamics(&state, &dvector![0.0, 0.0]);
+        let joint_accels = dynamics(&state, &vec![0.0, 0.0].to_joint_torque_vec());
 
         // Assert
-        assert_close(&joint_accels, &dvector![GRAVITY / l, -GRAVITY / l], 1e-6);
+        assert_dvec_close(
+            &joint_accels.to_float_dvec(),
+            &dvector![GRAVITY / l, -GRAVITY / l],
+            1e-6,
+        );
     }
 
     #[test]
@@ -544,16 +578,16 @@ mod dynamics_tests {
         let q2 = 5.0;
         let q1dot = 3.0;
         let q2dot = 5.0;
-        let q_init = dvector![q1, q2];
-        let v_init = dvector![q1dot, q2dot];
+        let q_init = vec![q1, q2].to_joint_pos_vec();
+        let v_init = vec![q1dot, q2dot].to_joint_vel_vec();
         state.update(&q_init, &v_init);
 
         // Act
-        let vdot = dynamics(&state, &dvector![0.0, 0.0]);
+        let vdot = dynamics(&state, &vec![0.0, 0.0].to_joint_torque_vec());
 
         // Assert
         let double_pendulum = SimpleDoublePendulum::new(m, m, l, l, q1, q2, q1dot, q2dot);
         let vdot_ref = DVector::from_column_slice(double_pendulum.dynamics().as_slice());
-        assert_close(&vdot, &vdot_ref, 1e-5);
+        assert_dvec_close(&vdot.to_float_dvec(), &vdot_ref, 1e-5);
     }
 }

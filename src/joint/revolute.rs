@@ -1,4 +1,4 @@
-use na::{zero, Matrix4};
+use na::{Matrix3xX, Matrix4};
 use nalgebra::Vector3;
 use std::ops::Mul;
 
@@ -42,8 +42,8 @@ impl RevoluteJoint {
             body: self.transform.from.clone(),
             base: self.transform.to.clone(),
             frame: self.transform.from.clone(),
-            angular: self.axis,
-            linear: zero(),
+            angular: Matrix3xX::from_column_slice(self.axis.as_slice()),
+            linear: Matrix3xX::zeros(1),
         }
     }
 

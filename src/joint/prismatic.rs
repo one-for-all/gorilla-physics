@@ -1,4 +1,4 @@
-use na::{zero, Matrix4};
+use na::{zero, Matrix3xX, Matrix4};
 use nalgebra::Vector3;
 
 use crate::{
@@ -33,8 +33,8 @@ impl PrismaticJoint {
             body: self.transform.from.clone(),
             base: self.transform.to.clone(),
             frame: self.transform.from.clone(),
-            angular: zero(),
-            linear: self.axis,
+            angular: Matrix3xX::zeros(1),
+            linear: Matrix3xX::from_column_slice(self.axis.as_slice()),
         }
     }
 

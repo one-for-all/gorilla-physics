@@ -1,13 +1,14 @@
-use na::{dvector, vector, Matrix3, Matrix4, Vector3};
-
+use crate::joint::ToJointPositionVec;
+use crate::joint::ToJointVelocityVec;
 use crate::{
     inertia::SpatialInertia,
-    joint::{prismatic::PrismaticJoint, revolute::RevoluteJoint, Joint},
+    joint::{prismatic::PrismaticJoint, revolute::RevoluteJoint, Joint, JointPosition},
     mechanism::MechanismState,
     rigid_body::RigidBody,
     transform::Transform3D,
     types::Float,
 };
+use na::{dvector, vector, Matrix3, Matrix4, Vector3};
 
 /// Build a mechanism state of a pendulum
 pub fn build_pendulum(
@@ -36,8 +37,8 @@ pub fn build_pendulum(
         })],
         treejointids: dvector![1],
         bodies: dvector![rod],
-        q: dvector![0.0],
-        v: dvector![0.0],
+        q: vec![0.0].to_joint_pos_vec(),
+        v: vec![0.0].to_joint_vel_vec(),
         halfspaces: dvector![],
     };
 
@@ -88,8 +89,8 @@ pub fn build_double_pendulum(
                 mass: mass.clone(),
             })
         ],
-        q: dvector![0.0, 0.0],
-        v: dvector![0.0, 0.0],
+        q: vec![0.0, 0.0].to_joint_pos_vec(),
+        v: vec![0.0, 0.0].to_joint_vel_vec(),
         halfspaces: dvector![],
     };
 
@@ -121,8 +122,8 @@ pub fn build_cart(
             cross_part: *cross_part,
             mass: *mass
         })],
-        q: dvector![0.0],
-        v: dvector![0.0],
+        q: vec![0.0].to_joint_pos_vec(),
+        v: vec![0.0].to_joint_vel_vec(),
         halfspaces: dvector![],
     };
     state
@@ -175,8 +176,8 @@ pub fn build_cart_pole(
                 mass: *mass_pole
             })
         ],
-        q: dvector![0.0, 0.0],
-        v: dvector![0.0, 0.0],
+        q: vec![0.0, 0.0].to_joint_pos_vec(),
+        v: vec![0.0, 0.0].to_joint_vel_vec(),
         halfspaces: dvector![],
     };
 

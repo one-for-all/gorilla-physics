@@ -1,3 +1,4 @@
+use crate::joint::{JointTorque, ToJointTorqueVec};
 use crate::PI;
 use na::{dvector, DVector};
 
@@ -11,15 +12,15 @@ pub mod swingup;
 /// where q is the angle from the bottom, and Bv is the damping term.
 ///
 /// Reference: https://underactuated.csail.mit.edu/pend.html#section2
-pub fn pendulum_gravity_inversion(state: &MechanismState) -> DVector<Float> {
+pub fn pendulum_gravity_inversion(state: &MechanismState) -> Vec<JointTorque> {
     let mass = state.bodies[0].inertia.mass;
     let length_to_com = state.bodies[0].inertia.center_of_mass().coords.norm();
-    let q = state.q[0];
+    let q = state.q[0].float();
 
     let gravity_inversion = 2.0 * mass * GRAVITY * length_to_com * q.sin();
-    let damping = -10.0 * state.v[0];
+    let damping = -10.0 * state.v[0].float();
     let torque = gravity_inversion + damping;
-    dvector![torque]
+    vec![torque].to_joint_torque_vec()
 }
 
 /// Control algorithm that pumps energy into the system to achieve the desired
@@ -32,16 +33,16 @@ pub fn pendulum_gravity_inversion(state: &MechanismState) -> DVector<Float> {
 /// Note: it might not work as amazingly here in sim, due to numerical error.
 ///
 /// Reference: https://underactuated.csail.mit.edu/pend.html#section3
-pub fn pendulum_energy_shaping(state: &MechanismState) -> DVector<Float> {
+pub fn pendulum_energy_shaping(state: &MechanismState) -> Vec<JointTorque> {
     let mass = state.bodies[0].inertia.mass;
     let length_to_com = state.bodies[0].inertia.center_of_mass().coords.norm();
     let moment = state.bodies[0].inertia.moment;
 
     let axis = state.treejoints[0].axis();
 
-    let q = state.q[0];
-    let v = state.v[0];
-    let omega = axis * v;
+    let q = state.q[0].float();
+    let v = state.v[0].float();
+    let omega = axis * *v;
 
     let E_desired = mass * GRAVITY * length_to_com;
     let KE = (0.5 * omega.transpose() * moment * omega)[0];
@@ -49,11 +50,11 @@ pub fn pendulum_energy_shaping(state: &MechanismState) -> DVector<Float> {
     let E_diff = KE + PE - E_desired;
 
     let torque = -0.1 * v * E_diff;
-    dvector![torque]
+    vec![torque].to_joint_torque_vec()
 }
 
-pub fn pendulum_swing_up_and_balance(state: &MechanismState) -> DVector<Float> {
-    let q = state.q[0];
+pub fn pendulum_swing_up_and_balance(state: &MechanismState) -> Vec<JointTorque> {
+    let q = state.q[0].float();
     if (q - PI).abs() > 0.15 {
         pendulum_energy_shaping(state) // Swing up
     } else {
@@ -64,10 +65,10 @@ pub fn pendulum_swing_up_and_balance(state: &MechanismState) -> DVector<Float> {
 /// PID controller for double pendulum around upright position
 /// actually with only P & D terms at the moment
 pub fn pid(state: &MechanismState) -> DVector<Float> {
-    let q1 = state.q[0];
-    let q2 = state.q[1];
-    let v1 = state.v[0];
-    let v2 = state.v[1];
+    let q1 = state.q[0].float();
+    let q2 = state.q[1].float();
+    let v1 = state.v[0].float();
+    let v2 = state.v[1].float();
 
     let kp1 = 5000.0;
     let kd1 = 100.0;
@@ -88,9 +89,10 @@ pub fn pid(state: &MechanismState) -> DVector<Float> {
 
 #[cfg(test)]
 mod control_tests {
-    use na::{dvector, vector, Matrix3, Matrix4};
-
+    use crate::joint::ToJointPositionVec;
+    use crate::joint::ToJointVelocityVec;
     use crate::{simulate::simulate, PI};
+    use na::{vector, Matrix3, Matrix4};
 
     use super::*;
 
@@ -113,8 +115,8 @@ mod control_tests {
         let mut state =
             crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
-        let q_init = dvector![0.1]; // give it some initial displacement
-        let v_init = dvector![0.0];
+        let q_init = vec![0.1].to_joint_pos_vec(); // give it some initial displacement
+        let v_init = vec![0.0].to_joint_vel_vec();
         state.update(&q_init, &v_init);
 
         // Act
@@ -123,7 +125,7 @@ mod control_tests {
         let (qs, vs) = simulate(&mut state, final_time, dt, pendulum_gravity_inversion);
 
         // Assert
-        let q_final = qs.as_slice().last().unwrap()[0];
+        let q_final = qs.as_slice().last().unwrap()[0].float();
         let q_error = q_final - PI;
         assert!(
             q_error.abs() < 1e-4,
@@ -131,7 +133,7 @@ mod control_tests {
             q_error
         );
 
-        let v_final = vs.as_slice().last().unwrap()[0];
+        let v_final = vs.as_slice().last().unwrap()[0].float();
         assert!(
             v_final.abs() < 1e-4,
             "Pendulum should stop at the top, v: {}",
@@ -157,8 +159,8 @@ mod control_tests {
         let mut state =
             crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
-        let q_init = dvector![0.0];
-        let v_init = dvector![0.1]; // give it some initial velocity
+        let q_init = vec![0.0].to_joint_pos_vec();
+        let v_init = vec![0.1].to_joint_vel_vec(); // give it some initial velocity
         state.update(&q_init, &v_init);
 
         // Act
@@ -169,7 +171,7 @@ mod control_tests {
         // Assert
         let q_max = qs
             .iter()
-            .map(|q| q[0])
+            .map(|q| q[0].float().clone())
             .fold(Float::NEG_INFINITY, Float::max);
         assert!(
             q_max > 3.0,

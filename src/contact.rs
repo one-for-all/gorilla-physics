@@ -122,9 +122,10 @@ pub fn calculate_contact_force(
 
 #[cfg(test)]
 mod contact_tests {
+    use crate::joint::ToJointTorqueVec;
     use na::{dvector, vector, Matrix3, Matrix4};
 
-    use crate::{helpers::build_pendulum, simulate::simulate, util::assert_close, PI};
+    use crate::{helpers::build_pendulum, simulate::simulate, util::assert_dvec_close, PI};
 
     use super::*;
 
@@ -154,11 +155,13 @@ mod contact_tests {
         // Act
         let final_time = 5.0;
         let dt = 0.001;
-        let (qs, _vs) = simulate(&mut state, final_time, dt, |_state| dvector![0.0]);
+        let (qs, _vs) = simulate(&mut state, final_time, dt, |_state| {
+            vec![0.0].to_joint_torque_vec()
+        });
 
         // Assert
-        let q_final = qs[qs.len() - 1][0];
+        let q_final = qs[qs.len() - 1][0].float();
         let q_expect = 30.0 * PI / 180.0; // 30 degrees
-        assert_close(&dvector![q_final], &dvector![q_expect], 1e-3);
+        assert_dvec_close(&dvector![*q_final], &dvector![q_expect], 1e-3);
     }
 }

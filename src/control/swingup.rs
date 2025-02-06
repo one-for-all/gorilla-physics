@@ -1,16 +1,16 @@
+use crate::joint::JointTorque;
+use crate::joint::ToJointTorqueVec;
 use crate::{energy::double_pendulum_potential_energy2, PI, TWO_PI};
-use na::{dvector, DVector};
-
 use crate::{mechanism::MechanismState, types::Float, GRAVITY};
 
 /// Swing-up controller for a acrobot
 /// Reference: ENERGY BASED CONTROL OF A CLASS OF UNDERACTUATED MECHANICAL
 /// SYSTEMS by Mark W. Spong, 1996
-pub fn swingup_acrobot(state: &MechanismState, m: &Float, l: &Float) -> DVector<Float> {
-    let q1 = state.q[0];
-    let q2 = state.q[1];
-    let q1dot = state.v[0];
-    let q2dot = state.v[1];
+pub fn swingup_acrobot(state: &MechanismState, m: &Float, l: &Float) -> Vec<JointTorque> {
+    let q1 = state.q[0].float();
+    let q2 = state.q[1].float();
+    let q1dot = state.v[0].float();
+    let q2dot = state.v[1].float();
 
     let KE = state.kinetic_energy();
     let PE = double_pendulum_potential_energy2(&state, m, l);
@@ -65,7 +65,7 @@ pub fn swingup_acrobot(state: &MechanismState, m: &Float, l: &Float) -> DVector<
 
     // Computes the torque that sets second joint acceleration to u_bar+u_pd
     let tau = m22_bar * (u_bar + u_pd) + h2_bar + phi2_bar;
-    dvector![0., tau]
+    vec![0., tau].to_joint_torque_vec()
 }
 
 /// Swing-up controller for cart-pole system
@@ -78,9 +78,9 @@ pub fn swingup_cart_pole(
     m_c: &Float,
     m_p: &Float,
     l: &Float,
-) -> DVector<Float> {
-    let theta = state.q[1];
-    let theta_dot = state.v[1];
+) -> Vec<JointTorque> {
+    let theta = state.q[1].float();
+    let theta_dot = state.v[1].float();
     let cos_theta = theta.cos();
     let sin_theta = theta.sin();
     let KE = 0.5 * m_p * l * l * theta_dot * theta_dot; // KE of the pole
@@ -94,8 +94,8 @@ pub fn swingup_cart_pole(
     let u_bar = K * theta_dot * cos_theta * dE / (m_p * l);
 
     // PD closing of cart position error
-    let x = state.q[0];
-    let x_dot = state.v[0];
+    let x = state.q[0].float();
+    let x_dot = state.v[0].float();
     let Kp = 1.0;
     let Kd = 1.0;
     let u_pd = -Kp * x - Kd * x_dot;
@@ -106,20 +106,22 @@ pub fn swingup_cart_pole(
         - m_p * GRAVITY * sin_theta * cos_theta
         - m_p * l * sin_theta * theta_dot * theta_dot;
 
-    dvector![f, 0.0]
+    vec![f, 0.0].to_joint_torque_vec()
 }
 
 #[cfg(test)]
 mod swingup_tests {
+    use crate::joint::{ToJointPositionVec, ToJointVelocityVec};
     use itertools::izip;
-    use na::{dvector, vector, Matrix3, Matrix4};
+    use na::{dvector, vector, DVector, Matrix3, Matrix4};
 
     use crate::{
         energy::cart_pole_energy,
         helpers::{build_cart_pole, build_double_pendulum},
+        joint::ToFloatDVec,
         simulate::simulate,
         transform::Transform3D,
-        util::assert_close,
+        util::assert_dvec_close,
     };
 
     use super::*;
@@ -149,8 +151,8 @@ mod swingup_tests {
             &axis,
         );
 
-        let q_init = dvector![-PI / 2.0 + 0.1, 0.];
-        let v_init = dvector![0., 0.];
+        let q_init = vec![-PI / 2.0 + 0.1, 0.].to_joint_pos_vec();
+        let v_init = vec![0., 0.].to_joint_vel_vec();
         state.update(&q_init, &v_init);
 
         // Act
@@ -171,7 +173,7 @@ mod swingup_tests {
 
         let mut swungup = false;
         for (q, v) in izip!(qs.iter(), vs.iter()) {
-            if check_swungup(&q, &v) {
+            if check_swungup(&q.to_float_dvec(), &v.to_float_dvec()) {
                 swungup = true;
                 break;
             }
@@ -208,8 +210,8 @@ mod swingup_tests {
             &axis_pole,
         );
 
-        let q_init = dvector![0.0, 0.1];
-        let v_init = dvector![0.0, 0.0];
+        let q_init = vec![0.0, 0.1].to_joint_pos_vec();
+        let v_init = vec![0.0, 0.0].to_joint_vel_vec();
         state.update(&q_init, &v_init);
 
         // Act
@@ -229,7 +231,7 @@ mod swingup_tests {
         }
         let mut swungup = false;
         for (q, v) in izip!(qs.iter(), vs.iter()) {
-            if check_swungup(&q, &v) {
+            if check_swungup(&q.to_float_dvec(), &v.to_float_dvec()) {
                 swungup = true;
                 break;
             }
@@ -238,11 +240,11 @@ mod swingup_tests {
 
         // Check that final cart position is near origin, and energy is close to
         // upright pole on a stationary cart
-        let cart_q = qs[qs.len() - 1][0];
-        let cart_v = vs[vs.len() - 1][0];
+        let cart_q = qs[qs.len() - 1][0].float();
+        let cart_v = vs[vs.len() - 1][0].float();
         let E = cart_pole_energy(&state, &m_pole, &l_pole);
         let E_expected = m_pole * l_pole * GRAVITY;
-        assert_close(&dvector![cart_q, cart_v], &dvector![0.0, 0.0], 1e-1);
-        assert_close(&dvector![E], &dvector![E_expected], 1e-1);
+        assert_dvec_close(&dvector![*cart_q, *cart_v], &dvector![0.0, 0.0], 1e-1);
+        assert_dvec_close(&dvector![E], &dvector![E_expected], 1e-1);
     }
 }

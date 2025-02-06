@@ -2,8 +2,8 @@ use crate::{mechanism::MechanismState, types::Float, GRAVITY};
 
 /// Compute the gravitational potential energy of a simple double pendulum system
 pub fn double_pendulum_potential_energy(state: &MechanismState, m: &Float, l: &Float) -> Float {
-    let q1 = state.q[0];
-    let q2 = state.q[1];
+    let q1 = state.q[0].float();
+    let q2 = state.q[1].float();
 
     let h1 = -l * q1.cos();
     let h2 = -l * q1.cos() - l * (q1 + q2).cos();
@@ -13,8 +13,8 @@ pub fn double_pendulum_potential_energy(state: &MechanismState, m: &Float, l: &F
 /// Compute the gravitational potential energy of a simple double pendulum
 /// system, where the q=0 pose is horizontal
 pub fn double_pendulum_potential_energy2(state: &MechanismState, m: &Float, l: &Float) -> Float {
-    let q1 = state.q[0];
-    let q2 = state.q[1];
+    let q1 = state.q[0].float();
+    let q2 = state.q[1].float();
 
     let h1 = l * q1.sin();
     let h2 = l * q1.sin() + l * (q1 + q2).sin();
@@ -28,7 +28,7 @@ pub fn double_pendulum_energy(state: &MechanismState, m: &Float, l: &Float) -> F
 
 /// Compute cart-pole system total energy
 pub fn cart_pole_energy(state: &MechanismState, m_p: &Float, l: &Float) -> Float {
-    let theta = state.q[1];
+    let theta = state.q[1].float();
     let cos_theta = theta.cos();
     let KE = state.kinetic_energy();
     let PE = -m_p * GRAVITY * l * cos_theta;
@@ -40,15 +40,19 @@ pub fn cart_pole_energy(state: &MechanismState, m_p: &Float, l: &Float) -> Float
 mod energy_tests {
     use std::f32::consts::PI;
 
+    use crate::joint::ToJointPositionVec;
+    use crate::joint::ToJointTorqueVec;
     use na::{dvector, vector, Matrix3, Matrix4};
 
+    use crate::joint::ToJointVelocityVec;
     use crate::{
         energy::double_pendulum_energy,
         helpers::{build_cart_pole, build_double_pendulum},
+        joint::JointPosition,
         simulate::simulate,
         transform::Transform3D,
         types::Float,
-        util::assert_close,
+        util::assert_dvec_close,
     };
 
     use super::cart_pole_energy;
@@ -78,8 +82,8 @@ mod energy_tests {
             &axis,
         );
 
-        let q_init = dvector![1., 1.];
-        let v_init = dvector![1., 1.];
+        let q_init = vec![1., 1.].to_joint_pos_vec();
+        let v_init = vec![1., 1.].to_joint_vel_vec();
         state.update(&q_init, &v_init);
 
         let init_energy = double_pendulum_energy(&state, &m, &l);
@@ -87,11 +91,13 @@ mod energy_tests {
         // Act
         let final_time = 2.0;
         let dt = 0.001;
-        let (_qs, _vs) = simulate(&mut state, final_time, dt, |_state| dvector![0.0, 0.0]);
+        let (_qs, _vs) = simulate(&mut state, final_time, dt, |_state| {
+            vec![0.0, 0.0].to_joint_torque_vec()
+        });
 
         // Assert
         let final_energy = double_pendulum_energy(&state, &m, &l);
-        assert_close(&dvector![final_energy], &dvector![init_energy], 1e-1);
+        assert_dvec_close(&dvector![final_energy], &dvector![init_energy], 1e-1);
         // TODO: check for lower tolerance when better integration scheme is implemented
     }
 
@@ -124,8 +130,8 @@ mod energy_tests {
             &axis_pole,
         );
 
-        let q_init = dvector![0.0, PI + 0.1];
-        let v_init = dvector![0.0, 0.0];
+        let q_init = vec![JointPosition::Float(0.0), JointPosition::Float(PI + 0.1)];
+        let v_init = vec![0.0, 0.0].to_joint_vel_vec();
         state.update(&q_init, &v_init);
 
         let init_energy = cart_pole_energy(&state, &m_pole, &l_pole);
@@ -133,11 +139,13 @@ mod energy_tests {
         // Act
         let final_time = 2.0;
         let dt = 0.001;
-        let (_qs, _vs) = simulate(&mut state, final_time, dt, |_state| dvector![0.0, 0.0]);
+        let (_qs, _vs) = simulate(&mut state, final_time, dt, |_state| {
+            vec![0.0, 0.0].to_joint_torque_vec()
+        });
 
         // Assert
         let final_energy = cart_pole_energy(&state, &m_pole, &l_pole);
-        assert_close(&dvector![final_energy], &dvector![init_energy], 1e-1);
+        assert_dvec_close(&dvector![final_energy], &dvector![init_energy], 1e-1);
         // TODO: check for lower tolerance when better integration scheme is implemented
     }
 }

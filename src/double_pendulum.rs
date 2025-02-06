@@ -55,12 +55,9 @@ impl SimpleDoublePendulum {
 
 #[cfg(test)]
 mod double_pendulum_tests {
-
-    use na::{dvector, DVector};
-
-    use crate::util::assert_close;
-
     use super::*;
+    use crate::util::assert_dvec_close;
+    use na::{dvector, DVector};
 
     #[test]
     fn dynamics() {
@@ -81,6 +78,6 @@ mod double_pendulum_tests {
         let vdot = DVector::from_column_slice(dp.dynamics().as_slice());
 
         // Assert
-        assert_close(&vdot, &dvector![68.8824, -58.9877], 1e-4); // reference values from RigidBodyDynamics.jl
+        assert_dvec_close(&vdot, &dvector![68.8824, -58.9877], 1e-4); // reference values from RigidBodyDynamics.jl
     }
 }
