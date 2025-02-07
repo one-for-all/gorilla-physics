@@ -147,7 +147,7 @@ impl<'a, 'b> Mul<&'b Transform3D> for &'a Transform3D {
     }
 }
 
-pub fn compute_bodies_to_root(state: &MechanismState) -> HashMap<u32, Transform3D> {
+pub fn compute_bodies_to_root(state: &MechanismState) -> HashMap<usize, Transform3D> {
     let rootid = 0;
     let mut bodies_to_root = HashMap::new();
     bodies_to_root.insert(rootid, Transform3D::identity("world", "world"));

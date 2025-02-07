@@ -25,15 +25,15 @@ use crate::{mechanism::MechanismState, spatial_acceleration::SpatialAcceleration
 /// Reference: Table 5.1 in "Robot Dynamics Algorithms" by Roy Featherstone
 pub fn newton_euler(
     state: &MechanismState,
-    accels: &HashMap<u32, SpatialAcceleration>,
-    bodies_to_root: &HashMap<u32, Transform3D>,
-    twists: &HashMap<u32, Twist>,
-) -> HashMap<u32, Wrench> {
+    accels: &HashMap<usize, SpatialAcceleration>,
+    bodies_to_root: &HashMap<usize, Transform3D>,
+    twists: &HashMap<usize, Twist>,
+) -> HashMap<usize, Wrench> {
     // Compute the body inertias wrt. world frame
     let inertias = compute_inertias(state, bodies_to_root);
 
     // Compute the wrenches at each joint for each body expressed in world frame
-    let mut wrenches: HashMap<u32, Wrench> = HashMap::new();
+    let mut wrenches: HashMap<usize, Wrench> = HashMap::new();
     for jointid in state.treejointids.iter() {
         let bodyid = jointid;
         let I = inertias.get(bodyid).unwrap();
@@ -118,10 +118,10 @@ pub fn coriolis_accel(body_twist: &Twist, joint_twist: &Twist) -> SpatialAcceler
 /// Reference: Chapter 5.3 The Recursive Newton-Euler Algorithm in "Robot Dynamics Algorithms" by Roy Featherstone
 pub fn compute_coriolis_bias_accelerations(
     state: &MechanismState,
-    bodies_to_root: &HashMap<u32, Transform3D>,
-    twists: &HashMap<u32, Twist>,
-    joint_twists: &HashMap<u32, Twist>,
-) -> HashMap<u32, SpatialAcceleration> {
+    bodies_to_root: &HashMap<usize, Transform3D>,
+    twists: &HashMap<usize, Twist>,
+    joint_twists: &HashMap<usize, Twist>,
+) -> HashMap<usize, SpatialAcceleration> {
     let mut coriolis_bias_accels = HashMap::new();
     let rootid = 0;
     coriolis_bias_accels.insert(
@@ -175,10 +175,10 @@ pub fn compute_coriolis_bias_accelerations(
 /// Imagine the whole system is in a elevator accelerating upwards at 9.81 m/s^2.
 pub fn bias_accelerations(
     state: &MechanismState,
-    bodies_to_root: &HashMap<u32, Transform3D>,
-    twists: &HashMap<u32, Twist>,
-    joint_twists: &HashMap<u32, Twist>,
-) -> HashMap<u32, SpatialAcceleration> {
+    bodies_to_root: &HashMap<usize, Transform3D>,
+    twists: &HashMap<usize, Twist>,
+    joint_twists: &HashMap<usize, Twist>,
+) -> HashMap<usize, SpatialAcceleration> {
     let mut bias_accels = HashMap::new();
     let coriolis_bias_accels =
         compute_coriolis_bias_accelerations(state, bodies_to_root, twists, joint_twists);
@@ -208,10 +208,10 @@ pub fn bias_accelerations(
 /// acceleration vector vdot, and contact wrenches.
 pub fn dynamics_bias(
     state: &MechanismState,
-    bodies_to_root: &HashMap<u32, Transform3D>,
-    joint_twists: &HashMap<u32, Twist>,
-    twists: &HashMap<u32, Twist>,
-    contact_wrenches: &HashMap<u32, Wrench>,
+    bodies_to_root: &HashMap<usize, Transform3D>,
+    joint_twists: &HashMap<usize, Twist>,
+    twists: &HashMap<usize, Twist>,
+    contact_wrenches: &HashMap<usize, Wrench>,
 ) -> DVector<Float> {
     let bias_accels = bias_accelerations(&state, bodies_to_root, &twists, &joint_twists);
 

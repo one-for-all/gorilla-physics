@@ -71,8 +71,8 @@ impl<'a, 'b> Sub<&'b Wrench> for &'a Wrench {
 /// Wrenches are expressed in the world frame.
 pub fn compute_torques(
     state: &MechanismState,
-    wrenches: &HashMap<u32, Wrench>,
-    bodies_to_root: &HashMap<u32, Transform3D>,
+    wrenches: &HashMap<usize, Wrench>,
+    bodies_to_root: &HashMap<usize, Transform3D>,
 ) -> DVector<Float> {
     let mut torquesout: DVector<Float> = dvector![];
 

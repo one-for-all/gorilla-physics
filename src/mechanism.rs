@@ -10,20 +10,23 @@ use crate::joint::Joint;
 use crate::joint::JointPosition;
 use crate::joint::JointVelocity;
 use crate::momentum::MomentumMatrix;
+use crate::pose::Pose;
 use crate::rigid_body::RigidBody;
+use crate::spatial_vector::SpatialVector;
 use crate::transform::compute_bodies_to_root;
 use crate::transform::Transform3D;
 use crate::twist::compute_joint_twists;
 use crate::twist::compute_twists_wrt_world;
 use crate::types::Float;
 use itertools::izip;
+use na::dvector;
 use na::DMatrix;
 use nalgebra::DVector;
 
 /// MechanismState stores the state information about the mechanism
 pub struct MechanismState {
     pub treejoints: DVector<Joint>,
-    pub treejointids: DVector<u32>,
+    pub treejointids: DVector<usize>,
     pub bodies: DVector<RigidBody>,
     pub q: Vec<JointPosition>, // joint configuration/position vector
     pub v: Vec<JointVelocity>, // joint velocity vector
@@ -31,7 +34,41 @@ pub struct MechanismState {
 }
 
 impl MechanismState {
-    // TODO: Add and use init function, which performs updates based on q, v
+    /// Create a new MechanismState with zero initial condition
+    pub fn new(
+        treejoints: DVector<Joint>,
+        bodies: DVector<RigidBody>,
+        halfspaces: DVector<HalfSpace>,
+    ) -> Self {
+        let njoints = treejoints.len();
+        let mut q = vec![];
+        let mut v = vec![];
+        for j in treejoints.iter() {
+            match j {
+                Joint::RevoluteJoint(_) => {
+                    q.push(JointPosition::Float(0.0));
+                    v.push(JointVelocity::Float(0.0));
+                }
+                Joint::PrismaticJoint(_) => {
+                    q.push(JointPosition::Float(0.0));
+                    v.push(JointVelocity::Float(0.0));
+                }
+                Joint::FloatingJoint(_) => {
+                    q.push(JointPosition::Pose(Pose::identity()));
+                    v.push(JointVelocity::Spatial(SpatialVector::zero()));
+                }
+            }
+        }
+
+        MechanismState {
+            treejoints,
+            treejointids: DVector::from_vec(Vec::from_iter(1..njoints + 1)),
+            bodies,
+            q,
+            v,
+            halfspaces,
+        }
+    }
 
     pub fn update(&mut self, q: &Vec<JointPosition>, v: &Vec<JointVelocity>) {
         self.q = q.clone();
@@ -98,8 +135,8 @@ impl MechanismState {
 /// Computes the motion space of each joint, expressed in world frame.
 pub fn compute_motion_subspaces(
     state: &MechanismState,
-    bodies_to_root: &HashMap<u32, Transform3D>,
-) -> HashMap<u32, GeometricJacobian> {
+    bodies_to_root: &HashMap<usize, Transform3D>,
+) -> HashMap<usize, GeometricJacobian> {
     let mut motion_subspaces = HashMap::new();
     for (bodyid, joint) in izip!(state.treejointids.iter(), state.treejoints.iter()) {
         let body_to_root = bodies_to_root.get(bodyid).unwrap();
@@ -112,8 +149,8 @@ pub fn compute_motion_subspaces(
 /// Compute the composite body inertia of each body, expressed in world frame
 pub fn compute_crb_inertias(
     state: &MechanismState,
-    inertias: &HashMap<u32, SpatialInertia>,
-) -> HashMap<u32, SpatialInertia> {
+    inertias: &HashMap<usize, SpatialInertia>,
+) -> HashMap<usize, SpatialInertia> {
     let mut crb_inertias = HashMap::new();
     for bodyid in state.treejointids.iter().rev() {
         let inertia = inertias.get(bodyid).unwrap();
@@ -141,7 +178,7 @@ pub fn compute_crb_inertias(
 /// Ref: Table 6.2 in Featherstone's Rigid Body Dynamics Algorithms, 2008
 pub fn mass_matrix(
     state: &MechanismState,
-    bodies_to_root: &HashMap<u32, Transform3D>,
+    bodies_to_root: &HashMap<usize, Transform3D>,
 ) -> DMatrix<Float> {
     let n_v = state
         .v
@@ -191,15 +228,10 @@ pub fn mass_matrix(
 
 #[cfg(test)]
 mod mechanism_tests {
-    use std::vec;
 
     use na::{dvector, vector, Matrix3};
 
-    use crate::{
-        joint::{floating::FloatingJoint, revolute::RevoluteJoint},
-        pose::Pose,
-        spatial_vector::SpatialVector,
-    };
+    use crate::joint::{floating::FloatingJoint, revolute::RevoluteJoint};
 
     use super::*;
 
@@ -261,37 +293,25 @@ mod mechanism_tests {
             mass: m_leg,
         });
 
-        let state = MechanismState {
-            treejoints: dvector![
-                Joint::FloatingJoint(FloatingJoint {
-                    init_mat: body_to_world.mat.clone(),
-                    transform: body_to_world,
-                }),
-                Joint::RevoluteJoint(RevoluteJoint {
-                    init_mat: leg_to_body.mat.clone(),
-                    transform: leg_to_body,
-                    axis: axis_leg,
-                }),
-                Joint::RevoluteJoint(RevoluteJoint {
-                    init_mat: leg2_to_leg.mat.clone(),
-                    transform: leg2_to_leg,
-                    axis: axis_leg,
-                }),
-            ],
-            treejointids: dvector![1, 2, 3],
-            bodies: dvector![body, leg, leg2],
-            q: vec![
-                JointPosition::Pose(Pose::identity()),
-                JointPosition::Float(0.0),
-                JointPosition::Float(0.0),
-            ],
-            v: vec![
-                JointVelocity::Spatial(SpatialVector::zero()),
-                JointVelocity::Float(0.0),
-                JointVelocity::Float(0.0),
-            ],
-            halfspaces: dvector![],
-        };
+        let treejoints = dvector![
+            Joint::FloatingJoint(FloatingJoint {
+                init_mat: body_to_world.mat.clone(),
+                transform: body_to_world,
+            }),
+            Joint::RevoluteJoint(RevoluteJoint {
+                init_mat: leg_to_body.mat.clone(),
+                transform: leg_to_body,
+                axis: axis_leg,
+            }),
+            Joint::RevoluteJoint(RevoluteJoint {
+                init_mat: leg2_to_leg.mat.clone(),
+                transform: leg2_to_leg,
+                axis: axis_leg,
+            }),
+        ];
+        let bodies = dvector![body, leg, leg2];
+        let halfspaces = dvector![];
+        let state = MechanismState::new(treejoints, bodies, halfspaces);
 
         // Act
         let bodies_to_root = &compute_bodies_to_root(&state);

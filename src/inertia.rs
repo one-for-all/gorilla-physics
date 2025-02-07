@@ -105,8 +105,8 @@ impl<'a, 'b> Add<&'b SpatialInertia> for &'a SpatialInertia {
 /// Compute the inertia of each body expressed in world frame.
 pub fn compute_inertias(
     state: &MechanismState,
-    bodies_to_root: &HashMap<u32, Transform3D>,
-) -> HashMap<u32, SpatialInertia> {
+    bodies_to_root: &HashMap<usize, Transform3D>,
+) -> HashMap<usize, SpatialInertia> {
     let mut inertias = HashMap::new();
     for (jointid, body) in izip!(state.treejointids.iter(), state.bodies.iter()) {
         let bodyid = jointid;

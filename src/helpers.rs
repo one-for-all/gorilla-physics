@@ -29,18 +29,14 @@ pub fn build_pendulum(
         mass: mass.clone(),
     });
 
-    let state = MechanismState {
-        treejoints: dvector![Joint::RevoluteJoint(RevoluteJoint {
-            init_mat: rod_to_world.mat.clone(),
-            transform: rod_to_world,
-            axis: axis.clone(),
-        })],
-        treejointids: dvector![1],
-        bodies: dvector![rod],
-        q: vec![0.0].to_joint_pos_vec(),
-        v: vec![0.0].to_joint_vel_vec(),
-        halfspaces: dvector![],
-    };
+    let treejoints = dvector![Joint::RevoluteJoint(RevoluteJoint {
+        init_mat: rod_to_world.mat.clone(),
+        transform: rod_to_world,
+        axis: axis.clone(),
+    })];
+    let bodies = dvector![rod];
+    let halfspaces = dvector![];
+    let state = MechanismState::new(treejoints, bodies, halfspaces);
 
     state
 }
@@ -61,39 +57,34 @@ pub fn build_double_pendulum(
     let rod1_to_world = Transform3D::new(rod1_frame, world_frame, &rod1_to_world);
     let rod2_to_rod1 = Transform3D::new(rod2_frame, rod1_frame, &rod2_to_rod1);
 
-    let state = MechanismState {
-        treejoints: dvector![
-            Joint::RevoluteJoint(RevoluteJoint {
-                init_mat: rod1_to_world.mat.clone(),
-                transform: rod1_to_world,
-                axis: axis.clone(),
-            }),
-            Joint::RevoluteJoint(RevoluteJoint {
-                init_mat: rod2_to_rod1.mat.clone(),
-                transform: rod2_to_rod1,
-                axis: axis.clone(),
-            })
-        ],
-        treejointids: dvector![1, 2],
-        bodies: dvector![
-            RigidBody::new(SpatialInertia {
-                frame: rod1_frame.to_string(),
-                moment: moment.clone(),
-                cross_part: cross_part.clone(),
-                mass: mass.clone(),
-            }),
-            RigidBody::new(SpatialInertia {
-                frame: rod2_frame.to_string(),
-                moment: moment.clone(),
-                cross_part: cross_part.clone(),
-                mass: mass.clone(),
-            })
-        ],
-        q: vec![0.0, 0.0].to_joint_pos_vec(),
-        v: vec![0.0, 0.0].to_joint_vel_vec(),
-        halfspaces: dvector![],
-    };
-
+    let treejoints = dvector![
+        Joint::RevoluteJoint(RevoluteJoint {
+            init_mat: rod1_to_world.mat.clone(),
+            transform: rod1_to_world,
+            axis: axis.clone(),
+        }),
+        Joint::RevoluteJoint(RevoluteJoint {
+            init_mat: rod2_to_rod1.mat.clone(),
+            transform: rod2_to_rod1,
+            axis: axis.clone(),
+        })
+    ];
+    let bodies = dvector![
+        RigidBody::new(SpatialInertia {
+            frame: rod1_frame.to_string(),
+            moment: moment.clone(),
+            cross_part: cross_part.clone(),
+            mass: mass.clone(),
+        }),
+        RigidBody::new(SpatialInertia {
+            frame: rod2_frame.to_string(),
+            moment: moment.clone(),
+            cross_part: cross_part.clone(),
+            mass: mass.clone(),
+        })
+    ];
+    let halfspaces = dvector![];
+    let state = MechanismState::new(treejoints, bodies, halfspaces);
     state
 }
 
@@ -109,23 +100,19 @@ pub fn build_cart(
 
     let cart_to_world = Transform3D::new(cart_frame, world_frame, &Matrix4::identity());
 
-    let state = MechanismState {
-        treejoints: dvector![Joint::PrismaticJoint(PrismaticJoint {
-            init_mat: cart_to_world.mat.clone(),
-            transform: cart_to_world,
-            axis: *axis
-        })],
-        treejointids: dvector![1],
-        bodies: dvector![RigidBody::new(SpatialInertia {
-            frame: cart_frame.to_string(),
-            moment: *moment,
-            cross_part: *cross_part,
-            mass: *mass
-        })],
-        q: vec![0.0].to_joint_pos_vec(),
-        v: vec![0.0].to_joint_vel_vec(),
-        halfspaces: dvector![],
-    };
+    let treejoints = dvector![Joint::PrismaticJoint(PrismaticJoint {
+        init_mat: cart_to_world.mat.clone(),
+        transform: cart_to_world,
+        axis: *axis
+    })];
+    let bodies = dvector![RigidBody::new(SpatialInertia {
+        frame: cart_frame.to_string(),
+        moment: *moment,
+        cross_part: *cross_part,
+        mass: *mass
+    })];
+    let halfspaces = dvector![];
+    let state = MechanismState::new(treejoints, bodies, halfspaces);
     state
 }
 

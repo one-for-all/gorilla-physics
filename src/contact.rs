@@ -65,9 +65,9 @@ impl HalfSpace {
 /// Compute the contact wrenches due to contacts
 pub fn contact_dynamics(
     state: &MechanismState,
-    bodies_to_root: &HashMap<u32, Transform3D>,
-    twists: &HashMap<u32, Twist>,
-) -> HashMap<u32, Wrench> {
+    bodies_to_root: &HashMap<usize, Transform3D>,
+    twists: &HashMap<usize, Twist>,
+) -> HashMap<usize, Wrench> {
     let mut contact_wrenches = HashMap::new();
     for (jointid, body) in izip!(state.treejointids.iter(), state.bodies.iter()) {
         let bodyid = jointid;

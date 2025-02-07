@@ -153,8 +153,8 @@ impl<'a, 'b> Add<&'b Twist> for &'a Twist {
 }
 
 /// Compute the joint twist of each joint expressed in body frame
-pub fn compute_joint_twists(state: &MechanismState) -> HashMap<u32, Twist> {
-    let mut joint_twists: HashMap<u32, Twist> = HashMap::new();
+pub fn compute_joint_twists(state: &MechanismState) -> HashMap<usize, Twist> {
+    let mut joint_twists: HashMap<usize, Twist> = HashMap::new();
     for (jointid, joint, v) in izip!(
         state.treejointids.iter(),
         state.treejoints.iter(),
@@ -170,10 +170,10 @@ pub fn compute_joint_twists(state: &MechanismState) -> HashMap<u32, Twist> {
 /// the world frame
 pub fn compute_twists_wrt_world(
     state: &MechanismState,
-    bodies_to_root: &HashMap<u32, Transform3D>,
-    joint_twists: &HashMap<u32, Twist>,
-) -> HashMap<u32, Twist> {
-    let mut twists: HashMap<u32, Twist> = HashMap::new();
+    bodies_to_root: &HashMap<usize, Transform3D>,
+    joint_twists: &HashMap<usize, Twist>,
+) -> HashMap<usize, Twist> {
+    let mut twists: HashMap<usize, Twist> = HashMap::new();
     let rootid = 0;
     twists.insert(rootid, Twist::zero("world", "world"));
     for jointid in state.treejointids.iter() {
