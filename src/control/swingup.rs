@@ -13,7 +13,7 @@ pub fn swingup_acrobot(state: &MechanismState, m: &Float, l: &Float) -> Vec<Join
     let q2dot = state.v[1].float();
 
     let KE = state.kinetic_energy();
-    let PE = double_pendulum_potential_energy2(&state, m, l);
+    let PE = double_pendulum_potential_energy2(&state, m, l); // TODO: replace with state.gravitational_energy()
 
     let E_target = m * GRAVITY * (l + 2.0 * l);
     let dE = KE + PE - E_target;
@@ -84,7 +84,7 @@ pub fn swingup_cart_pole(
     let cos_theta = theta.cos();
     let sin_theta = theta.sin();
     let KE = 0.5 * m_p * l * l * theta_dot * theta_dot; // KE of the pole
-    let PE = -m_p * GRAVITY * l * cos_theta;
+    let PE = -m_p * GRAVITY * l * cos_theta; // TODO: replace with state.gravitational_energy()
 
     let E_target = m_p * GRAVITY * l;
     let dE = KE + PE - E_target;

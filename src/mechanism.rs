@@ -18,6 +18,7 @@ use crate::transform::Transform3D;
 use crate::twist::compute_joint_twists;
 use crate::twist::compute_twists_wrt_world;
 use crate::types::Float;
+use crate::GRAVITY;
 use itertools::izip;
 use na::dvector;
 use na::DMatrix;
@@ -116,6 +117,18 @@ impl MechanismState {
             KE += ke;
         }
         KE
+    }
+
+    pub fn gravitational_energy(&self) -> Float {
+        let mut PE = 0.0;
+        let bodies_to_root = compute_bodies_to_root(self);
+        for jointid in self.treejointids.iter() {
+            let height = bodies_to_root.get(jointid).unwrap().trans().z;
+            let mass = self.bodies[jointid - 1].inertia.mass;
+            PE += mass * GRAVITY * height;
+        }
+
+        PE
     }
 
     pub fn add_halfspace(&mut self, halfspace: &HalfSpace) {

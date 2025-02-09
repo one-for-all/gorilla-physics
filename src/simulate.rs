@@ -1,5 +1,6 @@
 use crate::joint::JointTorque;
 use crate::joint::JointVelocity;
+use crate::spatial_vector::SpatialVector;
 use crate::util::quaternion_derivative;
 use crate::{
     dynamics::dynamics, joint::JointPosition, mechanism::MechanismState, pose::Pose, types::Float,
@@ -20,7 +21,24 @@ pub fn step(
     dt: Float,
     tau: &Vec<JointTorque>,
 ) -> (Vec<JointPosition>, Vec<JointVelocity>) {
-    let vdot = dynamics(state, tau);
+    // Fill tau with zero torques, if it is empty
+    let mut tau_in = vec![];
+    if tau.is_empty() {
+        for v in state.v.iter() {
+            match v {
+                JointVelocity::Float(_) => {
+                    tau_in.push(JointTorque::Float(0.0));
+                }
+                JointVelocity::Spatial(_) => {
+                    tau_in.push(JointTorque::Spatial(SpatialVector::zero()));
+                }
+            }
+        }
+    } else {
+        tau_in = tau.clone();
+    }
+
+    let vdot = dynamics(state, &tau_in);
 
     // Semi-implicit Euler integration
     // Note: this actually turns out to be energy conserving for Hamiltonian systems,

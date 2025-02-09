@@ -4,6 +4,7 @@ use na::{dvector, DVector};
 
 use crate::{mechanism::MechanismState, types::Float, GRAVITY};
 
+pub mod energy_control;
 pub mod lqr;
 pub mod swingup;
 

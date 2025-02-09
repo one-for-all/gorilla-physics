@@ -1,4 +1,8 @@
-use crate::{mechanism::MechanismState, types::Float, GRAVITY};
+use crate::{mechanism::MechanismState, transform::compute_bodies_to_root, types::Float, GRAVITY};
+
+pub fn spring_elastic_energy(l_rest: Float, l: Float, k: Float) -> Float {
+    0.5 * k * (l - l_rest) * (l - l_rest)
+}
 
 /// Compute the gravitational potential energy of a simple double pendulum system
 pub fn double_pendulum_potential_energy(state: &MechanismState, m: &Float, l: &Float) -> Float {
@@ -34,6 +38,19 @@ pub fn cart_pole_energy(state: &MechanismState, m_p: &Float, l: &Float) -> Float
     let PE = -m_p * GRAVITY * l * cos_theta;
 
     KE + PE
+}
+
+/// Compute hopper energy
+pub fn hopper_energy(state: &MechanismState) -> Float {
+    let KE = state.kinetic_energy();
+    let PE = state.gravitational_energy();
+
+    let l = state.q[2].float();
+    let k_spring = 200.0;
+    let l_rest = 0.0;
+    let EPE = spring_elastic_energy(l_rest, *l, k_spring);
+
+    KE + PE + EPE
 }
 
 #[cfg(test)]
