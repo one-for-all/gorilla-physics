@@ -1,9 +1,9 @@
-import { InterfaceMechanismState } from "gorilla-physics";
+import { InterfaceSimulator } from "gorilla-physics";
 import * as THREE from "three";
 import { Graphics } from "./Graphics";
 
 export class Simulator {
-  mechanismState: InterfaceMechanismState;
+  simulator: InterfaceSimulator;
 
   graphics: Graphics;
   length: number;
@@ -16,8 +16,8 @@ export class Simulator {
   fps: number;
   time: number;
 
-  constructor(mechanismState: InterfaceMechanismState) {
-    this.mechanismState = mechanismState;
+  constructor(simulator: InterfaceSimulator) {
+    this.simulator = simulator;
 
     this.graphics = new Graphics();
     this.meshes = new Map();
@@ -84,13 +84,8 @@ export class Simulator {
   }
 
   addPlane(normalArray: Float32Array, distance: number, size: number) {
-    const quaternion = new THREE.Quaternion();
-    quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
-
-    const normal = new THREE.Vector3()
-      .fromArray(normalArray)
-      .applyQuaternion(quaternion);
-    const position = normal.clone().multiplyScalar(distance);
+    const normal = new THREE.Vector3().fromArray(normalArray);
+    const position = normal.multiplyScalar(distance);
 
     const planeGeometry = new THREE.PlaneGeometry(size, size);
     const planeMaterial = new THREE.MeshPhongMaterial({
@@ -125,6 +120,26 @@ export class Simulator {
     const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     this.meshes.set("sphere", sphere);
     this.graphics.scene.add(sphere);
+  }
+
+  addHopper(w_body: number, h_body: number, r_leg: number, r_foot: number) {
+    const bodyGeometry = new THREE.BoxGeometry(w_body, w_body, h_body);
+    const bodyMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    this.meshes.set("hopper_body", body);
+    this.graphics.scene.add(body);
+
+    const legGeometry = new THREE.SphereGeometry(r_leg, 32, 32);
+    const legMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const leg = new THREE.Mesh(legGeometry, legMaterial);
+    this.meshes.set("hopper_leg", leg);
+    this.graphics.scene.add(leg);
+
+    const footGeometry = new THREE.SphereGeometry(r_foot, 32, 32);
+    const footMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+    const foot = new THREE.Mesh(footGeometry, footMaterial);
+    this.meshes.set("hopper_foot", foot);
+    this.graphics.scene.add(foot);
   }
 
   updateRodPose(angle: number) {
@@ -176,26 +191,42 @@ export class Simulator {
     sphere.position.set(x, y, z);
   }
 
+  updateHopper(poses: Float32Array) {
+    let body_euler = [poses[0], poses[1], poses[2]];
+    let body_pos = [poses[3], poses[4], poses[5]];
+
+    let body = this.meshes.get("hopper_body");
+    body.rotation.set(body_euler[0], body_euler[1], body_euler[2]);
+    body.position.set(body_pos[0], body_pos[1], body_pos[2]);
+
+    let leg_euler = [poses[6], poses[7], poses[8]];
+    let leg_pos = [poses[9], poses[10], poses[11]];
+
+    let leg = this.meshes.get("hopper_leg");
+    leg.rotation.set(leg_euler[0], leg_euler[1], leg_euler[2]);
+    leg.position.set(leg_pos[0], leg_pos[1], leg_pos[2]);
+
+    let foot_euler = [poses[12], poses[13], poses[14]];
+    let foot_pos = [poses[15], poses[16], poses[17]];
+
+    let foot = this.meshes.get("hopper_foot");
+    foot.rotation.set(foot_euler[0], foot_euler[1], foot_euler[2]);
+    foot.position.set(foot_pos[0], foot_pos[1], foot_pos[2]);
+  }
+
   run(timestamp?: number) {
     this.graphics.render();
 
     // TODO: measure and use the actual time elapsed
     const dt = 1 / this.fps;
 
-    let qs = this.mechanismState.step(dt);
     // this.updateCartPose(pos);
     // this.updateCartPole(qs[0], qs[1]);
+    let qs = this.simulator.step(dt);
     this.time += dt;
-    // console.log("t :", this.time.toFixed(2));
 
-    // Coordinate transform from mechanism to graphics
-    // let angle = -qs[0] + Math.PI / 2;
-    // this.updatePendulumPose(angle);
-    // let angle1 = qs[0] + Math.PI / 2;
-    // let angle2 = qs[1];
-    // this.updateDoublemPendulumPose(angle1, angle2);
-    // console.log(qs[4]);
-    this.updateSpherePose(qs[4], qs[6], -qs[5]);
+    let poses = this.simulator.poses();
+    this.updateHopper(poses);
 
     requestAnimationFrame((t) => this.run(t));
   }

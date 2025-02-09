@@ -34,6 +34,7 @@ export class Graphics {
     this.scene.add(this.light);
 
     const gridHelper = new THREE.GridHelper(50, 50, 0xff0000, 0x0000ff); // Red center line, blue grid lines
+    gridHelper.rotateOnAxis(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
     this.scene.add(gridHelper);
 
     let me = this;
@@ -49,6 +50,8 @@ export class Graphics {
     }
     window.addEventListener("resize", onWindowResize, false);
 
+    // Customize control's rotation axis
+    this.camera.up.set(0, 0, 1);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = false;
   }

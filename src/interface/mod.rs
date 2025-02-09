@@ -1,12 +1,14 @@
 use crate::contact::ContactPoint;
 use crate::joint::floating::FloatingJoint;
-use crate::joint::JointTorque;
 use crate::joint::JointVelocity;
 use crate::joint::ToFloatDVec;
 use crate::joint::ToJointPositionVec;
 use crate::joint::ToJointVelocityVec;
 use crate::pose::Pose;
 use crate::spatial_vector::SpatialVector;
+use crate::transform::compute_bodies_to_root;
+use controller::InterfaceHopperController;
+use na::Rotation3;
 use na::UnitQuaternion;
 use na::Vector3;
 use na::{dvector, vector, Matrix3, Matrix4};
@@ -28,7 +30,9 @@ use crate::{
 
 pub mod cart;
 pub mod cart_pole;
+pub mod controller;
 pub mod double_pendulum;
+pub mod hopper;
 pub mod pendulum;
 
 #[wasm_bindgen]
@@ -42,31 +46,30 @@ extern "C" {
     fn now() -> Float; // Returns milliseconds since epoch
 }
 
-/// WebAssembly interface to the MechanismState struct.
 #[wasm_bindgen]
-pub struct InterfaceMechanismState(pub(crate) MechanismState);
-
-fn sin_torque() -> Float {
-    let now = now() / 1000.0;
-    let f = 10.0 * now.sin();
-    f
-}
+pub struct InterfaceSimulator(
+    pub(crate) InterfaceMechanismState,
+    pub(crate) InterfaceHopperController,
+);
 
 #[wasm_bindgen]
-impl InterfaceMechanismState {
+impl InterfaceSimulator {
+    #[wasm_bindgen(constructor)]
+    pub fn new(
+        state: InterfaceMechanismState,
+        controller: InterfaceHopperController,
+    ) -> InterfaceSimulator {
+        InterfaceSimulator(state, controller)
+    }
+
     #[wasm_bindgen]
     pub fn step(&mut self, dt: Float) -> js_sys::Float32Array {
         let n_substep = 10;
         let mut q = vec![];
         for _ in 0..n_substep {
-            // let torque = lqr(&self.0);
-            // let torque = swingup_acrobot(&self.0, &1., &7.);
-            // let torque = dvector![0., 0.];
-            // let torque = lqr_cart_pole(&self.0);
-            // let torque = swingup_cart_pole(&self.0, &3.0, &5.0, &7.0);
-            let torque = vec![JointTorque::Spatial(SpatialVector::zero())];
-            let (_q, _v) = step(&mut self.0, dt / (n_substep as Float), &torque);
-            q = _q
+            let torque = self.1 .0.vertical_control(&(self.0).0);
+            let (_q, _v) = step(&mut (self.0).0, dt / (n_substep as Float), &torque);
+            q = _q;
         }
 
         // Convert to a format that Javascript can take
@@ -76,6 +79,44 @@ impl InterfaceMechanismState {
             q_js.set_index(i as u32, *q);
         }
 
+        q_js
+    }
+
+    #[wasm_bindgen]
+    pub fn poses(&self) -> js_sys::Float32Array {
+        self.0.poses()
+    }
+}
+
+/// WebAssembly interface to the MechanismState struct.
+#[wasm_bindgen]
+pub struct InterfaceMechanismState(pub(crate) MechanismState);
+
+#[wasm_bindgen]
+impl InterfaceMechanismState {
+    /// Get the poses of each body in the system
+    pub fn poses(&self) -> js_sys::Float32Array {
+        let njoints = self.0.treejointids.len();
+
+        let bodies_to_root = compute_bodies_to_root(&self.0);
+
+        let mut poses = vec![];
+        for jointid in self.0.treejointids.iter() {
+            let body_to_root = bodies_to_root.get(jointid).unwrap().mat;
+
+            let rotation_matrix: Matrix3<Float> = body_to_root.fixed_view::<3, 3>(0, 0).into();
+            let rotation = Rotation3::from_matrix(&rotation_matrix);
+            let translation = body_to_root.fixed_view::<3, 1>(0, 3);
+
+            let euler = rotation.euler_angles();
+            poses.extend_from_slice(&[euler.0, euler.1, euler.2]);
+            poses.extend_from_slice(&[translation[0], translation[1], translation[2]]);
+        }
+
+        let q_js = js_sys::Float32Array::new_with_length(6 * njoints as u32);
+        for (i, q) in poses.iter().enumerate() {
+            q_js.set_index(i as u32, *q);
+        }
         q_js
     }
 

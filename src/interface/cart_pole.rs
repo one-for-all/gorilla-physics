@@ -3,7 +3,6 @@ use crate::helpers::build_cart_pole;
 use crate::joint::ToJointPositionVec;
 use crate::joint::ToJointVelocityVec;
 use crate::types::Float;
-use na::dvector;
 use nalgebra::{vector, Matrix3};
 use wasm_bindgen::prelude::*;
 
