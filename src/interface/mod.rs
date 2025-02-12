@@ -7,7 +7,7 @@ use crate::joint::ToJointVelocityVec;
 use crate::pose::Pose;
 use crate::spatial_vector::SpatialVector;
 use crate::transform::compute_bodies_to_root;
-use controller::InterfaceHopperController;
+use controller::InterfaceController;
 use na::Rotation3;
 use na::UnitQuaternion;
 use na::Vector3;
@@ -47,19 +47,19 @@ extern "C" {
 }
 
 #[wasm_bindgen]
-pub struct InterfaceSimulator(
-    pub(crate) InterfaceMechanismState,
-    pub(crate) InterfaceHopperController,
-);
+pub struct InterfaceSimulator {
+    pub(crate) state: InterfaceMechanismState,
+    pub(crate) controller: InterfaceController,
+}
 
 #[wasm_bindgen]
 impl InterfaceSimulator {
     #[wasm_bindgen(constructor)]
     pub fn new(
         state: InterfaceMechanismState,
-        controller: InterfaceHopperController,
+        controller: InterfaceController,
     ) -> InterfaceSimulator {
-        InterfaceSimulator(state, controller)
+        InterfaceSimulator { state, controller }
     }
 
     #[wasm_bindgen]
@@ -67,8 +67,9 @@ impl InterfaceSimulator {
         let n_substep = 10;
         let mut q = vec![];
         for _ in 0..n_substep {
-            let torque = self.1 .0.vertical_control(&(self.0).0);
-            let (_q, _v) = step(&mut (self.0).0, dt / (n_substep as Float), &torque);
+            // let torque = self.1 .0.vertical_control(&(self.0).0);
+            let torque = self.controller.inner.control(&(self.state).inner);
+            let (_q, _v) = step(&mut (self.state).inner, dt / (n_substep as Float), &torque);
             q = _q;
         }
 
@@ -84,24 +85,26 @@ impl InterfaceSimulator {
 
     #[wasm_bindgen]
     pub fn poses(&self) -> js_sys::Float32Array {
-        self.0.poses()
+        self.state.poses()
     }
 }
 
 /// WebAssembly interface to the MechanismState struct.
 #[wasm_bindgen]
-pub struct InterfaceMechanismState(pub(crate) MechanismState);
+pub struct InterfaceMechanismState {
+    pub(crate) inner: MechanismState,
+}
 
 #[wasm_bindgen]
 impl InterfaceMechanismState {
     /// Get the poses of each body in the system
     pub fn poses(&self) -> js_sys::Float32Array {
-        let njoints = self.0.treejointids.len();
+        let njoints = self.inner.treejointids.len();
 
-        let bodies_to_root = compute_bodies_to_root(&self.0);
+        let bodies_to_root = compute_bodies_to_root(&self.inner);
 
         let mut poses = vec![];
-        for jointid in self.0.treejointids.iter() {
+        for jointid in self.inner.treejointids.iter() {
             let body_to_root = bodies_to_root.get(jointid).unwrap().mat;
 
             let rotation_matrix: Matrix3<Float> = body_to_root.fixed_view::<3, 3>(0, 0).into();
@@ -123,7 +126,7 @@ impl InterfaceMechanismState {
     #[wasm_bindgen]
     pub fn addHalfSpace(&mut self, normal: Vec<Float>, distance: Float) {
         let halfspace = HalfSpace::new(vector![normal[0], normal[1], normal[2]], distance);
-        self.0.add_halfspace(&halfspace);
+        self.inner.add_halfspace(&halfspace);
     }
 }
 
@@ -147,7 +150,7 @@ pub fn createRodPendulumAtBottom(length: Float) -> InterfaceMechanismState {
     let v_init = vec![0.0].to_joint_vel_vec();
     state.update(&q_init, &v_init);
 
-    InterfaceMechanismState(state)
+    InterfaceMechanismState { inner: state }
 }
 
 /// Create a uniform rod pendulum that hangs horizontally to the right.
@@ -185,7 +188,7 @@ pub fn createRodPendulum(length: Float) -> InterfaceMechanismState {
         halfspaces: dvector![],
     };
 
-    InterfaceMechanismState(state)
+    InterfaceMechanismState { inner: state }
 }
 
 #[wasm_bindgen]
@@ -219,7 +222,7 @@ pub fn createDoublePendulumHorizontal(length: Float) -> InterfaceMechanismState 
     let v_init = vec![0.0, 0.0].to_joint_vel_vec();
     state.update(&q_init, &v_init);
 
-    InterfaceMechanismState(state)
+    InterfaceMechanismState { inner: state }
 }
 
 #[wasm_bindgen]
@@ -274,5 +277,5 @@ pub fn createSphere(mass: Float, radius: Float) -> InterfaceMechanismState {
         location: vector![0., 0., -r],
     });
 
-    InterfaceMechanismState(state)
+    InterfaceMechanismState { inner: state }
 }

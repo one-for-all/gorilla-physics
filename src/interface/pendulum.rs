@@ -26,5 +26,5 @@ pub fn createSimplePendulum(mass: Float, length: Float) -> InterfaceMechanismSta
         location: vector![l, 0., 0.],
     });
 
-    InterfaceMechanismState(state)
+    InterfaceMechanismState { inner: state }
 }

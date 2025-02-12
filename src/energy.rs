@@ -41,14 +41,14 @@ pub fn cart_pole_energy(state: &MechanismState, m_p: &Float, l: &Float) -> Float
 }
 
 /// Compute hopper energy
-pub fn hopper_energy(state: &MechanismState) -> Float {
+pub fn hopper_energy(state: &MechanismState, l_spring: &Float) -> Float {
     let KE = state.kinetic_energy();
     let PE = state.gravitational_energy();
 
-    let l = state.q[2].float();
+    // let l = state.q[2].float();
     let k_spring = 200.0;
     let l_rest = 0.0;
-    let EPE = spring_elastic_energy(l_rest, *l, k_spring);
+    let EPE = spring_elastic_energy(l_rest, *l_spring, k_spring);
 
     KE + PE + EPE
 }

@@ -2,7 +2,7 @@ use super::InterfaceMechanismState;
 use crate::helpers::build_cart;
 use crate::joint::ToJointPositionVec;
 use crate::joint::ToJointVelocityVec;
-use nalgebra::{dvector, vector, Matrix3};
+use nalgebra::{vector, Matrix3};
 use wasm_bindgen::prelude::*;
 
 use crate::types::Float;
@@ -25,5 +25,5 @@ pub fn createCart(length: Float) -> InterfaceMechanismState {
     let v_init = vec![1.0].to_joint_vel_vec();
     state.update(&q_init, &v_init);
 
-    InterfaceMechanismState(state)
+    InterfaceMechanismState { inner: state }
 }

@@ -39,5 +39,5 @@ pub fn createCartPole(length: Float) -> InterfaceMechanismState {
     let v_init = vec![0.0, 0.0].to_joint_vel_vec();
     state.update(&q_init, &v_init);
 
-    InterfaceMechanismState(state)
+    InterfaceMechanismState { inner: state }
 }

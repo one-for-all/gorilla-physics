@@ -1,20 +1,25 @@
 use crate::{
     contact::ContactPoint,
     inertia::SpatialInertia,
-    joint::{floating::FloatingJoint, prismatic::PrismaticJoint, Joint},
+    joint::{
+        floating::FloatingJoint, prismatic::PrismaticJoint, revolute::RevoluteJoint, Joint,
+        JointPosition, JointVelocity,
+    },
     mechanism::MechanismState,
+    pose::Pose,
     rigid_body::RigidBody,
+    spatial_vector::SpatialVector,
     transform::Transform3D,
     types::Float,
 };
 
 use super::InterfaceMechanismState;
-use na::dvector;
+use na::{dvector, zero, UnitQuaternion, Vector3};
 use nalgebra::{vector, Matrix3};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
-pub fn createHopper(
+pub fn create1DHopper(
     w_body: Float,
     h_body: Float,
     r_leg: Float,
@@ -123,5 +128,6 @@ pub fn createHopper(
         location: vector![0., 0., 0.],
     });
 
-    InterfaceMechanismState(state)
+    InterfaceMechanismState { inner: state }
+}
 }

@@ -1,7 +1,10 @@
 //! Energy-based control methods
+use na::{ComplexField, Vector, Vector3};
+use web_sys::console;
+
 use crate::{
-    energy::hopper_energy, joint::JointTorque, mechanism::MechanismState,
-    spatial_vector::SpatialVector, types::Float, GRAVITY,
+    contact::in_contact, energy::hopper_energy, joint::JointTorque, mechanism::MechanismState,
+    spatial_vector::SpatialVector, types::Float, util::console_log, GRAVITY, PI,
 };
 
 /// TODO: Add spring elements to mechanism state
@@ -11,7 +14,11 @@ pub fn spring(l_rest: Float, l: Float, k: Float) -> Float {
     -k * (l - l_rest)
 }
 
-pub struct HopperController {
+pub trait Controller {
+    fn control(&mut self, state: &MechanismState) -> Vec<JointTorque>;
+}
+
+pub struct Hopper1DController {
     pub k_spring: Float,   // leg-foot spring constant
     pub h_setpoint: Float, // target height
 
@@ -22,16 +29,16 @@ pub struct HopperController {
     pub leg_foot_length: Float, // default length from leg to foot
 }
 
-impl HopperController {
+impl Controller for Hopper1DController {
     /// Control the hopper to jump to certain vertical height
     /// Ref: Hopping in Legged Systems-Modeling and Simulation for the Two-Dimensional One-Legged Case
     /// Marc Raibert, 1984
-    pub fn vertical_control(&mut self, state: &MechanismState) -> Vec<JointTorque> {
+    fn control(&mut self, state: &MechanismState) -> Vec<JointTorque> {
         let mut tau = vec![JointTorque::Spatial(SpatialVector::zero())]; // first floating joint unactuated
 
         let q1 = state.q[1].float();
         let v1 = state.v[1].float();
-        let q2 = state.q[2].float();
+        let q_foot = state.q[2].float();
 
         // Energy-based control of vertical height
         let v_vertical = state.v[0].spatial().linear.z;
@@ -41,14 +48,14 @@ impl HopperController {
         if self.v_vertical_prev < 0.0 && v_vertical > 0.0 {
             // Bottom: The moment in stance when the body has minimum altitude
             // and vertical motion of the body changes from downward to upward.
-            let E = hopper_energy(state);
+            let E = hopper_energy(state, q_foot);
             let h_setpoint = self.h_setpoint;
             let E_target = GRAVITY
                 * (m_body * h_setpoint
                     + m_leg * (h_setpoint - self.body_leg_length)
                     + m_foot * (h_setpoint - self.body_leg_length - self.leg_foot_length));
             let dE = E_target - E;
-            self.leg_length_setpoint = q2 + (q2 * q2 + 2.0 * dE / self.k_spring).sqrt();
+            self.leg_length_setpoint = q_foot + (q_foot * q_foot + 2.0 * dE / self.k_spring).sqrt();
         } else if self.v_vertical_prev > 0.0 && v_vertical < 0.0 {
             // Top: The moment in flight when the body has peak altitude and
             // vertical motion changes from upward to downward.
@@ -66,7 +73,15 @@ impl HopperController {
 
         // Spring simulation
         let l_rest = 0.0;
-        let tau2 = spring(l_rest, *q2, self.k_spring); // force exerted by spring
+        let tau_foot = spring(l_rest, *q_foot, self.k_spring); // force exerted by spring
+
+        tau.push(JointTorque::Float(tau1 - tau_foot)); // control + reaction force from spring
+        tau.push(JointTorque::Float(tau_foot));
+
+        self.v_vertical_prev = v_vertical;
+        tau
+    }
+}
 
         tau.push(JointTorque::Float(tau1 - tau2)); // control + reaction force from spring
         tau.push(JointTorque::Float(tau2));
