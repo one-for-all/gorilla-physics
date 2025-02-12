@@ -14,6 +14,13 @@ pub fn spring(l_rest: Float, l: Float, k: Float) -> Float {
     -k * (l - l_rest)
 }
 
+/// TODO: Add mechanical stop to mechanism state
+/// Force exerted by a mechanical stop, i.e. very stiff spring w/ damping
+/// F = -k * x - b * v
+pub fn mechanical_stop(l_rest: Float, l: Float, v: Float, k: Float, b: Float) -> Float {
+    -k * (l - l_rest) - b * v
+}
+
 pub trait Controller {
     fn control(&mut self, state: &MechanismState) -> Vec<JointTorque>;
 }
@@ -39,6 +46,7 @@ impl Controller for Hopper1DController {
         let q1 = state.q[1].float();
         let v1 = state.v[1].float();
         let q_foot = state.q[2].float();
+        let v_foot = state.v[2].float();
 
         // Energy-based control of vertical height
         let v_vertical = state.v[0].spatial().linear.z;
@@ -73,9 +81,8 @@ impl Controller for Hopper1DController {
 
         // Spring simulation
         let l_rest = 0.0;
-        let tau_foot = spring(l_rest, *q_foot, self.k_spring); // force exerted by spring
 
-        tau.push(JointTorque::Float(tau1 - tau_foot)); // control + reaction force from spring
+        tau.push(JointTorque::Float(tau1 - tau_foot)); // control + reaction force from spring/stop
         tau.push(JointTorque::Float(tau_foot));
 
         self.v_vertical_prev = v_vertical;
