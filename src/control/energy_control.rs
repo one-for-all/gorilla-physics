@@ -81,6 +81,15 @@ impl Controller for Hopper1DController {
 
         // Spring simulation
         let l_rest = 0.0;
+        let tau_foot = {
+            if *q_foot < l_rest {
+                spring(l_rest, *q_foot, self.k_spring) // force exerted by spring
+            } else {
+                let k_stop = 1e5;
+                let b_stop = 125.0;
+                mechanical_stop(l_rest, *q_foot, *v_foot, k_stop, b_stop)
+            }
+        };
 
         tau.push(JointTorque::Float(tau1 - tau_foot)); // control + reaction force from spring/stop
         tau.push(JointTorque::Float(tau_foot));
