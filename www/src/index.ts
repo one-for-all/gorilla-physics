@@ -22,7 +22,7 @@ import("gorilla-physics").then((gorilla) => {
   //   leg_foot_length
   // );
   let state = gorilla.createCube(length);
-  // let mechanismState = gorilla.create2DHopper(
+  // let state = gorilla.create2DHopper(
   //   w_body,
   //   h_body,
   //   r_hip,
