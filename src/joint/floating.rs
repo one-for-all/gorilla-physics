@@ -10,6 +10,13 @@ pub struct FloatingJoint {
 }
 
 impl FloatingJoint {
+    pub fn new(transform: Transform3D) -> Self {
+        Self {
+            init_mat: transform.mat.clone(),
+            transform,
+        }
+    }
+
     /// Update the transform to be intial transform multiplied by pose
     pub fn update(&mut self, q: &Pose) {
         self.transform.mat = self.init_mat * q.to_matrix();

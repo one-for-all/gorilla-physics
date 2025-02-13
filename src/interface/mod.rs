@@ -31,6 +31,7 @@ use crate::{
 pub mod cart;
 pub mod cart_pole;
 pub mod controller;
+pub mod cube;
 pub mod double_pendulum;
 pub mod hopper;
 pub mod pendulum;

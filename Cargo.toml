@@ -24,6 +24,10 @@ path = "examples/cart.rs"
 name = "cart_pole"
 path = "examples/cart_pole.rs"
 
+[[bin]]
+name = "cube"
+path = "examples/cube.rs"
+
 [dependencies]
 itertools = "0.13.0"
 nalgebra = "0.33"

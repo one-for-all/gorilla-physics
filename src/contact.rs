@@ -5,7 +5,10 @@ use itertools::izip;
 use na::Vector3;
 
 use crate::{
-    mechanism::MechanismState, spatial_force::Wrench, transform::Transform3D, twist::Twist,
+    mechanism::MechanismState,
+    spatial_force::Wrench,
+    transform::{compute_bodies_to_root, Transform3D},
+    twist::Twist,
     types::Float,
 };
 
@@ -96,11 +99,16 @@ pub fn contact_dynamics(
 }
 
 /// Calculate the contact force expressed in world frame
-/// Ref:
+/// Ref: Normal force
 ///     1. Coeﬀicient of restitution interpreted as damping in vibroimpact,
 ///         K. H. Hunt and F. R. E. Crossley, 1975
 ///     2. A Compliant Contact Model with Nonlinear Damping for Simulation of Robotic Systems,
 ///         D. W. Marhefka and D. E. Orin, 1999
+/// Ref: Tangential friction
+///     1. A Transition-Aware Method for the Simulation of Compliant Contact with Regularized Friction,
+///         Castro, Alejandro M., et al., 2020
+///     2. Drake: Modeling of Dry Friction
+///         https://drake.mit.edu/doxygen_cxx/group__friction__model.html
 pub fn calculate_contact_force(
     penetration: &Float,
     velocity: &Vector3<Float>,
@@ -115,15 +123,37 @@ pub fn calculate_contact_force(
     let a = 0.9; // how much velocity is lost, default 0.2
                  // coefficient of restitution e ~= 1-a*v_in
     let λ = 3.0 / 2.0 * a * k;
-    let f = (λ * zn * z_dot + k * zn).max(0.0);
+    let π = (λ * zn * z_dot + k * zn).max(0.0);
+    let f_normal = π * normal;
 
-    f * normal
+    // friction force in tangential direction - regularized coulomb friction
+    let v_t = velocity + z_dot * normal; // tangential velocity
+    let v_t_norm = v_t.norm();
+    let v_s = 1e-3; // slip tolerance, amount of velocity allowed for contact that should be stationary
+    let s = v_t_norm / v_s;
+    let μ = 0.5; // coefficient of friction
+    let μ = {
+        if s > 1.0 {
+            μ
+        } else {
+            μ * s
+        }
+    };
+    let f_friction = -μ * π * (v_t / v_t_norm);
+
+    f_normal + f_friction
 }
 
 #[cfg(test)]
 mod contact_tests {
-    use crate::joint::ToJointTorqueVec;
-    use na::{dvector, vector, Matrix3, Matrix4};
+    use crate::{
+        helpers::build_cube,
+        joint::{JointPosition, JointVelocity, ToJointTorqueVec},
+        pose::Pose,
+        spatial_vector::SpatialVector,
+        util::assert_close,
+    };
+    use na::{dvector, vector, Matrix3, Matrix4, UnitQuaternion};
 
     use crate::{helpers::build_pendulum, simulate::simulate, util::assert_dvec_close, PI};
 
@@ -163,5 +193,104 @@ mod contact_tests {
         let q_final = qs[qs.len() - 1][0].float();
         let q_expect = 30.0 * PI / 180.0; // 30 degrees
         assert_dvec_close(&dvector![*q_final], &dvector![q_expect], 1e-3);
+    }
+
+    #[test]
+    fn cube_fall_ground() {
+        // Arrange
+        let m = 3.0;
+        let l = 1.0;
+        let mut state = build_cube(m, l);
+
+        let h_ground = -10.0;
+        state.add_halfspace(&HalfSpace::new(vector![0., 0., 1.], h_ground));
+
+        let q_init = vec![JointPosition::Pose(Pose {
+            rotation: UnitQuaternion::identity(),
+            translation: vector![0.0, 0.0, 0.0],
+        })];
+        let v_init = vec![JointVelocity::Spatial(SpatialVector {
+            angular: vector![1.0, 1.0, 1.0],
+            linear: vector![1.0, 1.0, 1.0],
+        })];
+        state.update(&q_init, &v_init);
+
+        // Act
+        let final_time = 5.0;
+        let dt = 1e-3;
+        let (qs, _vs) = simulate(&mut state, final_time, dt, |_state| vec![]);
+
+        // Assert
+        let q_final = qs[qs.len() - 1][0].pose();
+        assert_close(&q_final.translation.z, &(h_ground + l / 2.0), 1e-2);
+    }
+
+    #[test]
+    fn cube_slide_ground() {
+        // Arrange
+        let m = 3.0;
+        let l = 1.0;
+        let mut state = build_cube(m, l);
+
+        let h_ground = -l / 2.0;
+        state.add_halfspace(&HalfSpace::new(vector![0., 0., 1.], h_ground));
+
+        let q_init = vec![JointPosition::Pose(Pose {
+            rotation: UnitQuaternion::identity(),
+            translation: vector![0.0, 0.0, 0.0],
+        })];
+        let v_init = vec![JointVelocity::Spatial(SpatialVector {
+            angular: vector![0.0, 0.0, 0.0],
+            linear: vector![1.0, 0.0, 0.0],
+        })];
+        state.update(&q_init, &v_init);
+
+        // Act
+        let final_time = 5.0;
+        let dt = 1e-3;
+        let (qs, vs) = simulate(&mut state, final_time, dt, |_state| vec![]);
+
+        // Assert
+        let q_final = qs[qs.len() - 1][0].pose();
+        assert_close(&q_final.translation.z, &0.0, 1e-2);
+
+        let v_final = vs[vs.len() - 1][0].spatial();
+        assert_close(&v_final.linear.norm(), &0.0, 5e-3);
+        assert_close(&v_final.angular.norm(), &0.0, 1e-2);
+    }
+
+    /// Hit the ground with rotational and translational velocity
+    #[test]
+    fn cube_hit_ground() {
+        // Arrange
+        let m = 3.0;
+        let l = 1.0;
+        let mut state = build_cube(m, l);
+
+        let h_ground = -10.0;
+        state.add_halfspace(&HalfSpace::new(vector![0., 0., 1.], h_ground));
+
+        let q_init = vec![JointPosition::Pose(Pose {
+            rotation: UnitQuaternion::identity(),
+            translation: vector![0.0, 0.0, 0.0],
+        })];
+        let v_init = vec![JointVelocity::Spatial(SpatialVector {
+            angular: vector![0.0, 5.0, 0.0],
+            linear: vector![1.0, 0.0, 0.0],
+        })];
+        state.update(&q_init, &v_init);
+
+        // Act
+        let final_time = 5.0;
+        let dt = 1e-3;
+        let (qs, vs) = simulate(&mut state, final_time, dt, |_state| vec![]);
+
+        // Assert
+        let q_final = qs[qs.len() - 1][0].pose();
+        assert_close(&q_final.translation.z, &(h_ground + l / 2.0), 1e-2);
+
+        let v_final = vs[vs.len() - 1][0].spatial();
+        assert_close(&v_final.linear.norm(), &0.0, 5e-3);
+        assert_close(&v_final.angular.norm(), &0.0, 1e-2);
     }
 }

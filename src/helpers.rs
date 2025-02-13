@@ -1,3 +1,5 @@
+use crate::contact::ContactPoint;
+use crate::joint::floating::FloatingJoint;
 use crate::joint::ToJointPositionVec;
 use crate::joint::ToJointVelocityVec;
 use crate::{
@@ -167,6 +169,70 @@ pub fn build_cart_pole(
         v: vec![0.0, 0.0].to_joint_vel_vec(),
         halfspaces: dvector![],
     };
+
+    state
+}
+
+pub fn build_cube(mass: Float, length: Float) -> MechanismState {
+    let m = mass;
+    let l = length;
+
+    let moment_x = m * l * l / 6.0;
+    let moment_y = moment_x;
+    let moment_z = moment_x;
+    let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
+    let cross_part = vector![0., 0., 0.];
+
+    let cube_frame = "cube";
+    let world_frame = "world"; // TODO: make world frame a global constant
+    let cube_to_world = Transform3D::identity(&cube_frame, &world_frame);
+    let cube = RigidBody::new(SpatialInertia {
+        frame: cube_frame.to_string(),
+        moment,
+        cross_part,
+        mass: m,
+    });
+
+    let treejoints = dvector![Joint::FloatingJoint(FloatingJoint::new(cube_to_world))];
+    let bodies = dvector![cube];
+    let halfspaces = dvector![];
+    let mut state = MechanismState::new(treejoints, bodies, halfspaces);
+
+    // Contact points on the bottom face
+    state.add_contact_point(&ContactPoint {
+        frame: cube_frame.to_string(),
+        location: vector![l / 2.0, l / 2.0, -l / 2.0],
+    });
+    state.add_contact_point(&ContactPoint {
+        frame: cube_frame.to_string(),
+        location: vector![l / 2.0, -l / 2.0, -l / 2.0],
+    });
+    state.add_contact_point(&ContactPoint {
+        frame: cube_frame.to_string(),
+        location: vector![-l / 2.0, l / 2.0, -l / 2.0],
+    });
+    state.add_contact_point(&ContactPoint {
+        frame: cube_frame.to_string(),
+        location: vector![-l / 2.0, -l / 2.0, -l / 2.0],
+    });
+
+    // Contact Points on the top face
+    state.add_contact_point(&ContactPoint {
+        frame: cube_frame.to_string(),
+        location: vector![l / 2.0, l / 2.0, l / 2.0],
+    });
+    state.add_contact_point(&ContactPoint {
+        frame: cube_frame.to_string(),
+        location: vector![l / 2.0, -l / 2.0, l / 2.0],
+    });
+    state.add_contact_point(&ContactPoint {
+        frame: cube_frame.to_string(),
+        location: vector![-l / 2.0, l / 2.0, l / 2.0],
+    });
+    state.add_contact_point(&ContactPoint {
+        frame: cube_frame.to_string(),
+        location: vector![-l / 2.0, -l / 2.0, l / 2.0],
+    });
 
     state
 }

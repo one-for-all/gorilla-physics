@@ -1,5 +1,7 @@
 use crate::{
     control::energy_control::{Controller, Hopper1DController, Hopper2DController},
+    joint::JointTorque,
+    mechanism::MechanismState,
     types::Float,
 };
 use wasm_bindgen::prelude::*;
@@ -39,5 +41,19 @@ pub fn createHopper2DController(
         hip_leg_length,
         leg_foot_length,
     ));
+    InterfaceController { inner }
+}
+
+pub struct NullController {}
+
+impl Controller for NullController {
+    fn control(&mut self, _state: &MechanismState) -> Vec<JointTorque> {
+        vec![]
+    }
+}
+
+#[wasm_bindgen]
+pub fn createNullController() -> InterfaceController {
+    let inner: Box<dyn Controller> = Box::new(NullController {});
     InterfaceController { inner }
 }

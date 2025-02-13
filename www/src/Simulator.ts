@@ -2,6 +2,10 @@ import { InterfaceSimulator } from "gorilla-physics";
 import * as THREE from "three";
 import { Graphics } from "./Graphics";
 
+import { Line2 } from "three/examples/jsm/lines/Line2";
+import { LineGeometry } from "three/examples/jsm/lines/LineGeometry";
+import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
+
 export class Simulator {
   simulator: InterfaceSimulator;
 
@@ -12,6 +16,7 @@ export class Simulator {
   bob: THREE.Mesh;
   cart: THREE.Mesh;
   meshes: Map<string, THREE.Mesh>;
+  lines: Map<string, Line2>;
 
   fps: number;
   time: number;
@@ -21,6 +26,7 @@ export class Simulator {
 
     this.graphics = new Graphics();
     this.meshes = new Map();
+    this.lines = new Map();
     this.fps = 60;
     this.time = 0.0;
   }
@@ -122,12 +128,62 @@ export class Simulator {
     this.graphics.scene.add(sphere);
   }
 
-  addHopper(w_body: number, h_body: number, r_leg: number, r_foot: number) {
+  addCube(length: number) {
+    const cubeGeometry = new THREE.BoxGeometry(length, length, length);
+    const cubeMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+    this.meshes.set("cube", cube);
+    this.graphics.scene.add(cube);
+  }
+
+  add1DHopper(w_body: number, h_body: number, r_leg: number, r_foot: number) {
     const bodyGeometry = new THREE.BoxGeometry(w_body, w_body, h_body);
     const bodyMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     this.meshes.set("hopper_body", body);
     this.graphics.scene.add(body);
+
+    const legGeometry = new THREE.SphereGeometry(r_leg, 32, 32);
+    const legMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const leg = new THREE.Mesh(legGeometry, legMaterial);
+    this.meshes.set("hopper_leg", leg);
+    this.graphics.scene.add(leg);
+
+    const footGeometry = new THREE.SphereGeometry(r_foot, 32, 32);
+    const footMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+    const foot = new THREE.Mesh(footGeometry, footMaterial);
+    this.meshes.set("hopper_foot", foot);
+    this.graphics.scene.add(foot);
+  }
+
+  add2DHopper(
+    w_body: number,
+    h_body: number,
+    r_hip: number,
+    r_leg: number,
+    r_foot: number
+  ) {
+    const bodyGeometry = new THREE.BoxGeometry(w_body, w_body, h_body);
+    const bodyMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    this.meshes.set("hopper_body", body);
+    this.graphics.scene.add(body);
+
+    const hipGeometry = new THREE.SphereGeometry(r_hip, 32, 32);
+    const hipMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const hip = new THREE.Mesh(hipGeometry, hipMaterial);
+    this.meshes.set("hopper_hip", hip);
+    this.graphics.scene.add(hip);
+
+    const hipLineGeometry = new LineGeometry();
+    const hipLineMaterial = new LineMaterial({
+      color: 0xff0000,
+      linewidth: 3, // Adjust thickness
+      resolution: new THREE.Vector2(window.innerWidth, window.innerHeight), // Required for LineMaterial
+    });
+    const hipLine = new Line2(hipLineGeometry, hipLineMaterial);
+    this.lines.set("hopper_hip_line", hipLine);
+    this.graphics.scene.add(hipLine);
 
     const legGeometry = new THREE.SphereGeometry(r_leg, 32, 32);
     const legMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
@@ -191,7 +247,16 @@ export class Simulator {
     sphere.position.set(x, y, z);
   }
 
-  updateHopper(poses: Float32Array) {
+  updateCube(poses: Float32Array) {
+    let euler = [poses[0], poses[1], poses[2]];
+    let pos = [poses[3], poses[4], poses[5]];
+
+    let body = this.meshes.get("cube");
+    body.rotation.set(euler[0], euler[1], euler[2]);
+    body.position.set(pos[0], pos[1], pos[2]);
+  }
+
+  update1DHopper(poses: Float32Array) {
     let body_euler = [poses[0], poses[1], poses[2]];
     let body_pos = [poses[3], poses[4], poses[5]];
 
@@ -214,6 +279,47 @@ export class Simulator {
     foot.position.set(foot_pos[0], foot_pos[1], foot_pos[2]);
   }
 
+  update2DHopper(poses: Float32Array) {
+    let body_euler = [poses[0], poses[1], poses[2]];
+    let body_pos = [poses[3], poses[4], poses[5]];
+
+    let body = this.meshes.get("hopper_body");
+    body.rotation.set(body_euler[0], body_euler[1], body_euler[2]);
+    body.position.set(body_pos[0], body_pos[1], body_pos[2]);
+
+    let hip_euler = [poses[6], poses[7], poses[8]];
+    let hip_pos = [poses[9], poses[10], poses[11]];
+
+    let hip = this.meshes.get("hopper_hip");
+    hip.rotation.set(hip_euler[0], hip_euler[1], hip_euler[2]);
+    hip.position.set(hip_pos[0], hip_pos[1], hip_pos[2]);
+
+    this.lines
+      .get("hopper_hip_line")
+      .geometry.setPositions([
+        body_pos[0],
+        body_pos[1],
+        body_pos[2],
+        hip_pos[0],
+        hip_pos[1],
+        hip_pos[2],
+      ]);
+
+    let leg_euler = [poses[12], poses[13], poses[14]];
+    let leg_pos = [poses[15], poses[16], poses[17]];
+
+    let leg = this.meshes.get("hopper_leg");
+    leg.rotation.set(leg_euler[0], leg_euler[1], leg_euler[2]);
+    leg.position.set(leg_pos[0], leg_pos[1], leg_pos[2]);
+
+    let foot_euler = [poses[18], poses[19], poses[20]];
+    let foot_pos = [poses[21], poses[22], poses[23]];
+
+    let foot = this.meshes.get("hopper_foot");
+    foot.rotation.set(foot_euler[0], foot_euler[1], foot_euler[2]);
+    foot.position.set(foot_pos[0], foot_pos[1], foot_pos[2]);
+  }
+
   run(timestamp?: number) {
     this.graphics.render();
 
@@ -226,7 +332,9 @@ export class Simulator {
     this.time += dt;
 
     let poses = this.simulator.poses();
-    this.updateHopper(poses);
+    this.updateCube(poses);
+    // this.update1DHopper(poses);
+    // this.update2DHopper(poses);
 
     requestAnimationFrame((t) => this.run(t));
   }
