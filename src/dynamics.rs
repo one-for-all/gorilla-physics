@@ -259,7 +259,7 @@ pub fn dynamics_solve(
     }
 }
 
-/// Compute the joint acceleration vector vdot vdot that satisfies the joint-space
+/// Compute the joint acceleration vector vdot that satisfies the joint-space
 /// equations of motion:
 ///     M(q)vdot + c(q, v) = τ
 /// given joint configuration vector q, joint velocity vector v, and joint
