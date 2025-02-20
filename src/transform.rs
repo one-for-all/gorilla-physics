@@ -51,6 +51,10 @@ impl Transform3D {
         self.mat.fixed_view::<3, 1>(0, 3).into()
     }
 
+    pub fn transform_point(&self, point: &Vector3<Float>) -> Vector3<Float> {
+        self.rot() * point + self.trans()
+    }
+
 
     /// Create the transformation matrix for a rotation about the x-axis
     #[rustfmt::skip]

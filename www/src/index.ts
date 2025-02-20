@@ -2,7 +2,7 @@ import { Simulator } from "./Simulator";
 
 import("gorilla-physics").then((gorilla) => {
   const mass = 1.0;
-  const radius = 2.0;
+  const radius = 5.0;
   const length = 5.0;
   let w_body = 5.0;
   let h_body = 0.1;
@@ -21,7 +21,7 @@ import("gorilla-physics").then((gorilla) => {
   //   body_leg_length,
   //   leg_foot_length
   // );
-  let state = gorilla.createCube(length);
+  // let state = gorilla.createCube(length);
   // let state = gorilla.create2DHopper(
   //   w_body,
   //   h_body,
@@ -32,8 +32,11 @@ import("gorilla-physics").then((gorilla) => {
   //   hip_leg_length,
   //   leg_foot_length
   // );
+  let n_foot = 8;
+  let state = gorilla.createRimlessWheel(radius, n_foot);
 
-  let normal = new Float32Array([0.0, 0.0, 1.0]);
+  let angle: number = (10.0 * Math.PI) / 180.0;
+  let normal = new Float32Array([Math.sin(angle), 0.0, Math.cos(angle)]);
   let distance = -20.0;
   state.addHalfSpace(normal, distance);
 
@@ -61,7 +64,9 @@ import("gorilla-physics").then((gorilla) => {
   // simulator.addSphere(radius);
   // simulator.add2DHopper(w_body, h_body, r_hip, r_leg, r_foot);
   // simulator.add1DHopper(w_body, h_body, r_leg, r_foot);
-  simulator.addCube(length);
+  // simulator.addCube(length);
+  // simulator.addSphere(0.1);
+  simulator.addRimlessWheel(radius, 10.0, n_foot);
 
   simulator.addPlane(normal, distance, 100);
 

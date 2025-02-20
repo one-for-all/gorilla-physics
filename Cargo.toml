@@ -28,6 +28,7 @@ path = "examples/cart_pole.rs"
 name = "cube"
 path = "examples/cube.rs"
 
+
 [dependencies]
 itertools = "0.13.0"
 nalgebra = "0.33"

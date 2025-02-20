@@ -8,6 +8,7 @@ use crate::pose::Pose;
 use crate::spatial_vector::SpatialVector;
 use crate::transform::compute_bodies_to_root;
 use controller::InterfaceController;
+use itertools::izip;
 use na::Rotation3;
 use na::UnitQuaternion;
 use na::Vector3;
@@ -35,6 +36,7 @@ pub mod cube;
 pub mod double_pendulum;
 pub mod hopper;
 pub mod pendulum;
+pub mod rimless_wheel;
 
 #[wasm_bindgen]
 extern "C" {
@@ -88,6 +90,11 @@ impl InterfaceSimulator {
     pub fn poses(&self) -> js_sys::Float32Array {
         self.state.poses()
     }
+
+    #[wasm_bindgen]
+    pub fn contact_positions(&self) -> js_sys::Float32Array {
+        self.state.contact_positions()
+    }
 }
 
 /// WebAssembly interface to the MechanismState struct.
@@ -102,6 +109,7 @@ impl InterfaceMechanismState {
     pub fn poses(&self) -> js_sys::Float32Array {
         let njoints = self.inner.treejointids.len();
 
+        // TODO: use cached bodies_to_root
         let bodies_to_root = compute_bodies_to_root(&self.inner);
 
         let mut poses = vec![];
@@ -117,8 +125,35 @@ impl InterfaceMechanismState {
             poses.extend_from_slice(&[translation[0], translation[1], translation[2]]);
         }
 
+        // TODO: extract below into a function
         let q_js = js_sys::Float32Array::new_with_length(6 * njoints as u32);
         for (i, q) in poses.iter().enumerate() {
+            q_js.set_index(i as u32, *q);
+        }
+        q_js
+    }
+
+    /// Get the positions of each contact point in the system
+    pub fn contact_positions(&self) -> js_sys::Float32Array {
+        let bodies_to_root = compute_bodies_to_root(&self.inner);
+
+        let mut positions = vec![];
+        for (jointid, body) in izip!(self.inner.treejointids.iter(), self.inner.bodies.iter()) {
+            let body_to_root = bodies_to_root.get(jointid).unwrap();
+
+            for contact in body.contact_points.iter() {
+                let location_in_body = contact.location;
+                let location_in_world = body_to_root.transform_point(&location_in_body);
+                positions.extend_from_slice(&[
+                    location_in_world[0],
+                    location_in_world[1],
+                    location_in_world[2],
+                ]);
+            }
+        }
+
+        let q_js = js_sys::Float32Array::new_with_length(positions.len() as u32);
+        for (i, q) in positions.iter().enumerate() {
             q_js.set_index(i as u32, *q);
         }
         q_js
