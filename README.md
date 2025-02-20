@@ -6,9 +6,9 @@ I am learning a lot as I build it, so it is also a learning project for me.
 
 ## Getting Started
 
-Run all tests:
+Run all tests in lib:
 
-`cargo test -- --nocapture`
+`cargo test --lib -- --nocapture`
 
 Run the pendulum example:
 

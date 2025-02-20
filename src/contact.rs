@@ -147,7 +147,7 @@ pub fn calculate_contact_force(
 #[cfg(test)]
 mod contact_tests {
     use crate::{
-        helpers::build_cube,
+        helpers::{build_cube, build_rimless_wheel},
         joint::{JointPosition, JointVelocity, ToJointTorqueVec},
         pose::Pose,
         spatial_vector::SpatialVector,
@@ -292,5 +292,51 @@ mod contact_tests {
         let v_final = vs[vs.len() - 1][0].spatial();
         assert_close(&v_final.linear.norm(), &0.0, 5e-3);
         assert_close(&v_final.angular.norm(), &0.0, 1e-2);
+    }
+
+    /// Rimless wheel rolling down a slope, settling into a stable limit cycle
+    #[test]
+    fn rimless_wheel() {
+        // Arrange
+        let m_body = 10.0;
+        let r_body = 5.0;
+
+        let l = 10.0;
+        let n_foot = 8;
+
+        let mut state = build_rimless_wheel(m_body, r_body, l, n_foot);
+
+        let angle: Float = Float::to_radians(10.0);
+        let normal = vector![angle.sin(), 0.0, angle.cos()];
+        let h_ground = -20.0;
+        state.add_halfspace(&HalfSpace::new(normal, h_ground));
+
+        let q_init = vec![JointPosition::Pose(Pose {
+            rotation: UnitQuaternion::identity(),
+            translation: vector![0.0, 0.0, 0.0],
+        })];
+        let v_init = vec![JointVelocity::Spatial(SpatialVector {
+            angular: vector![0.0, 0.0, 0.0],
+            linear: vector![1.0, 0.0, 0.0], // Give the wheel a slight push
+        })];
+        state.update(&q_init, &v_init);
+
+        // Act
+        let final_time = 20.0;
+        let dt = 1.0 / 600.0;
+        let (qs, vs) = simulate(&mut state, final_time, dt, |_state| vec![]);
+
+        // Assert
+        let omega_final = vs[vs.len() - 1][0]
+            .spatial()
+            .angular
+            .dot(&Vector3::y_axis());
+        assert!(omega_final > 0.0);
+
+        let omega_max = vs
+            .iter()
+            .map(|v| v[0].spatial().angular.dot(&Vector3::y_axis()))
+            .fold(0.0, Float::max);
+        assert!(omega_max < 0.75);
     }
 }

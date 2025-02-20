@@ -2,6 +2,7 @@ use crate::contact::ContactPoint;
 use crate::joint::floating::FloatingJoint;
 use crate::joint::ToJointPositionVec;
 use crate::joint::ToJointVelocityVec;
+use crate::PI;
 use crate::{
     inertia::SpatialInertia,
     joint::{prismatic::PrismaticJoint, revolute::RevoluteJoint, Joint, JointPosition},
@@ -10,6 +11,7 @@ use crate::{
     transform::Transform3D,
     types::Float,
 };
+use na::Rotation3;
 use na::{dvector, vector, Matrix3, Matrix4, Vector3};
 
 /// Build a mechanism state of a pendulum
@@ -233,6 +235,46 @@ pub fn build_cube(mass: Float, length: Float) -> MechanismState {
         frame: cube_frame.to_string(),
         location: vector![-l / 2.0, -l / 2.0, l / 2.0],
     });
+
+    state
+}
+
+pub fn build_rimless_wheel(
+    m_body: Float,
+    r_body: Float,
+    l: Float,
+    n_foot: usize,
+) -> MechanismState {
+    let moment_x = 2.0 / 5.0 * m_body * r_body * r_body;
+    let moment = Matrix3::from_diagonal(&vector![moment_x, moment_x, moment_x]);
+    let cross_part = vector![0.0, 0.0, 0.0];
+
+    let body_frame = "body";
+    let world_frame = "world";
+    let body_to_world = Transform3D::identity(&body_frame, &world_frame);
+
+    let body = RigidBody::new(SpatialInertia {
+        frame: body_frame.to_string(),
+        mass: m_body,
+        moment,
+        cross_part,
+    });
+
+    let alpha = 2.0 * PI / n_foot as Float / 2.0;
+
+    let treejoints = dvector![Joint::FloatingJoint(FloatingJoint::new(body_to_world))];
+    let bodies = dvector![body];
+    let halfspace = dvector![];
+
+    let mut state = MechanismState::new(treejoints, bodies, halfspace);
+    for i in 0..n_foot {
+        let rotation = Rotation3::from_axis_angle(&Vector3::y_axis(), i as Float * 2.0 * alpha);
+        let location = rotation * Vector3::new(0., 0., -l);
+        state.add_contact_point(&ContactPoint {
+            frame: body_frame.to_string(),
+            location,
+        });
+    }
 
     state
 }

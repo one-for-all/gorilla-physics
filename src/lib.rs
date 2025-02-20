@@ -13,7 +13,6 @@ pub mod inertia;
 pub mod joint;
 pub mod mechanism;
 pub mod momentum;
-pub mod plot;
 pub mod pose;
 pub mod rigid_body;
 pub mod simulate;
@@ -25,7 +24,11 @@ pub mod twist;
 pub mod types;
 pub mod util;
 
+#[cfg(not(target_arch = "wasm32"))]
+pub mod plot;
+
 // Wasm bindings
+#[cfg(target_arch = "wasm32")]
 pub mod interface;
 
 pub mod helpers;
