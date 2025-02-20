@@ -13,6 +13,7 @@ pub mod inertia;
 pub mod joint;
 pub mod mechanism;
 pub mod momentum;
+pub mod plot;
 pub mod pose;
 pub mod rigid_body;
 pub mod simulate;
