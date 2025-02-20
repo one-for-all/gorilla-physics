@@ -28,6 +28,9 @@ path = "examples/cart_pole.rs"
 name = "cube"
 path = "examples/cube.rs"
 
+[[bin]]
+name = "rimless_wheel"
+path = "examples/rimless_wheel.rs"
 
 [dependencies]
 itertools = "0.13.0"
