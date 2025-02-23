@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::ops::Mul;
 
 use itertools::izip;
-use na::Vector3;
+use na::{vector, zero, Vector3};
 
 use crate::{
     mechanism::MechanismState,
@@ -129,17 +129,23 @@ pub fn calculate_contact_force(
     // friction force in tangential direction - regularized coulomb friction
     let v_t = velocity + z_dot * normal; // tangential velocity
     let v_t_norm = v_t.norm();
-    let v_s = 1e-3; // slip tolerance, amount of velocity allowed for contact that should be stationary
-    let s = v_t_norm / v_s;
-    let μ = 0.5; // coefficient of friction
-    let μ = {
-        if s > 1.0 {
-            μ
+    let f_friction = {
+        if v_t_norm == 0.0 {
+            Vector3::zeros()
         } else {
-            μ * s
+            let v_s = 1e-3; // slip tolerance, amount of velocity allowed for contact that should be stationary
+            let s = v_t_norm / v_s;
+            let μ = 1.0; // coefficient of friction
+            let μ = {
+                if s > 1.0 {
+                    μ
+                } else {
+                    μ * s
+                }
+            };
+            -μ * π * (v_t / v_t_norm)
         }
     };
-    let f_friction = -μ * π * (v_t / v_t_norm);
 
     f_normal + f_friction
 }
