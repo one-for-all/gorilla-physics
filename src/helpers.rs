@@ -1,7 +1,10 @@
 use crate::contact::ContactPoint;
 use crate::joint::floating::FloatingJoint;
+use crate::joint::JointVelocity;
 use crate::joint::ToJointPositionVec;
 use crate::joint::ToJointVelocityVec;
+use crate::pose::Pose;
+use crate::spatial_vector::SpatialVector;
 use crate::PI;
 use crate::{
     inertia::SpatialInertia,
@@ -11,7 +14,9 @@ use crate::{
     transform::Transform3D,
     types::Float,
 };
+use na::zero;
 use na::Rotation3;
+use na::UnitQuaternion;
 use na::{dvector, vector, Matrix3, Matrix4, Vector3};
 
 /// Build a mechanism state of a pendulum
@@ -275,6 +280,131 @@ pub fn build_rimless_wheel(
             location,
         });
     }
+
+    state
+}
+
+pub fn build_2d_hopper(
+    m_body: Float,
+    w_body: Float,
+    h_body: Float,
+    m_hip: Float,
+    r_hip: Float,
+    body_hip_length: Float,
+    m_piston: Float,
+    r_piston: Float,
+    hip_piston_length: Float,
+    m_leg: Float,
+    l_leg: Float,
+    piston_leg_length: Float,
+) -> MechanismState {
+    // Create hopper body
+    let moment_x = (w_body * w_body + h_body * h_body) * m_body / 12.0;
+    let moment_y = (w_body * w_body + h_body * h_body) * m_body / 12.0;
+    let moment_z = (w_body * w_body + w_body * w_body) * m_body / 12.0;
+    let moment_body = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
+    let cross_part_body = vector![0.0, 0.0, 0.0];
+
+    let body_frame = "body";
+    let world_frame = "world";
+    let body_to_world = Transform3D::identity(&body_frame, &world_frame);
+    let body = RigidBody::new(SpatialInertia {
+        frame: body_frame.to_string(),
+        moment: moment_body,
+        cross_part: cross_part_body,
+        mass: m_body,
+    });
+
+    // Create hopper hip
+    let moment_x = 2.0 / 5.0 * m_hip * r_hip * r_hip;
+    let moment_hip = Matrix3::from_diagonal(&vector![moment_x, moment_x, moment_x]);
+    let cross_part_hip = vector![0.0, 0.0, 0.0];
+    let axis_hip = vector![0.0, 1.0, 0.0];
+
+    let hip_frame = "hip";
+    let hip_to_body = Transform3D {
+        from: hip_frame.to_string(),
+        to: body_frame.to_string(),
+        mat: Transform3D::move_z(-body_hip_length),
+    };
+    let hip = RigidBody::new(SpatialInertia {
+        frame: hip_frame.to_string(),
+        moment: moment_hip,
+        cross_part: cross_part_hip,
+        mass: m_hip,
+    });
+
+    // Create hopper piston
+    let moment_x = 2.0 / 5.0 * m_piston * r_piston * r_piston;
+    let moment_piston = Matrix3::from_diagonal(&vector![moment_x, moment_x, moment_x]);
+    let cross_part_piston = vector![0.0, 0.0, 0.0];
+    let axis_piston = vector![0.0, 0.0, -1.0];
+
+    let piston_frame = "piston";
+    let piston_to_hip = Transform3D {
+        from: piston_frame.to_string(),
+        to: hip_frame.to_string(),
+        mat: Transform3D::move_z(-hip_piston_length),
+    };
+    let piston = RigidBody::new(SpatialInertia {
+        frame: piston_frame.to_string(),
+        moment: moment_piston,
+        cross_part: cross_part_piston,
+        mass: m_piston,
+    });
+
+    // Create hopper leg
+    let moment_x = 1.0 / 3.0 * m_leg * l_leg * l_leg;
+    let moment_y = 1.0 / 3.0 * m_leg * l_leg * l_leg;
+    let moment_z = 0.0;
+    let moment_leg = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
+    let cross_part_leg = vector![0.0, 0.0, m_leg * l_leg / 2.0];
+    let axis_leg = vector![0.0, 0.0, -1.0];
+
+    let leg_frame = "leg";
+    let leg_to_piston = Transform3D {
+        from: leg_frame.to_string(),
+        to: piston_frame.to_string(),
+        mat: Transform3D::move_z(-piston_leg_length),
+    };
+    let leg = RigidBody::new(SpatialInertia {
+        frame: leg_frame.to_string(),
+        moment: moment_leg,
+        cross_part: cross_part_leg,
+        mass: m_leg,
+    });
+
+    // Create the hopper
+    let treejoints = dvector![
+        Joint::FloatingJoint(FloatingJoint {
+            init_mat: body_to_world.mat.clone(),
+            transform: body_to_world,
+        }),
+        Joint::RevoluteJoint(RevoluteJoint {
+            init_mat: hip_to_body.mat.clone(),
+            transform: hip_to_body,
+            axis: axis_hip
+        }),
+        Joint::PrismaticJoint(PrismaticJoint {
+            init_mat: piston_to_hip.mat.clone(),
+            transform: piston_to_hip,
+            axis: axis_piston
+        }),
+        Joint::PrismaticJoint(PrismaticJoint {
+            init_mat: leg_to_piston.mat.clone(),
+            transform: leg_to_piston,
+            axis: axis_leg
+        })
+    ];
+
+    let bodies = dvector![body, hip, piston, leg];
+    let halfspaces = dvector![];
+    let mut state = MechanismState::new(treejoints, bodies, halfspaces);
+
+    state.add_contact_point(&ContactPoint {
+        frame: leg_frame.to_string(),
+        location: vector![0., 0., 0.],
+    });
 
     state
 }
