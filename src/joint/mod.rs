@@ -153,6 +153,22 @@ pub enum JointTorque {
     Spatial(SpatialVector), // 3D spatial wrench applied to floating joint
 }
 
+impl JointTorque {
+    pub fn float(&self) -> &Float {
+        match self {
+            JointTorque::Float(v) => v,
+            _ => panic!("JointTorque is not a Float"),
+        }
+    }
+
+    pub fn spatial(&self) -> &SpatialVector {
+        match self {
+            JointTorque::Spatial(v) => v,
+            _ => panic!("JointTorque is not a Twist"),
+        }
+    }
+}
+
 pub trait ToJointTorqueVec {
     fn to_joint_torque_vec(&self) -> Vec<JointTorque>;
 }

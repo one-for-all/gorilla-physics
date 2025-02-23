@@ -18,7 +18,7 @@ pub fn createHopper1DController(
     leg_foot_length: Float,
 ) -> InterfaceController {
     let inner: Box<dyn Controller> = Box::new(Hopper1DController {
-        k_spring: 200.0,
+        k_spring: 1e3,
         h_setpoint,
         leg_length_setpoint: 0.0,
         v_vertical_prev: 0.0,
@@ -34,12 +34,16 @@ pub fn createHopper2DController(
     body_hip_length: Float,
     hip_leg_length: Float,
     leg_foot_length: Float,
+    l_leg: Float,
+    k_spring: Float,
 ) -> InterfaceController {
     let inner: Box<dyn Controller> = Box::new(Hopper2DController::new(
         h_setpoint,
         body_hip_length,
         hip_leg_length,
         leg_foot_length,
+        l_leg,
+        k_spring,
     ));
     InterfaceController { inner }
 }
@@ -47,7 +51,7 @@ pub fn createHopper2DController(
 pub struct NullController {}
 
 impl Controller for NullController {
-    fn control(&mut self, _state: &MechanismState) -> Vec<JointTorque> {
+    fn control(&mut self, _state: &mut MechanismState) -> Vec<JointTorque> {
         vec![]
     }
 }

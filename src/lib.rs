@@ -28,7 +28,8 @@ pub mod util;
 pub mod plot;
 
 // Wasm bindings
-#[cfg(target_arch = "wasm32")]
+// #[cfg(target_arch = "wasm32")] // TODO: configure the rust-analyzer to
+// include this even with this cfg
 pub mod interface;
 
 pub mod helpers;
