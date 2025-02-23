@@ -31,6 +31,56 @@ export class Simulator {
     this.time = 0.0;
   }
 
+  addBox(name: string, color: number, w: number, d: number, h: number) {
+    const geometry = new THREE.BoxGeometry(w, d, h);
+    const material = new THREE.MeshBasicMaterial({ color: color });
+    const box = new THREE.Mesh(geometry, material);
+    this.meshes.set(name, box);
+    this.graphics.scene.add(box);
+  }
+
+  addSphere(name: string, color: number, radius: number) {
+    const geometry = new THREE.SphereGeometry(radius, 32, 32);
+    const material = new THREE.MeshBasicMaterial({ color: color });
+    const sphere = new THREE.Mesh(geometry, material);
+    this.meshes.set(name, sphere);
+    this.graphics.scene.add(sphere);
+  }
+
+  addLine(name: string, color: number, linewidth: number) {
+    const geometry = new LineGeometry();
+    const material = new LineMaterial({
+      color: color,
+      linewidth: linewidth, // Adjust thickness
+      resolution: new THREE.Vector2(window.innerWidth, window.innerHeight), // Required for LineMaterial
+    });
+    const line = new Line2(geometry, material);
+    this.lines.set(name, line);
+    this.graphics.scene.add(line);
+  }
+
+  setPose(name: string, poses: Float32Array) {
+    let euler = [poses[0], poses[1], poses[2]];
+    let pos = [poses[3], poses[4], poses[5]];
+
+    let body = this.meshes.get(name);
+    body.rotation.set(euler[0], euler[1], euler[2]);
+    body.position.set(pos[0], pos[1], pos[2]);
+  }
+
+  setLineEndpoints(name: string, pos1: Float32Array, pos2: Float32Array) {
+    this.lines
+      .get(name)
+      .geometry.setPositions([
+        pos1[0],
+        pos1[1],
+        pos1[2],
+        pos2[0],
+        pos2[1],
+        pos2[2],
+      ]);
+  }
+
   addCart(length: number) {
     this.length = length;
     const cartGeometry = new THREE.BoxGeometry(length, 1, 1);
@@ -118,14 +168,6 @@ export class Simulator {
     this.rod = new THREE.Mesh(rodGeometry, rodMaterial);
     this.rod.position.y = -length / 2;
     this.graphics.scene.add(this.rod);
-  }
-
-  addSphere(radius: number) {
-    const sphereGeometry = new THREE.SphereGeometry(radius, 32, 32);
-    const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-    const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-    this.meshes.set("sphere", sphere);
-    this.graphics.scene.add(sphere);
   }
 
   addCube(length: number) {
