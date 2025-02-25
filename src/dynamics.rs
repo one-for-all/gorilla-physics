@@ -264,7 +264,7 @@ pub fn dynamics_solve(
 ///     M(q)vdot + c(q, v) = τ
 /// given joint configuration vector q, joint velocity vector v, and joint
 /// torques τ.
-pub fn dynamics(state: &MechanismState, tau: &Vec<JointTorque>) -> Vec<JointAcceleration> {
+pub fn dynamics(state: &mut MechanismState, tau: &Vec<JointTorque>) -> Vec<JointAcceleration> {
     if state.v.len() != tau.len() {
         panic!(
             "Joint velocity vector v length {} and joint torques vector τ length {} differ!",
@@ -352,10 +352,11 @@ mod dynamics_tests {
         let rod_to_world = Matrix4::identity(); // transformation from rod to world frame
         let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
-        let state = crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+        let mut state =
+            crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         // Act
-        let joint_accels = dynamics(&state, &vec![0.0].to_joint_torque_vec());
+        let joint_accels = dynamics(&mut state, &vec![0.0].to_joint_torque_vec());
 
         // Assert
         assert_eq!(
@@ -384,10 +385,10 @@ mod dynamics_tests {
         let rod_to_world = Transform3D::rot_x(PI / 2.0);
         let axis = vector![0.0, 0.0, 1.0];
 
-        let state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+        let mut state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         // Act
-        let joint_accels = dynamics(&state, &vec![0.0].to_joint_torque_vec());
+        let joint_accels = dynamics(&mut state, &vec![0.0].to_joint_torque_vec());
 
         // Assert
         assert_eq!(
@@ -418,10 +419,10 @@ mod dynamics_tests {
         let rod_to_world = Transform3D::move_x(d) * Transform3D::rot_x(PI / 2.0);
         let axis = vector![0.0, 0.0, 1.0];
 
-        let state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+        let mut state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         // Act
-        let joint_accels = dynamics(&state, &vec![0.0].to_joint_torque_vec());
+        let joint_accels = dynamics(&mut state, &vec![0.0].to_joint_torque_vec());
 
         // Assert
         let error = (joint_accels.to_float_dvec() - dvector![-3.0 * GRAVITY / (2.0 * l)]).abs();
@@ -447,11 +448,12 @@ mod dynamics_tests {
         let rod_to_world = Matrix4::identity(); // transformation from rod to world frame
         let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
-        let state = crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+        let mut state =
+            crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         // Act
         let torque = -m * GRAVITY * l / 2.0;
-        let joint_accels = dynamics(&state, &vec![torque].to_joint_torque_vec());
+        let joint_accels = dynamics(&mut state, &vec![torque].to_joint_torque_vec());
 
         // Assert
         let error = (joint_accels.to_float_dvec() - dvector![0.0]).abs();
@@ -478,10 +480,11 @@ mod dynamics_tests {
         let rod_to_world = Matrix4::identity();
         let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
-        let state = crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+        let mut state =
+            crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         // Act
-        let joint_accels = dynamics(&state, &vec![0.0].to_joint_torque_vec());
+        let joint_accels = dynamics(&mut state, &vec![0.0].to_joint_torque_vec());
 
         // Assert
         assert_eq!(joint_accels.to_float_dvec(), dvector![GRAVITY / l]);
@@ -505,7 +508,7 @@ mod dynamics_tests {
         let rod2_to_rod1 = Transform3D::move_x(l);
         let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
-        let state = MechanismState {
+        let mut state = MechanismState {
             treejoints: dvector![
                 Joint::RevoluteJoint(RevoluteJoint {
                     init_mat: rod1_to_world,
@@ -539,7 +542,7 @@ mod dynamics_tests {
         };
 
         // Act
-        let joint_accels = dynamics(&state, &vec![0.0, 0.0].to_joint_torque_vec());
+        let joint_accels = dynamics(&mut state, &vec![0.0, 0.0].to_joint_torque_vec());
 
         // Assert
         assert_dvec_close(
@@ -583,7 +586,7 @@ mod dynamics_tests {
         state.update(&q_init, &v_init);
 
         // Act
-        let vdot = dynamics(&state, &vec![0.0, 0.0].to_joint_torque_vec());
+        let vdot = dynamics(&mut state, &vec![0.0, 0.0].to_joint_torque_vec());
 
         // Assert
         let double_pendulum = SimpleDoublePendulum::new(m, m, l, l, q1, q2, q1dot, q2dot);

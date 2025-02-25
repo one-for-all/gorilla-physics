@@ -38,3 +38,5 @@ pub const GRAVITY: Float = 9.81;
 
 pub const PI: Float = std::f32::consts::PI;
 pub const TWO_PI: Float = 2.0 * PI;
+
+pub const WORLD_FRAME: &str = "world";

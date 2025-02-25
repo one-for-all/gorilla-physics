@@ -1,11 +1,15 @@
 use na::{dvector, DVector};
 
-use crate::{contact::ContactPoint, inertia::SpatialInertia};
+use crate::{
+    contact::{ContactPoint, SpringContact},
+    inertia::SpatialInertia,
+};
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct RigidBody {
     pub inertia: SpatialInertia,
     pub contact_points: DVector<ContactPoint>,
+    pub spring_contacts: Vec<SpringContact>,
 }
 
 impl RigidBody {
@@ -13,6 +17,7 @@ impl RigidBody {
         RigidBody {
             inertia,
             contact_points: dvector![],
+            spring_contacts: vec![],
         }
     }
 
@@ -24,5 +29,15 @@ impl RigidBody {
             );
         }
         self.contact_points = self.contact_points.push(contact_point.clone());
+    }
+
+    pub fn add_spring_contact(&mut self, spring_contact: &SpringContact) {
+        if self.inertia.frame != spring_contact.frame {
+            panic!(
+                "Spring contact point frame {} does not match body frame {}",
+                spring_contact.frame, self.inertia.frame
+            );
+        }
+        self.spring_contacts.push(spring_contact.clone());
     }
 }

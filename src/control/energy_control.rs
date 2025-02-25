@@ -3,8 +3,14 @@ use na::{ComplexField, Vector, Vector3};
 use web_sys::console;
 
 use crate::{
-    contact::in_contact, energy::hopper_energy, joint::JointTorque, mechanism::MechanismState,
-    spatial_vector::SpatialVector, types::Float, util::console_log, GRAVITY, PI,
+    energy::hopper_energy,
+    joint::{JointPosition, JointTorque},
+    mechanism::MechanismState,
+    spatial_vector::SpatialVector,
+    transform::compute_bodies_to_root,
+    types::Float,
+    util::console_log,
+    GRAVITY, PI,
 };
 
 /// TODO: Add spring elements to mechanism state
@@ -22,7 +28,7 @@ pub fn mechanical_stop(l_rest: Float, l: Float, v: Float, k: Float, b: Float) ->
 }
 
 pub trait Controller {
-    fn control(&mut self, state: &MechanismState) -> Vec<JointTorque>;
+    fn control(&mut self, state: &mut MechanismState) -> Vec<JointTorque>;
 }
 
 pub struct Hopper1DController {
@@ -40,7 +46,7 @@ impl Controller for Hopper1DController {
     /// Control the hopper to jump to certain vertical height
     /// Ref: Hopping in Legged Systems-Modeling and Simulation for the Two-Dimensional One-Legged Case
     /// Marc Raibert, 1984
-    fn control(&mut self, state: &MechanismState) -> Vec<JointTorque> {
+    fn control(&mut self, state: &mut MechanismState) -> Vec<JointTorque> {
         let mut tau = vec![JointTorque::Spatial(SpatialVector::zero())]; // first floating joint unactuated
 
         let q1 = state.q[1].float();
@@ -56,7 +62,7 @@ impl Controller for Hopper1DController {
         if self.v_vertical_prev < 0.0 && v_vertical > 0.0 {
             // Bottom: The moment in stance when the body has minimum altitude
             // and vertical motion of the body changes from downward to upward.
-            let E = hopper_energy(state, q_foot);
+            let E = hopper_energy(state, q_foot, &self.k_spring);
             let h_setpoint = self.h_setpoint;
             let E_target = GRAVITY
                 * (m_body * h_setpoint

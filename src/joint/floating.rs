@@ -111,7 +111,10 @@ mod floating_joint_tests {
         state.update(&q_init, &v_init);
 
         // Act
-        let accels = dynamics(&state, &vec![JointTorque::Spatial(SpatialVector::zero())]);
+        let accels = dynamics(
+            &mut state,
+            &vec![JointTorque::Spatial(SpatialVector::zero())],
+        );
 
         // Assert
         assert_dvec_close(

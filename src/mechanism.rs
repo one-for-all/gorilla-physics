@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use crate::contact::ContactPoint;
 use crate::contact::HalfSpace;
+use crate::contact::SpringContact;
 use crate::geometric_jacobian::GeometricJacobian;
 use crate::inertia::compute_inertias;
 use crate::inertia::kinetic_energy;
@@ -140,6 +141,15 @@ impl MechanismState {
         for body in self.bodies.iter_mut() {
             if body.inertia.frame == point.frame {
                 body.add_contact_point(point);
+            }
+        }
+    }
+
+    /// Add spring contact to rigid body.
+    pub fn add_spring_contact(&mut self, spring_contact: &SpringContact) {
+        for body in self.bodies.iter_mut() {
+            if body.inertia.frame == spring_contact.frame {
+                body.add_spring_contact(spring_contact);
             }
         }
     }

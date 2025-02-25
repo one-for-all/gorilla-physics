@@ -1,22 +1,20 @@
 use crate::contact::ContactPoint;
+use crate::contact::SpringContact;
 use crate::joint::floating::FloatingJoint;
-use crate::joint::JointVelocity;
 use crate::joint::ToJointPositionVec;
 use crate::joint::ToJointVelocityVec;
-use crate::pose::Pose;
-use crate::spatial_vector::SpatialVector;
 use crate::PI;
+use crate::WORLD_FRAME;
 use crate::{
     inertia::SpatialInertia,
-    joint::{prismatic::PrismaticJoint, revolute::RevoluteJoint, Joint, JointPosition},
+    joint::{prismatic::PrismaticJoint, revolute::RevoluteJoint, Joint},
     mechanism::MechanismState,
     rigid_body::RigidBody,
     transform::Transform3D,
     types::Float,
 };
-use na::zero;
 use na::Rotation3;
-use na::UnitQuaternion;
+use na::UnitVector3;
 use na::{dvector, vector, Matrix3, Matrix4, Vector3};
 
 /// Build a mechanism state of a pendulum
@@ -404,6 +402,52 @@ pub fn build_2d_hopper(
     state.add_contact_point(&ContactPoint {
         frame: leg_frame.to_string(),
         location: vector![0., 0., 0.],
+    });
+
+    state
+}
+
+pub fn build_SLIP(
+    m: Float,
+    r: Float,
+    l_rest: Float,
+    angle: Float,
+    k_spring: Float,
+) -> MechanismState {
+    let moment_x = 2.0 / 5.0 * m * r * r;
+    let moment = Matrix3::from_diagonal(&vector![moment_x, moment_x, moment_x]);
+    let cross_part = vector![0.0, 0.0, 0.0];
+
+    let body_frame = "body";
+    let body_to_world = Transform3D::identity(&body_frame, WORLD_FRAME);
+
+    let body = RigidBody::new(SpatialInertia {
+        frame: body_frame.to_string(),
+        moment,
+        cross_part,
+        mass: m,
+    });
+
+    let treejoints = dvector![Joint::FloatingJoint(FloatingJoint {
+        init_mat: body_to_world.mat.clone(),
+        transform: body_to_world,
+    }),];
+    let bodies = dvector![body];
+    let halfspaces = dvector![];
+    let mut state = MechanismState::new(treejoints, bodies, halfspaces);
+
+    let direction = UnitVector3::new_normalize(vector![angle.sin(), 0., -angle.cos()]);
+    state.add_spring_contact(&SpringContact {
+        frame: body_frame.to_string(),
+        l_rest,
+        direction,
+        k: k_spring,
+        registered_contact: None,
+    });
+
+    state.add_contact_point(&ContactPoint {
+        frame: body_frame.to_string(),
+        location: vector![0.0, 0.0, 0.0],
     });
 
     state

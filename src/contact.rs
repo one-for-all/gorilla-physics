@@ -2,9 +2,11 @@ use std::collections::HashMap;
 use std::ops::Mul;
 
 use itertools::izip;
-use na::{vector, zero, Vector3};
+use na::{vector, UnitVector3, Vector3};
 
+use crate::WORLD_FRAME;
 use crate::{
+    control::energy_control::spring,
     mechanism::MechanismState,
     spatial_force::Wrench,
     transform::{compute_bodies_to_root, Transform3D},
@@ -39,7 +41,7 @@ impl ContactPoint {
     }
 
     pub fn inside_halfspace(&self, halfspace: &HalfSpace) -> bool {
-        (self.location - halfspace.point).dot(&halfspace.normal) <= 0.0
+        halfspace.has_inside(&self.location)
     }
 
     pub fn compute_contact(&self, halfspace: &HalfSpace) -> (Float, Vector3<Float>) {
@@ -63,39 +65,110 @@ impl HalfSpace {
             normal,
         }
     }
+
+    // True if the point is inside the half-space
+    pub fn has_inside(&self, point: &Vector3<Float>) -> bool {
+        (point - self.point).dot(&self.normal) <= 0.0
+    }
+}
+
+/// An ideal spring contact, that acts against half-spaces, to model a spring
+/// attached to the rigid body. Particularly useful to SLIP model.
+#[derive(Clone, PartialEq, Debug)]
+pub struct SpringContact {
+    pub frame: String,                 // frame the spring contact is attached to
+    pub l_rest: Float,                 // rest length
+    pub direction: UnitVector3<Float>, // direction of the spring, expressed in body frame
+    pub k: Float,                      // spring constant
+    pub registered_contact: Option<Vector3<Float>>, // a point in contact, in world frame
 }
 
 /// Compute the contact wrenches due to contacts
 pub fn contact_dynamics(
-    state: &MechanismState,
+    state: &mut MechanismState,
     bodies_to_root: &HashMap<usize, Transform3D>,
     twists: &HashMap<usize, Twist>,
 ) -> HashMap<usize, Wrench> {
     let mut contact_wrenches = HashMap::new();
-    for (jointid, body) in izip!(state.treejointids.iter(), state.bodies.iter()) {
+    for (jointid, body) in izip!(state.treejointids.iter(), state.bodies.iter_mut()) {
         let bodyid = jointid;
         let mut wrench = Wrench::zero("world");
+        let body_to_root = bodies_to_root.get(bodyid).unwrap();
+        let twist = twists.get(bodyid).unwrap();
+
+        // Handle rigid body contacts
         let contact_points = &body.contact_points;
-        if !contact_points.is_empty() {
-            let body_to_root = bodies_to_root.get(bodyid).unwrap();
-            let twist = twists.get(bodyid).unwrap();
-            for contact_point in contact_points {
-                let contact_point = contact_point.transform(body_to_root);
-                let velocity = twist.point_velocity(&contact_point);
+        for contact_point in contact_points {
+            let contact_point = contact_point.transform(body_to_root);
+            let velocity = twist.point_velocity(&contact_point);
+            for halfspace in state.halfspaces.iter() {
+                if !contact_point.inside_halfspace(&halfspace) {
+                    continue;
+                }
+                let (penetration, normal) = contact_point.compute_contact(&halfspace);
+                let contact_force = calculate_contact_force(&penetration, &velocity, &normal);
+                wrench += Wrench::from_force(&contact_point.location, &contact_force, "world");
+            }
+        }
+
+        // Handle spring contacts
+        let spring_contacts = &mut body.spring_contacts;
+        for spring_contact in spring_contacts {
+            let body_location = body_to_root.trans();
+            if spring_contact.registered_contact.is_none() {
+                let spring_direction = body_to_root.rot() * *spring_contact.direction;
+                let contact_location = body_location + spring_direction * spring_contact.l_rest;
                 for halfspace in state.halfspaces.iter() {
-                    if !contact_point.inside_halfspace(&halfspace) {
+                    if !halfspace.has_inside(&contact_location) {
                         continue;
                     }
-                    let (penetration, normal) = contact_point.compute_contact(&halfspace);
-                    let contact_force = calculate_contact_force(&penetration, &velocity, &normal);
-                    wrench += Wrench::from_force(&contact_point.location, &contact_force, "world");
+
+                    // Take the current spring contact location as the contact
+                    // point. It might not be exactly on the halfspace surface.
+                    spring_contact.registered_contact = Some(contact_location);
+
+                    // A spring contact can only be registered to one halfspace
+                    // at a time.
+                    break;
+                }
+            } else {
+                // Exert spring force from the registered contact point
+                let contact_location = spring_contact.registered_contact.unwrap();
+
+                let spring_direction =
+                    UnitVector3::new_normalize(contact_location - body_location).into_inner();
+
+                // TODO: check that spring direction is outward from the half-space.
+
+                let direction_distance = (contact_location - body_location).norm();
+
+                if direction_distance < spring_contact.l_rest {
+                    let spring_force =
+                        spring(spring_contact.l_rest, direction_distance, spring_contact.k);
+                    let force = -spring_direction * spring_force;
+
+                    wrench += Wrench::from_force(&body_location, &force, WORLD_FRAME);
+                } else {
+                    // Spring no longer under load, detach
+                    spring_contact.registered_contact = None;
+
+                    // spring direction set to the angle at leaving the surface
+                    spring_contact.direction = UnitVector3::new_normalize(spring_direction);
+
+                    // Note: Spring length set to zero to avoid tripping
+                    // But now it seems not necessary
+                    // spring_contact.l_rest = 0.0;
                 }
             }
         }
+
         contact_wrenches.insert(*bodyid, wrench);
     }
 
     contact_wrenches
+}
+
+    false
 }
 
 /// Calculate the contact force expressed in world frame
@@ -135,7 +208,7 @@ pub fn calculate_contact_force(
         } else {
             let v_s = 1e-3; // slip tolerance, amount of velocity allowed for contact that should be stationary
             let s = v_t_norm / v_s;
-            let μ = 1.0; // coefficient of friction
+            let μ = 0.5; // coefficient of friction
             let μ = {
                 if s > 1.0 {
                     μ
@@ -153,9 +226,12 @@ pub fn calculate_contact_force(
 #[cfg(test)]
 mod contact_tests {
     use crate::{
-        helpers::{build_cube, build_rimless_wheel},
+        control::energy_control::Controller,
+        helpers::{build_SLIP, build_cube, build_rimless_wheel},
+        interface::controller::NullController,
         joint::{JointPosition, JointVelocity, ToJointTorqueVec},
         pose::Pose,
+        simulate::step,
         spatial_vector::SpatialVector,
         util::assert_close,
     };
@@ -344,5 +420,70 @@ mod contact_tests {
             .map(|v| v[0].spatial().angular.dot(&Vector3::y_axis()))
             .fold(0.0, Float::max);
         assert!(omega_max < 0.75);
+    }
+
+    /// Spring Loaded Inverted Pendulum (SLIP)
+    #[test]
+    fn SLIP() {
+        // Arrange
+        let m = 0.54;
+        let r = 0.1;
+        let l_rest = 0.2;
+        let angle = Float::to_radians(45.0);
+        let k_spring = 500.0;
+
+        let direction = UnitVector3::new_normalize(vector![angle.sin(), 0., -angle.cos()]);
+        let mut state = build_SLIP(m, r, l_rest, angle, k_spring);
+
+        let h_ground = -0.3;
+        state.add_halfspace(&HalfSpace::new(vector![0., 0., 1.], h_ground));
+
+        let q_init = vec![JointPosition::Pose(Pose {
+            rotation: UnitQuaternion::identity(),
+            translation: vector![0.0, 0.0, 0.0],
+        })];
+        let v_init = vec![JointVelocity::Spatial(SpatialVector {
+            angular: vector![0.0, 0.0, 0.0],
+            linear: vector![5.0, 0.0, 0.0],
+        })];
+        state.update(&q_init, &v_init);
+
+        let initial_energy = state.kinetic_energy() + state.gravitational_energy();
+
+        // Act
+        let final_time = 3.0;
+        let dt = 1.0 / 2000.0;
+        let num_steps = (final_time / dt) as usize;
+        let mut controller = NullController {};
+
+        let mut v_z_prev = 0.0;
+        let mut energies = vec![];
+        let mut hs = vec![];
+        for _ in 0..num_steps {
+            let torque = controller.control(&mut state);
+            let (q, v) = step(&mut state, dt, &torque);
+
+            let v_z = v[0].spatial().linear.z;
+            // Apex
+            if v_z_prev > 0.0 && v_z <= 0.0 {
+                energies.push(state.kinetic_energy() + state.gravitational_energy());
+                hs.push(q[0].pose().translation.z);
+
+                // Swing the spring leg to the original front angle
+                state.bodies[0].spring_contacts[0].direction = direction;
+            }
+            v_z_prev = v_z
+        }
+
+        // Assert
+        // Energy conserved
+        assert!(energies.len() > 0, "No apex found");
+        for energy in energies {
+            assert_close(&energy, &initial_energy, 1e-2);
+        }
+
+        // Hopping height settled
+        assert_close(&hs[hs.len() - 3], &hs[hs.len() - 2], 1e-3);
+        assert_close(&hs[hs.len() - 2], &hs[hs.len() - 1], 1e-3);
     }
 }
