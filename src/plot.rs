@@ -85,3 +85,33 @@ pub fn plot2(
         .background_style(&WHITE.mix(0.8))
         .draw();
 }
+
+pub fn plot_trajectory(x: &Vec<Float>, y: &Vec<Float>) {
+    // Create a drawing backend (e.g., a bitmap)
+    let root = BitMapBackend::new("trajectory.png", (800, 600)).into_drawing_area();
+    let _ = root.fill(&WHITE);
+
+    // Determine the range for the plot
+    let x_min = *x.iter().min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+    let x_max = *x.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+    let y_min = *y.iter().min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+    let y_max = *y.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+
+    // Define the range of the plot
+    let mut chart = ChartBuilder::on(&root)
+        .caption("2D Trajectory Plot", ("sans-serif", 50).into_font())
+        .margin(5)
+        .x_label_area_size(30)
+        .y_label_area_size(30)
+        .build_cartesian_2d(x_min..x_max, y_min..y_max)
+        .unwrap();
+
+    // Configure the mesh (grid)
+    let _ = chart.configure_mesh().draw();
+
+    // Combine x and y into a vector of tuples
+    let trajectory: Vec<(f32, f32)> = x.iter().zip(y.iter()).map(|(&x, &y)| (x, y)).collect();
+
+    // Draw the trajectory
+    let _ = chart.draw_series(LineSeries::new(trajectory, &RED));
+}
