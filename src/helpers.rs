@@ -437,18 +437,7 @@ pub fn build_SLIP(
     let mut state = MechanismState::new(treejoints, bodies, halfspaces);
 
     let direction = UnitVector3::new_normalize(vector![angle.sin(), 0., -angle.cos()]);
-    state.add_spring_contact(&SpringContact {
-        frame: body_frame.to_string(),
-        l_rest,
-        direction,
-        k: k_spring,
-        registered_contact: None,
-    });
-
-    state.add_contact_point(&ContactPoint {
-        frame: body_frame.to_string(),
-        location: vector![0.0, 0.0, 0.0],
-    });
+    state.add_spring_contact(&SpringContact::new(body_frame, l_rest, direction, k_spring));
 
     state
 }

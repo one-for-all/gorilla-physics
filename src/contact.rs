@@ -81,6 +81,20 @@ pub struct SpringContact {
     pub direction: UnitVector3<Float>, // direction of the spring, expressed in body frame
     pub k: Float,                      // spring constant
     pub registered_contact: Option<Vector3<Float>>, // a point in contact, in world frame
+    pub registered_halfspace: Option<HalfSpace>, // halfspace the spring is in contact with
+}
+
+impl SpringContact {
+    pub fn new(frame: &str, l_rest: Float, direction: UnitVector3<Float>, k: Float) -> Self {
+        SpringContact {
+            frame: frame.to_string(),
+            l_rest,
+            direction,
+            k,
+            registered_contact: None,
+            registered_halfspace: None,
+        }
+    }
 }
 
 /// Compute the contact wrenches due to contacts
@@ -126,6 +140,7 @@ pub fn contact_dynamics(
                     // Take the current spring contact location as the contact
                     // point. It might not be exactly on the halfspace surface.
                     spring_contact.registered_contact = Some(contact_location);
+                    spring_contact.registered_halfspace = Some(*halfspace);
 
                     // A spring contact can only be registered to one halfspace
                     // at a time.
@@ -138,7 +153,10 @@ pub fn contact_dynamics(
                 let spring_direction =
                     UnitVector3::new_normalize(contact_location - body_location).into_inner();
 
-                // TODO: check that spring direction is outward from the half-space.
+                let halfspace = spring_contact.registered_halfspace.unwrap();
+                if spring_direction.dot(&halfspace.normal) > 0.0 {
+                    panic!("Spring force is into the halfspace!");
+                }
 
                 let direction_distance = (contact_location - body_location).norm();
 
@@ -151,6 +169,7 @@ pub fn contact_dynamics(
                 } else {
                     // Spring no longer under load, detach
                     spring_contact.registered_contact = None;
+                    spring_contact.registered_halfspace = None;
 
                     // spring direction set to the angle at leaving the surface
                     spring_contact.direction = UnitVector3::new_normalize(spring_direction);
@@ -471,6 +490,7 @@ mod contact_tests {
 
                 // Swing the spring leg to the original front angle
                 state.bodies[0].spring_contacts[0].direction = direction;
+                state.bodies[0].spring_contacts[0].l_rest = l_rest;
             }
             v_z_prev = v_z
         }
