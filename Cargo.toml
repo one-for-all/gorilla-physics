@@ -35,6 +35,9 @@ path = "examples/cube.rs"
 name = "rimless_wheel"
 path = "examples/rimless_wheel.rs"
 
+[[bin]]
+name = "SLIP"
+path = "examples/SLIP.rs"
 [dependencies]
 itertools = "0.13.0"
 nalgebra = "0.33"
