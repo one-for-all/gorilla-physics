@@ -25,6 +25,9 @@ name = "cart_pole"
 path = "examples/cart_pole.rs"
 
 [[bin]]
+name = "ball"
+path = "examples/ball.rs"
+[[bin]]
 name = "cube"
 path = "examples/cube.rs"
 
