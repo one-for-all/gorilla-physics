@@ -1,13 +1,14 @@
 use crate::types::Float;
 use plotters::prelude::*;
 
-pub fn plot(data: &Vec<Float>, final_time: Float, dt: Float, num_steps: usize) {
+pub fn plot(data: &Vec<Float>, final_time: Float, dt: Float, num_steps: usize, fname: &str) {
     // Determine y-axis limits based on the minimum and maximum values in the data
     let min_y = data.iter().cloned().fold(Float::INFINITY, Float::min);
     let max_y = data.iter().cloned().fold(Float::NEG_INFINITY, Float::max);
 
     // Create a plotting area
-    let root = BitMapBackend::new("plot.png", (640, 480)).into_drawing_area();
+    let file_name = format!("{}.png", fname);
+    let root = BitMapBackend::new(&file_name, (640, 480)).into_drawing_area();
     let _ = root.fill(&WHITE);
 
     // Configure the chart
@@ -37,7 +38,7 @@ pub fn plot2(
     num_steps: usize,
 ) {
     // Create a drawing area
-    let root_area = BitMapBackend::new("plot.png", (800, 600)).into_drawing_area();
+    let root_area = BitMapBackend::new("plot 2 sets.png", (800, 600)).into_drawing_area();
     let _ = root_area.fill(&WHITE);
 
     let min_y = data1
@@ -86,9 +87,10 @@ pub fn plot2(
         .draw();
 }
 
-pub fn plot_trajectory(x: &Vec<Float>, y: &Vec<Float>) {
+pub fn plot_trajectory(x: &Vec<Float>, y: &Vec<Float>, fname: &str) {
     // Create a drawing backend (e.g., a bitmap)
-    let root = BitMapBackend::new("trajectory.png", (800, 600)).into_drawing_area();
+    let file_name = format!("{}.png", fname);
+    let root = BitMapBackend::new(&file_name, (800, 600)).into_drawing_area();
     let _ = root.fill(&WHITE);
 
     // Determine the range for the plot
