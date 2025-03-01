@@ -2,11 +2,11 @@ use std::collections::HashMap;
 use std::ops::Mul;
 
 use itertools::izip;
-use na::{vector, UnitVector3, Vector3};
+use na::{UnitVector3, Vector3};
 
 use crate::WORLD_FRAME;
 use crate::{
-    control::energy_control::spring,
+    control::energy_control::spring_force,
     mechanism::MechanismState,
     spatial_force::Wrench,
     transform::{compute_bodies_to_root, Transform3D},
@@ -55,6 +55,8 @@ impl ContactPoint {
 pub struct HalfSpace {
     pub point: Vector3<Float>,  // A point in the half-space
     pub normal: Vector3<Float>, // Outward normal direction of the half-space
+    pub alpha: Float, // roughly how much velocity is lost, coefficient of restitution e ~= 1-a*v_in
+    pub mu: Float,    // coefficient of friction
 }
 
 impl HalfSpace {
@@ -63,6 +65,22 @@ impl HalfSpace {
         HalfSpace {
             point: normal * distance,
             normal,
+            alpha: 0.9,
+            mu: 0.5,
+        }
+    }
+
+    pub fn new_with_params(
+        normal: Vector3<Float>,
+        distance: Float,
+        alpha: Float,
+        mu: Float,
+    ) -> Self {
+        HalfSpace {
+            point: normal * distance,
+            normal,
+            alpha,
+            mu,
         }
     }
 
@@ -120,7 +138,8 @@ pub fn contact_dynamics(
                     continue;
                 }
                 let (penetration, normal) = contact_point.compute_contact(&halfspace);
-                let contact_force = calculate_contact_force(&penetration, &velocity, &normal);
+                let contact_force =
+                    calculate_contact_force(halfspace, &penetration, &velocity, &normal);
                 wrench += Wrench::from_force(&contact_point.location, &contact_force, "world");
             }
         }
@@ -162,7 +181,7 @@ pub fn contact_dynamics(
 
                 if direction_distance < spring_contact.l_rest {
                     let spring_force =
-                        spring(spring_contact.l_rest, direction_distance, spring_contact.k);
+                        spring_force(spring_contact.l_rest, direction_distance, spring_contact.k);
                     let force = -spring_direction * spring_force;
 
                     wrench += Wrench::from_force(&body_location, &force, WORLD_FRAME);
@@ -202,6 +221,7 @@ pub fn contact_dynamics(
 ///     2. Drake: Modeling of Dry Friction
 ///         https://drake.mit.edu/doxygen_cxx/group__friction__model.html
 pub fn calculate_contact_force(
+    halfspace: &HalfSpace,
     penetration: &Float,
     velocity: &Vector3<Float>,
     normal: &Vector3<Float>,
@@ -212,8 +232,8 @@ pub fn calculate_contact_force(
     // Hunt-Crossley model for normal force
     let zn = z.powf(3.0 / 2.0);
     let k = 50e3;
-    let a = 0.9; // how much velocity is lost, default 0.2
-                 // coefficient of restitution e ~= 1-a*v_in
+    let a = halfspace.alpha; // how much velocity is lost
+                             // coefficient of restitution e ~= 1-a*v_in
     let λ = 3.0 / 2.0 * a * k;
     let π = (λ * zn * z_dot + k * zn).max(0.0);
     let f_normal = π * normal;
@@ -227,7 +247,7 @@ pub fn calculate_contact_force(
         } else {
             let v_s = 1e-3; // slip tolerance, amount of velocity allowed for contact that should be stationary
             let s = v_t_norm / v_s;
-            let μ = 0.5; // coefficient of friction
+            let μ = halfspace.mu; // coefficient of friction
             let μ = {
                 if s > 1.0 {
                     μ
@@ -247,12 +267,15 @@ mod contact_tests {
     use crate::{
         control::energy_control::Controller,
         helpers::{build_SLIP, build_cube, build_rimless_wheel},
+        inertia::SpatialInertia,
         interface::controller::NullController,
-        joint::{JointPosition, JointVelocity, ToJointTorqueVec},
+        joint::{floating::FloatingJoint, Joint, JointPosition, JointVelocity, ToJointTorqueVec},
         pose::Pose,
+        rigid_body::RigidBody,
         simulate::step,
         spatial_vector::SpatialVector,
         util::assert_close,
+        GRAVITY,
     };
     use na::{dvector, vector, Matrix3, Matrix4, UnitQuaternion};
 
@@ -393,6 +416,79 @@ mod contact_tests {
         let v_final = vs[vs.len() - 1][0].spatial();
         assert_close(&v_final.linear.norm(), &0.0, 5e-3);
         assert_close(&v_final.angular.norm(), &0.0, 1e-2);
+    }
+
+    #[test]
+    fn mass_hit_ground() {
+        // Arrange
+        let m = 0.1;
+        let r = 0.1;
+        let v_x_init = 1.0;
+
+        let moment_x = 2.0 / 5.0 * m * r * r;
+        let moment = Matrix3::from_diagonal(&vector![moment_x, moment_x, moment_x]);
+        let cross_part = vector![0.0, 0.0, 0.0];
+
+        let ball_frame = "ball";
+        let world_frame = "world";
+        let ball_to_world = Transform3D::identity(&ball_frame, &world_frame);
+
+        let ball = RigidBody::new(SpatialInertia {
+            frame: ball_frame.to_string(),
+            moment,
+            cross_part,
+            mass: m,
+        });
+
+        let treejoints = dvector![Joint::FloatingJoint(FloatingJoint {
+            init_mat: ball_to_world.mat.clone(),
+            transform: ball_to_world,
+        })];
+        let bodies = dvector![ball];
+        let halfspaces = dvector![];
+        let mut state = MechanismState::new(treejoints, bodies, halfspaces);
+
+        let h_ground = -0.3;
+        let alpha = 1.0;
+        let mu = 1.0;
+        let ground = HalfSpace::new_with_params(vector![0., 0., 1.], h_ground, alpha, mu);
+        state.add_halfspace(&ground);
+
+        state.add_contact_point(&ContactPoint {
+            frame: ball_frame.to_string(),
+            location: vector![0.0, 0.0, 0.0],
+        });
+
+        let q_init = vec![JointPosition::Pose(Pose {
+            rotation: UnitQuaternion::identity(),
+            translation: vector![0.0, 0.0, 0.0],
+        })];
+        let v_init = vec![JointVelocity::Spatial(SpatialVector {
+            angular: vector![0.0, 0.0, 0.0],
+            linear: vector![v_x_init, 0.0, 0.0],
+        })];
+        state.update(&q_init, &v_init);
+
+        // Act
+        let final_time = 3.0;
+        let dt = 1e-3;
+        let (qs, vs) = simulate(&mut state, final_time, dt, |_state| vec![]);
+
+        // Assert
+        let q_final = qs[qs.len() - 1][0].pose();
+
+        // Check mass on the ground
+        assert_close(&q_final.translation.z, &h_ground, 1e-3);
+
+        // Check mass stationary
+        let v_final = vs[vs.len() - 1][0].spatial();
+        assert_close(&v_final.linear.norm(), &0.0, 5e-3);
+        assert_close(&v_final.angular.norm(), &0.0, 1e-3);
+
+        // Check mass stays where it hits the ground
+        let ground_hit_t = (-h_ground * 2.0 / GRAVITY).sqrt(); // h = 1/2*a*t^2
+        let x_expect = ground_hit_t * v_x_init;
+        assert_close(&q_final.translation.x, &x_expect, 5e-3);
     }
 
     /// Rimless wheel rolling down a slope, settling into a stable limit cycle
