@@ -1,4 +1,6 @@
-use crate::{mechanism::MechanismState, types::Float};
+use crate::{
+    joint::JointTorque, mechanism::MechanismState, spatial_vector::SpatialVector, types::Float,
+};
 
 pub struct SLIPController {
     pub k_q: Float,
@@ -29,6 +31,9 @@ impl SLIPController {
     /// Returns the command touch-down angle
     pub fn control_to_pos(&mut self, state: &MechanismState, x_target: Float) -> Float {
         let x = state.q[0].pose().translation.x;
+
+        // speed proportional to distance, upper-bounded
+        // v = k * dx
         let mut v_x_target = -self.k_q * (x - x_target);
         if v_x_target.abs() > self.speed_bound {
             v_x_target = v_x_target.signum() * self.speed_bound;
@@ -42,8 +47,9 @@ impl SLIPController {
     pub fn control_to_velocity(&mut self, state: &MechanismState, v_x_target: Float) -> Float {
         let v_x = (state.q[0].pose().rotation * state.v[0].spatial().linear).x;
         let v_diff = v_x - v_x_target;
-
         self.v_integral += v_diff;
+
+        // PID control on velocity
         let degree = self.k_v_p * v_diff
             + self.k_v_i * self.v_integral
             + self.k_v_d * (v_diff - self.v_diff_prev);
@@ -58,7 +64,7 @@ impl SLIPController {
 #[cfg(test)]
 mod SLIP_control_tests {
 
-    use na::{vector, UnitVector3};
+    use na::{vector, UnitVector3, Vector3};
 
     use crate::{contact::HalfSpace, helpers::build_SLIP, simulate::step, util::assert_close};
 
@@ -78,7 +84,7 @@ mod SLIP_control_tests {
         let mut state = build_SLIP(m, r, l_rest, init_angle, k_spring);
 
         let h_ground = -0.5;
-        state.add_halfspace(&HalfSpace::new(vector![0., 0., 1.], h_ground));
+        state.add_halfspace(&HalfSpace::new(Vector3::z_axis(), h_ground));
 
         let mut controller = SLIPController::new(
             1.0,  // k_pos
@@ -116,7 +122,7 @@ mod SLIP_control_tests {
 
         // Assert
         let x = state.q[0].pose().translation.x;
-        assert_close(&x.abs(), &x_target, 1e-3);
+        assert_close(x.abs(), x_target, 1e-3);
     }
 
     #[test]
@@ -133,7 +139,7 @@ mod SLIP_control_tests {
         let mut state = build_SLIP(m, r, l_rest, init_angle, k_spring);
 
         let h_ground = -0.5;
-        state.add_halfspace(&HalfSpace::new(vector![0., 0., 1.], h_ground));
+        state.add_halfspace(&HalfSpace::new(Vector3::z_axis(), h_ground));
 
         let mut controller = SLIPController::new(
             1.0,  // k_pos
@@ -173,8 +179,32 @@ mod SLIP_control_tests {
         }
 
         // Assert
-        assert_close(&v_x[v_x.len() - 1], &v_x_target, 1e-3);
-        assert_close(&v_x[v_x.len() - 2], &v_x_target, 1e-3);
-        assert_close(&v_x[v_x.len() - 3], &v_x_target, 1e-3);
+        assert_close(v_x[v_x.len() - 1], v_x_target, 1e-3);
+        assert_close(v_x[v_x.len() - 2], v_x_target, 1e-3);
+        assert_close(v_x[v_x.len() - 3], v_x_target, 1e-3);
+    }
+}
+
+/// Controller for Actuated Lossy Spring-Loaded Inverted Pendulum model
+pub struct ALSLIPController {
+    pub k_spring: Float,
+    pub l_rest_spring: Float,
+}
+
+impl ALSLIPController {
+    pub fn new(k_spring: Float, l_rest_spring: Float) -> Self {
+        ALSLIPController {
+            k_spring,
+            l_rest_spring,
+        }
+    }
+
+    /// TODO: control to velocity/position
+    pub fn control(&mut self, state: &mut MechanismState) -> Vec<JointTorque> {
+        let mut tau = vec![JointTorque::Spatial(SpatialVector::zero())]; // first floating joint unactuated
+        tau.push(JointTorque::Float(0.0));
+        tau.push(JointTorque::Float(0.0));
+
+        tau
     }
 }
