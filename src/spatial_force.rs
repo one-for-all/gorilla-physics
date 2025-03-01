@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    ops::{AddAssign, Sub},
+    ops::{Add, AddAssign, Mul, Sub},
 };
 
 use itertools::izip;
@@ -63,6 +63,22 @@ impl<'a, 'b> Sub<&'b Wrench> for &'a Wrench {
             frame: self.frame.clone(),
             angular: self.angular - rhs.angular,
             linear: self.linear - rhs.linear,
+        }
+    }
+}
+
+impl<'a, 'b> Add<&'b Wrench> for &'a Wrench {
+    type Output = Wrench;
+
+    fn add(self, rhs: &Wrench) -> Wrench {
+        if self.frame != rhs.frame {
+            panic!("lhs frame {} != rhs frame {}!", self.frame, rhs.frame);
+        }
+
+        Wrench {
+            frame: self.frame.clone(),
+            angular: self.angular + rhs.angular,
+            linear: self.linear + rhs.linear,
         }
     }
 }
