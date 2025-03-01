@@ -153,6 +153,29 @@ impl MechanismState {
             }
         }
     }
+
+    /// Get the poses of each body
+    pub fn poses(&self) -> Vec<Pose> {
+        // TODO: use cached bodies_to_root
+        let bodies_to_root = compute_bodies_to_root(&self);
+
+        let mut poses: Vec<Pose> = vec![];
+        for jointid in self.treejointids.iter() {
+            let body_to_root = bodies_to_root.get(jointid).unwrap().mat;
+
+            let rotation_matrix: Matrix3<Float> = body_to_root.fixed_view::<3, 3>(0, 0).into();
+            let rotation = Rotation3::from_matrix(&rotation_matrix);
+            let translation = body_to_root.fixed_view::<3, 1>(0, 3);
+
+            let pose = Pose {
+                rotation: UnitQuaternion::from_rotation_matrix(&rotation),
+                translation: Vector3::from(translation),
+            };
+            poses.push(pose);
+        }
+
+        poses
+    }
 }
 
 /// Computes the motion space of each joint, expressed in world frame.
@@ -348,5 +371,26 @@ mod mechanism_tests {
         assert_ne!(mass_matrix.fixed_view::<1, 6>(7, 0), DVector::zeros(6));
         assert_ne!(mass_matrix.fixed_view::<1, 1>(7, 6), DVector::zeros(1));
         assert_ne!(mass_matrix.fixed_view::<1, 1>(7, 7), DVector::zeros(1));
+    }
+
+    /// Ensure that poses() fn works correctly for a floating box
+    #[test]
+    #[ignore] // TODO: Add this test
+    fn box_pose() {
+        // Arrange
+
+        // Act
+
+        // Assert
+    }
+
+    #[test]
+    #[ignore] // TODO: Add this test
+    fn double_pendulum_poses() {
+        // Arrange
+
+        // Act
+
+        // Assert
     }
 }
