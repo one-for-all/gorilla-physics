@@ -23,6 +23,10 @@ use crate::GRAVITY;
 use itertools::izip;
 use na::dvector;
 use na::DMatrix;
+use na::Matrix3;
+use na::Rotation3;
+use na::UnitQuaternion;
+use na::Vector3;
 use nalgebra::DVector;
 
 /// MechanismState stores the state information about the mechanism
@@ -104,6 +108,37 @@ impl MechanismState {
                 }
             }
         }
+    }
+
+    pub fn set_joint_q(&mut self, jointid: usize, q: JointPosition) {
+        self.q[jointid - 1] = q.clone();
+        match &mut self.treejoints[jointid - 1] {
+            Joint::RevoluteJoint(j) => {
+                if let JointPosition::Float(q) = q {
+                    (*j).update(&q)
+                } else {
+                    panic!("Revolute joint expects a Float position");
+                }
+            }
+            Joint::PrismaticJoint(j) => {
+                if let JointPosition::Float(q) = q {
+                    (*j).update(&q)
+                } else {
+                    panic!("Prismatic joint expects a Float position");
+                }
+            }
+            Joint::FloatingJoint(j) => {
+                if let JointPosition::Pose(q) = q {
+                    (*j).update(&q)
+                } else {
+                    panic!("Floating joint expects a Pose position");
+                }
+            }
+        }
+    }
+
+    pub fn set_joint_v(&mut self, jointid: usize, v: JointVelocity) {
+        self.v[jointid - 1] = v.clone();
     }
 
     /// Computes the total kinetic energy of the system
