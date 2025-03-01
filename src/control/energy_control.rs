@@ -16,7 +16,7 @@ use crate::{
 /// TODO: Add spring elements to mechanism state
 /// Force exerted by a spring
 /// F = -k * x
-pub fn spring(l_rest: Float, l: Float, k: Float) -> Float {
+pub fn spring_force(l_rest: Float, l: Float, k: Float) -> Float {
     -k * (l - l_rest)
 }
 
@@ -89,7 +89,7 @@ impl Controller for Hopper1DController {
         let l_rest = 0.0;
         let tau_foot = {
             if *q_foot < l_rest {
-                spring(l_rest, *q_foot, self.k_spring) // force exerted by spring
+                spring_force(l_rest, *q_foot, self.k_spring) // force exerted by spring
             } else {
                 let k_stop = 1e5;
                 let b_stop = 125.0;
@@ -105,8 +105,6 @@ impl Controller for Hopper1DController {
     }
 }
 
-        tau.push(JointTorque::Float(tau1 - tau2)); // control + reaction force from spring
-        tau.push(JointTorque::Float(tau2));
 
         self.v_vertical_prev = v_vertical;
         tau
