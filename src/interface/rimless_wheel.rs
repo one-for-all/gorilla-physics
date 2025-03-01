@@ -41,8 +41,7 @@ pub fn createRimlessWheel(r_body: Float, n_foot: usize) -> InterfaceMechanismSta
 
     let treejoints = dvector![Joint::FloatingJoint(FloatingJoint::new(body_to_world))];
     let bodies = dvector![body];
-    let halfspace = dvector![];
-    let mut state = MechanismState::new(treejoints, bodies, halfspace);
+    let mut state = MechanismState::new(treejoints, bodies);
 
     for i in 0..n_foot {
         let rotation = Rotation3::from_axis_angle(&Vector3::y_axis(), i as Float * 2.0 * alpha);
