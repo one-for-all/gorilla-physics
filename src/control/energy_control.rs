@@ -1,7 +1,7 @@
 //! Energy-based control methods
 
 use crate::{
-    contact::in_contact, energy::hopper_energy, joint::JointTorque, mechanism::MechanismState,
+    energy::hopper_energy, joint::JointTorque, mechanism::MechanismState,
     spatial_vector::SpatialVector, types::Float, GRAVITY,
 };
 

@@ -44,7 +44,7 @@ impl ContactPoint {
         halfspace.has_inside(&self.location)
     }
 
-    pub fn compute_contact(&self, halfspace: &HalfSpace) -> (Float, Vector3<Float>) {
+    pub fn compute_contact(&self, halfspace: &HalfSpace) -> (Float, UnitVector3<Float>) {
         let penetration = -(self.location - halfspace.point).dot(&halfspace.normal);
         let normal = halfspace.normal;
         (penetration, normal)
@@ -53,17 +53,17 @@ impl ContactPoint {
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct HalfSpace {
-    pub point: Vector3<Float>,  // A point in the half-space
-    pub normal: Vector3<Float>, // Outward normal direction of the half-space
+    pub point: Vector3<Float>,      // A point in the half-space
+    pub normal: UnitVector3<Float>, // Outward normal direction of the half-space
     pub alpha: Float, // roughly how much velocity is lost, coefficient of restitution e ~= 1-a*v_in
     pub mu: Float,    // coefficient of friction
 }
 
 impl HalfSpace {
     // Create a half-space that is moved along normal by distance, from origin
-    pub fn new(normal: Vector3<Float>, distance: Float) -> Self {
+    pub fn new(normal: UnitVector3<Float>, distance: Float) -> Self {
         HalfSpace {
-            point: normal * distance,
+            point: normal.scale(distance),
             normal,
             alpha: 0.9,
             mu: 0.5,
@@ -71,13 +71,13 @@ impl HalfSpace {
     }
 
     pub fn new_with_params(
-        normal: Vector3<Float>,
+        normal: UnitVector3<Float>,
         distance: Float,
         alpha: Float,
         mu: Float,
     ) -> Self {
         HalfSpace {
-            point: normal * distance,
+            point: normal.scale(distance),
             normal,
             alpha,
             mu,
@@ -206,9 +206,6 @@ pub fn contact_dynamics(
     contact_wrenches
 }
 
-    false
-}
-
 /// Calculate the contact force expressed in world frame
 /// Ref: Normal force
 ///     1. Coeﬀicient of restitution interpreted as damping in vibroimpact,
@@ -304,7 +301,7 @@ mod contact_tests {
             location: vector![l, 0., 0.],
         });
 
-        state.add_halfspace(&&HalfSpace::new(vector![0., 0., 1.], -5.0));
+        state.add_halfspace(&&HalfSpace::new(Vector3::z_axis(), -5.0));
 
         // Act
         let final_time = 5.0;
@@ -327,7 +324,7 @@ mod contact_tests {
         let mut state = build_cube(m, l);
 
         let h_ground = -10.0;
-        state.add_halfspace(&HalfSpace::new(vector![0., 0., 1.], h_ground));
+        state.add_halfspace(&HalfSpace::new(Vector3::z_axis(), h_ground));
 
         let q_init = vec![JointPosition::Pose(Pose {
             rotation: UnitQuaternion::identity(),
@@ -346,7 +343,7 @@ mod contact_tests {
 
         // Assert
         let q_final = qs[qs.len() - 1][0].pose();
-        assert_close(&q_final.translation.z, &(h_ground + l / 2.0), 1e-2);
+        assert_close(q_final.translation.z, h_ground + l / 2.0, 1e-2);
     }
 
     #[test]
@@ -357,7 +354,7 @@ mod contact_tests {
         let mut state = build_cube(m, l);
 
         let h_ground = -l / 2.0;
-        state.add_halfspace(&HalfSpace::new(vector![0., 0., 1.], h_ground));
+        state.add_halfspace(&HalfSpace::new(Vector3::z_axis(), h_ground));
 
         let q_init = vec![JointPosition::Pose(Pose {
             rotation: UnitQuaternion::identity(),
@@ -376,11 +373,11 @@ mod contact_tests {
 
         // Assert
         let q_final = qs[qs.len() - 1][0].pose();
-        assert_close(&q_final.translation.z, &0.0, 1e-2);
+        assert_close(q_final.translation.z, 0.0, 1e-2);
 
         let v_final = vs[vs.len() - 1][0].spatial();
-        assert_close(&v_final.linear.norm(), &0.0, 5e-3);
-        assert_close(&v_final.angular.norm(), &0.0, 1e-2);
+        assert_close(v_final.linear.norm(), 0.0, 5e-3);
+        assert_close(v_final.angular.norm(), 0.0, 1e-2);
     }
 
     /// Hit the ground with rotational and translational velocity
@@ -392,7 +389,7 @@ mod contact_tests {
         let mut state = build_cube(m, l);
 
         let h_ground = -10.0;
-        state.add_halfspace(&HalfSpace::new(vector![0., 0., 1.], h_ground));
+        state.add_halfspace(&HalfSpace::new(Vector3::z_axis(), h_ground));
 
         let q_init = vec![JointPosition::Pose(Pose {
             rotation: UnitQuaternion::identity(),
@@ -411,11 +408,11 @@ mod contact_tests {
 
         // Assert
         let q_final = qs[qs.len() - 1][0].pose();
-        assert_close(&q_final.translation.z, &(h_ground + l / 2.0), 1e-2);
+        assert_close(q_final.translation.z, h_ground + l / 2.0, 1e-2);
 
         let v_final = vs[vs.len() - 1][0].spatial();
-        assert_close(&v_final.linear.norm(), &0.0, 5e-3);
-        assert_close(&v_final.angular.norm(), &0.0, 1e-2);
+        assert_close(v_final.linear.norm(), 0.0, 5e-3);
+        assert_close(v_final.angular.norm(), 0.0, 1e-2);
     }
 
     #[test]
@@ -445,13 +442,12 @@ mod contact_tests {
             transform: ball_to_world,
         })];
         let bodies = dvector![ball];
-        let halfspaces = dvector![];
-        let mut state = MechanismState::new(treejoints, bodies, halfspaces);
+        let mut state = MechanismState::new(treejoints, bodies);
 
         let h_ground = -0.3;
         let alpha = 1.0;
         let mu = 1.0;
-        let ground = HalfSpace::new_with_params(vector![0., 0., 1.], h_ground, alpha, mu);
+        let ground = HalfSpace::new_with_params(Vector3::z_axis(), h_ground, alpha, mu);
         state.add_halfspace(&ground);
 
         state.add_contact_point(&ContactPoint {
@@ -478,17 +474,17 @@ mod contact_tests {
         let q_final = qs[qs.len() - 1][0].pose();
 
         // Check mass on the ground
-        assert_close(&q_final.translation.z, &h_ground, 1e-3);
+        assert_close(q_final.translation.z, h_ground, 1e-3);
 
         // Check mass stationary
         let v_final = vs[vs.len() - 1][0].spatial();
-        assert_close(&v_final.linear.norm(), &0.0, 5e-3);
-        assert_close(&v_final.angular.norm(), &0.0, 1e-3);
+        assert_close(v_final.linear.norm(), 0.0, 5e-3);
+        assert_close(v_final.angular.norm(), 0.0, 1e-3);
 
         // Check mass stays where it hits the ground
         let ground_hit_t = (-h_ground * 2.0 / GRAVITY).sqrt(); // h = 1/2*a*t^2
         let x_expect = ground_hit_t * v_x_init;
-        assert_close(&q_final.translation.x, &x_expect, 5e-3);
+        assert_close(q_final.translation.x, x_expect, 5e-3);
     }
 
     /// Rimless wheel rolling down a slope, settling into a stable limit cycle
@@ -504,7 +500,7 @@ mod contact_tests {
         let mut state = build_rimless_wheel(m_body, r_body, l, n_foot);
 
         let angle: Float = Float::to_radians(10.0);
-        let normal = vector![angle.sin(), 0.0, angle.cos()];
+        let normal = UnitVector3::new_normalize(vector![angle.sin(), 0.0, angle.cos()]);
         let h_ground = -20.0;
         state.add_halfspace(&HalfSpace::new(normal, h_ground));
 
@@ -551,7 +547,7 @@ mod contact_tests {
         let mut state = build_SLIP(m, r, l_rest, angle, k_spring);
 
         let h_ground = -0.3;
-        state.add_halfspace(&HalfSpace::new(vector![0., 0., 1.], h_ground));
+        state.add_halfspace(&HalfSpace::new(Vector3::z_axis(), h_ground));
 
         let q_init = vec![JointPosition::Pose(Pose {
             rotation: UnitQuaternion::identity(),
@@ -595,11 +591,11 @@ mod contact_tests {
         // Energy conserved
         assert!(energies.len() > 0, "No apex found");
         for energy in energies {
-            assert_close(&energy, &initial_energy, 1e-2);
+            assert_close(energy, initial_energy, 1e-2);
         }
 
         // Hopping height settled
-        assert_close(&hs[hs.len() - 3], &hs[hs.len() - 2], 1e-3);
-        assert_close(&hs[hs.len() - 2], &hs[hs.len() - 1], 1e-3);
+        assert_close(hs[hs.len() - 3], hs[hs.len() - 2], 1e-3);
+        assert_close(hs[hs.len() - 2], hs[hs.len() - 1], 1e-3);
     }
 }

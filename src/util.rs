@@ -70,7 +70,7 @@ pub fn console_log(message: &str) {
     web_sys::console::log_1(&message.into());
 }
 
-pub fn assert_close(a: &Float, b: &Float, tol: Float) {
+pub fn assert_close(a: Float, b: Float, tol: Float) {
     assert!((a - b).abs() < tol, "{} != {}", a, b);
 }
 
