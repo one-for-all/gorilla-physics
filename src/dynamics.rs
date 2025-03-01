@@ -1,7 +1,8 @@
 use crate::{
     contact::contact_dynamics,
+    control::energy_control::spring_force,
     inertia::compute_inertias,
-    joint::{JointAcceleration, JointTorque, JointVelocity, ToFloatDVec},
+    joint::{Joint, JointAcceleration, JointTorque, JointVelocity, ToFloatDVec},
     mechanism::mass_matrix,
     spatial_force::{compute_torques, Wrench},
     spatial_vector::SpatialVector,
@@ -295,7 +296,21 @@ pub fn dynamics(state: &mut MechanismState, tau: &Vec<JointTorque>) -> Vec<Joint
 
     let mass_matrix = mass_matrix(state, &bodies_to_root);
 
-    let vdot = dynamics_solve(&mass_matrix, &dynamics_bias, &tau.to_float_dvec());
+    // Spring force from springs attached to prismatic joints
+    let mut tau = tau.clone();
+    for (jointid, joint) in izip!(state.treejointids.iter(), state.treejoints.iter()) {
+        if let Joint::PrismaticJoint(joint) = joint {
+            if let Some(spring) = &joint.spring {
+                let l = *state.q[*jointid - 1].float();
+
+                let f_spring = spring_force(spring.l, l, spring.k); // force in the direction of spring
+
+                tau[*jointid - 1] = JointTorque::Float(tau[*jointid - 1].float() + f_spring);
+            }
+        }
+    }
+
+    let mut vdot = dynamics_solve(&mass_matrix, &dynamics_bias, &tau.to_float_dvec());
 
     // Convert from raw floats to joint acceleration types
     let mut vdot_out = vec![];
@@ -322,7 +337,18 @@ pub fn dynamics(state: &mut MechanismState, tau: &Vec<JointTorque>) -> Vec<Joint
 
 #[cfg(test)]
 mod dynamics_tests {
-    use crate::joint::ToJointTorqueVec;
+    use crate::{
+        contact::HalfSpace,
+        helpers::build_sphere_body,
+        joint::{
+            floating::FloatingJoint,
+            prismatic::{JointSpring, PrismaticJoint},
+            JointPosition, ToJointTorqueVec,
+        },
+        simulate::simulate,
+        util::assert_close,
+        WORLD_FRAME,
+    };
     use na::{dvector, vector, Matrix3, Matrix4};
 
     use crate::{
@@ -592,5 +618,59 @@ mod dynamics_tests {
         let double_pendulum = SimpleDoublePendulum::new(m, m, l, l, q1, q2, q1dot, q2dot);
         let vdot_ref = DVector::from_column_slice(double_pendulum.dynamics().as_slice());
         assert_dvec_close(&vdot.to_float_dvec(), &vdot_ref, 1e-5);
+    }
+
+    #[test]
+    fn spring_on_frictionless_ground() {
+        // Arrange
+        let m = 1.0;
+        let r = 0.1;
+        let l_init = 2.0;
+        let l_rest = l_init / 3.0;
+
+        let frame_A = "A";
+        let A = build_sphere_body(m, r, &frame_A);
+
+        let frame_B = "B";
+        let B = build_sphere_body(m, r, &frame_B);
+
+        let A_to_world = Transform3D::identity(&frame_A, WORLD_FRAME);
+        let B_to_A = Transform3D::identity(&frame_B, &frame_A);
+
+        let treejoints = dvector![
+            Joint::FloatingJoint(FloatingJoint::new(A_to_world)),
+            Joint::PrismaticJoint(PrismaticJoint::new_with_spring(
+                B_to_A,
+                vector![1., 0., 0.],
+                JointSpring { k: 50.0, l: l_rest }
+            ))
+        ];
+
+        let mut state = MechanismState::new(treejoints, dvector![A, B]);
+        let spring_joint: usize = 2;
+        state.set_joint_q(spring_joint, JointPosition::Float(l_init));
+
+        let h_ground = 0.0;
+        let alpha = 1.0;
+        let mu = 0.0; // frictionless
+        let ground = HalfSpace::new_with_params(Vector3::z_axis(), h_ground, alpha, mu);
+        state.add_halfspace(&ground);
+
+        // Act
+        let final_time = 1.1;
+        let dt = 1e-3;
+        let (_q, _v) = simulate(&mut state, final_time, dt, |_state| vec![]);
+
+        // Assert
+        let poses = state.poses();
+        let pose_A = &poses[0];
+        let pose_B = &poses[1];
+
+        let x_A = pose_A.translation.x;
+        let x_B = pose_B.translation.x;
+        let x_midpoint = (x_A + x_B) / 2.0;
+        assert_close(x_midpoint, l_init / 2.0, 1e-5);
+        assert!(x_A > 0.0);
+        assert!(x_B < l_init);
     }
 }
