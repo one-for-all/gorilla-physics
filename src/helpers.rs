@@ -42,8 +42,7 @@ pub fn build_pendulum(
         axis: axis.clone(),
     })];
     let bodies = dvector![rod];
-    let halfspaces = dvector![];
-    let state = MechanismState::new(treejoints, bodies, halfspaces);
+    let state = MechanismState::new(treejoints, bodies);
 
     state
 }
@@ -90,8 +89,7 @@ pub fn build_double_pendulum(
             mass: mass.clone(),
         })
     ];
-    let halfspaces = dvector![];
-    let state = MechanismState::new(treejoints, bodies, halfspaces);
+    let state = MechanismState::new(treejoints, bodies);
     state
 }
 
@@ -107,19 +105,17 @@ pub fn build_cart(
 
     let cart_to_world = Transform3D::new(cart_frame, world_frame, &Matrix4::identity());
 
-    let treejoints = dvector![Joint::PrismaticJoint(PrismaticJoint {
-        init_mat: cart_to_world.mat.clone(),
-        transform: cart_to_world,
-        axis: *axis
-    })];
+    let treejoints = dvector![Joint::PrismaticJoint(PrismaticJoint::new(
+        cart_to_world,
+        *axis
+    ))];
     let bodies = dvector![RigidBody::new(SpatialInertia {
         frame: cart_frame.to_string(),
         moment: *moment,
         cross_part: *cross_part,
         mass: *mass
     })];
-    let halfspaces = dvector![];
-    let state = MechanismState::new(treejoints, bodies, halfspaces);
+    let state = MechanismState::new(treejoints, bodies);
     state
 }
 
@@ -144,11 +140,7 @@ pub fn build_cart_pole(
 
     let state = MechanismState {
         treejoints: dvector![
-            Joint::PrismaticJoint(PrismaticJoint {
-                init_mat: cart_to_world.mat.clone(),
-                transform: cart_to_world,
-                axis: axis_cart
-            }),
+            Joint::PrismaticJoint(PrismaticJoint::new(cart_to_world, axis_cart)),
             Joint::RevoluteJoint(RevoluteJoint {
                 init_mat: pole_to_cart.mat.clone(),
                 transform: pole_to_cart,
@@ -200,8 +192,7 @@ pub fn build_cube(mass: Float, length: Float) -> MechanismState {
 
     let treejoints = dvector![Joint::FloatingJoint(FloatingJoint::new(cube_to_world))];
     let bodies = dvector![cube];
-    let halfspaces = dvector![];
-    let mut state = MechanismState::new(treejoints, bodies, halfspaces);
+    let mut state = MechanismState::new(treejoints, bodies);
 
     // Contact points on the bottom face
     state.add_contact_point(&ContactPoint {
@@ -267,9 +258,8 @@ pub fn build_rimless_wheel(
 
     let treejoints = dvector![Joint::FloatingJoint(FloatingJoint::new(body_to_world))];
     let bodies = dvector![body];
-    let halfspace = dvector![];
 
-    let mut state = MechanismState::new(treejoints, bodies, halfspace);
+    let mut state = MechanismState::new(treejoints, bodies);
     for i in 0..n_foot {
         let rotation = Rotation3::from_axis_angle(&Vector3::y_axis(), i as Float * 2.0 * alpha);
         let location = rotation * Vector3::new(0., 0., -l);
@@ -383,21 +373,12 @@ pub fn build_2d_hopper(
             transform: hip_to_body,
             axis: axis_hip
         }),
-        Joint::PrismaticJoint(PrismaticJoint {
-            init_mat: piston_to_hip.mat.clone(),
-            transform: piston_to_hip,
-            axis: axis_piston
-        }),
-        Joint::PrismaticJoint(PrismaticJoint {
-            init_mat: leg_to_piston.mat.clone(),
-            transform: leg_to_piston,
-            axis: axis_leg
-        })
+        Joint::PrismaticJoint(PrismaticJoint::new(piston_to_hip, axis_piston)),
+        Joint::PrismaticJoint(PrismaticJoint::new(leg_to_piston, axis_leg))
     ];
 
     let bodies = dvector![body, hip, piston, leg];
-    let halfspaces = dvector![];
-    let mut state = MechanismState::new(treejoints, bodies, halfspaces);
+    let mut state = MechanismState::new(treejoints, bodies);
 
     state.add_contact_point(&ContactPoint {
         frame: leg_frame.to_string(),
@@ -433,11 +414,25 @@ pub fn build_SLIP(
         transform: body_to_world,
     }),];
     let bodies = dvector![body];
-    let halfspaces = dvector![];
-    let mut state = MechanismState::new(treejoints, bodies, halfspaces);
+    let mut state = MechanismState::new(treejoints, bodies);
 
     let direction = UnitVector3::new_normalize(vector![angle.sin(), 0., -angle.cos()]);
     state.add_spring_contact(&SpringContact::new(body_frame, l_rest, direction, k_spring));
 
     state
+}
+
+pub fn build_sphere_body(m: Float, r: Float, frame: &str) -> RigidBody {
+    let moment_x = 2.0 / 5.0 * m * r * r;
+    let moment = Matrix3::from_diagonal(&vector![moment_x, moment_x, moment_x]);
+    let cross_part = Vector3::zeros();
+
+    let sphere = RigidBody::new(SpatialInertia {
+        frame: frame.to_string(),
+        moment,
+        cross_part,
+        mass: m,
+    });
+
+    sphere
 }

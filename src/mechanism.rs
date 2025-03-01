@@ -41,11 +41,7 @@ pub struct MechanismState {
 
 impl MechanismState {
     /// Create a new MechanismState with zero initial condition
-    pub fn new(
-        treejoints: DVector<Joint>,
-        bodies: DVector<RigidBody>,
-        halfspaces: DVector<HalfSpace>,
-    ) -> Self {
+    pub fn new(treejoints: DVector<Joint>, bodies: DVector<RigidBody>) -> Self {
         let njoints = treejoints.len();
         let mut q = vec![];
         let mut v = vec![];
@@ -72,7 +68,7 @@ impl MechanismState {
             bodies,
             q,
             v,
-            halfspaces,
+            halfspaces: dvector![],
         }
     }
 
@@ -395,8 +391,7 @@ mod mechanism_tests {
             }),
         ];
         let bodies = dvector![body, leg, leg2];
-        let halfspaces = dvector![];
-        let state = MechanismState::new(treejoints, bodies, halfspaces);
+        let state = MechanismState::new(treejoints, bodies);
 
         // Act
         let bodies_to_root = &compute_bodies_to_root(&state);
