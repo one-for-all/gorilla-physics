@@ -73,8 +73,12 @@ impl MechanismState {
     }
 
     pub fn update(&mut self, q: &Vec<JointPosition>, v: &Vec<JointVelocity>) {
-        self.q = q.clone();
+        self.update_q(q);
         self.v = v.clone();
+    }
+
+    pub fn update_q(&mut self, q: &Vec<JointPosition>) {
+        self.q = q.clone();
         for (joint, q) in izip!(self.treejoints.iter_mut(), q.iter()) {
             match joint {
                 Joint::RevoluteJoint(j) => {
@@ -384,6 +388,7 @@ mod mechanism_tests {
         // Assert
     }
 
+    /// Ensure that poses() fn works correctly for a double pendulum
     #[test]
     #[ignore] // TODO: Add this test
     fn double_pendulum_poses() {
