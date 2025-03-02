@@ -79,3 +79,20 @@ pub fn assert_dvec_close(a: &DVector<Float>, b: &DVector<Float>, tol: Float) {
         assert!((a - b).abs() < tol, "{} != {}", a, b);
     }
 }
+
+#[macro_export]
+macro_rules! assert_close {
+    ($left:expr, $right:expr, $tolerance:expr) => {
+        let left = $left;
+        let right = $right;
+        let tol = $tolerance;
+        let diff = (left - right).abs();
+        if diff > tol {
+            panic!(
+                "assertion failed: {} ~= {} \
+                (tolerance: {}, difference: {})",
+                left, right, tol, diff
+            );
+        }
+    };
+}
