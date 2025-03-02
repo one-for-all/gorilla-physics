@@ -6,12 +6,8 @@ use na::{UnitVector3, Vector3};
 
 use crate::WORLD_FRAME;
 use crate::{
-    control::energy_control::spring_force,
-    mechanism::MechanismState,
-    spatial_force::Wrench,
-    transform::{compute_bodies_to_root, Transform3D},
-    twist::Twist,
-    types::Float,
+    control::energy_control::spring_force, mechanism::MechanismState, spatial_force::Wrench,
+    transform::Transform3D, twist::Twist, types::Float,
 };
 
 #[derive(Clone, PartialEq, Debug)]
@@ -603,5 +599,102 @@ mod contact_tests {
         // Hopping height settled
         assert_close(hs[hs.len() - 3], hs[hs.len() - 2], 1e-3);
         assert_close(hs[hs.len() - 2], hs[hs.len() - 1], 1e-3);
+    }
+
+    /// Put a rod vertically on the ground, give it a small angular deviation, and
+    /// its top should fall to the ground, and bottom remain where it was.
+    #[test]
+    // #[ignore] // TODO: make this work
+    fn vertical_rod_against_ground() {
+        // Arrange
+        let m = 1.0;
+        let l = 0.5;
+        let v_x_init = 1.0;
+
+        let moment_x = m * l * l / 3.0;
+        let moment_y = m * l * l / 3.0;
+        let moment_z = moment_x / 10.0;
+        let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
+        let cross_part = vector![0., 0., m * l / 2.0];
+
+        let rod_frame = "rod";
+        let rod = RigidBody::new(SpatialInertia {
+            frame: rod_frame.to_string(),
+            moment,
+            cross_part,
+            mass: m,
+        });
+
+        let rod_to_world = Transform3D::identity(&rod_frame, WORLD_FRAME);
+        let treejoints = dvector![Joint::FloatingJoint(FloatingJoint::new(rod_to_world))];
+        let bodies = dvector![rod];
+        let mut state = MechanismState::new(treejoints, bodies);
+
+        state.add_contact_point(&ContactPoint {
+            frame: rod_frame.to_string(),
+            location: vector![0.0, 0.0, 0.0],
+        });
+
+        state.add_contact_point(&ContactPoint {
+            frame: rod_frame.to_string(),
+            location: vector![0.0, 0.0, l],
+        });
+
+        let alpha = 1.0;
+        let mu = 10.0;
+        let normal = Vector3::z_axis();
+        let h_ground = 0.0;
+        let ground = HalfSpace::new_with_params(normal, h_ground, alpha, mu);
+        state.add_halfspace(&ground);
+
+        state.set_joint_q(
+            1,
+            JointPosition::Pose(Pose {
+                rotation: UnitQuaternion::from_axis_angle(&Vector3::y_axis(), 0.001),
+                translation: vector![0.0, 0.0, 0.0],
+            }),
+        );
+        state.set_joint_v(
+            1,
+            JointVelocity::Spatial(SpatialVector {
+                angular: Vector3::zeros(),
+                linear: vector![v_x_init, 0.0, 0.0],
+            }),
+        );
+
+        // Act
+        let final_time = 2.0;
+        let dt = 1e-4;
+        let (q, v) = simulate(&mut state, final_time, dt, |_state| vec![]);
+
+        // Assert
+        let q_final = &q[q.len() - 1][0];
+        let pose_body = q_final.pose();
+        // rod fall to the ground
+        assert_close(pose_body.translation.z, h_ground, 1e-2);
+
+        let rotation_to_horizontal =
+            pose_body
+                .rotation
+                .rotation_to(&UnitQuaternion::from_axis_angle(
+                    &Vector3::y_axis(),
+                    PI / 2.0,
+                ));
+        // rod lying flat on the ground
+        assert_close(rotation_to_horizontal.angle(), 0.0, 1e-5);
+
+        let v_final = &v[v.len() - 1][0];
+        let v_body = v_final.spatial();
+        let v_body_linear = pose_body.rotation * v_body.linear;
+        // rod is not moving
+        assert_close!(v_body_linear.z, 0.0, 1e-2);
+        // TODO: v_x is rather large, and does not seem to decrease with time
+        assert_close!(v_body_linear.x, 0.0, 1e-2);
+        assert_eq!(v_body.linear.y, 0.0);
+        assert_close!(v_body.angular.norm(), 0.0, 1e-3);
+
+        // rod bottom is still at origin.
+        // TODO: This is failing by a large margin; make this work
+        assert_close!(pose_body.translation.x, 0.0, 1e-2);
     }
 }
