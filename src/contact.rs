@@ -262,8 +262,9 @@ pub fn calculate_contact_force(
 #[cfg(test)]
 mod contact_tests {
     use crate::{
+        assert_close,
         control::energy_control::Controller,
-        helpers::{build_SLIP, build_cube, build_rimless_wheel},
+        helpers::{build_SLIP, build_cube, build_rimless_wheel, build_sphere_body},
         inertia::SpatialInertia,
         interface::controller::NullController,
         joint::{floating::FloatingJoint, Joint, JointPosition, JointVelocity, ToJointTorqueVec},
@@ -351,10 +352,13 @@ mod contact_tests {
         // Arrange
         let m = 3.0;
         let l = 1.0;
+        let v_x_init = 1.0;
         let mut state = build_cube(m, l);
 
         let h_ground = -l / 2.0;
-        state.add_halfspace(&HalfSpace::new(Vector3::z_axis(), h_ground));
+        let mu = 0.5;
+        let ground = HalfSpace::new_with_params(Vector3::z_axis(), h_ground, 1.0, mu);
+        state.add_halfspace(&ground);
 
         let q_init = vec![JointPosition::Pose(Pose {
             rotation: UnitQuaternion::identity(),
@@ -362,22 +366,27 @@ mod contact_tests {
         })];
         let v_init = vec![JointVelocity::Spatial(SpatialVector {
             angular: vector![0.0, 0.0, 0.0],
-            linear: vector![1.0, 0.0, 0.0],
+            linear: vector![v_x_init, 0.0, 0.0],
         })];
         state.update(&q_init, &v_init);
 
         // Act
-        let final_time = 5.0;
-        let dt = 1e-3;
+        let final_time = 2.0;
+        let dt = 1e-4;
         let (qs, vs) = simulate(&mut state, final_time, dt, |_state| vec![]);
 
         // Assert
         let q_final = qs[qs.len() - 1][0].pose();
-        assert_close(q_final.translation.z, 0.0, 1e-2);
+        assert_close!(q_final.translation.z, 0.0, 1e-2);
 
         let v_final = vs[vs.len() - 1][0].spatial();
-        assert_close(v_final.linear.norm(), 0.0, 5e-3);
-        assert_close(v_final.angular.norm(), 0.0, 1e-2);
+        assert_close!(v_final.linear.norm(), 0.0, 5e-3);
+        assert_close!(v_final.angular.norm(), 0.0, 1e-2);
+
+        let acc_friction = -GRAVITY * mu;
+        let sliding_t = v_x_init / -acc_friction;
+        let sliding_x = v_x_init * sliding_t + acc_friction * sliding_t.powi(2) / 2.0;
+        assert_close!(q_final.translation.x, sliding_x, 5e-3);
     }
 
     /// Hit the ground with rotational and translational velocity
@@ -418,35 +427,23 @@ mod contact_tests {
     #[test]
     fn mass_hit_ground() {
         // Arrange
-        let m = 0.1;
+        let m = 1.0;
         let r = 0.1;
-        let v_x_init = 1.0;
-
-        let moment_x = 2.0 / 5.0 * m * r * r;
-        let moment = Matrix3::from_diagonal(&vector![moment_x, moment_x, moment_x]);
-        let cross_part = vector![0.0, 0.0, 0.0];
+        let v_x_init = 2.0;
 
         let ball_frame = "ball";
         let world_frame = "world";
         let ball_to_world = Transform3D::identity(&ball_frame, &world_frame);
 
-        let ball = RigidBody::new(SpatialInertia {
-            frame: ball_frame.to_string(),
-            moment,
-            cross_part,
-            mass: m,
-        });
+        let ball = build_sphere_body(m, r, &ball_frame);
 
-        let treejoints = dvector![Joint::FloatingJoint(FloatingJoint {
-            init_mat: ball_to_world.mat.clone(),
-            transform: ball_to_world,
-        })];
+        let treejoints = dvector![Joint::FloatingJoint(FloatingJoint::new(ball_to_world))];
         let bodies = dvector![ball];
         let mut state = MechanismState::new(treejoints, bodies);
 
         let h_ground = -0.3;
         let alpha = 1.0;
-        let mu = 1.0;
+        let mu = 0.5;
         let ground = HalfSpace::new_with_params(Vector3::z_axis(), h_ground, alpha, mu);
         state.add_halfspace(&ground);
 
@@ -455,36 +452,45 @@ mod contact_tests {
             location: vector![0.0, 0.0, 0.0],
         });
 
-        let q_init = vec![JointPosition::Pose(Pose {
-            rotation: UnitQuaternion::identity(),
-            translation: vector![0.0, 0.0, 0.0],
-        })];
-        let v_init = vec![JointVelocity::Spatial(SpatialVector {
-            angular: vector![0.0, 0.0, 0.0],
-            linear: vector![v_x_init, 0.0, 0.0],
-        })];
-        state.update(&q_init, &v_init);
+        state.set_joint_v(
+            1,
+            JointVelocity::Spatial(SpatialVector {
+                angular: vector![0.0, 0.0, 0.0],
+                linear: vector![v_x_init, 0.0, 0.0],
+            }),
+        );
 
         // Act
-        let final_time = 3.0;
-        let dt = 1e-3;
+        let final_time = 2.0;
+        let dt = 1e-4;
         let (qs, vs) = simulate(&mut state, final_time, dt, |_state| vec![]);
 
         // Assert
         let q_final = qs[qs.len() - 1][0].pose();
 
         // Check mass on the ground
-        assert_close(q_final.translation.z, h_ground, 1e-3);
+        assert_close!(q_final.translation.z, h_ground, 1e-2);
 
         // Check mass stationary
         let v_final = vs[vs.len() - 1][0].spatial();
-        assert_close(v_final.linear.norm(), 0.0, 5e-3);
-        assert_close(v_final.angular.norm(), 0.0, 1e-3);
+        assert_close!(v_final.linear.norm(), 0.0, 1e-3);
+        assert_close!(v_final.angular.norm(), 0.0, 1e-3);
 
-        // Check mass stays where it hits the ground
+        // Check mass x = where it hits the ground + sliding distance
         let ground_hit_t = (-h_ground * 2.0 / GRAVITY).sqrt(); // h = 1/2*a*t^2
-        let x_expect = ground_hit_t * v_x_init;
-        assert_close(q_final.translation.x, x_expect, 5e-3);
+        let ground_hit_x = ground_hit_t * v_x_init;
+
+        let v_z_hit = GRAVITY * ground_hit_t;
+        let v_x_reduction = v_z_hit * mu; // m*v = integral F dt; friciion = normal force * mu
+        let v_x_after = v_x_init - v_x_reduction; // velocity after hitting ground
+        assert!(v_x_after > 0.0); // otherwise the above calculation doesn't work, since friction must have changed direction
+
+        let acc_friction = -GRAVITY * mu;
+        let sliding_t = v_x_after / -acc_friction;
+        let sliding_x = v_x_after * sliding_t + acc_friction * sliding_t.powi(2) / 2.0; // ut + 1/2*a*t^2
+
+        let x_expect = ground_hit_x + sliding_x;
+        assert_close!(q_final.translation.x, x_expect, 1e-2);
     }
 
     /// Rimless wheel rolling down a slope, settling into a stable limit cycle
