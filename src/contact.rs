@@ -604,7 +604,7 @@ mod contact_tests {
     /// Put a rod vertically on the ground, give it a small angular deviation, and
     /// its top should fall to the ground, and bottom remain where it was.
     #[test]
-    // #[ignore] // TODO: make this work
+    #[ignore] // TODO: make this work
     fn vertical_rod_against_ground() {
         // Arrange
         let m = 1.0;
