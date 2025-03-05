@@ -11,6 +11,7 @@ use controller::InterfaceController;
 use itertools::izip;
 use na::Rotation3;
 use na::UnitQuaternion;
+use na::UnitVector3;
 use na::Vector3;
 use na::{dvector, vector, Matrix3, Matrix4};
 use wasm_bindgen::prelude::*;
@@ -67,11 +68,11 @@ impl InterfaceSimulator {
 
     #[wasm_bindgen]
     pub fn step(&mut self, dt: Float) -> js_sys::Float32Array {
-        let n_substep = 10;
+        let n_substep = 100;
         let mut q = vec![];
         for _ in 0..n_substep {
             // let torque = self.1 .0.vertical_control(&(self.0).0);
-            let torque = self.controller.inner.control(&(self.state).inner);
+            let torque = self.controller.inner.control(&mut (self.state).inner);
             let (_q, _v) = step(&mut (self.state).inner, dt / (n_substep as Float), &torque);
             q = _q;
         }
@@ -161,7 +162,10 @@ impl InterfaceMechanismState {
 
     #[wasm_bindgen]
     pub fn addHalfSpace(&mut self, normal: Vec<Float>, distance: Float) {
-        let halfspace = HalfSpace::new(vector![normal[0], normal[1], normal[2]], distance);
+        let halfspace = HalfSpace::new(
+            UnitVector3::new_normalize(vector![normal[0], normal[1], normal[2]]),
+            distance,
+        );
         self.inner.add_halfspace(&halfspace);
     }
 }

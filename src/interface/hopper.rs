@@ -1,9 +1,9 @@
 use crate::{
     contact::ContactPoint,
+    helpers::build_2d_hopper,
     inertia::SpatialInertia,
     joint::{
-        floating::FloatingJoint, prismatic::PrismaticJoint, revolute::RevoluteJoint, Joint,
-        JointPosition, JointVelocity,
+        floating::FloatingJoint, prismatic::PrismaticJoint, Joint, JointPosition, JointVelocity,
     },
     mechanism::MechanismState,
     pose::Pose,
@@ -98,20 +98,11 @@ pub fn create1DHopper(
             init_mat: body_to_world.mat.clone(),
             transform: body_to_world,
         }),
-        Joint::PrismaticJoint(PrismaticJoint {
-            init_mat: leg_to_body.mat.clone(),
-            transform: leg_to_body,
-            axis: axis_leg
-        }),
-        Joint::PrismaticJoint(PrismaticJoint {
-            init_mat: foot_to_leg.mat.clone(),
-            transform: foot_to_leg,
-            axis: axis_foot
-        })
+        Joint::PrismaticJoint(PrismaticJoint::new(leg_to_body, axis_leg)),
+        Joint::PrismaticJoint(PrismaticJoint::new(foot_to_leg, axis_foot))
     ];
     let bodies = dvector![body, leg, foot];
-    let halfspaces = dvector![];
-    let mut state = MechanismState::new(treejoints, bodies, halfspaces);
+    let mut state = MechanismState::new(treejoints, bodies);
 
     state.add_contact_point(&ContactPoint {
         frame: body_frame.to_string(),
@@ -130,4 +121,59 @@ pub fn create1DHopper(
 
     InterfaceMechanismState { inner: state }
 }
+
+#[wasm_bindgen]
+pub fn create2DHopper(
+    w_body: Float,
+    h_body: Float,
+    r_hip: Float,
+    body_hip_length: Float,
+    r_piston: Float,
+    hip_piston_length: Float,
+    l_leg: Float,
+    piston_leg_length: Float,
+) -> InterfaceMechanismState {
+    let m_body = 10.0;
+    let m_hip = 0.1;
+    let m_piston = 0.1;
+    let m_leg = 1.0;
+
+    let mut state = build_2d_hopper(
+        m_body,
+        w_body,
+        h_body,
+        m_hip,
+        r_hip,
+        body_hip_length,
+        m_piston,
+        r_piston,
+        hip_piston_length,
+        m_leg,
+        l_leg,
+        piston_leg_length,
+    );
+
+    let theta2 = -0.05;
+    let theta1 = 0.0;
+    let q_init = vec![
+        JointPosition::Pose(Pose {
+            rotation: UnitQuaternion::from_axis_angle(&Vector3::y_axis(), theta2),
+            translation: zero(),
+        }),
+        JointPosition::Float(theta1 - theta2),
+        JointPosition::Float(0.0),
+        JointPosition::Float(0.0),
+    ];
+    let v_init = vec![
+        JointVelocity::Spatial(SpatialVector {
+            angular: zero(),
+            linear: zero(),
+        }),
+        JointVelocity::Float(0.0),
+        JointVelocity::Float(0.0),
+        JointVelocity::Float(0.0),
+    ];
+    state.update(&q_init, &v_init);
+
+    InterfaceMechanismState { inner: state }
 }
