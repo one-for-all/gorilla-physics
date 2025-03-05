@@ -9,10 +9,6 @@ path = "src/lib.rs"
 crate-type = ["cdylib", "rlib"]
 
 [[bin]]
-name = "horizontal_rod_pendulum"
-path = "examples/horizontal_rod_pendulum.rs"
-
-[[bin]]
 name = "pendulum_energy"
 path = "examples/pendulum_energy.rs"
 
@@ -25,8 +21,21 @@ name = "cart_pole"
 path = "examples/cart_pole.rs"
 
 [[bin]]
+name = "double_pendulum"
+path = "examples/double_pendulum.rs"
+
+[[bin]]
+name = "acrobot"
+path = "examples/acrobot.rs"
+
+[[bin]]
 name = "ball"
 path = "examples/ball.rs"
+
+[[bin]]
+name = "1D_hopper"
+path = "examples/1D_hopper.rs"
+
 [[bin]]
 name = "cube"
 path = "examples/cube.rs"
