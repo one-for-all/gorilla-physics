@@ -4,16 +4,18 @@ import("gorilla-physics").then((gorilla) => {
   const mass = 1.0;
   const radius = 5.0;
   const length = 5.0;
-  let w_body = 5.0;
-  let h_body = 0.1;
-  let r_hip = 0.5;
-  let r_leg = 0.5;
-  let r_foot = 0.5;
-  let body_hip_length = 2.0;
+  let w_body = 3.5;
+  let h_body = 0.05;
+  let r_hip = 0.1;
+  let r_piston = 0.1;
+  let l_leg = 1.0;
+  let body_hip_length = 0.0;
   let body_leg_length = 2.0;
-  let hip_leg_length = 2.0;
-  let leg_foot_length = 10.0;
-  // let mechanismState = gorilla.create1DHopper(
+  let hip_piston_length = 0.0;
+  let piston_leg_length = 1.0;
+
+  let k_spring = 1e3;
+  // let state = gorilla.create1DHopper(
   //   w_body,
   //   h_body,
   //   r_leg,
@@ -32,20 +34,35 @@ import("gorilla-physics").then((gorilla) => {
   //   hip_leg_length,
   //   leg_foot_length
   // );
-  let n_foot = 8;
-  let state = gorilla.createRimlessWheel(radius, n_foot);
+  // let state = gorilla.create2DHopper2(
+  //   w_body,
+  //   h_body,
+  //   r_hip,
+  //   body_hip_length,
+  //   r_piston,
+  //   hip_piston_length,
+  //   l_leg,
+  //   piston_leg_length
+  // );
 
-  let angle: number = (10.0 * Math.PI) / 180.0;
+  let state = gorilla.createSLIP();
+
+  let n_foot = 8;
+  // let state = gorilla.createRimlessWheel(radius, n_foot);
+
+  let angle: number = (0.0 * Math.PI) / 180.0;
   let normal = new Float32Array([Math.sin(angle), 0.0, Math.cos(angle)]);
-  let distance = -20.0;
+  let distance = -0.5;
   state.addHalfSpace(normal, distance);
 
   let h_setpoint = 0.0;
   // let controller = gorilla.createHopper2DController(
   //   h_setpoint,
   //   body_hip_length,
-  //   hip_leg_length,
-  //   leg_foot_length
+  //   hip_piston_length,
+  //   piston_leg_length,
+  //   l_leg,
+  //   k_spring
   // );
   // let controller = gorilla.createHopper1DController(
   //   h_setpoint,
@@ -62,17 +79,18 @@ import("gorilla-physics").then((gorilla) => {
   // simulator.addDoublemPendulum(length);
   // simulator.addPendulum(length);
   // simulator.addSphere(radius);
-  // simulator.add2DHopper(w_body, h_body, r_hip, r_leg, r_foot);
+  // simulator.add2DHopper(w_body, h_body, r_hip, r_piston, r_foot);
+  // simulator.add2DHopper2(w_body, h_body, r_hip, r_piston, l_leg);
   // simulator.add1DHopper(w_body, h_body, r_leg, r_foot);
   // simulator.addCube(length);
-  // simulator.addSphere(0.1);
-  simulator.addRimlessWheel(radius, 10.0, n_foot);
+  simulator.addSphere("sphere", 0xffffff, 0.1);
+  // simulator.addRimlessWheel(radius, 10.0, n_foot);
 
   simulator.addPlane(normal, distance, 100);
 
   // Important: Set initial camera position
   let cameraPosition = {
-    eye: { x: 0.0, y: -60.0, z: -0.0 },
+    eye: { x: 0.0, y: -10.0, z: -0.0 },
     target: { x: 0.0, y: 0, z: 0.0 },
   };
   simulator.graphics.lookAt(cameraPosition);
