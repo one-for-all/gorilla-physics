@@ -1,8 +1,16 @@
-use gorilla_physics::helpers::build_cart_pole;
-use nalgebra::{dvector, vector, Matrix3};
+use gorilla_physics::joint::ToJointVelocityVec;
+use gorilla_physics::plot::plot2;
+use gorilla_physics::{
+    control::swingup::swingup_cart_pole,
+    energy::cart_pole_energy,
+    helpers::build_cart_pole,
+    joint::{ToFloatDVec, ToJointPositionVec},
+    simulate::step,
+    PI,
+};
+use nalgebra::{dvector, vector, DVector, Matrix3};
 
-use gorilla_physics::{simulate::simulate, types::Float};
-use plotters::prelude::*;
+use gorilla_physics::types::Float;
 
 /// Run simulation of a cart pole
 ///
@@ -15,7 +23,7 @@ use plotters::prelude::*;
 ///              |
 ///              +
 pub fn main() {
-    let m_cart = 3.0;
+    let m_cart = 1.0;
     let l_cart = 1.0;
     let moment_x = 0.0;
     let moment_y = m_cart * l_cart * l_cart / 12.0;
@@ -23,13 +31,14 @@ pub fn main() {
     let moment_cart = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
     let cross_part_cart = vector![0.0, 0.0, 0.0];
 
-    let m_pole = 5.0;
-    let l_pole = 7.0;
+    let m_pole = 2.0;
+    let l_pole = 1.0;
     let moment_x = m_pole * l_pole * l_pole;
     let moment_y = m_pole * l_pole * l_pole;
     let moment_z = 0.0;
     let moment_pole = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
     let cross_part_pole = vector![0.0, 0.0, -l_pole * m_pole];
+    let axis_pole = vector![0.0, -1.0, 0.0];
 
     let mut state = build_cart_pole(
         &m_cart,
@@ -38,42 +47,39 @@ pub fn main() {
         &moment_pole,
         &cross_part_cart,
         &cross_part_pole,
+        &axis_pole,
     );
 
+    let q_init = vec![0.0, PI + 0.1].to_joint_pos_vec();
+    let v_init = vec![0.0, 0.0].to_joint_vel_vec();
+    state.update(&q_init, &v_init);
+
     let F_cart = 1.0; // force to be exerted on the cart
-    let final_time = 20.0;
-    let dt = 0.02;
+
+    let mut qs: DVector<DVector<Float>> = dvector![];
+    let mut vs: DVector<DVector<Float>> = dvector![];
+    let mut taus: DVector<DVector<Float>> = dvector![];
+    let mut Es: DVector<Float> = dvector![];
+
+    let mut t = 0.0;
+    let final_time = 10.0;
+    let dt = 1.0 / 100.0;
     let num_steps = (final_time / dt) as usize;
-    let (qs, vs) = simulate(&mut state, final_time, dt, |_state| dvector![F_cart, 0.0]);
+    while t < final_time {
+        let torque = swingup_cart_pole(&state, &m_cart, &m_pole, &l_pole);
+        // let torque = dvector![0.0, 0.0];
+        let (q, v) = step(&mut state, dt, &torque);
+        qs.extend([q.to_float_dvec()]);
+        vs.extend([v.to_float_dvec()]);
+        taus.extend([torque.to_float_dvec()]);
+        Es.extend([cart_pole_energy(&state, &m_pole, &l_pole)]);
+        t += dt;
+    }
 
-    let data = vs.iter().map(|q| q[0]).collect::<Vec<Float>>();
+    let index = 1;
+    let qs = qs.iter().map(|x| x[index]).collect::<Vec<Float>>();
+    let vs = vs.iter().map(|x| x[index]).collect::<Vec<Float>>();
+    let taus = taus.iter().map(|x| x[0]).collect::<Vec<Float>>();
 
-    // Determine y-axis limits based on the minimum and maximum values in the data
-    let min_y = data.iter().cloned().fold(Float::INFINITY, Float::min);
-    let max_y = data.iter().cloned().fold(Float::NEG_INFINITY, Float::max);
-
-    // Create a plotting area
-    let root = BitMapBackend::new("cart_pole_vel.png", (640, 480)).into_drawing_area();
-    let _ = root.fill(&WHITE);
-
-    // Configure the chart
-    let mut chart = ChartBuilder::on(&root)
-        .caption("Cart velocity vs. Time plot", ("sans-serif", 20))
-        .x_label_area_size(30)
-        .y_label_area_size(40)
-        .build_cartesian_2d(0.0..final_time, min_y..max_y)
-        .unwrap();
-
-    // Customize the chart
-    let _ = chart.configure_mesh().draw();
-
-    // Plot the data
-    let _ = chart.draw_series(LineSeries::new(
-        (0..num_steps).map(|i| (i as Float * dt, data[i])),
-        &BLUE,
-    ));
-
-    // Present the result
-    root.present()
-        .expect("Unable to present the result to the screen");
+    plot2(&qs, &vs, final_time, dt, num_steps);
 }
