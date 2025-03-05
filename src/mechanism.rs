@@ -3,10 +3,13 @@ use std::collections::HashMap;
 use crate::contact::ContactPoint;
 use crate::contact::HalfSpace;
 use crate::contact::SpringContact;
+use crate::energy::spring_elastic_energy;
 use crate::geometric_jacobian::GeometricJacobian;
 use crate::inertia::compute_inertias;
 use crate::inertia::kinetic_energy;
 use crate::inertia::SpatialInertia;
+use crate::joint;
+use crate::joint::prismatic::PrismaticJoint;
 use crate::joint::Joint;
 use crate::joint::JointPosition;
 use crate::joint::JointVelocity;
@@ -165,6 +168,20 @@ impl MechanismState {
         }
 
         PE
+    }
+
+    pub fn spring_energy(&self) -> Float {
+        let mut E = 0.0;
+        for (jointid, joint) in izip!(self.treejointids.iter(), self.treejoints.iter()) {
+            if let Joint::PrismaticJoint(joint) = joint {
+                if let Some(spring) = &joint.spring {
+                    let q = &self.q[jointid - 1];
+                    E += spring_elastic_energy(spring.l, *q.float(), spring.k);
+                }
+            }
+        }
+
+        E
     }
 
     pub fn add_halfspace(&mut self, halfspace: &HalfSpace) {

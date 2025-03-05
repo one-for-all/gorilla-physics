@@ -263,7 +263,11 @@ mod contact_tests {
         helpers::{build_SLIP, build_cube, build_rimless_wheel, build_sphere_body},
         inertia::SpatialInertia,
         interface::controller::NullController,
-        joint::{floating::FloatingJoint, Joint, JointPosition, JointVelocity, ToJointTorqueVec},
+        joint::{
+            floating::FloatingJoint,
+            prismatic::{JointSpring, PrismaticJoint},
+            Joint, JointPosition, JointVelocity, ToJointTorqueVec,
+        },
         pose::Pose,
         rigid_body::RigidBody,
         simulate::step,
@@ -599,6 +603,86 @@ mod contact_tests {
         // Hopping height settled
         assert_close(hs[hs.len() - 3], hs[hs.len() - 2], 1e-3);
         assert_close(hs[hs.len() - 2], hs[hs.len() - 1], 1e-3);
+    }
+
+    // Drop a 2-mass spring onto ground, the spring should settle on the ground
+    // with some oscillation
+    #[test]
+    fn spring_drop() {
+        // Arrange
+        let m_body = 1.0;
+        let r_body = 1.0;
+        let m_foot = 1.0;
+        let r_foot = 1.0;
+        let l_leg = 1.0;
+        let l_spring_rest = 0.0;
+        let k_spring = 100.0;
+
+        let body_frame = "body";
+        let body = build_sphere_body(m_body, r_body, &body_frame);
+        let body_to_world = Transform3D::identity(body_frame, WORLD_FRAME);
+
+        let foot_frame = "foot";
+        let foot = build_sphere_body(m_foot, r_foot, &foot_frame);
+        let foot_to_body = Transform3D {
+            from: foot_frame.to_string(),
+            to: body_frame.to_string(),
+            mat: Transform3D::move_z(-l_leg),
+        };
+        let axis_leg = vector![0.0, 0.0, -1.0];
+
+        let spring = JointSpring {
+            k: k_spring,
+            l: l_spring_rest,
+        };
+        let treejoints = dvector![
+            Joint::FloatingJoint(FloatingJoint::new(body_to_world)),
+            Joint::PrismaticJoint(PrismaticJoint::new_with_spring(
+                foot_to_body,
+                axis_leg,
+                spring
+            ))
+        ];
+        let bodies = dvector![body, foot];
+        let mut state = MechanismState::new(treejoints, bodies);
+        state.add_contact_point(&ContactPoint {
+            frame: foot_frame.to_string(),
+            location: Vector3::zeros(),
+        });
+
+        let h_ground = -2.0;
+        let alpha = 1.0;
+        let mu = 0.0;
+        let ground = HalfSpace::new_with_params(Vector3::z_axis(), h_ground, alpha, mu);
+        state.add_halfspace(&ground);
+
+        // Act
+        let final_time = 4.0;
+        let dt = 1e-3;
+        let (q, v) = simulate(&mut state, final_time, dt, |_state| vec![]);
+
+        // Assert
+        let poses = state.poses();
+
+        // Foot on the ground
+        let foot_pose = &poses[1];
+        assert_eq!(foot_pose.translation.x, 0.0);
+        assert_eq!(foot_pose.translation.y, 0.0);
+        let z_tol = ((m_body + m_foot) * GRAVITY / 50e3).powf(2.0 / 3.0); // reverse compute the expected penetration into ground
+        assert_close!(foot_pose.translation.z, h_ground, z_tol * 2.0);
+
+        // Body upright
+        let body_pose = &poses[0];
+        assert_eq!(body_pose.rotation, UnitQuaternion::identity());
+
+        // Energy
+        let total_energy =
+            state.kinetic_energy() + state.gravitational_energy() + state.spring_energy();
+        assert_close!(
+            total_energy,
+            m_foot * GRAVITY * h_ground + m_body * GRAVITY * (h_ground + l_leg),
+            1.0
+        );
     }
 
     /// Put a rod vertically on the ground, give it a small angular deviation, and
