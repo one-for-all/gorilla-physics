@@ -257,6 +257,7 @@ pub fn calculate_contact_force(
 
 #[cfg(test)]
 mod contact_tests {
+
     use crate::{
         assert_close,
         control::energy_control::Controller,
@@ -275,7 +276,7 @@ mod contact_tests {
         util::assert_close,
         GRAVITY,
     };
-    use na::{dvector, vector, Matrix3, Matrix4, UnitQuaternion};
+    use na::{dvector, vector, zero, Matrix3, Matrix4, UnitQuaternion};
 
     use crate::{helpers::build_pendulum, simulate::simulate, util::assert_dvec_close, PI};
 
@@ -683,6 +684,97 @@ mod contact_tests {
             m_foot * GRAVITY * h_ground + m_body * GRAVITY * (h_ground + l_leg),
             1.0
         );
+    }
+
+    /// Forward-moving spring dropping onto ground. Body should be leaning forward
+    /// at max spring compression.
+    #[test]
+    fn spring_forward_drop() {
+        // Arrange
+        let m_body = 1.0;
+        let r_body = 1.0;
+        let m_foot = 1.0;
+        let r_foot = 1.0;
+        let l_leg = 1.0;
+        let l_spring_rest = 0.0;
+        let k_spring = 100.0;
+
+        let body_frame = "body";
+        let body = build_sphere_body(m_body, r_body, &body_frame);
+        let body_to_world = Transform3D::identity(body_frame, WORLD_FRAME);
+
+        let foot_frame = "foot";
+        let foot = build_sphere_body(m_foot, r_foot, &foot_frame);
+        let foot_to_body = Transform3D {
+            from: foot_frame.to_string(),
+            to: body_frame.to_string(),
+            mat: Transform3D::move_z(-l_leg),
+        };
+        let axis_leg = vector![0.0, 0.0, -1.0];
+
+        let spring = JointSpring {
+            k: k_spring,
+            l: l_spring_rest,
+        };
+        let treejoints = dvector![
+            Joint::FloatingJoint(FloatingJoint::new(body_to_world)),
+            Joint::PrismaticJoint(PrismaticJoint::new_with_spring(
+                foot_to_body,
+                axis_leg,
+                spring
+            ))
+        ];
+        let bodies = dvector![body, foot];
+        let mut state = MechanismState::new(treejoints, bodies);
+        state.add_contact_point(&ContactPoint {
+            frame: foot_frame.to_string(),
+            location: Vector3::zeros(),
+        });
+
+        let h_ground = -2.0;
+        let alpha = 1.0;
+        let mu = 0.5;
+        let ground = HalfSpace::new_with_params(Vector3::z_axis(), h_ground, alpha, mu);
+        state.add_halfspace(&ground);
+
+        state.set_joint_v(
+            1,
+            JointVelocity::Spatial(SpatialVector {
+                angular: zero(),
+                linear: vector![0.5, 0.0, 0.0],
+            }),
+        );
+
+        // Act and Assert
+        let final_time = 1.5;
+        let dt = 1e-3;
+        let num_steps = (final_time / dt) as usize;
+        let mut prev_v_spring = 0.0;
+        let mut had_bottom = false;
+        for _ in 0..num_steps {
+            let torque = vec![];
+            let (q, v) = step(&mut state, dt, &torque);
+
+            let v_spring = v[1].float();
+            if prev_v_spring < 0.0 && *v_spring >= 0.0 {
+                // Bottom time: spring going from compressing to decompressing.
+                had_bottom = true;
+
+                let pose_body = q[0].pose();
+                let pose_foot = &state.poses()[1];
+
+                // Check that body's orientation is positive about y-axis
+                assert_eq!(pose_body.rotation.axis().unwrap(), Vector3::y_axis());
+                assert!(pose_body.rotation.angle() > 0.0);
+
+                // Check that body is in front of foot
+                assert!(pose_body.translation.x > pose_foot.translation.x);
+
+                break; // only check first bottom time
+            }
+            prev_v_spring = *v_spring;
+        }
+        assert_eq!(had_bottom, true); // At least had one bottom time
     }
 
     /// Put a rod vertically on the ground, give it a small angular deviation, and
