@@ -61,7 +61,7 @@ pub fn step(
                 let new_vi = vi.spatial() + &(vdot * dt);
 
                 let quaternion_dot = quaternion_derivative(&qi.rotation, &new_vi.angular);
-                let translation_dot = qi.rotation.to_rotation_matrix() * new_vi.linear;
+                let translation_dot = qi.rotation * new_vi.linear;
                 let new_qi = Pose {
                     translation: qi.translation + translation_dot * dt,
                     rotation: UnitQuaternion::from_quaternion(
