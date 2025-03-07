@@ -39,7 +39,7 @@ pub fn createRimlessWheel(r_body: Float, n_foot: usize) -> InterfaceMechanismSta
 
     let alpha = 2.0 * PI / n_foot as Float / 2.0;
 
-    let treejoints = dvector![Joint::FloatingJoint(FloatingJoint::new(body_to_world))];
+    let treejoints = vec![Joint::FloatingJoint(FloatingJoint::new(body_to_world))];
     let bodies = dvector![body];
     let mut state = MechanismState::new(treejoints, bodies);
 

@@ -89,7 +89,7 @@ mod floating_joint_tests {
         });
 
         let mut state = MechanismState {
-            treejoints: dvector![Joint::FloatingJoint(FloatingJoint {
+            treejoints: vec![Joint::FloatingJoint(FloatingJoint {
                 init_mat: ball_to_world.mat.clone(),
                 transform: ball_to_world,
             })],
@@ -149,7 +149,7 @@ mod floating_joint_tests {
         });
 
         let mut state = MechanismState {
-            treejoints: dvector![Joint::FloatingJoint(FloatingJoint {
+            treejoints: vec![Joint::FloatingJoint(FloatingJoint {
                 init_mat: ball_to_world.mat.clone(),
                 transform: ball_to_world,
             })],

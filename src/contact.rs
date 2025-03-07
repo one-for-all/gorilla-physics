@@ -438,7 +438,7 @@ mod contact_tests {
 
         let ball = build_sphere_body(m, r, &ball_frame);
 
-        let treejoints = dvector![Joint::FloatingJoint(FloatingJoint::new(ball_to_world))];
+        let treejoints = vec![Joint::FloatingJoint(FloatingJoint::new(ball_to_world))];
         let bodies = dvector![ball];
         let mut state = MechanismState::new(treejoints, bodies);
 
@@ -636,13 +636,13 @@ mod contact_tests {
             k: k_spring,
             l: l_spring_rest,
         };
-        let treejoints = dvector![
+        let treejoints = vec![
             Joint::FloatingJoint(FloatingJoint::new(body_to_world)),
             Joint::PrismaticJoint(PrismaticJoint::new_with_spring(
                 foot_to_body,
                 axis_leg,
-                spring
-            ))
+                spring,
+            )),
         ];
         let bodies = dvector![body, foot];
         let mut state = MechanismState::new(treejoints, bodies);
@@ -716,13 +716,13 @@ mod contact_tests {
             k: k_spring,
             l: l_spring_rest,
         };
-        let treejoints = dvector![
+        let treejoints = vec![
             Joint::FloatingJoint(FloatingJoint::new(body_to_world)),
             Joint::PrismaticJoint(PrismaticJoint::new_with_spring(
                 foot_to_body,
                 axis_leg,
-                spring
-            ))
+                spring,
+            )),
         ];
         let bodies = dvector![body, foot];
         let mut state = MechanismState::new(treejoints, bodies);
@@ -802,7 +802,7 @@ mod contact_tests {
         });
 
         let rod_to_world = Transform3D::identity(&rod_frame, WORLD_FRAME);
-        let treejoints = dvector![Joint::FloatingJoint(FloatingJoint::new(rod_to_world))];
+        let treejoints = vec![Joint::FloatingJoint(FloatingJoint::new(rod_to_world))];
         let bodies = dvector![rod];
         let mut state = MechanismState::new(treejoints, bodies);
 

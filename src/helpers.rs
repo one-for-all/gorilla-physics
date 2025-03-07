@@ -36,7 +36,7 @@ pub fn build_pendulum(
         mass: mass.clone(),
     });
 
-    let treejoints = dvector![Joint::RevoluteJoint(RevoluteJoint {
+    let treejoints = vec![Joint::RevoluteJoint(RevoluteJoint {
         init_mat: rod_to_world.mat.clone(),
         transform: rod_to_world,
         axis: axis.clone(),
@@ -63,7 +63,7 @@ pub fn build_double_pendulum(
     let rod1_to_world = Transform3D::new(rod1_frame, world_frame, &rod1_to_world);
     let rod2_to_rod1 = Transform3D::new(rod2_frame, rod1_frame, &rod2_to_rod1);
 
-    let treejoints = dvector![
+    let treejoints = vec![
         Joint::RevoluteJoint(RevoluteJoint {
             init_mat: rod1_to_world.mat.clone(),
             transform: rod1_to_world,
@@ -73,7 +73,7 @@ pub fn build_double_pendulum(
             init_mat: rod2_to_rod1.mat.clone(),
             transform: rod2_to_rod1,
             axis: axis.clone(),
-        })
+        }),
     ];
     let bodies = dvector![
         RigidBody::new(SpatialInertia {
@@ -105,9 +105,9 @@ pub fn build_cart(
 
     let cart_to_world = Transform3D::new(cart_frame, world_frame, &Matrix4::identity());
 
-    let treejoints = dvector![Joint::PrismaticJoint(PrismaticJoint::new(
+    let treejoints = vec![Joint::PrismaticJoint(PrismaticJoint::new(
         cart_to_world,
-        *axis
+        *axis,
     ))];
     let bodies = dvector![RigidBody::new(SpatialInertia {
         frame: cart_frame.to_string(),
@@ -139,13 +139,13 @@ pub fn build_cart_pole(
     let pole_to_cart = Transform3D::new(pole_frame, cart_frame, &Matrix4::identity());
 
     let state = MechanismState {
-        treejoints: dvector![
+        treejoints: vec![
             Joint::PrismaticJoint(PrismaticJoint::new(cart_to_world, axis_cart)),
             Joint::RevoluteJoint(RevoluteJoint {
                 init_mat: pole_to_cart.mat.clone(),
                 transform: pole_to_cart,
-                axis: *axis_pole
-            })
+                axis: *axis_pole,
+            }),
         ],
         treejointids: dvector![1, 2],
         bodies: dvector![
@@ -190,7 +190,7 @@ pub fn build_cube(mass: Float, length: Float) -> MechanismState {
         mass: m,
     });
 
-    let treejoints = dvector![Joint::FloatingJoint(FloatingJoint::new(cube_to_world))];
+    let treejoints = vec![Joint::FloatingJoint(FloatingJoint::new(cube_to_world))];
     let bodies = dvector![cube];
     let mut state = MechanismState::new(treejoints, bodies);
 
@@ -256,7 +256,7 @@ pub fn build_rimless_wheel(
 
     let alpha = 2.0 * PI / n_foot as Float / 2.0;
 
-    let treejoints = dvector![Joint::FloatingJoint(FloatingJoint::new(body_to_world))];
+    let treejoints = vec![Joint::FloatingJoint(FloatingJoint::new(body_to_world))];
     let bodies = dvector![body];
 
     let mut state = MechanismState::new(treejoints, bodies);
@@ -363,7 +363,7 @@ pub fn build_2d_hopper(
     });
 
     // Create the hopper
-    let treejoints = dvector![
+    let treejoints = vec![
         Joint::FloatingJoint(FloatingJoint {
             init_mat: body_to_world.mat.clone(),
             transform: body_to_world,
@@ -371,10 +371,10 @@ pub fn build_2d_hopper(
         Joint::RevoluteJoint(RevoluteJoint {
             init_mat: hip_to_body.mat.clone(),
             transform: hip_to_body,
-            axis: axis_hip
+            axis: axis_hip,
         }),
         Joint::PrismaticJoint(PrismaticJoint::new(piston_to_hip, axis_piston)),
-        Joint::PrismaticJoint(PrismaticJoint::new(leg_to_piston, axis_leg))
+        Joint::PrismaticJoint(PrismaticJoint::new(leg_to_piston, axis_leg)),
     ];
 
     let bodies = dvector![body, hip, piston, leg];
@@ -409,10 +409,10 @@ pub fn build_SLIP(
         mass: m,
     });
 
-    let treejoints = dvector![Joint::FloatingJoint(FloatingJoint {
+    let treejoints = vec![Joint::FloatingJoint(FloatingJoint {
         init_mat: body_to_world.mat.clone(),
         transform: body_to_world,
-    }),];
+    })];
     let bodies = dvector![body];
     let mut state = MechanismState::new(treejoints, bodies);
 

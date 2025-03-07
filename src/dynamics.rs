@@ -535,7 +535,7 @@ mod dynamics_tests {
         let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
         let mut state = MechanismState {
-            treejoints: dvector![
+            treejoints: vec![
                 Joint::RevoluteJoint(RevoluteJoint {
                     init_mat: rod1_to_world,
                     transform: Transform3D::new("rod1", "world", &rod1_to_world),
@@ -545,7 +545,7 @@ mod dynamics_tests {
                     init_mat: rod2_to_rod1,
                     transform: Transform3D::new("rod2", "rod1", &rod2_to_rod1),
                     axis: axis.clone(),
-                })
+                }),
             ],
             treejointids: dvector![1, 2],
             bodies: dvector![
@@ -637,13 +637,13 @@ mod dynamics_tests {
         let A_to_world = Transform3D::identity(&frame_A, WORLD_FRAME);
         let B_to_A = Transform3D::identity(&frame_B, &frame_A);
 
-        let treejoints = dvector![
+        let treejoints = vec![
             Joint::FloatingJoint(FloatingJoint::new(A_to_world)),
             Joint::PrismaticJoint(PrismaticJoint::new_with_spring(
                 B_to_A,
                 vector![1., 0., 0.],
-                JointSpring { k: 50.0, l: l_rest }
-            ))
+                JointSpring { k: 50.0, l: l_rest },
+            )),
         ];
 
         let mut state = MechanismState::new(treejoints, dvector![A, B]);

@@ -211,10 +211,10 @@ pub fn createRodPendulum(length: Float) -> InterfaceMechanismState {
     let axis = vector![0.0, 1.0, 0.0];
 
     let state = MechanismState {
-        treejoints: dvector![Joint::RevoluteJoint(RevoluteJoint {
+        treejoints: vec![Joint::RevoluteJoint(RevoluteJoint {
             init_mat: rod_to_world.mat.clone(),
             transform: rod_to_world,
-            axis
+            axis,
         })],
         treejointids: dvector![1],
         bodies: dvector![RigidBody::new(SpatialInertia {
@@ -288,7 +288,7 @@ pub fn createSphere(mass: Float, radius: Float) -> InterfaceMechanismState {
     });
 
     let mut state = MechanismState {
-        treejoints: dvector![Joint::FloatingJoint(FloatingJoint {
+        treejoints: vec![Joint::FloatingJoint(FloatingJoint {
             init_mat: ball_to_world.mat.clone(),
             transform: ball_to_world,
         })],

@@ -34,7 +34,7 @@ use nalgebra::DVector;
 
 /// MechanismState stores the state information about the mechanism
 pub struct MechanismState {
-    pub treejoints: DVector<Joint>,
+    pub treejoints: Vec<Joint>,
     pub treejointids: DVector<usize>,
     pub bodies: DVector<RigidBody>,
     pub q: Vec<JointPosition>, // joint configuration/position vector
@@ -44,7 +44,7 @@ pub struct MechanismState {
 
 impl MechanismState {
     /// Create a new MechanismState with zero initial condition
-    pub fn new(treejoints: DVector<Joint>, bodies: DVector<RigidBody>) -> Self {
+    pub fn new(treejoints: Vec<Joint>, bodies: DVector<RigidBody>) -> Self {
         let njoints = treejoints.len();
         let mut q = vec![];
         let mut v = vec![];
@@ -391,7 +391,7 @@ mod mechanism_tests {
             mass: m_leg,
         });
 
-        let treejoints = dvector![
+        let treejoints = vec![
             Joint::FloatingJoint(FloatingJoint {
                 init_mat: body_to_world.mat.clone(),
                 transform: body_to_world,
