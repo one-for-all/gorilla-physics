@@ -439,7 +439,7 @@ mod contact_tests {
         let ball = build_sphere_body(m, r, &ball_frame);
 
         let treejoints = vec![Joint::FloatingJoint(FloatingJoint::new(ball_to_world))];
-        let bodies = dvector![ball];
+        let bodies = vec![ball];
         let mut state = MechanismState::new(treejoints, bodies);
 
         let h_ground = -0.3;
@@ -644,7 +644,7 @@ mod contact_tests {
                 spring,
             )),
         ];
-        let bodies = dvector![body, foot];
+        let bodies = vec![body, foot];
         let mut state = MechanismState::new(treejoints, bodies);
         state.add_contact_point(&ContactPoint {
             frame: foot_frame.to_string(),
@@ -724,7 +724,7 @@ mod contact_tests {
                 spring,
             )),
         ];
-        let bodies = dvector![body, foot];
+        let bodies = vec![body, foot];
         let mut state = MechanismState::new(treejoints, bodies);
         state.add_contact_point(&ContactPoint {
             frame: foot_frame.to_string(),
@@ -803,7 +803,7 @@ mod contact_tests {
 
         let rod_to_world = Transform3D::identity(&rod_frame, WORLD_FRAME);
         let treejoints = vec![Joint::FloatingJoint(FloatingJoint::new(rod_to_world))];
-        let bodies = dvector![rod];
+        let bodies = vec![rod];
         let mut state = MechanismState::new(treejoints, bodies);
 
         state.add_contact_point(&ContactPoint {

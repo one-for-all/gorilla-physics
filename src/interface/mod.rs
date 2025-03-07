@@ -217,11 +217,11 @@ pub fn createRodPendulum(length: Float) -> InterfaceMechanismState {
             axis,
         })],
         treejointids: dvector![1],
-        bodies: dvector![RigidBody::new(SpatialInertia {
+        bodies: vec![RigidBody::new(SpatialInertia {
             frame: rod_frame.to_string(),
             moment,
             cross_part,
-            mass: m
+            mass: m,
         })],
         q: vec![0.0].to_joint_pos_vec(),
         v: vec![0.0].to_joint_vel_vec(),
@@ -293,7 +293,7 @@ pub fn createSphere(mass: Float, radius: Float) -> InterfaceMechanismState {
             transform: ball_to_world,
         })],
         treejointids: dvector![1],
-        bodies: dvector![ball],
+        bodies: vec![ball],
         q: vec![JointPosition::Pose(Pose::identity())],
         v: vec![JointVelocity::Spatial(SpatialVector {
             angular: vector![0.0, 0.0, 0.0],

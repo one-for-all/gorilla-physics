@@ -548,7 +548,7 @@ mod dynamics_tests {
                 }),
             ],
             treejointids: dvector![1, 2],
-            bodies: dvector![
+            bodies: vec![
                 RigidBody::new(SpatialInertia {
                     frame: "rod1".to_string(),
                     moment: moment.clone(),
@@ -560,7 +560,7 @@ mod dynamics_tests {
                     moment: moment.clone(),
                     cross_part: cross_part.clone(),
                     mass: m,
-                })
+                }),
             ],
             q: vec![0.0, 0.0].to_joint_pos_vec(),
             v: vec![0.0, 0.0].to_joint_vel_vec(),
@@ -646,7 +646,7 @@ mod dynamics_tests {
             )),
         ];
 
-        let mut state = MechanismState::new(treejoints, dvector![A, B]);
+        let mut state = MechanismState::new(treejoints, vec![A, B]);
         let spring_joint: usize = 2;
         state.set_joint_q(spring_joint, JointPosition::Float(l_init));
 

@@ -41,7 +41,7 @@ pub fn build_pendulum(
         transform: rod_to_world,
         axis: axis.clone(),
     })];
-    let bodies = dvector![rod];
+    let bodies = vec![rod];
     let state = MechanismState::new(treejoints, bodies);
 
     state
@@ -75,7 +75,7 @@ pub fn build_double_pendulum(
             axis: axis.clone(),
         }),
     ];
-    let bodies = dvector![
+    let bodies = vec![
         RigidBody::new(SpatialInertia {
             frame: rod1_frame.to_string(),
             moment: moment.clone(),
@@ -87,7 +87,7 @@ pub fn build_double_pendulum(
             moment: moment.clone(),
             cross_part: cross_part.clone(),
             mass: mass.clone(),
-        })
+        }),
     ];
     let state = MechanismState::new(treejoints, bodies);
     state
@@ -109,11 +109,11 @@ pub fn build_cart(
         cart_to_world,
         *axis,
     ))];
-    let bodies = dvector![RigidBody::new(SpatialInertia {
+    let bodies = vec![RigidBody::new(SpatialInertia {
         frame: cart_frame.to_string(),
         moment: *moment,
         cross_part: *cross_part,
-        mass: *mass
+        mass: *mass,
     })];
     let state = MechanismState::new(treejoints, bodies);
     state
@@ -148,19 +148,19 @@ pub fn build_cart_pole(
             }),
         ],
         treejointids: dvector![1, 2],
-        bodies: dvector![
+        bodies: vec![
             RigidBody::new(SpatialInertia {
                 frame: cart_frame.to_string(),
                 moment: *moment_cart,
                 cross_part: *cross_part_cart,
-                mass: *mass_cart
+                mass: *mass_cart,
             }),
             RigidBody::new(SpatialInertia {
                 frame: pole_frame.to_string(),
                 moment: *moment_pole,
                 cross_part: *cross_part_pole,
-                mass: *mass_pole
-            })
+                mass: *mass_pole,
+            }),
         ],
         q: vec![0.0, 0.0].to_joint_pos_vec(),
         v: vec![0.0, 0.0].to_joint_vel_vec(),
@@ -191,7 +191,7 @@ pub fn build_cube(mass: Float, length: Float) -> MechanismState {
     });
 
     let treejoints = vec![Joint::FloatingJoint(FloatingJoint::new(cube_to_world))];
-    let bodies = dvector![cube];
+    let bodies = vec![cube];
     let mut state = MechanismState::new(treejoints, bodies);
 
     // Contact points on the bottom face
@@ -257,7 +257,7 @@ pub fn build_rimless_wheel(
     let alpha = 2.0 * PI / n_foot as Float / 2.0;
 
     let treejoints = vec![Joint::FloatingJoint(FloatingJoint::new(body_to_world))];
-    let bodies = dvector![body];
+    let bodies = vec![body];
 
     let mut state = MechanismState::new(treejoints, bodies);
     for i in 0..n_foot {
@@ -377,7 +377,7 @@ pub fn build_2d_hopper(
         Joint::PrismaticJoint(PrismaticJoint::new(leg_to_piston, axis_leg)),
     ];
 
-    let bodies = dvector![body, hip, piston, leg];
+    let bodies = vec![body, hip, piston, leg];
     let mut state = MechanismState::new(treejoints, bodies);
 
     state.add_contact_point(&ContactPoint {
@@ -413,7 +413,7 @@ pub fn build_SLIP(
         init_mat: body_to_world.mat.clone(),
         transform: body_to_world,
     })];
-    let bodies = dvector![body];
+    let bodies = vec![body];
     let mut state = MechanismState::new(treejoints, bodies);
 
     let direction = UnitVector3::new_normalize(vector![angle.sin(), 0., -angle.cos()]);

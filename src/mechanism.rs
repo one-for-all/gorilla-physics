@@ -8,8 +8,6 @@ use crate::geometric_jacobian::GeometricJacobian;
 use crate::inertia::compute_inertias;
 use crate::inertia::kinetic_energy;
 use crate::inertia::SpatialInertia;
-use crate::joint;
-use crate::joint::prismatic::PrismaticJoint;
 use crate::joint::Joint;
 use crate::joint::JointPosition;
 use crate::joint::JointVelocity;
@@ -36,7 +34,7 @@ use nalgebra::DVector;
 pub struct MechanismState {
     pub treejoints: Vec<Joint>,
     pub treejointids: DVector<usize>,
-    pub bodies: DVector<RigidBody>,
+    pub bodies: Vec<RigidBody>,
     pub q: Vec<JointPosition>, // joint configuration/position vector
     pub v: Vec<JointVelocity>, // joint velocity vector
     pub halfspaces: DVector<HalfSpace>,
@@ -44,7 +42,7 @@ pub struct MechanismState {
 
 impl MechanismState {
     /// Create a new MechanismState with zero initial condition
-    pub fn new(treejoints: Vec<Joint>, bodies: DVector<RigidBody>) -> Self {
+    pub fn new(treejoints: Vec<Joint>, bodies: Vec<RigidBody>) -> Self {
         let njoints = treejoints.len();
         let mut q = vec![];
         let mut v = vec![];
@@ -327,7 +325,7 @@ pub fn mass_matrix(
 #[cfg(test)]
 mod mechanism_tests {
 
-    use na::{dvector, vector, Matrix3};
+    use na::{vector, Matrix3};
 
     use crate::joint::{floating::FloatingJoint, revolute::RevoluteJoint};
 
@@ -407,7 +405,7 @@ mod mechanism_tests {
                 axis: axis_leg,
             }),
         ];
-        let bodies = dvector![body, leg, leg2];
+        let bodies = vec![body, leg, leg2];
         let state = MechanismState::new(treejoints, bodies);
 
         // Act

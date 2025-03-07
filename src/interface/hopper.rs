@@ -101,7 +101,7 @@ pub fn create1DHopper(
         Joint::PrismaticJoint(PrismaticJoint::new(leg_to_body, axis_leg)),
         Joint::PrismaticJoint(PrismaticJoint::new(foot_to_leg, axis_foot)),
     ];
-    let bodies = dvector![body, leg, foot];
+    let bodies = vec![body, leg, foot];
     let mut state = MechanismState::new(treejoints, bodies);
 
     state.add_contact_point(&ContactPoint {
