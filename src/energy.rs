@@ -61,6 +61,7 @@ mod energy_tests {
     use na::{dvector, vector, Matrix3, Matrix4};
 
     use crate::joint::ToJointVelocityVec;
+    use crate::transform::Matrix4Ext;
     use crate::{
         energy::double_pendulum_energy,
         helpers::{build_cart_pole, build_double_pendulum},
@@ -86,7 +87,7 @@ mod energy_tests {
         let cross_part = vector![0., 0., -m * l];
 
         let rod1_to_world = Matrix4::identity();
-        let rod2_to_rod1 = Transform3D::move_z(-l);
+        let rod2_to_rod1 = Matrix4::<Float>::move_z(-l);
         let axis = vector![0.0, 1.0, 0.0];
 
         let mut state = build_double_pendulum(

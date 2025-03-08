@@ -14,7 +14,8 @@ use crate::{
 };
 
 use super::InterfaceMechanismState;
-use na::{dvector, zero, UnitQuaternion, Vector3};
+use crate::transform::Matrix4Ext;
+use na::{dvector, zero, Matrix4, UnitQuaternion, Vector3};
 use nalgebra::{vector, Matrix3};
 use wasm_bindgen::prelude::*;
 
@@ -60,7 +61,7 @@ pub fn create1DHopper(
     let leg_to_body = Transform3D {
         from: leg_frame.to_string(),
         to: body_frame.to_string(),
-        mat: Transform3D::move_z(-body_leg_length),
+        mat: Matrix4::<Float>::move_z(-body_leg_length),
     };
     let leg = RigidBody::new(SpatialInertia {
         frame: leg_frame.to_string(),
@@ -83,7 +84,7 @@ pub fn create1DHopper(
     let foot_to_leg = Transform3D {
         from: foot_frame.to_string(),
         to: leg_frame.to_string(),
-        mat: Transform3D::move_z(-leg_foot_length),
+        mat: Matrix4::<Float>::move_z(-leg_foot_length),
     };
     let foot = RigidBody::new(SpatialInertia {
         frame: foot_frame.to_string(),

@@ -8,6 +8,9 @@ use crate::{mechanism::MechanismState, types::Float};
 pub trait Matrix4Ext {
     /// Create the transformation matrix for a linear translation along the x-axis
     fn move_x(amount: Float) -> Matrix4<Float>;
+
+    /// Create the transformation matrix for a linear translation along the z-axis
+    fn move_z(amount: Float) -> Matrix4<Float>;
 }
 
 impl Matrix4Ext for Matrix4<Float> {
@@ -18,6 +21,16 @@ impl Matrix4Ext for Matrix4<Float> {
             0., 1., 0., 0., 
             0., 0., 1., 0.,
             0., 0., 0., 1.,
+        )
+    }
+
+    #[rustfmt::skip]
+    fn move_z(amount: Float) -> Matrix4<Float> {
+        Matrix4::new(
+                1., 0., 0., 0., 
+                0., 1., 0., 0., 
+                0., 0., 1., amount,
+                0., 0., 0., 1.,
         )
     }
 }
@@ -52,6 +65,14 @@ impl Transform3D {
         Transform3D::new(from, to, &Matrix4::identity())
     }
 
+    pub fn move_x(from: &str, to: &str, amount: Float) -> Self {
+        Transform3D {
+            from: from.to_string(),
+            to: to.to_string(),
+            mat: Matrix4::<Float>::move_x(amount)
+        }
+    }
+
     pub fn inv(&self) -> Self {
         Transform3D {
             from: self.to.clone(),
@@ -72,7 +93,6 @@ impl Transform3D {
         self.rot() * point + self.trans()
     }
 
-
     /// Create the transformation matrix for a rotation about the x-axis
     #[rustfmt::skip]
     pub fn rot_x(theta: Float) -> Matrix4<Float> {
@@ -82,17 +102,6 @@ impl Transform3D {
                 1., 0., 0., 0., 
                 0., c, -s, 0., 
                 0., s, c, 0.,
-                0., 0., 0., 1.,
-        )
-    }
-
-    /// Create the transformation matrix for a linear translation along the z-axis
-    #[rustfmt::skip]
-    pub fn move_z(distance: Float) -> Matrix4<Float> {
-        Matrix4::new(
-                1., 0., 0., 0., 
-                0., 1., 0., 0., 
-                0., 0., 1., distance,
                 0., 0., 0., 1.,
         )
     }

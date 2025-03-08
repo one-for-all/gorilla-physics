@@ -1,5 +1,6 @@
 use gorilla_physics::joint::ToJointPositionVec;
 use gorilla_physics::joint::ToJointVelocityVec;
+use gorilla_physics::transform::Matrix4Ext;
 use gorilla_physics::{
     dynamics::bias_accelerations,
     helpers::build_double_pendulum,
@@ -21,7 +22,7 @@ pub fn main() {
     let cross_part = vector![0., 0., -m * l];
 
     let rod1_to_world = Matrix4::identity();
-    let rod2_to_rod1 = Transform3D::move_z(-l);
+    let rod2_to_rod1 = Matrix4::<Float>::move_z(-l);
     let axis = vector![0.0, 1.0, 0.0];
 
     let mut state = build_double_pendulum(

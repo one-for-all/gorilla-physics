@@ -3,6 +3,7 @@ use crate::contact::SpringContact;
 use crate::joint::floating::FloatingJoint;
 use crate::joint::ToJointPositionVec;
 use crate::joint::ToJointVelocityVec;
+use crate::transform::Matrix4Ext;
 use crate::PI;
 use crate::WORLD_FRAME;
 use crate::{
@@ -308,7 +309,7 @@ pub fn build_2d_hopper(
     let hip_to_body = Transform3D {
         from: hip_frame.to_string(),
         to: body_frame.to_string(),
-        mat: Transform3D::move_z(-body_hip_length),
+        mat: Matrix4::<Float>::move_z(-body_hip_length),
     };
     let hip = RigidBody::new(SpatialInertia {
         frame: hip_frame.to_string(),
@@ -327,7 +328,7 @@ pub fn build_2d_hopper(
     let piston_to_hip = Transform3D {
         from: piston_frame.to_string(),
         to: hip_frame.to_string(),
-        mat: Transform3D::move_z(-hip_piston_length),
+        mat: Matrix4::<Float>::move_z(-hip_piston_length),
     };
     let piston = RigidBody::new(SpatialInertia {
         frame: piston_frame.to_string(),
@@ -348,7 +349,7 @@ pub fn build_2d_hopper(
     let leg_to_piston = Transform3D {
         from: leg_frame.to_string(),
         to: piston_frame.to_string(),
-        mat: Transform3D::move_z(-piston_leg_length),
+        mat: Matrix4::<Float>::move_z(-piston_leg_length),
     };
     let leg = RigidBody::new(SpatialInertia {
         frame: leg_frame.to_string(),

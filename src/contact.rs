@@ -258,6 +258,7 @@ pub fn calculate_contact_force(
 #[cfg(test)]
 mod contact_tests {
 
+    use crate::transform::Matrix4Ext;
     use crate::{
         assert_close,
         control::energy_control::Controller,
@@ -628,7 +629,7 @@ mod contact_tests {
         let foot_to_body = Transform3D {
             from: foot_frame.to_string(),
             to: body_frame.to_string(),
-            mat: Transform3D::move_z(-l_leg),
+            mat: Matrix4::<Float>::move_z(-l_leg),
         };
         let axis_leg = vector![0.0, 0.0, -1.0];
 
@@ -708,7 +709,7 @@ mod contact_tests {
         let foot_to_body = Transform3D {
             from: foot_frame.to_string(),
             to: body_frame.to_string(),
-            mat: Transform3D::move_z(-l_leg),
+            mat: Matrix4::<Float>::move_z(-l_leg),
         };
         let axis_leg = vector![0.0, 0.0, -1.0];
 

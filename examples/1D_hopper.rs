@@ -1,3 +1,4 @@
+use gorilla_physics::transform::Matrix4Ext;
 use gorilla_physics::{
     contact::{ContactPoint, HalfSpace},
     control::energy_control::{Controller, Hopper1DController},
@@ -11,7 +12,7 @@ use gorilla_physics::{
     transform::Transform3D,
     types::Float,
 };
-use nalgebra::{dvector, vector, Matrix3, Vector3};
+use nalgebra::{dvector, vector, Matrix3, Matrix4, Vector3};
 
 pub fn main() {
     let w_body = 5.0;
@@ -52,7 +53,7 @@ pub fn main() {
     let leg_to_body = Transform3D {
         from: leg_frame.to_string(),
         to: body_frame.to_string(),
-        mat: Transform3D::move_z(-body_leg_length),
+        mat: Matrix4::<Float>::move_z(-body_leg_length),
     };
     let leg = RigidBody::new(SpatialInertia {
         frame: leg_frame.to_string(),
@@ -73,7 +74,7 @@ pub fn main() {
     let foot_to_leg = Transform3D {
         from: foot_frame.to_string(),
         to: leg_frame.to_string(),
-        mat: Transform3D::move_z(-leg_foot_length),
+        mat: Matrix4::<Float>::move_z(-leg_foot_length),
     };
     let foot = RigidBody::new(SpatialInertia {
         frame: foot_frame.to_string(),
