@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 use crate::contact::ContactPoint;
 use crate::contact::HalfSpace;
@@ -40,6 +41,7 @@ pub struct MechanismState {
     pub treejointids: DVector<usize>,
     pub bodies: Vec<RigidBody>, // bodies[i-1] = body of body number i
     pub parents: Vec<usize>, // parents[i-1] -> the parent body number for joint of joint number i
+    pub supports: Vec<HashSet<usize>>, // supports[i-1] -> all the bodies that joint i supports
     pub q: Vec<JointPosition>, // joint configuration/position vector
     pub v: Vec<JointVelocity>, // joint velocity vector
     pub halfspaces: DVector<HalfSpace>,
@@ -52,7 +54,10 @@ impl MechanismState {
         let mut q = vec![];
         let mut v = vec![];
         let mut parents = vec![];
+        let mut supports = vec![];
         for (index, j) in treejoints.iter().enumerate() {
+            let jointid = index + 1;
+            let bodyid = jointid;
             match j {
                 Joint::RevoluteJoint(_) => {
                     q.push(JointPosition::Float(0.0));
@@ -97,6 +102,15 @@ impl MechanismState {
                     );
                 }
             }
+
+            // Update supports array
+            let mut cur_bodyid = bodyid;
+            supports.push(HashSet::from([bodyid]));
+            while parents[cur_bodyid - 1] != 0 {
+                let parentbodyid = parents[cur_bodyid - 1];
+                supports[parentbodyid - 1].insert(bodyid);
+                cur_bodyid = parentbodyid;
+            }
         }
 
         MechanismState {
@@ -104,6 +118,7 @@ impl MechanismState {
             treejointids: DVector::from_vec(Vec::from_iter(1..njoints + 1)),
             bodies,
             parents,
+            supports,
             q,
             v,
             halfspaces: dvector![],
@@ -287,11 +302,13 @@ pub fn compute_crb_inertias(
     let mut crb_inertias = HashMap::new();
     for bodyid in state.treejointids.iter().rev() {
         let inertia = inertias.get(bodyid).unwrap();
-        let crb_inertia: SpatialInertia;
-        if let Some(child_crb_inertia) = crb_inertias.get(&(bodyid + 1)) {
-            crb_inertia = inertia + child_crb_inertia;
-        } else {
-            crb_inertia = inertia.clone();
+        let mut crb_inertia: SpatialInertia = inertia.clone();
+        for (joint_index, parentbodyid) in state.parents.iter().enumerate() {
+            let jointid = joint_index + 1;
+            let childbodyid = jointid;
+            if bodyid == parentbodyid {
+                crb_inertia += crb_inertias.get(&childbodyid).unwrap();
+            }
         }
         crb_inertias.insert(*bodyid, crb_inertia);
     }
@@ -334,19 +351,18 @@ pub fn mass_matrix(
         let Fi = MomentumMatrix::mul(Ici, Si);
         for j in 1..=*i {
             let Sj = motion_subspaces.get(&j).unwrap();
-            // let i_index: usize = (i - 1).try_into().unwrap();
-            // let j_index: usize = (j - 1).try_into().unwrap();
+            let nrows = Si.dim();
+            let ncols = Sj.dim();
 
-            let Hij = Fi.transpose_mul(Sj);
-            let nrows = Hij.nrows();
-            let ncols = Hij.ncols();
-            // println!("{}, {}, {}", i, j, Hij);
-            mass_matrix
-                .view_mut((i_index, j_index), (nrows, ncols))
-                .copy_from(&Hij);
+            // if joint j supports body i
+            if state.supports[j - 1].contains(i) {
+                let Hij = Fi.transpose_mul(Sj);
+                mass_matrix
+                    .view_mut((i_index, j_index), (nrows, ncols))
+                    .copy_from(&Hij);
+            }
 
             // Incrementally fill out the mass matrix
-            // TODO: Update when it is not just serial chain robot
             if i_index == j_index {
                 i_index += nrows;
                 j_index = 0;
@@ -458,6 +474,51 @@ mod mechanism_tests {
         assert_ne!(mass_matrix.fixed_view::<1, 6>(7, 0), DVector::zeros(6));
         assert_ne!(mass_matrix.fixed_view::<1, 1>(7, 6), DVector::zeros(1));
         assert_ne!(mass_matrix.fixed_view::<1, 1>(7, 7), DVector::zeros(1));
+    }
+
+    /// Verify supports array is computed correctly fn on the following mechanism
+    /// 3         5
+    /// |         |
+    /// 2 -- 1 -- 4
+    #[test]
+    fn test_supports() {
+        // Arrange
+        let one_to_world = Transform3D::identity("1", WORLD_FRAME);
+        let two_to_one = Transform3D::move_x("2", "1", -1.0);
+        let three_to_two = Transform3D::move_z("3", "2", 1.0);
+        let four_to_one = Transform3D::move_x("4", "1", 1.0);
+        let five_to_four = Transform3D::move_z("5", "4", 1.0);
+
+        let treejoints = vec![
+            Joint::FloatingJoint(FloatingJoint::new(one_to_world)),
+            Joint::RevoluteJoint(RevoluteJoint::new(two_to_one, vector![0., 1., 0.])),
+            Joint::RevoluteJoint(RevoluteJoint::new(three_to_two, vector![0., 1., 0.])),
+            Joint::RevoluteJoint(RevoluteJoint::new(four_to_one, vector![0., 1., 0.])),
+            Joint::RevoluteJoint(RevoluteJoint::new(five_to_four, vector![0., 1., 0.])),
+        ];
+        let bodies = vec![
+            RigidBody::new_sphere(1., 1., "1"),
+            RigidBody::new_sphere(1., 1., "2"),
+            RigidBody::new_sphere(1., 1., "3"),
+            RigidBody::new_sphere(1., 1., "4"),
+            RigidBody::new_sphere(1., 1., "5"),
+        ];
+        let state = MechanismState::new(treejoints, bodies);
+
+        // Act
+        let supports = state.supports;
+
+        // Assert
+        assert_eq!(
+            supports,
+            vec![
+                HashSet::from([1, 2, 3, 4, 5]),
+                HashSet::from([2, 3]),
+                HashSet::from([3]),
+                HashSet::from([4, 5]),
+                HashSet::from([5])
+            ]
+        )
     }
 
     /// Ensure that poses() fn works correctly for a floating box

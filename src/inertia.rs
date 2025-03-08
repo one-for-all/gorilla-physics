@@ -1,4 +1,4 @@
-use std::ops::Add;
+use std::ops::{Add, AddAssign};
 
 use na::{DMatrix, Point3, SMatrix, Vector3};
 use nalgebra::{vector, Matrix3};
@@ -99,6 +99,18 @@ impl<'a, 'b> Add<&'b SpatialInertia> for &'a SpatialInertia {
             cross_part: self.cross_part + rhs.cross_part,
             mass: self.mass + rhs.mass,
         }
+    }
+}
+
+impl<'a, 'b> AddAssign<&'b SpatialInertia> for SpatialInertia {
+    fn add_assign(&mut self, rhs: &Self) {
+        if self.frame != rhs.frame {
+            panic!("lhs frame {} != rhs frame {}!", self.frame, rhs.frame);
+        }
+
+        self.moment += rhs.moment;
+        self.cross_part += rhs.cross_part;
+        self.mass += rhs.mass;
     }
 }
 

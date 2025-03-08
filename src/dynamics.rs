@@ -137,7 +137,7 @@ pub fn compute_coriolis_bias_accelerations(
     );
     for jointid in state.treejointids.iter() {
         let bodyid = jointid;
-        let parentid = bodyid - 1;
+        let parentid = state.parents[*jointid - 1];
 
         let body_to_root = bodies_to_root.get(bodyid).unwrap();
         let root_to_body = body_to_root.inv();

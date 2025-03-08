@@ -191,11 +191,10 @@ pub fn compute_bodies_to_root(state: &MechanismState) -> HashMap<usize, Transfor
 
 #[cfg(test)]
 mod tests {
-    use std::vec;
 
     use na::vector;
     use crate::{
-        inertia::SpatialInertia, joint::{floating::FloatingJoint, revolute::RevoluteJoint, Joint, JointPosition}, rigid_body::RigidBody, PI, WORLD_FRAME
+        joint::{floating::FloatingJoint, revolute::RevoluteJoint, Joint}, rigid_body::RigidBody, WORLD_FRAME
     };
 
     use super::{compute_bodies_to_root, *};

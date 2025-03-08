@@ -36,4 +36,12 @@ impl GeometricJacobian {
             linear,
         }
     }
+
+    pub fn dim(&self) -> usize {
+        if self.angular.ncols() != self.linear.ncols() {
+            panic!("Geometric Jacobian's angular dimension does not match linear dimension");
+        }
+
+        self.angular.ncols()
+    }
 }

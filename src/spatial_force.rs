@@ -7,7 +7,7 @@ use itertools::izip;
 use na::{dvector, DVector};
 use nalgebra::Vector3;
 
-use crate::{mechanism::MechanismState, transform::Transform3D, types::Float};
+use crate::{mechanism::MechanismState, transform::Transform3D, types::Float, WORLD_FRAME};
 
 /// A wrench represents a system of forces.
 /// The wrench w^i expressed in frame i in defined as
@@ -96,7 +96,7 @@ pub fn compute_torques(
     joint_wrenches.insert(
         0,
         Wrench {
-            frame: "world".to_string(),
+            frame: WORLD_FRAME.to_string(),
             angular: Vector3::zeros(),
             linear: Vector3::zeros(),
         },
@@ -109,14 +109,14 @@ pub fn compute_torques(
 
         let joint_wrench = {
             let w = joint_wrenches.get(bodyid).unwrap();
-            if w.frame != "world" {
+            if w.frame != WORLD_FRAME {
                 panic!("Wrenches must be expressed in the world frame");
             }
             w.clone()
         };
 
         // update parent's joint wrench. action = -reaction
-        let parentid = bodyid - 1;
+        let parentid = state.parents[*jointid - 1];
         if let Some(parent_joint_wrench) = joint_wrenches.get_mut(&parentid) {
             parent_joint_wrench.angular += joint_wrench.angular;
             parent_joint_wrench.linear += joint_wrench.linear;
