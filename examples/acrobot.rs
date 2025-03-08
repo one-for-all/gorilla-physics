@@ -1,6 +1,7 @@
 use gorilla_physics::joint::ToJointPositionVec;
 use gorilla_physics::joint::ToJointVelocityVec;
 use gorilla_physics::plot::plot;
+use gorilla_physics::transform::Matrix4Ext;
 use gorilla_physics::{
     control::swingup::swingup_acrobot, energy::double_pendulum_potential_energy2,
     helpers::build_double_pendulum, joint::ToFloatDVec, simulate::step, transform::Transform3D,

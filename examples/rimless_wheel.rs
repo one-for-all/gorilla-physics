@@ -9,7 +9,7 @@ use gorilla_physics::{
     types::Float,
     GRAVITY, PI,
 };
-use nalgebra::{vector, UnitQuaternion, Vector3};
+use nalgebra::{vector, UnitQuaternion, UnitVector3, Vector3};
 
 pub fn main() {
     let m_body = 10.0;
@@ -23,7 +23,7 @@ pub fn main() {
 
     let h_ground = -20.0;
     let angle: Float = Float::to_radians(10.0);
-    let normal = vector![angle.sin(), 0.0, angle.cos()];
+    let normal = UnitVector3::new_normalize(vector![angle.sin(), 0.0, angle.cos()]);
     state.add_halfspace(&HalfSpace::new(normal, h_ground));
 
     let q_init = vec![JointPosition::Pose(Pose {
@@ -56,5 +56,5 @@ pub fn main() {
         (1.0 / (2.0 * alpha).tan()) * (4.0 * GRAVITY / l * alpha.sin() * angle.sin()).sqrt();
     println!("omega: {}", omega);
 
-    plot(&data, final_time, dt, num_steps);
+    plot(&data, final_time, dt, num_steps, "rimless wheel");
 }

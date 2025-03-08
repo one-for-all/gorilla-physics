@@ -1,10 +1,13 @@
+use gorilla_physics::control::energy_control::Controller;
+use gorilla_physics::joint::floating::FloatingJoint;
+use gorilla_physics::joint::prismatic::PrismaticJoint;
+use gorilla_physics::joint::Joint;
 use gorilla_physics::transform::Matrix4Ext;
 use gorilla_physics::{
     contact::{ContactPoint, HalfSpace},
-    control::energy_control::{Controller, Hopper1DController},
+    control::energy_control::Hopper1DController,
     energy::hopper_energy,
     inertia::SpatialInertia,
-    joint::{floating::FloatingJoint, prismatic::PrismaticJoint, Joint},
     mechanism::MechanismState,
     plot::plot,
     rigid_body::RigidBody,
@@ -12,7 +15,7 @@ use gorilla_physics::{
     transform::Transform3D,
     types::Float,
 };
-use nalgebra::{dvector, vector, Matrix3, Matrix4, Vector3};
+use nalgebra::{vector, Matrix3, Matrix4, Vector3};
 
 pub fn main() {
     let w_body = 5.0;
