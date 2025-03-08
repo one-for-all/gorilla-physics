@@ -37,7 +37,7 @@ impl Matrix4Ext for Matrix4<Float> {
 
 /// A homogeneous transformation matrix representing the transformation from one
 /// 3-dimensional Cartesion coordiante system to another.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Transform3D {
     pub from: String,
     pub to: String,
@@ -70,6 +70,14 @@ impl Transform3D {
             from: from.to_string(),
             to: to.to_string(),
             mat: Matrix4::<Float>::move_x(amount)
+        }
+    }
+
+    pub fn move_z(from: &str, to: &str, amount: Float) -> Self {
+        Transform3D {
+            from: from.to_string(),
+            to: to.to_string(),
+            mat: Matrix4::<Float>::move_z(amount)
         }
     }
 
@@ -171,7 +179,7 @@ pub fn compute_bodies_to_root(state: &MechanismState) -> HashMap<usize, Transfor
     let mut bodies_to_root = HashMap::new();
     bodies_to_root.insert(rootid, Transform3D::identity("world", "world"));
     for (jointid, joint) in izip!(state.treejointids.iter(), state.treejoints.iter()) {
-        let parentbodyid = jointid - 1;
+        let parentbodyid = state.parents[jointid-1];
         let bodyid = jointid;
         let parent_to_root = bodies_to_root.get(&parentbodyid).unwrap();
         let body_to_root = parent_to_root * &joint.transform();
@@ -182,11 +190,18 @@ pub fn compute_bodies_to_root(state: &MechanismState) -> HashMap<usize, Transfor
 }
 
 #[cfg(test)]
-#[rustfmt::skip]
 mod tests {
-    use super::*;
+    use std::vec;
+
+    use na::vector;
+    use crate::{
+        inertia::SpatialInertia, joint::{floating::FloatingJoint, revolute::RevoluteJoint, Joint, JointPosition}, rigid_body::RigidBody, PI, WORLD_FRAME
+    };
+
+    use super::{compute_bodies_to_root, *};
 
     #[test]
+    #[rustfmt::skip]
     fn test_rot() {
         // Arrange
         let transform = Transform3D {
@@ -214,6 +229,7 @@ mod tests {
     }
 
     #[test]
+    #[rustfmt::skip]
     fn test_trans() {
         // Arrange
         let transform = Transform3D {
@@ -232,5 +248,50 @@ mod tests {
 
         // Assert
         assert_eq!(rot, Vector3::new(0.3, 1.3, 2.3))
+    }
+
+    /// Verify compute_bodies_to_root fn on the following mechanism
+    /// 3         5
+    /// |         |
+    /// 2 -- 1 -- 4
+    #[test]
+    fn test_compute_bodies_to_root() {
+        // Arrange
+        let one_to_world = Transform3D::identity("1", WORLD_FRAME);
+        let two_to_one = Transform3D::move_x("2", "1", -1.0);
+        let three_to_two = Transform3D::move_z("3", "2", 1.0);
+        let four_to_one = Transform3D::move_x("4", "1", 1.0);
+        let five_to_four = Transform3D::move_z("5", "4", 1.0);
+
+        let treejoints = vec![
+            Joint::FloatingJoint(FloatingJoint::new(one_to_world)),
+            Joint::RevoluteJoint(RevoluteJoint::new(two_to_one, vector![0., 1., 0.])),
+            Joint::RevoluteJoint(RevoluteJoint::new(three_to_two, vector![0., 1., 0.])),
+            Joint::RevoluteJoint(RevoluteJoint::new(four_to_one, vector![0., 1., 0.])),
+            Joint::RevoluteJoint(RevoluteJoint::new(five_to_four, vector![0., 1., 0.])),
+        ];
+        let bodies = vec![
+            RigidBody::new_sphere(1., 1., "1"), 
+            RigidBody::new_sphere(1., 1., "2"), 
+            RigidBody::new_sphere(1., 1., "3"), 
+            RigidBody::new_sphere(1., 1., "4"), 
+            RigidBody::new_sphere(1., 1., "5")
+
+        ];
+        let state = MechanismState::new(treejoints, bodies);
+
+        // Act
+        let bodies_to_root = compute_bodies_to_root(&state);
+
+        // Assert
+        let one_to_root = bodies_to_root.get(&1).unwrap();
+        assert_eq!(*one_to_root, Transform3D::identity("1", WORLD_FRAME));
+
+        let two_to_root = bodies_to_root.get(&2).unwrap();
+        assert_eq!(*two_to_root, Transform3D::new("2", WORLD_FRAME, &Matrix4::<Float>::move_x(-1.)));
+
+        let five_to_root = bodies_to_root.get(&5).unwrap();
+        let five_to_root_mat = Matrix4::<Float>::move_x(1.) * Matrix4::<Float>::move_z(1.);
+        assert_eq!(*five_to_root, Transform3D::new("5", WORLD_FRAME, &five_to_root_mat));
     }
 }
