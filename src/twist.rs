@@ -177,7 +177,7 @@ pub fn compute_twists_wrt_world(
     let rootid = 0;
     twists.insert(rootid, Twist::zero("world", "world"));
     for jointid in state.treejointids.iter() {
-        let parentbodyid = jointid - 1;
+        let parentbodyid = state.parents[*jointid - 1];
         let bodyid = jointid;
         let body_to_root = bodies_to_root.get(&bodyid).unwrap();
 
