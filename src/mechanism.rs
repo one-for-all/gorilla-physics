@@ -21,6 +21,7 @@ use crate::twist::compute_joint_twists;
 use crate::twist::compute_twists_wrt_world;
 use crate::types::Float;
 use crate::GRAVITY;
+use crate::WORLD_FRAME;
 use itertools::izip;
 use na::dvector;
 use na::DMatrix;
@@ -31,10 +32,14 @@ use na::Vector3;
 use nalgebra::DVector;
 
 /// MechanismState stores the state information about the mechanism
+/// Joint i's child body is body i.
+/// Body 0 is by default world/root.
+/// Does not support closed kinematic chain yet.
 pub struct MechanismState {
-    pub treejoints: Vec<Joint>,
+    pub treejoints: Vec<Joint>, // treejoints[i-1] = joint of joint number i
     pub treejointids: DVector<usize>,
-    pub bodies: Vec<RigidBody>,
+    pub bodies: Vec<RigidBody>, // bodies[i-1] = body of body number i
+    pub parents: Vec<usize>, // parents[i-1] -> the parent body number for joint of joint number i
     pub q: Vec<JointPosition>, // joint configuration/position vector
     pub v: Vec<JointVelocity>, // joint velocity vector
     pub halfspaces: DVector<HalfSpace>,
@@ -46,7 +51,7 @@ impl MechanismState {
         let njoints = treejoints.len();
         let mut q = vec![];
         let mut v = vec![];
-        for j in treejoints.iter() {
+        for (index, j) in treejoints.iter().enumerate() {
             match j {
                 Joint::RevoluteJoint(_) => {
                     q.push(JointPosition::Float(0.0));
@@ -61,12 +66,44 @@ impl MechanismState {
                     v.push(JointVelocity::Spatial(SpatialVector::zero()));
                 }
             }
+
+            // Check that joint i has child body i
+            if j.transform().from != bodies[index].inertia.frame {
+                panic!(
+                    "joint {}'s child body is not body {}\n",
+                    index + 1,
+                    index + 1
+                );
+            }
+
+            // Find the parent of each joint
+            let mut parents = vec![];
+            if j.transform().to == WORLD_FRAME {
+                parents.push(0);
+            } else {
+                let mut has_parent = false;
+                for (body_index, body) in bodies.iter().enumerate() {
+                    if j.transform().to == body.inertia.frame {
+                        parents.push(body_index + 1);
+                        has_parent = true;
+                        break;
+                    }
+                }
+                if !has_parent {
+                    panic!(
+                        "joint {} has no parent body of frame {}\n",
+                        index + 1,
+                        j.transform().to
+                    );
+                }
+            }
         }
 
         MechanismState {
             treejoints,
             treejointids: DVector::from_vec(Vec::from_iter(1..njoints + 1)),
             bodies,
+            parents,
             q,
             v,
             halfspaces: dvector![],

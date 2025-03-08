@@ -210,23 +210,18 @@ pub fn createRodPendulum(length: Float) -> InterfaceMechanismState {
     let rod_to_world = Transform3D::new(rod_frame, world_frame, &Matrix4::identity());
     let axis = vector![0.0, 1.0, 0.0];
 
-    let state = MechanismState {
-        treejoints: vec![Joint::RevoluteJoint(RevoluteJoint {
-            init_mat: rod_to_world.mat.clone(),
-            transform: rod_to_world,
-            axis,
-        })],
-        treejointids: dvector![1],
-        bodies: vec![RigidBody::new(SpatialInertia {
-            frame: rod_frame.to_string(),
-            moment,
-            cross_part,
-            mass: m,
-        })],
-        q: vec![0.0].to_joint_pos_vec(),
-        v: vec![0.0].to_joint_vel_vec(),
-        halfspaces: dvector![],
-    };
+    let treejoints = vec![Joint::RevoluteJoint(RevoluteJoint {
+        init_mat: rod_to_world.mat.clone(),
+        transform: rod_to_world,
+        axis,
+    })];
+    let bodies = vec![RigidBody::new(SpatialInertia {
+        frame: rod_frame.to_string(),
+        moment,
+        cross_part,
+        mass: m,
+    })];
+    let state = MechanismState::new(treejoints, bodies);
 
     InterfaceMechanismState { inner: state }
 }
@@ -287,20 +282,12 @@ pub fn createSphere(mass: Float, radius: Float) -> InterfaceMechanismState {
         mass: m,
     });
 
-    let mut state = MechanismState {
-        treejoints: vec![Joint::FloatingJoint(FloatingJoint {
-            init_mat: ball_to_world.mat.clone(),
-            transform: ball_to_world,
-        })],
-        treejointids: dvector![1],
-        bodies: vec![ball],
-        q: vec![JointPosition::Pose(Pose::identity())],
-        v: vec![JointVelocity::Spatial(SpatialVector {
-            angular: vector![0.0, 0.0, 0.0],
-            linear: vector![0.0, 0.0, 0.0],
-        })],
-        halfspaces: dvector![],
-    };
+    let treejoints = vec![Joint::FloatingJoint(FloatingJoint {
+        init_mat: ball_to_world.mat.clone(),
+        transform: ball_to_world,
+    })];
+    let bodies = vec![ball];
+    let mut state = MechanismState::new(treejoints, bodies);
 
     let q_init = vec![JointPosition::Pose(Pose {
         rotation: UnitQuaternion::from_axis_angle(&Vector3::x_axis(), 0.0),

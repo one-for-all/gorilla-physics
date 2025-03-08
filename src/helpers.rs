@@ -138,34 +138,29 @@ pub fn build_cart_pole(
 
     let pole_to_cart = Transform3D::new(pole_frame, cart_frame, &Matrix4::identity());
 
-    let state = MechanismState {
-        treejoints: vec![
-            Joint::PrismaticJoint(PrismaticJoint::new(cart_to_world, axis_cart)),
-            Joint::RevoluteJoint(RevoluteJoint {
-                init_mat: pole_to_cart.mat.clone(),
-                transform: pole_to_cart,
-                axis: *axis_pole,
-            }),
-        ],
-        treejointids: dvector![1, 2],
-        bodies: vec![
-            RigidBody::new(SpatialInertia {
-                frame: cart_frame.to_string(),
-                moment: *moment_cart,
-                cross_part: *cross_part_cart,
-                mass: *mass_cart,
-            }),
-            RigidBody::new(SpatialInertia {
-                frame: pole_frame.to_string(),
-                moment: *moment_pole,
-                cross_part: *cross_part_pole,
-                mass: *mass_pole,
-            }),
-        ],
-        q: vec![0.0, 0.0].to_joint_pos_vec(),
-        v: vec![0.0, 0.0].to_joint_vel_vec(),
-        halfspaces: dvector![],
-    };
+    let treejoints = vec![
+        Joint::PrismaticJoint(PrismaticJoint::new(cart_to_world, axis_cart)),
+        Joint::RevoluteJoint(RevoluteJoint {
+            init_mat: pole_to_cart.mat.clone(),
+            transform: pole_to_cart,
+            axis: *axis_pole,
+        }),
+    ];
+    let bodies = vec![
+        RigidBody::new(SpatialInertia {
+            frame: cart_frame.to_string(),
+            moment: *moment_cart,
+            cross_part: *cross_part_cart,
+            mass: *mass_cart,
+        }),
+        RigidBody::new(SpatialInertia {
+            frame: pole_frame.to_string(),
+            moment: *moment_pole,
+            cross_part: *cross_part_pole,
+            mass: *mass_pole,
+        }),
+    ];
+    let state = MechanismState::new(treejoints, bodies);
 
     state
 }

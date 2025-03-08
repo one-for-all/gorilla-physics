@@ -534,38 +534,33 @@ mod dynamics_tests {
         let rod2_to_rod1 = Transform3D::move_x(l);
         let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
-        let mut state = MechanismState {
-            treejoints: vec![
-                Joint::RevoluteJoint(RevoluteJoint {
-                    init_mat: rod1_to_world,
-                    transform: Transform3D::new("rod1", "world", &rod1_to_world),
-                    axis: axis.clone(),
-                }),
-                Joint::RevoluteJoint(RevoluteJoint {
-                    init_mat: rod2_to_rod1,
-                    transform: Transform3D::new("rod2", "rod1", &rod2_to_rod1),
-                    axis: axis.clone(),
-                }),
-            ],
-            treejointids: dvector![1, 2],
-            bodies: vec![
-                RigidBody::new(SpatialInertia {
-                    frame: "rod1".to_string(),
-                    moment: moment.clone(),
-                    cross_part: cross_part.clone(),
-                    mass: m,
-                }),
-                RigidBody::new(SpatialInertia {
-                    frame: "rod2".to_string(),
-                    moment: moment.clone(),
-                    cross_part: cross_part.clone(),
-                    mass: m,
-                }),
-            ],
-            q: vec![0.0, 0.0].to_joint_pos_vec(),
-            v: vec![0.0, 0.0].to_joint_vel_vec(),
-            halfspaces: dvector![],
-        };
+        let treejoints = vec![
+            Joint::RevoluteJoint(RevoluteJoint {
+                init_mat: rod1_to_world,
+                transform: Transform3D::new("rod1", "world", &rod1_to_world),
+                axis: axis.clone(),
+            }),
+            Joint::RevoluteJoint(RevoluteJoint {
+                init_mat: rod2_to_rod1,
+                transform: Transform3D::new("rod2", "rod1", &rod2_to_rod1),
+                axis: axis.clone(),
+            }),
+        ];
+        let bodies = vec![
+            RigidBody::new(SpatialInertia {
+                frame: "rod1".to_string(),
+                moment: moment.clone(),
+                cross_part: cross_part.clone(),
+                mass: m,
+            }),
+            RigidBody::new(SpatialInertia {
+                frame: "rod2".to_string(),
+                moment: moment.clone(),
+                cross_part: cross_part.clone(),
+                mass: m,
+            }),
+        ];
+        let mut state = MechanismState::new(treejoints, bodies);
 
         // Act
         let joint_accels = dynamics(&mut state, &vec![0.0, 0.0].to_joint_torque_vec());

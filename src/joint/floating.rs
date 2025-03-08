@@ -88,17 +88,12 @@ mod floating_joint_tests {
             mass: m,
         });
 
-        let mut state = MechanismState {
-            treejoints: vec![Joint::FloatingJoint(FloatingJoint {
-                init_mat: ball_to_world.mat.clone(),
-                transform: ball_to_world,
-            })],
-            treejointids: dvector![1],
-            bodies: vec![ball],
-            q: vec![JointPosition::Pose(Pose::identity())],
-            v: vec![JointVelocity::Spatial(SpatialVector::zero())],
-            halfspaces: dvector![],
-        };
+        let treejoints = vec![Joint::FloatingJoint(FloatingJoint {
+            init_mat: ball_to_world.mat.clone(),
+            transform: ball_to_world,
+        })];
+        let bodies = vec![ball];
+        let mut state = MechanismState::new(treejoints, bodies);
 
         let q_init = vec![JointPosition::Pose(Pose {
             rotation: UnitQuaternion::from_euler_angles(0.1, 0.2, 0.3),
@@ -148,17 +143,12 @@ mod floating_joint_tests {
             mass: m,
         });
 
-        let mut state = MechanismState {
-            treejoints: vec![Joint::FloatingJoint(FloatingJoint {
-                init_mat: ball_to_world.mat.clone(),
-                transform: ball_to_world,
-            })],
-            treejointids: dvector![1],
-            bodies: vec![ball],
-            q: vec![JointPosition::Pose(Pose::identity())],
-            v: vec![JointVelocity::Spatial(SpatialVector::zero())],
-            halfspaces: dvector![],
-        };
+        let treejoints = vec![Joint::FloatingJoint(FloatingJoint {
+            init_mat: ball_to_world.mat.clone(),
+            transform: ball_to_world,
+        })];
+        let bodies = vec![ball];
+        let mut state = MechanismState::new(treejoints, bodies);
 
         let height = 1.0;
         let v_z = 1.0;
