@@ -262,7 +262,7 @@ mod contact_tests {
     use crate::{
         assert_close,
         control::energy_control::Controller,
-        helpers::{build_SLIP, build_cube, build_rimless_wheel, build_sphere_body},
+        helpers::{build_SLIP, build_cube, build_rimless_wheel},
         inertia::SpatialInertia,
         interface::controller::NullController,
         joint::{
@@ -437,7 +437,7 @@ mod contact_tests {
         let world_frame = "world";
         let ball_to_world = Transform3D::identity(&ball_frame, &world_frame);
 
-        let ball = build_sphere_body(m, r, &ball_frame);
+        let ball = RigidBody::new_sphere(m, r, &ball_frame);
 
         let treejoints = vec![Joint::FloatingJoint(FloatingJoint::new(ball_to_world))];
         let bodies = vec![ball];
@@ -621,11 +621,11 @@ mod contact_tests {
         let k_spring = 100.0;
 
         let body_frame = "body";
-        let body = build_sphere_body(m_body, r_body, &body_frame);
+        let body = RigidBody::new_sphere(m_body, r_body, &body_frame);
         let body_to_world = Transform3D::identity(body_frame, WORLD_FRAME);
 
         let foot_frame = "foot";
-        let foot = build_sphere_body(m_foot, r_foot, &foot_frame);
+        let foot = RigidBody::new_sphere(m_foot, r_foot, &foot_frame);
         let foot_to_body = Transform3D {
             from: foot_frame.to_string(),
             to: body_frame.to_string(),
@@ -701,11 +701,11 @@ mod contact_tests {
         let k_spring = 100.0;
 
         let body_frame = "body";
-        let body = build_sphere_body(m_body, r_body, &body_frame);
+        let body = RigidBody::new_sphere(m_body, r_body, &body_frame);
         let body_to_world = Transform3D::identity(body_frame, WORLD_FRAME);
 
         let foot_frame = "foot";
-        let foot = build_sphere_body(m_foot, r_foot, &foot_frame);
+        let foot = RigidBody::new_sphere(m_foot, r_foot, &foot_frame);
         let foot_to_body = Transform3D {
             from: foot_frame.to_string(),
             to: body_frame.to_string(),

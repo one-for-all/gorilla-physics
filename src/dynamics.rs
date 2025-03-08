@@ -339,7 +339,6 @@ pub fn dynamics(state: &mut MechanismState, tau: &Vec<JointTorque>) -> Vec<Joint
 mod dynamics_tests {
     use crate::{
         contact::HalfSpace,
-        helpers::build_sphere_body,
         joint::{
             floating::FloatingJoint,
             prismatic::{JointSpring, PrismaticJoint},
@@ -625,10 +624,10 @@ mod dynamics_tests {
         let l_rest = l_init / 3.0;
 
         let frame_A = "A";
-        let A = build_sphere_body(m, r, &frame_A);
+        let A = RigidBody::new_sphere(m, r, &frame_A);
 
         let frame_B = "B";
-        let B = build_sphere_body(m, r, &frame_B);
+        let B = RigidBody::new_sphere(m, r, &frame_B);
 
         let A_to_world = Transform3D::identity(&frame_A, WORLD_FRAME);
         let B_to_A = Transform3D::identity(&frame_B, &frame_A);

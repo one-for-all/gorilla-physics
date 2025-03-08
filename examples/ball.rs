@@ -1,10 +1,10 @@
 use gorilla_physics::contact::{ContactPoint, HalfSpace};
 use gorilla_physics::control::energy_control::Controller;
-use gorilla_physics::helpers::build_sphere_body;
 use gorilla_physics::interface::controller::NullController;
 use gorilla_physics::joint::floating::FloatingJoint;
 use gorilla_physics::mechanism::MechanismState;
 use gorilla_physics::plot::{plot, plot_trajectory};
+use gorilla_physics::rigid_body::RigidBody;
 use gorilla_physics::simulate::step;
 use gorilla_physics::transform::Transform3D;
 use nalgebra::{dvector, vector, UnitQuaternion, Vector3};
@@ -22,7 +22,7 @@ pub fn main() {
     let world_frame = "world";
     let ball_to_world = Transform3D::identity(&ball_frame, &world_frame);
 
-    let ball = build_sphere_body(m, r, &ball_frame);
+    let ball = RigidBody::new_sphere(m, r, &ball_frame);
 
     let treejoints = vec![Joint::FloatingJoint(FloatingJoint::new(ball_to_world))];
     let bodies = vec![ball];

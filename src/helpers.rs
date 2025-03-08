@@ -417,18 +417,3 @@ pub fn build_SLIP(
 
     state
 }
-
-pub fn build_sphere_body(m: Float, r: Float, frame: &str) -> RigidBody {
-    let moment_x = 2.0 / 5.0 * m * r * r;
-    let moment = Matrix3::from_diagonal(&vector![moment_x, moment_x, moment_x]);
-    let cross_part = Vector3::zeros();
-
-    let sphere = RigidBody::new(SpatialInertia {
-        frame: frame.to_string(),
-        moment,
-        cross_part,
-        mass: m,
-    });
-
-    sphere
-}

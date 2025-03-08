@@ -1,8 +1,9 @@
-use na::{dvector, DVector};
+use na::{dvector, vector, DVector, Matrix3, Vector3};
 
 use crate::{
     contact::{ContactPoint, SpringContact},
     inertia::SpatialInertia,
+    types::Float,
 };
 
 #[derive(Clone, PartialEq, Debug)]
@@ -19,6 +20,19 @@ impl RigidBody {
             contact_points: dvector![],
             spring_contacts: vec![],
         }
+    }
+
+    pub fn new_sphere(m: Float, r: Float, frame: &str) -> RigidBody {
+        let moment_x = 2.0 / 5.0 * m * r * r;
+        let moment = Matrix3::from_diagonal(&vector![moment_x, moment_x, moment_x]);
+        let cross_part = Vector3::zeros();
+
+        RigidBody::new(SpatialInertia {
+            frame: frame.to_string(),
+            moment,
+            cross_part,
+            mass: m,
+        })
     }
 
     pub fn add_contact_point(&mut self, contact_point: &ContactPoint) {
