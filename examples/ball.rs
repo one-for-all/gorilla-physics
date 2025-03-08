@@ -24,8 +24,8 @@ pub fn main() {
 
     let ball = build_sphere_body(m, r, &ball_frame);
 
-    let treejoints = dvector![Joint::FloatingJoint(FloatingJoint::new(ball_to_world))];
-    let bodies = dvector![ball];
+    let treejoints = vec![Joint::FloatingJoint(FloatingJoint::new(ball_to_world))];
+    let bodies = vec![ball];
     let mut state = MechanismState::new(treejoints, bodies);
 
     let h_ground = -0.3;

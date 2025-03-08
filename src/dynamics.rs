@@ -310,7 +310,7 @@ pub fn dynamics(state: &mut MechanismState, tau: &Vec<JointTorque>) -> Vec<Joint
         }
     }
 
-    let mut vdot = dynamics_solve(&mass_matrix, &dynamics_bias, &tau.to_float_dvec());
+    let vdot = dynamics_solve(&mass_matrix, &dynamics_bias, &tau.to_float_dvec());
 
     // Convert from raw floats to joint acceleration types
     let mut vdot_out = vec![];

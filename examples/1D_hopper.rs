@@ -83,15 +83,15 @@ pub fn main() {
     });
 
     // Create the hopper
-    let treejoints = dvector![
+    let treejoints = vec![
         Joint::FloatingJoint(FloatingJoint {
             init_mat: body_to_world.mat.clone(),
             transform: body_to_world,
         }),
         Joint::PrismaticJoint(PrismaticJoint::new(leg_to_body, axis_leg)),
-        Joint::PrismaticJoint(PrismaticJoint::new(foot_to_leg, axis_foot))
+        Joint::PrismaticJoint(PrismaticJoint::new(foot_to_leg, axis_foot)),
     ];
-    let bodies = dvector![body, leg, foot];
+    let bodies = vec![body, leg, foot];
     let mut state = MechanismState::new(treejoints, bodies);
 
     state.add_contact_point(&ContactPoint {
