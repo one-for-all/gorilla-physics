@@ -51,6 +51,7 @@ impl MechanismState {
         let njoints = treejoints.len();
         let mut q = vec![];
         let mut v = vec![];
+        let mut parents = vec![];
         for (index, j) in treejoints.iter().enumerate() {
             match j {
                 Joint::RevoluteJoint(_) => {
@@ -77,7 +78,6 @@ impl MechanismState {
             }
 
             // Find the parent of each joint
-            let mut parents = vec![];
             if j.transform().to == WORLD_FRAME {
                 parents.push(0);
             } else {
