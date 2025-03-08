@@ -5,6 +5,23 @@ use nalgebra::{Matrix3, Matrix4, Vector3};
 
 use crate::{mechanism::MechanismState, types::Float};
 
+pub trait Matrix4Ext {
+    /// Create the transformation matrix for a linear translation along the x-axis
+    fn move_x(amount: Float) -> Matrix4<Float>;
+}
+
+impl Matrix4Ext for Matrix4<Float> {
+    #[rustfmt::skip]
+    fn move_x(amount: Float) -> Matrix4<Float> {
+        Matrix4::new(
+            1., 0., 0., amount, 
+            0., 1., 0., 0., 
+            0., 0., 1., 0.,
+            0., 0., 0., 1.,
+        )
+    }
+}
+
 /// A homogeneous transformation matrix representing the transformation from one
 /// 3-dimensional Cartesion coordiante system to another.
 #[derive(Debug)]
@@ -65,17 +82,6 @@ impl Transform3D {
                 1., 0., 0., 0., 
                 0., c, -s, 0., 
                 0., s, c, 0.,
-                0., 0., 0., 1.,
-        )
-    }
-
-    /// Create the transformation matrix for a linear translation along the x-axis
-    #[rustfmt::skip]
-    pub fn move_x(distance: Float) -> Matrix4<Float> {
-        Matrix4::new(
-                1., 0., 0., distance, 
-                0., 1., 0., 0., 
-                0., 0., 1., 0.,
                 0., 0., 0., 1.,
         )
     }

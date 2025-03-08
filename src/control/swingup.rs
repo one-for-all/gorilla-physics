@@ -115,6 +115,8 @@ mod swingup_tests {
     use itertools::izip;
     use na::{dvector, vector, DVector, Matrix3, Matrix4};
 
+    use super::*;
+    use crate::transform::Matrix4Ext;
     use crate::{
         energy::cart_pole_energy,
         helpers::{build_cart_pole, build_double_pendulum},
@@ -123,8 +125,6 @@ mod swingup_tests {
         transform::Transform3D,
         util::assert_dvec_close,
     };
-
-    use super::*;
 
     #[test]
     fn acrobot_swingup() {
@@ -139,7 +139,7 @@ mod swingup_tests {
         let cross_part = vector![m * l, 0., 0.];
 
         let rod1_to_world = Matrix4::identity();
-        let rod2_to_rod1 = Transform3D::move_x(l);
+        let rod2_to_rod1 = Matrix4::<Float>::move_x(l);
         let axis = vector![0.0, -1.0, 0.0];
 
         let mut state = build_double_pendulum(

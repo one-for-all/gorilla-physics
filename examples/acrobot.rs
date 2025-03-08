@@ -19,7 +19,7 @@ pub fn main() {
     let cross_part = vector![m * l, 0., 0.];
 
     let rod1_to_world = Matrix4::identity();
-    let rod2_to_rod1 = Transform3D::move_x(l);
+    let rod2_to_rod1 = Matrix4::<Float>::move_x(l);
     let axis = vector![0.0, -1.0, 0.0];
 
     let mut state = build_double_pendulum(

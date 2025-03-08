@@ -25,6 +25,14 @@ impl RevoluteJoint {
         }
     }
 
+    pub fn new(transform: Transform3D, axis: Vector3<Float>) -> Self {
+        Self {
+            init_mat: transform.mat.clone(),
+            transform,
+            axis,
+        }
+    }
+
     /// Return the spatial acceleration of the successor with respect
     /// to its predecessor, expressed in the successor frame.
     pub fn spatial_acceleration(&self, vdot: &Float) -> SpatialAcceleration {

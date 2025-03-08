@@ -351,6 +351,7 @@ mod dynamics_tests {
     };
     use na::{dvector, vector, Matrix3, Matrix4};
 
+    use crate::transform::Matrix4Ext;
     use crate::{
         double_pendulum::SimpleDoublePendulum,
         helpers::{build_double_pendulum, build_pendulum},
@@ -442,7 +443,7 @@ mod dynamics_tests {
         let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
         let cross_part = vector![m * l / 2.0, 0.0, 0.0];
 
-        let rod_to_world = Transform3D::move_x(d) * Transform3D::rot_x(PI / 2.0);
+        let rod_to_world = Matrix4::<Float>::move_x(d) * Transform3D::rot_x(PI / 2.0);
         let axis = vector![0.0, 0.0, 1.0];
 
         let mut state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
@@ -531,7 +532,7 @@ mod dynamics_tests {
         let cross_part = vector![m * l, 0., 0.];
 
         let rod1_to_world = Matrix4::identity();
-        let rod2_to_rod1 = Transform3D::move_x(l);
+        let rod2_to_rod1 = Matrix4::<Float>::move_x(l);
         let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
         let treejoints = vec![

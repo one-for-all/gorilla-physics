@@ -17,6 +17,7 @@ use na::{dvector, vector, Matrix3, Matrix4};
 use wasm_bindgen::prelude::*;
 use web_sys::js_sys;
 
+use crate::transform::Matrix4Ext;
 use crate::{
     contact::HalfSpace,
     helpers::build_double_pendulum,
@@ -238,7 +239,7 @@ pub fn createDoublePendulumHorizontal(length: Float) -> InterfaceMechanismState 
     let cross_part = vector![m * l, 0., 0.];
 
     let rod1_to_world = Matrix4::identity();
-    let rod2_to_rod1 = Transform3D::move_x(l);
+    let rod2_to_rod1 = Matrix4::<Float>::move_x(l);
     let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
     let mut state = build_double_pendulum(
