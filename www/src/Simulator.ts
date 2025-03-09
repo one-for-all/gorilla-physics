@@ -141,7 +141,7 @@ export class Simulator {
 
   addPlane(normalArray: Float32Array, distance: number, size: number) {
     const normal = new THREE.Vector3().fromArray(normalArray);
-    const position = normal.multiplyScalar(distance);
+    const position = normal.clone().multiplyScalar(distance);
 
     const planeGeometry = new THREE.PlaneGeometry(size, size);
     const planeMaterial = new THREE.MeshPhongMaterial({
