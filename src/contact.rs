@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::ops::Mul;
 
 use itertools::izip;
-use na::{UnitVector3, Vector3};
+use na::{zero, UnitVector3, Vector3};
 
 use crate::WORLD_FRAME;
 use crate::{
@@ -258,6 +258,7 @@ pub fn calculate_contact_force(
 #[cfg(test)]
 mod contact_tests {
 
+    use crate::joint::revolute::RevoluteJoint;
     use crate::transform::Matrix4Ext;
     use crate::{
         assert_close,
@@ -509,8 +510,10 @@ mod contact_tests {
 
         let angle: Float = Float::to_radians(10.0);
         let normal = UnitVector3::new_normalize(vector![angle.sin(), 0.0, angle.cos()]);
+        let alpha = 0.9;
+        let mu = 0.5;
         let h_ground = -20.0;
-        state.add_halfspace(&HalfSpace::new(normal, h_ground));
+        state.add_halfspace(&HalfSpace::new_with_params(normal, h_ground, alpha, mu));
 
         let q_init = vec![JointPosition::Pose(Pose {
             rotation: UnitQuaternion::identity(),
@@ -539,6 +542,108 @@ mod contact_tests {
             .map(|v| v[0].spatial().angular.dot(&Vector3::y_axis()))
             .fold(0.0, Float::max);
         assert!(omega_max < 0.75);
+    }
+
+    /// Compass gait standing still on a hill
+    /// Ref: Underactuated Robotics: 4.2.2 The Compass Gait
+    ///     https://underactuated.csail.mit.edu/simple_legs.html#section2
+    #[test]
+    fn compass_gait_standing() {
+        // Arrange
+        let m_hip = 10.0;
+        let r_hip = 0.3;
+        let m_leg = 5.0;
+        let l_leg = 1.0;
+
+        let hip_frame = "hip";
+        let moment_x = m_hip * r_hip * r_hip * 2.0 / 5.0;
+        let hip = RigidBody::new(SpatialInertia {
+            frame: hip_frame.to_string(),
+            moment: Matrix3::from_diagonal(&vector![moment_x, moment_x, moment_x]),
+            cross_part: zero(),
+            mass: m_hip,
+        });
+
+        let moment_x = m_leg * (l_leg / 2.0) * (l_leg / 2.0);
+        let moment_y = moment_x;
+        let moment_z = 0.0;
+        let cross_part = vector![0., 0., -m_leg * l_leg / 2.0];
+
+        let left_leg_frame = "left leg";
+        let left_leg = RigidBody::new(SpatialInertia {
+            frame: left_leg_frame.to_string(),
+            moment: Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]),
+            cross_part,
+            mass: m_leg,
+        });
+
+        let right_leg_frame = "right leg";
+        let right_leg = RigidBody::new(SpatialInertia {
+            frame: right_leg_frame.to_string(),
+            moment: Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]),
+            cross_part,
+            mass: m_leg,
+        });
+
+        let hip_to_world = Transform3D::identity(hip_frame, WORLD_FRAME);
+        let left_leg_to_hip = Transform3D::identity(left_leg_frame, hip_frame);
+        let left_leg_axis = vector![0., -1., 0.];
+        let right_leg_to_hip = Transform3D::identity(right_leg_frame, hip_frame);
+        let right_leg_axis = vector![0., -1., 0.];
+        let treejoints = vec![
+            Joint::FloatingJoint(FloatingJoint::new(hip_to_world)),
+            Joint::RevoluteJoint(RevoluteJoint::new(left_leg_to_hip, left_leg_axis)),
+            Joint::RevoluteJoint(RevoluteJoint::new(right_leg_to_hip, right_leg_axis)),
+        ];
+
+        let bodies = vec![hip, left_leg, right_leg];
+
+        let mut state = MechanismState::new(treejoints, bodies);
+        state.add_contact_point(&ContactPoint {
+            frame: left_leg_frame.to_string(),
+            location: vector![0., 0., -l_leg],
+        });
+        state.add_contact_point(&ContactPoint {
+            frame: right_leg_frame.to_string(),
+            location: vector![0., 0., -l_leg],
+        });
+
+        let h_ground = 0.0;
+        let angle: Float = Float::to_radians(5.0);
+        let normal = UnitVector3::new_normalize(vector![angle.sin(), 0.0, angle.cos()]);
+        let alpha = 1.0;
+        let mu = 1.0;
+        let ground = HalfSpace::new_with_params(normal, h_ground, alpha, mu);
+        state.add_halfspace(&ground);
+
+        state.set_joint_q(
+            1,
+            JointPosition::Pose(Pose {
+                rotation: UnitQuaternion::identity(),
+                translation: vector![0., 0., l_leg],
+            }),
+        );
+
+        state.set_joint_q(2, JointPosition::Float(Float::to_radians(30.0)));
+        state.set_joint_q(3, JointPosition::Float(Float::to_radians(-30.0)));
+
+        // Act
+        let final_time = 2.0;
+        let dt = 1e-3;
+        let (q, v) = simulate(&mut state, final_time, dt, |_state| vec![]);
+
+        // Assert
+        let q_final = q[q.len() - 1][0].pose();
+        assert!(q_final.translation.x > 0.0);
+        assert!(q_final.translation.z > 0.0);
+
+        let v_final = v[v.len() - 1][0].spatial();
+        assert_eq!(v_final.angular.x, 0.0);
+        assert_eq!(v_final.angular.z, 0.0);
+        assert_close!(v_final.angular.y, 0.0, 1e-3);
+        assert_eq!(v_final.linear.y, 0.0);
+        assert_close!(v_final.linear.x, 0.0, 5e-3);
+        assert_close!(v_final.linear.z, 0.0, 2e-2);
     }
 
     /// Spring Loaded Inverted Pendulum (SLIP)

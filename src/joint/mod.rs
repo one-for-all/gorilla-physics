@@ -124,14 +124,19 @@ impl JointVelocity {
 
 impl ToFloatDVec for Vec<JointVelocity> {
     fn to_float_dvec(&self) -> DVector<Float> {
-        DVector::from_vec(
-            self.iter()
-                .map(|jp| match jp {
-                    JointVelocity::Float(v) => v.clone(),
-                    _ => panic!("Contains element that is not Float"),
-                })
-                .collect(),
-        )
+        let mut result: DVector<Float> = dvector![];
+        for v in self.iter() {
+            match v {
+                JointVelocity::Float(v) => {
+                    result.extend([*v]);
+                }
+                JointVelocity::Spatial(v) => {
+                    result.extend(v.angular.iter().cloned());
+                    result.extend(v.linear.iter().cloned());
+                }
+            }
+        }
+        result
     }
 }
 
