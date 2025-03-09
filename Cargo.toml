@@ -47,12 +47,31 @@ path = "examples/rimless_wheel.rs"
 [[bin]]
 name = "SLIP"
 path = "examples/SLIP.rs"
+
+
+[[bin]]
+name = "LSLIP"
+path = "examples/LSLIP.rs"
+
+[[bin]]
+name = "ALSLIP"
+path = "examples/ALSLIP.rs"
+
+[[bin]]
+name = "rod_by_spring"
+path = "examples/rod_by_spring.rs"
+
+[[bin]]
+name = "spring_drop"
+path = "examples/spring_drop.rs"
+
+
 [dependencies]
 itertools = "0.13.0"
 nalgebra = "0.33"
-plotters = "0.3.7"
-wasm-bindgen = "0.2.84"
-web-sys = { version = "0.3.69", features = ['console'] }
+plotters = "0.3.5"
+wasm-bindgen = "=0.2.89"
+web-sys = { version = "0.3.65", features = ['console'] }
 
 [build]
 # rustflags = ["-Awarnings"]
