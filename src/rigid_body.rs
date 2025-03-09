@@ -35,6 +35,19 @@ impl RigidBody {
         })
     }
 
+    pub fn new_cube(m: Float, l: Float, frame: &str) -> RigidBody {
+        let moment_x = m * l * l / 6.0;
+        let moment = Matrix3::from_diagonal(&vector![moment_x, moment_x, moment_x]);
+        let cross_part = vector![0., 0., 0.];
+
+        RigidBody::new(SpatialInertia {
+            frame: frame.to_string(),
+            moment,
+            cross_part,
+            mass: m,
+        })
+    }
+
     pub fn add_contact_point(&mut self, contact_point: &ContactPoint) {
         if self.inertia.frame != contact_point.frame {
             panic!(

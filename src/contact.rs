@@ -258,6 +258,7 @@ pub fn calculate_contact_force(
 #[cfg(test)]
 mod contact_tests {
 
+    use crate::helpers::add_cube_contacts;
     use crate::joint::revolute::RevoluteJoint;
     use crate::transform::Matrix4Ext;
     use crate::{
@@ -425,6 +426,73 @@ mod contact_tests {
         let v_final = vs[vs.len() - 1][0].spatial();
         assert_close(v_final.linear.norm(), 0.0, 5e-3);
         assert_close(v_final.angular.norm(), 0.0, 1e-2);
+    }
+
+    #[test]
+    fn two_cubes_hit_ground() {
+        // Arrange
+        let m = 3.0;
+        let l = 1.0;
+
+        let cube1_frame = "cube 1";
+        let cube1 = RigidBody::new_cube(m, l, cube1_frame);
+
+        let cube2_frame = "cube 2";
+        let cube2 = RigidBody::new_cube(m, l, cube2_frame);
+        let bodies = vec![cube1, cube2];
+
+        let cube1_to_world = Transform3D::identity(&cube1_frame, WORLD_FRAME);
+        let cube2_to_world = Transform3D::identity(&cube2_frame, WORLD_FRAME);
+        let treejoints = vec![
+            Joint::FloatingJoint(FloatingJoint::new(cube1_to_world)),
+            Joint::FloatingJoint(FloatingJoint::new(cube2_to_world)),
+        ];
+        let mut state = MechanismState::new(treejoints, bodies);
+        add_cube_contacts(&mut state, &cube1_frame, l);
+        add_cube_contacts(&mut state, &cube2_frame, l);
+
+        let h_ground = -10.0;
+        state.add_halfspace(&HalfSpace::new(Vector3::z_axis(), h_ground));
+
+        let q_init = vec![
+            JointPosition::Pose(Pose {
+                rotation: UnitQuaternion::identity(),
+                translation: vector![2.0 * l, 0.0, 0.0],
+            }),
+            JointPosition::Pose(Pose {
+                rotation: UnitQuaternion::identity(),
+                translation: vector![-2.0 * l, 0.0, 0.0],
+            }),
+        ];
+        let v_init = vec![
+            JointVelocity::Spatial(SpatialVector {
+                angular: vector![0.0, 5.0, 0.0],
+                linear: vector![1.0, 0.0, 0.0],
+            }),
+            JointVelocity::Spatial(SpatialVector {
+                angular: vector![0.0, -5.0, 0.0],
+                linear: vector![-1.0, 0.0, 0.0],
+            }),
+        ];
+        state.update(&q_init, &v_init);
+
+        // Act
+        let final_time = 5.0;
+        let dt = 1e-3;
+        let (qs, vs) = simulate(&mut state, final_time, dt, |_state| vec![]);
+
+        // Assert
+        let q1_final = qs[qs.len() - 1][0].pose();
+        let q2_final = qs[qs.len() - 1][1].pose();
+        assert_close(q1_final.translation.z, h_ground + l / 2.0, 1e-2);
+        assert_close(q2_final.translation.z, h_ground + l / 2.0, 1e-2);
+
+        let v1_final = vs[vs.len() - 1][0].spatial();
+        let v2_final = vs[vs.len() - 1][1].spatial();
+        assert_close(v1_final.linear.norm(), 0.0, 5e-3);
+        assert_close(v1_final.angular.norm(), 0.0, 1e-2);
+        assert_close(v2_final.linear.norm(), 0.0, 5e-3);
+        assert_close(v2_final.angular.norm(), 0.0, 1e-2);
     }
 
     #[test]
