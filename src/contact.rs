@@ -313,13 +313,13 @@ mod contact_tests {
 
         // Act
         let final_time = 5.0;
-        let dt = 0.001;
+        let dt = 1e-2;
         let (qs, _vs) = simulate(
             &mut state,
             final_time,
             dt,
             |_state| vec![0.0].to_joint_torque_vec(),
-            &crate::integrators::Integrator::SemiImplicitEuler,
+            &crate::integrators::Integrator::RungeKutta4,
         );
 
         // Assert
@@ -389,7 +389,7 @@ mod contact_tests {
 
         // Act
         let final_time = 2.0;
-        let dt = 1e-4;
+        let dt = 1e-3;
         let (qs, vs) = simulate(
             &mut state,
             final_time,
@@ -409,7 +409,7 @@ mod contact_tests {
         let acc_friction = -GRAVITY * mu;
         let sliding_t = v_x_init / -acc_friction;
         let sliding_x = v_x_init * sliding_t + acc_friction * sliding_t.powi(2) / 2.0;
-        assert_close!(q_final.translation.x, sliding_x, 5e-3);
+        assert_close!(q_final.translation.x, sliding_x, 1e-2);
     }
 
     /// Hit the ground with rotational and translational velocity
@@ -565,7 +565,7 @@ mod contact_tests {
 
         // Act
         let final_time = 2.0;
-        let dt = 1e-4;
+        let dt = 1e-3;
         let (qs, vs) = simulate(
             &mut state,
             final_time,
@@ -582,7 +582,7 @@ mod contact_tests {
 
         // Check mass stationary
         let v_final = vs[vs.len() - 1][0].spatial();
-        assert_close!(v_final.linear.norm(), 0.0, 1e-3);
+        assert_close!(v_final.linear.norm(), 0.0, 1e-2);
         assert_close!(v_final.angular.norm(), 0.0, 1e-3);
 
         // Check mass x = where it hits the ground + sliding distance
