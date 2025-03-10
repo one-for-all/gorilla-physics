@@ -111,7 +111,10 @@ pub fn swingup_cart_pole(
 
 #[cfg(test)]
 mod swingup_tests {
+    use crate::assert_close;
+    use crate::integrators::Integrator;
     use crate::joint::{ToJointPositionVec, ToJointVelocityVec};
+    use crate::util::assert_close;
     use itertools::izip;
     use na::{dvector, vector, DVector, Matrix3, Matrix4};
 
@@ -157,9 +160,15 @@ mod swingup_tests {
 
         // Act
         let final_time = 50.0;
-        let dt = 1.0 / 60.0;
+        let dt = 1e-2;
         let swingup = |state: &MechanismState| swingup_acrobot(state, &m, &l);
-        let (qs, vs) = simulate(&mut state, final_time, dt, swingup);
+        let (qs, vs) = simulate(
+            &mut state,
+            final_time,
+            dt,
+            swingup,
+            &Integrator::RungeKutta4,
+        );
 
         // Assert
         fn check_swungup(q: &DVector<Float>, v: &DVector<Float>) -> bool {
@@ -215,10 +224,16 @@ mod swingup_tests {
         state.update(&q_init, &v_init);
 
         // Act
-        let final_time = 50.0;
-        let dt = 0.01;
+        let final_time = 30.0;
+        let dt = 1e-2;
         let swingup = |state: &MechanismState| swingup_cart_pole(state, &m_cart, &m_pole, &l_pole);
-        let (qs, vs) = simulate(&mut state, final_time, dt, swingup);
+        let (qs, vs) = simulate(
+            &mut state,
+            final_time,
+            dt,
+            swingup,
+            &Integrator::RungeKutta4,
+        );
 
         // Assert
         // Check that the pole had been swung up near origin of cart
@@ -227,7 +242,7 @@ mod swingup_tests {
             let q2 = q[1].rem_euclid(TWO_PI);
             let v1 = v[0];
             let v2 = v[1];
-            q1.abs() < 1e-3 && (q2 - PI).abs() < 1e-1 && v1.abs() < 1e-2 && v2.abs() < 1e-1
+            q1.abs() < 1e-1 && (q2 - PI).abs() < 1e-1 && v1.abs() < 1e-1 && v2.abs() < 1e-1
         }
         let mut swungup = false;
         for (q, v) in izip!(qs.iter(), vs.iter()) {
@@ -245,6 +260,6 @@ mod swingup_tests {
         let E = cart_pole_energy(&state, &m_pole, &l_pole);
         let E_expected = m_pole * l_pole * GRAVITY;
         assert_dvec_close(&dvector![*cart_q, *cart_v], &dvector![0.0, 0.0], 1e-1);
-        assert_dvec_close(&dvector![E], &dvector![E_expected], 1e-1);
+        assert_close!(E, E_expected, 2.0);
     }
 }

@@ -66,7 +66,10 @@ mod SLIP_control_tests {
 
     use na::{vector, UnitVector3, Vector3};
 
-    use crate::{contact::HalfSpace, helpers::build_SLIP, simulate::step, util::assert_close};
+    use crate::{
+        contact::HalfSpace, helpers::build_SLIP, integrators::Integrator, simulate::step,
+        util::assert_close,
+    };
 
     use super::*;
 
@@ -103,7 +106,7 @@ mod SLIP_control_tests {
         let num_steps = (final_time / dt) as usize;
         for _ in 0..num_steps {
             let torque = vec![];
-            let (q, v) = step(&mut state, dt, &torque);
+            let (q, v) = step(&mut state, dt, &torque, &Integrator::SemiImplicitEuler);
 
             let rot = state.q[0].pose().rotation;
             let v_linear = rot * state.v[0].spatial().linear;
@@ -159,7 +162,7 @@ mod SLIP_control_tests {
         let mut v_x = vec![];
         for _ in 0..num_steps {
             let torque = vec![];
-            let (q, v) = step(&mut state, dt, &torque);
+            let (q, v) = step(&mut state, dt, &torque, &Integrator::SemiImplicitEuler);
 
             let rot = state.q[0].pose().rotation;
             let v_linear = rot * state.v[0].spatial().linear;

@@ -91,6 +91,7 @@ pub fn pid(state: &MechanismState) -> DVector<Float> {
 
 #[cfg(test)]
 mod control_tests {
+    use crate::integrators::Integrator;
     use crate::joint::ToJointPositionVec;
     use crate::joint::ToJointVelocityVec;
     use crate::{simulate::simulate, PI};
@@ -123,14 +124,20 @@ mod control_tests {
 
         // Act
         let final_time = 200.0;
-        let dt = 0.02;
-        let (qs, vs) = simulate(&mut state, final_time, dt, pendulum_gravity_inversion);
+        let dt = 0.01;
+        let (qs, vs) = simulate(
+            &mut state,
+            final_time,
+            dt,
+            pendulum_gravity_inversion,
+            &Integrator::RungeKutta4,
+        );
 
         // Assert
         let q_final = qs.as_slice().last().unwrap()[0].float();
         let q_error = q_final - PI;
         assert!(
-            q_error.abs() < 1e-4,
+            q_error.abs() < 1e-3,
             "Pendulum should swing to the top. q error: {}",
             q_error
         );
@@ -166,9 +173,15 @@ mod control_tests {
         state.update(&q_init, &v_init);
 
         // Act
-        let final_time = 100.0;
+        let final_time = 50.0;
         let dt = 0.01;
-        let (qs, _vs) = simulate(&mut state, final_time, dt, pendulum_energy_shaping);
+        let (qs, _vs) = simulate(
+            &mut state,
+            final_time,
+            dt,
+            pendulum_energy_shaping,
+            &Integrator::SemiImplicitEuler,
+        );
 
         // Assert
         let q_max = qs

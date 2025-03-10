@@ -38,7 +38,12 @@ pub fn main() {
     let dt = 0.01;
     let num_steps = (final_time / dt) as usize;
     while t < final_time {
-        let _ = step(&mut state, dt, &vec![0.0].to_joint_torque_vec());
+        let _ = step(
+            &mut state,
+            dt,
+            &vec![0.0].to_joint_torque_vec(),
+            &gorilla_physics::integrators::Integrator::SemiImplicitEuler,
+        );
         KEs.extend([state.kinetic_energy()]);
         PEs.extend([potential_energy(&state, &l)]);
         t += dt;

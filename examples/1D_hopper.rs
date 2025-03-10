@@ -134,7 +134,12 @@ pub fn main() {
     let mut data: Vec<Float> = Vec::with_capacity(num_steps);
     for _ in 0..num_steps {
         let torque = controller.control(&mut state);
-        let (_q, v) = step(&mut state, dt, &torque);
+        let (_q, v) = step(
+            &mut state,
+            dt,
+            &torque,
+            &gorilla_physics::integrators::Integrator::SemiImplicitEuler,
+        );
         let energy = hopper_energy(&state, _q[2].float(), &k_spring);
 
         data.push(_q[0].pose().translation.z);

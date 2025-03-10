@@ -63,6 +63,7 @@ pub fn lqr_cart_pole(state: &MechanismState) -> Vec<JointTorque> {
 mod lqr_tests {
     use na::{dvector, vector, Matrix3, Matrix4};
 
+    use crate::integrators::Integrator;
     use crate::joint::ToJointVelocityVec;
     use crate::{
         helpers::{build_cart_pole, build_double_pendulum},
@@ -108,7 +109,13 @@ mod lqr_tests {
         // Act
         let final_time = 100.0;
         let dt = 0.01;
-        let (qs, vs) = simulate(&mut state, final_time, dt, lqr_acrobot);
+        let (qs, vs) = simulate(
+            &mut state,
+            final_time,
+            dt,
+            lqr_acrobot,
+            &Integrator::RungeKutta4,
+        );
 
         // Assert
         let q_final = &qs[qs.len() - 1].to_float_dvec();
@@ -155,7 +162,13 @@ mod lqr_tests {
         // Act
         let final_time = 50.0;
         let dt = 0.01;
-        let (qs, vs) = simulate(&mut state, final_time, dt, lqr_cart_pole);
+        let (qs, vs) = simulate(
+            &mut state,
+            final_time,
+            dt,
+            lqr_cart_pole,
+            &Integrator::RungeKutta4,
+        );
 
         // Assert
         let q_final = &qs[qs.len() - 1].to_float_dvec();

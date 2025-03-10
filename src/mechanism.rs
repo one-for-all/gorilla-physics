@@ -278,6 +278,20 @@ impl MechanismState {
 
         poses
     }
+
+    /// True if the mechanism has spring contacts.
+    /// It is needed to make sure there is no spring contact before using a multi-step
+    /// integration scheme, since spring contacts have states not exhibitied in
+    /// (q, v)
+    /// TODO: make this check unnecessary?
+    pub fn has_spring_contacts(&self) -> bool {
+        for body in self.bodies.iter() {
+            if !body.spring_contacts.is_empty() {
+                return true;
+            }
+        }
+        return false;
+    }
 }
 
 /// Computes the motion space of each joint, expressed in world frame.

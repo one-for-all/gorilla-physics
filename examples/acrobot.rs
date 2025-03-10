@@ -48,7 +48,12 @@ pub fn main() {
     let num_steps = (final_time / dt) as usize;
     while t < final_time {
         let torque = swingup_acrobot(&state, &m, &l);
-        let (q, v) = step(&mut state, dt, &torque);
+        let (q, v) = step(
+            &mut state,
+            dt,
+            &torque,
+            &gorilla_physics::integrators::Integrator::SemiImplicitEuler,
+        );
         qs.extend([q.to_float_dvec()]);
         vs.extend([v.to_float_dvec()]);
         taus.extend([torque.to_float_dvec()]);

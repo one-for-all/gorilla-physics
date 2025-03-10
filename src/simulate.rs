@@ -1,12 +1,11 @@
+use crate::integrators::runge_kutta_2;
+use crate::integrators::runge_kutta_4;
+use crate::integrators::semi_implicit_euler;
+use crate::integrators::Integrator;
 use crate::joint::JointTorque;
 use crate::joint::JointVelocity;
 use crate::spatial_vector::SpatialVector;
-use crate::util::quaternion_derivative;
-use crate::{
-    dynamics::dynamics, joint::JointPosition, mechanism::MechanismState, pose::Pose, types::Float,
-};
-use itertools::izip;
-use na::UnitQuaternion;
+use crate::{joint::JointPosition, mechanism::MechanismState, types::Float};
 pub struct DynamicsResult {}
 
 impl DynamicsResult {
@@ -20,6 +19,7 @@ pub fn step(
     state: &mut MechanismState,
     dt: Float,
     tau: &Vec<JointTorque>,
+    integrator: &Integrator,
 ) -> (Vec<JointPosition>, Vec<JointVelocity>) {
     // Fill tau with zero torques, if it is empty
     let mut tau_in = vec![];
@@ -38,42 +38,23 @@ pub fn step(
         tau_in = tau.clone();
     }
 
-    let vdot = dynamics(state, &tau_in);
-
-    // Semi-implicit Euler integration
-    // Note: this actually turns out to be energy conserving for Hamiltonian systems,
-    // informally meaning systems that are not subject to velocity-dependent
-    // forces. E.g. single pendulum
-    //
-    // Ref: Drake Doc, https://drake.mit.edu/doxygen_cxx/classdrake_1_1systems_1_1_semi_explicit_euler_integrator.html
-    let mut new_v = vec![];
-    let mut new_q = vec![];
-    for (qi, vi, vdot) in izip!(state.q.iter(), state.v.iter(), vdot.iter()) {
-        match qi {
-            JointPosition::Float(qi) => {
-                let vdot = vdot.float();
-                let new_vi = vi.float() + vdot * dt;
-                new_v.push(JointVelocity::Float(new_vi));
-                new_q.push(JointPosition::Float(qi + new_vi * dt));
+    let (new_q, new_v) = {
+        match integrator {
+            Integrator::SemiImplicitEuler => semi_implicit_euler(state, dt, &tau_in),
+            Integrator::RungeKutta2 => {
+                if state.has_spring_contacts() {
+                    panic!("Cannot use Runge-Kutta 2 on state with spring contacts");
+                }
+                runge_kutta_2(state, dt, &tau_in)
             }
-            JointPosition::Pose(qi) => {
-                let vdot = vdot.spatial();
-                let new_vi = vi.spatial() + &(vdot * dt);
-
-                let quaternion_dot = quaternion_derivative(&qi.rotation, &new_vi.angular);
-                let translation_dot = qi.rotation * new_vi.linear;
-                let new_qi = Pose {
-                    translation: qi.translation + translation_dot * dt,
-                    rotation: UnitQuaternion::from_quaternion(
-                        qi.rotation.quaternion() + quaternion_dot * dt,
-                    ),
-                };
-
-                new_v.push(JointVelocity::Spatial(new_vi));
-                new_q.push(JointPosition::Pose(new_qi));
+            Integrator::RungeKutta4 => {
+                if state.has_spring_contacts() {
+                    panic!("Cannot use Runge-Kutta 2 on state with spring contacts");
+                }
+                runge_kutta_4(state, dt, &tau_in)
             }
         }
-    }
+    };
 
     state.update(&new_q, &new_v);
     (new_q, new_v)
@@ -86,6 +67,7 @@ pub fn simulate<F>(
     final_time: Float,
     dt: Float,
     control_fn: F,
+    integrator: &Integrator,
 ) -> (Vec<Vec<JointPosition>>, Vec<Vec<JointVelocity>>)
 where
     F: Fn(&MechanismState) -> Vec<JointTorque>,
@@ -97,7 +79,7 @@ where
     vs.push(state.v.clone());
     while t < final_time {
         let tau = control_fn(state);
-        let (q, v) = step(state, dt, &tau);
+        let (q, v) = step(state, dt, &tau, integrator);
         qs.push(q);
         vs.push(v);
 
@@ -109,6 +91,7 @@ where
 
 #[cfg(test)]
 mod simulate_tests {
+    use crate::assert_close;
     use crate::joint::ToJointPositionVec;
     use crate::joint::{ToFloatDVec, ToJointTorqueVec, ToJointVelocityVec};
     use crate::{
@@ -143,24 +126,28 @@ mod simulate_tests {
 
         // Act
         let final_time = 10.0;
-        let dt = 0.02;
-        let (qs, vs) = simulate(&mut state, final_time, dt, |_state| {
-            vec![0.0].to_joint_torque_vec()
-        });
+        let dt = 0.001;
+        let (qs, vs) = simulate(
+            &mut state,
+            final_time,
+            dt,
+            |_state| vec![0.0].to_joint_torque_vec(),
+            &Integrator::SemiImplicitEuler,
+        );
 
         // Assert
         let q_max = qs
             .iter()
             .map(|q| q[0].float().clone())
             .fold(Float::NEG_INFINITY, Float::max);
-        assert!((q_max - PI).abs() < 1e-3); // Check highest point of swing
+        assert_close!(q_max, PI, 1e-2); // Check highest point of swing
 
         let q_final = qs[qs.len() - 1][0].float();
         let v_final = vs[vs.len() - 1][0].float();
 
         let potential_energy = m * GRAVITY * l / 2.0 * (-q_final.sin()); // mgh
         let kinetic_energy = 0.5 * (m * l * l / 3.0) * v_final * v_final; // 1/2 I ω^2
-        assert!((initial_energy - (potential_energy + kinetic_energy)).abs() < 1.0);
+        assert_close!(initial_energy, potential_energy + kinetic_energy, 1e-1);
         // Sanity check that energy is conserved. Not exact due to numerical integration.
         // Note: this is potentially flaky test depending on parameters
     }
@@ -187,17 +174,21 @@ mod simulate_tests {
         // Act
         let final_time = 10.0;
         let dt = 0.02;
-        let (qs, vs) = simulate(&mut state, final_time, dt, |_state| {
-            vec![0.0].to_joint_torque_vec()
-        });
+        let (qs, vs) = simulate(
+            &mut state,
+            final_time,
+            dt,
+            |_state| vec![0.0].to_joint_torque_vec(),
+            &Integrator::RungeKutta4,
+        );
 
         // Assert
         let q_final = &qs[qs.len() - 1].to_float_dvec();
         let v_final = &vs[vs.len() - 1].to_float_dvec();
 
         let q_calc = q_init.to_float_dvec() + v_init.to_float_dvec() * final_time;
-        assert_dvec_close(q_final, &q_calc, 1e-4);
-        assert_dvec_close(v_final, &v_init.to_float_dvec(), 1e-4);
+        assert_dvec_close(q_final, &q_calc, 1e-5);
+        assert_dvec_close(v_final, &v_init.to_float_dvec(), 1e-6);
     }
 
     /// A cart pole system where a simple pendulum is dangled from a cart
@@ -242,9 +233,13 @@ mod simulate_tests {
         // Act
         let final_time = 20.0;
         let dt = 0.02;
-        let (qs, vs) = simulate(&mut state, final_time, dt, |_state| {
-            vec![F_cart, 0.0].to_joint_torque_vec()
-        });
+        let (qs, vs) = simulate(
+            &mut state,
+            final_time,
+            dt,
+            |_state| vec![F_cart, 0.0].to_joint_torque_vec(),
+            &Integrator::RungeKutta4,
+        );
 
         // Assert
         let v_final = vs[vs.len() - 1][0].float();

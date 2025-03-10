@@ -10,6 +10,7 @@ pub mod dynamics;
 pub mod energy;
 pub mod geometric_jacobian;
 pub mod inertia;
+pub mod integrators;
 pub mod joint;
 pub mod mechanism;
 pub mod momentum;

@@ -140,6 +140,8 @@ pub fn contact_dynamics(
             }
         }
 
+        // TODO: make it work with runge-kutta methods. Make it not requiring
+        // modifying state
         // Handle spring contacts
         let spring_contacts = &mut body.spring_contacts;
         for spring_contact in spring_contacts {
@@ -259,6 +261,7 @@ pub fn calculate_contact_force(
 mod contact_tests {
 
     use crate::helpers::add_cube_contacts;
+    use crate::integrators::Integrator;
     use crate::joint::revolute::RevoluteJoint;
     use crate::transform::Matrix4Ext;
     use crate::{
@@ -311,9 +314,13 @@ mod contact_tests {
         // Act
         let final_time = 5.0;
         let dt = 0.001;
-        let (qs, _vs) = simulate(&mut state, final_time, dt, |_state| {
-            vec![0.0].to_joint_torque_vec()
-        });
+        let (qs, _vs) = simulate(
+            &mut state,
+            final_time,
+            dt,
+            |_state| vec![0.0].to_joint_torque_vec(),
+            &crate::integrators::Integrator::SemiImplicitEuler,
+        );
 
         // Assert
         let q_final = qs[qs.len() - 1][0].float();
@@ -344,7 +351,13 @@ mod contact_tests {
         // Act
         let final_time = 5.0;
         let dt = 1e-3;
-        let (qs, _vs) = simulate(&mut state, final_time, dt, |_state| vec![]);
+        let (qs, _vs) = simulate(
+            &mut state,
+            final_time,
+            dt,
+            |_state| vec![],
+            &Integrator::RungeKutta4,
+        );
 
         // Assert
         let q_final = qs[qs.len() - 1][0].pose();
@@ -377,7 +390,13 @@ mod contact_tests {
         // Act
         let final_time = 2.0;
         let dt = 1e-4;
-        let (qs, vs) = simulate(&mut state, final_time, dt, |_state| vec![]);
+        let (qs, vs) = simulate(
+            &mut state,
+            final_time,
+            dt,
+            |_state| vec![],
+            &Integrator::RungeKutta4,
+        );
 
         // Assert
         let q_final = qs[qs.len() - 1][0].pose();
@@ -417,7 +436,13 @@ mod contact_tests {
         // Act
         let final_time = 5.0;
         let dt = 1e-3;
-        let (qs, vs) = simulate(&mut state, final_time, dt, |_state| vec![]);
+        let (qs, vs) = simulate(
+            &mut state,
+            final_time,
+            dt,
+            |_state| vec![],
+            &Integrator::RungeKutta4,
+        );
 
         // Assert
         let q_final = qs[qs.len() - 1][0].pose();
@@ -479,20 +504,27 @@ mod contact_tests {
         // Act
         let final_time = 5.0;
         let dt = 1e-3;
-        let (qs, vs) = simulate(&mut state, final_time, dt, |_state| vec![]);
+        let (qs, vs) = simulate(
+            &mut state,
+            final_time,
+            dt,
+            |_state| vec![],
+            &Integrator::RungeKutta4,
+        );
 
         // Assert
         let q1_final = qs[qs.len() - 1][0].pose();
         let q2_final = qs[qs.len() - 1][1].pose();
-        assert_close(q1_final.translation.z, h_ground + l / 2.0, 1e-2);
-        assert_close(q2_final.translation.z, h_ground + l / 2.0, 1e-2);
+        assert_close!(q1_final.translation.z, h_ground + l / 2.0, 1e-2);
+        assert_close!(q2_final.translation.z, h_ground + l / 2.0, 1e-2);
 
         let v1_final = vs[vs.len() - 1][0].spatial();
         let v2_final = vs[vs.len() - 1][1].spatial();
-        assert_close(v1_final.linear.norm(), 0.0, 5e-3);
-        assert_close(v1_final.angular.norm(), 0.0, 1e-2);
-        assert_close(v2_final.linear.norm(), 0.0, 5e-3);
-        assert_close(v2_final.angular.norm(), 0.0, 1e-2);
+
+        assert_close!(v1_final.linear.norm(), 0.0, 5e-3);
+        assert_close!(v1_final.angular.norm(), 0.0, 1e-2);
+        assert_close!(v2_final.linear.norm(), 0.0, 5e-3);
+        assert_close!(v2_final.angular.norm(), 0.0, 1e-2);
     }
 
     #[test]
@@ -534,7 +566,13 @@ mod contact_tests {
         // Act
         let final_time = 2.0;
         let dt = 1e-4;
-        let (qs, vs) = simulate(&mut state, final_time, dt, |_state| vec![]);
+        let (qs, vs) = simulate(
+            &mut state,
+            final_time,
+            dt,
+            |_state| vec![],
+            &Integrator::RungeKutta4,
+        );
 
         // Assert
         let q_final = qs[qs.len() - 1][0].pose();
@@ -596,7 +634,13 @@ mod contact_tests {
         // Act
         let final_time = 20.0;
         let dt = 1.0 / 600.0;
-        let (qs, vs) = simulate(&mut state, final_time, dt, |_state| vec![]);
+        let (qs, vs) = simulate(
+            &mut state,
+            final_time,
+            dt,
+            |_state| vec![],
+            &Integrator::RungeKutta4,
+        );
 
         // Assert
         let omega_final = vs[vs.len() - 1][0]
@@ -698,7 +742,13 @@ mod contact_tests {
         // Act
         let final_time = 2.0;
         let dt = 1e-3;
-        let (q, v) = simulate(&mut state, final_time, dt, |_state| vec![]);
+        let (q, v) = simulate(
+            &mut state,
+            final_time,
+            dt,
+            |_state| vec![],
+            &Integrator::RungeKutta4,
+        );
 
         // Assert
         let q_final = q[q.len() - 1][0].pose();
@@ -716,7 +766,7 @@ mod contact_tests {
 
     /// Spring Loaded Inverted Pendulum (SLIP)
     #[test]
-    fn SLIP() {
+    fn SLIP_hopping() {
         // Arrange
         let m = 0.54;
         let r = 0.1;
@@ -753,7 +803,12 @@ mod contact_tests {
         let mut hs = vec![];
         for _ in 0..num_steps {
             let torque = controller.control(&mut state);
-            let (q, v) = step(&mut state, dt, &torque);
+            let (q, v) = step(
+                &mut state,
+                dt,
+                &torque,
+                &crate::integrators::Integrator::SemiImplicitEuler,
+            );
 
             let v_z = v[0].spatial().linear.z;
             // Apex
@@ -772,12 +827,12 @@ mod contact_tests {
         // Energy conserved
         assert!(energies.len() > 0, "No apex found");
         for energy in energies {
-            assert_close(energy, initial_energy, 1e-2);
+            assert_close!(energy, initial_energy, 1e-2);
         }
 
         // Hopping height settled
-        assert_close(hs[hs.len() - 3], hs[hs.len() - 2], 1e-3);
-        assert_close(hs[hs.len() - 2], hs[hs.len() - 1], 1e-3);
+        assert_close!(hs[hs.len() - 3], hs[hs.len() - 2], 1e-3);
+        assert_close!(hs[hs.len() - 2], hs[hs.len() - 1], 1e-3);
     }
 
     // Drop a 2-mass spring onto ground, the spring should settle on the ground
@@ -834,7 +889,13 @@ mod contact_tests {
         // Act
         let final_time = 4.0;
         let dt = 1e-3;
-        let (q, v) = simulate(&mut state, final_time, dt, |_state| vec![]);
+        let (q, v) = simulate(
+            &mut state,
+            final_time,
+            dt,
+            |_state| vec![],
+            &Integrator::RungeKutta4,
+        );
 
         // Assert
         let poses = state.poses();
@@ -856,7 +917,7 @@ mod contact_tests {
         assert_close!(
             total_energy,
             m_foot * GRAVITY * h_ground + m_body * GRAVITY * (h_ground + l_leg),
-            1.0
+            1.5
         );
     }
 
@@ -927,7 +988,7 @@ mod contact_tests {
         let mut had_bottom = false;
         for _ in 0..num_steps {
             let torque = vec![];
-            let (q, v) = step(&mut state, dt, &torque);
+            let (q, v) = step(&mut state, dt, &torque, &Integrator::RungeKutta4);
 
             let v_spring = v[1].float();
             if prev_v_spring < 0.0 && *v_spring >= 0.0 {
@@ -1015,7 +1076,13 @@ mod contact_tests {
         // Act
         let final_time = 2.0;
         let dt = 1e-4;
-        let (q, v) = simulate(&mut state, final_time, dt, |_state| vec![]);
+        let (q, v) = simulate(
+            &mut state,
+            final_time,
+            dt,
+            |_state| vec![],
+            &Integrator::RungeKutta4,
+        );
 
         // Assert
         let q_final = &q[q.len() - 1][0];

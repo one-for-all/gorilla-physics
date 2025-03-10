@@ -43,7 +43,12 @@ pub fn main() {
     let mut data2: Vec<Float> = Vec::with_capacity(num_steps);
     for _ in 0..num_steps {
         let torque = vec![];
-        let (q, _v) = step(&mut state, dt, &torque);
+        let (q, _v) = step(
+            &mut state,
+            dt,
+            &torque,
+            &gorilla_physics::integrators::Integrator::SemiImplicitEuler,
+        );
 
         data1.push(q[0].pose().translation.x);
         data2.push(q[0].pose().translation.z);

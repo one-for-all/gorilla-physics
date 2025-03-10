@@ -339,6 +339,7 @@ pub fn dynamics(state: &mut MechanismState, tau: &Vec<JointTorque>) -> Vec<Joint
 mod dynamics_tests {
     use crate::{
         contact::HalfSpace,
+        integrators::Integrator,
         joint::{
             floating::FloatingJoint,
             prismatic::{JointSpring, PrismaticJoint},
@@ -654,7 +655,13 @@ mod dynamics_tests {
         // Act
         let final_time = 1.1;
         let dt = 1e-3;
-        let (_q, _v) = simulate(&mut state, final_time, dt, |_state| vec![]);
+        let (_q, _v) = simulate(
+            &mut state,
+            final_time,
+            dt,
+            |_state| vec![],
+            &Integrator::RungeKutta4,
+        );
 
         // Assert
         let poses = state.poses();

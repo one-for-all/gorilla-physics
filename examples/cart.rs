@@ -31,9 +31,13 @@ pub fn main() {
     let dt = 0.02;
     let num_steps = (final_time / dt) as usize;
 
-    let (qs, vs) = simulate(&mut state, final_time, dt, |_state| {
-        vec![0.0].to_joint_torque_vec()
-    });
+    let (qs, vs) = simulate(
+        &mut state,
+        final_time,
+        dt,
+        |_state| vec![0.0].to_joint_torque_vec(),
+        &gorilla_physics::integrators::Integrator::SemiImplicitEuler,
+    );
     let data = qs.iter().map(|x| *x[0].float()).collect::<Vec<Float>>();
 
     plot(&data, final_time, dt, num_steps, "plot");

@@ -1,9 +1,9 @@
-use std::ops::{Add, Mul};
+use std::ops::{Add, Div, Mul};
 
 use crate::{transform::Transform3D, types::Float};
 use na::{zero, Vector3};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Copy)]
 pub struct SpatialVector {
     pub angular: Vector3<Float>,
     pub linear: Vector3<Float>,
@@ -37,6 +37,17 @@ impl Mul<Float> for &SpatialVector {
         SpatialVector {
             angular: self.angular * rhs,
             linear: self.linear * rhs,
+        }
+    }
+}
+
+impl Div<Float> for &SpatialVector {
+    type Output = SpatialVector;
+
+    fn div(self, rhs: Float) -> Self::Output {
+        SpatialVector {
+            angular: self.angular / rhs,
+            linear: self.linear / rhs,
         }
     }
 }

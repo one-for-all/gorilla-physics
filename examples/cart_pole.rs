@@ -68,7 +68,12 @@ pub fn main() {
     while t < final_time {
         let torque = swingup_cart_pole(&state, &m_cart, &m_pole, &l_pole);
         // let torque = dvector![0.0, 0.0];
-        let (q, v) = step(&mut state, dt, &torque);
+        let (q, v) = step(
+            &mut state,
+            dt,
+            &torque,
+            &gorilla_physics::integrators::Integrator::SemiImplicitEuler,
+        );
         qs.extend([q.to_float_dvec()]);
         vs.extend([v.to_float_dvec()]);
         taus.extend([torque.to_float_dvec()]);

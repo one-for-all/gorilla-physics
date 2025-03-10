@@ -51,8 +51,10 @@ mod floating_joint_tests {
     use na::{dvector, vector, Matrix3, UnitQuaternion, Vector3};
 
     use crate::{
+        assert_close,
         dynamics::dynamics,
         inertia::SpatialInertia,
+        integrators::Integrator,
         joint::{Joint, JointPosition, JointTorque, JointVelocity, Pose, ToFloatDVec},
         mechanism::MechanismState,
         rigid_body::RigidBody,
@@ -167,23 +169,27 @@ mod floating_joint_tests {
         // Act
         let final_time = 5.0;
         let dt = 0.01;
-        let (qs, _vs) = simulate(&mut state, final_time, dt, |_state| {
-            vec![JointTorque::Spatial(SpatialVector::zero())]
-        });
+        let (qs, _vs) = simulate(
+            &mut state,
+            final_time,
+            dt,
+            |_state| vec![JointTorque::Spatial(SpatialVector::zero())],
+            &Integrator::RungeKutta4,
+        );
 
         // Assert
         let q_final = qs.last().unwrap();
 
         let translation_final = &q_final[0].pose().translation;
         let z_expect = height + v_z * final_time - 0.5 * GRAVITY * final_time * final_time;
-        assert_close(translation_final.x, 0.0, 1e-4);
-        assert_close(translation_final.y, 0.0, 1e-1);
-        assert_close(translation_final.z, z_expect, 2.0);
+        assert_close!(translation_final.x, 0.0, 1e-4);
+        assert_close!(translation_final.y, 0.0, 1e-2);
+        assert_close!(translation_final.z, z_expect, 1.0);
 
         let rotation_final = &q_final[0].pose().rotation;
         let rotation_expect =
             UnitQuaternion::from_axis_angle(&Vector3::x_axis(), angle + angular_v * final_time);
         assert_eq!(rotation_final.axis(), rotation_expect.axis());
-        assert_close(rotation_final.angle(), rotation_expect.angle(), 1e-1);
+        assert_close!(rotation_final.angle(), rotation_expect.angle(), 1e-2);
     }
 }

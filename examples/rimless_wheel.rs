@@ -44,7 +44,12 @@ pub fn main() {
     let mut data: Vec<Float> = Vec::with_capacity(num_steps);
     for s in 0..num_steps {
         let torque = vec![];
-        let (q, v) = step(&mut state, dt, &torque);
+        let (q, v) = step(
+            &mut state,
+            dt,
+            &torque,
+            &gorilla_physics::integrators::Integrator::SemiImplicitEuler,
+        );
 
         data.push(v[0].spatial().angular.dot(&Vector3::y_axis()));
     }

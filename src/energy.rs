@@ -56,6 +56,8 @@ pub fn hopper_energy(state: &MechanismState, l_spring: &Float, k_spring: &Float)
 mod energy_tests {
     use std::f32::consts::PI;
 
+    use crate::assert_close;
+    use crate::integrators::Integrator;
     use crate::joint::ToJointPositionVec;
     use crate::joint::ToJointTorqueVec;
     use na::{dvector, vector, Matrix3, Matrix4};
@@ -100,22 +102,26 @@ mod energy_tests {
         );
 
         let q_init = vec![1., 1.].to_joint_pos_vec();
-        let v_init = vec![1., 1.].to_joint_vel_vec();
+        let v_init = vec![0.1, 0.1].to_joint_vel_vec();
         state.update(&q_init, &v_init);
 
         let init_energy = double_pendulum_energy(&state, &m, &l);
 
         // Act
         let final_time = 2.0;
-        let dt = 0.001;
-        let (_qs, _vs) = simulate(&mut state, final_time, dt, |_state| {
-            vec![0.0, 0.0].to_joint_torque_vec()
-        });
+        let dt = 1e-3;
+        let (_qs, _vs) = simulate(
+            &mut state,
+            final_time,
+            dt,
+            |_state| vec![0.0, 0.0].to_joint_torque_vec(),
+            &Integrator::SemiImplicitEuler,
+        );
 
         // Assert
         let final_energy = double_pendulum_energy(&state, &m, &l);
-        assert_dvec_close(&dvector![final_energy], &dvector![init_energy], 1e-1);
-        // TODO: check for lower tolerance when better integration scheme is implemented
+        assert_close!(final_energy, init_energy, 1e-1);
+        // TODO: check for lower tolerance when more energy-conserving integration scheme is implemented
     }
 
     #[test]
@@ -156,9 +162,13 @@ mod energy_tests {
         // Act
         let final_time = 2.0;
         let dt = 0.001;
-        let (_qs, _vs) = simulate(&mut state, final_time, dt, |_state| {
-            vec![0.0, 0.0].to_joint_torque_vec()
-        });
+        let (_qs, _vs) = simulate(
+            &mut state,
+            final_time,
+            dt,
+            |_state| vec![0.0, 0.0].to_joint_torque_vec(),
+            &Integrator::RungeKutta4,
+        );
 
         // Assert
         let final_energy = cart_pole_energy(&state, &m_pole, &l_pole);

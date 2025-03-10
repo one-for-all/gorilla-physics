@@ -62,7 +62,12 @@ pub fn main() {
 
     for s in 0..num_steps {
         let torque = controller.control(&mut state);
-        let (q, v) = step(&mut state, dt, &torque);
+        let (q, v) = step(
+            &mut state,
+            dt,
+            &torque,
+            &gorilla_physics::integrators::Integrator::SemiImplicitEuler,
+        );
 
         let pose_body = &state.poses()[0];
 

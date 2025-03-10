@@ -1,3 +1,5 @@
+use std::ops::{Add, Div, Mul};
+
 use floating::FloatingJoint;
 use na::{dvector, DVector, Vector3};
 use prismatic::PrismaticJoint;
@@ -11,7 +13,6 @@ use crate::{
 pub mod floating;
 pub mod prismatic;
 pub mod revolute;
-
 pub enum Joint {
     RevoluteJoint(RevoluteJoint),
     PrismaticJoint(PrismaticJoint),
@@ -202,7 +203,7 @@ impl ToFloatDVec for Vec<JointTorque> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Copy)]
 pub enum JointAcceleration {
     Float(Float),           // Single float-valued joint acceleration value
     Spatial(SpatialVector), // 3D spatial acceleration of floating joint
@@ -239,5 +240,38 @@ impl ToFloatDVec for Vec<JointAcceleration> {
             }
         }
         result
+    }
+}
+
+impl Mul<Float> for &JointAcceleration {
+    type Output = JointAcceleration;
+
+    fn mul(self, rhs: Float) -> Self::Output {
+        match self {
+            JointAcceleration::Float(ja) => JointAcceleration::Float(ja * rhs),
+            JointAcceleration::Spatial(ja) => JointAcceleration::Spatial(ja * rhs),
+        }
+    }
+}
+
+impl Add for JointAcceleration {
+    type Output = JointAcceleration;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        match self {
+            JointAcceleration::Float(ja) => JointAcceleration::Float(ja + rhs.float()),
+            JointAcceleration::Spatial(ja) => JointAcceleration::Spatial(&ja + rhs.spatial()),
+        }
+    }
+}
+
+impl Div<Float> for JointAcceleration {
+    type Output = JointAcceleration;
+
+    fn div(self, rhs: Float) -> Self::Output {
+        match self {
+            JointAcceleration::Float(ja) => JointAcceleration::Float(ja / rhs),
+            JointAcceleration::Spatial(ja) => JointAcceleration::Spatial(&ja / rhs),
+        }
     }
 }
