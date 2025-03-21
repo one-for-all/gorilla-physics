@@ -197,6 +197,24 @@ export class Simulator {
     }
   }
 
+  addCompassGait() {
+    this.addSphere("hip", 0xff0000, 0.3);
+    this.addBox("left leg", 0x00ff00, 0.1, 0.1, 2.0);
+    this.addBox("right leg", 0x00ff00, 0.1, 0.1, 2.0);
+  }
+
+  addAcuatedAnkleHopper() {
+    this.addSphere("foot", 0xffffff, 0.1);
+    this.addSphere("ankle", 0x000000, 0.05);
+    this.addSphere("body", 0x00ff00, 0.1);
+  }
+
+  addAcuatedHipHopper() {
+    this.addBox("foot", 0xffffff, 0.2, 0.2, 0.2);
+    this.addSphere("hip", 0x000000, 0.05);
+    this.addBox("body", 0x00ff00, 0.2, 0.2, 0.2);
+  }
+
   add1DHopper(w_body: number, h_body: number, r_leg: number, r_foot: number) {
     const bodyGeometry = new THREE.BoxGeometry(w_body, w_body, h_body);
     const bodyMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
