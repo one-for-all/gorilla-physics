@@ -1,27 +1,20 @@
 use crate::contact::ContactPoint;
-use crate::control::energy_control::mechanical_stop;
 use crate::joint::floating::FloatingJoint;
-use crate::joint::JointTorque;
 use crate::joint::JointVelocity;
 use crate::joint::ToFloatDVec;
-use crate::joint::ToJointPositionVec;
 use crate::joint::ToJointVelocityVec;
 use crate::pose::Pose;
 use crate::spatial_vector::SpatialVector;
 use crate::transform::compute_bodies_to_root;
-use crate::twist::compute_joint_twists;
-use crate::twist::compute_twists_wrt_world;
-use crate::util::console_log;
 use crate::WORLD_FRAME;
 use controller::InterfaceController;
 use itertools::izip;
 use na::zero;
-use na::ComplexField;
 use na::Rotation3;
 use na::UnitQuaternion;
 use na::UnitVector3;
 use na::Vector3;
-use na::{dvector, vector, Matrix3, Matrix4};
+use na::{vector, Matrix3, Matrix4};
 use wasm_bindgen::prelude::*;
 use web_sys::js_sys;
 
