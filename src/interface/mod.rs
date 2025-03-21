@@ -307,3 +307,77 @@ pub fn createSphere(mass: Float, radius: Float) -> InterfaceMechanismState {
 
     InterfaceMechanismState { inner: state }
 }
+
+#[wasm_bindgen]
+pub fn createCompassGait() -> InterfaceMechanismState {
+    let m_hip = 10.0;
+    let r_hip = 0.3;
+    let m_leg = 5.0;
+    let l_leg = 1.0;
+
+    let hip_frame = "hip";
+    let moment_x = m_hip * r_hip * r_hip * 2.0 / 5.0;
+    let hip = RigidBody::new(SpatialInertia {
+        frame: hip_frame.to_string(),
+        moment: Matrix3::from_diagonal(&vector![moment_x, moment_x, moment_x]),
+        cross_part: zero(),
+        mass: m_hip,
+    });
+
+    let moment_x = m_leg * (l_leg / 2.0) * (l_leg / 2.0);
+    let moment_y = moment_x;
+    let moment_z = 0.0;
+    let cross_part = vector![0., 0., -m_leg * l_leg / 2.0];
+
+    let left_leg_frame = "left leg";
+    let left_leg = RigidBody::new(SpatialInertia {
+        frame: left_leg_frame.to_string(),
+        moment: Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]),
+        cross_part,
+        mass: m_leg,
+    });
+
+    let right_leg_frame = "right leg";
+    let right_leg = RigidBody::new(SpatialInertia {
+        frame: right_leg_frame.to_string(),
+        moment: Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]),
+        cross_part,
+        mass: m_leg,
+    });
+
+    let hip_to_world = Transform3D::identity(hip_frame, WORLD_FRAME);
+    let left_leg_to_hip = Transform3D::identity(left_leg_frame, hip_frame);
+    let left_leg_axis = vector![0., -1., 0.];
+    let right_leg_to_hip = Transform3D::identity(right_leg_frame, hip_frame);
+    let right_leg_axis = vector![0., -1., 0.];
+    let treejoints = vec![
+        Joint::FloatingJoint(FloatingJoint::new(hip_to_world)),
+        Joint::RevoluteJoint(RevoluteJoint::new(left_leg_to_hip, left_leg_axis)),
+        Joint::RevoluteJoint(RevoluteJoint::new(right_leg_to_hip, right_leg_axis)),
+    ];
+
+    let bodies = vec![hip, left_leg, right_leg];
+
+    let mut state = MechanismState::new(treejoints, bodies);
+    state.add_contact_point(&ContactPoint {
+        frame: left_leg_frame.to_string(),
+        location: vector![0., 0., -l_leg],
+    });
+    state.add_contact_point(&ContactPoint {
+        frame: right_leg_frame.to_string(),
+        location: vector![0., 0., -l_leg],
+    });
+
+    state.set_joint_q(
+        1,
+        JointPosition::Pose(Pose {
+            rotation: UnitQuaternion::identity(),
+            translation: vector![0., 0., l_leg],
+        }),
+    );
+
+    state.set_joint_q(2, JointPosition::Float(Float::to_radians(30.0)));
+    state.set_joint_q(3, JointPosition::Float(Float::to_radians(-30.0)));
+
+    InterfaceMechanismState { inner: state }
+}
