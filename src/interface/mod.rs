@@ -169,6 +169,23 @@ impl InterfaceMechanismState {
         );
         self.inner.add_halfspace(&halfspace);
     }
+
+    #[wasm_bindgen]
+    pub fn addHalfSpaceCustom(
+        &mut self,
+        normal: Vec<Float>,
+        distance: Float,
+        alpha: Float,
+        mu: Float,
+    ) {
+        let halfspace = HalfSpace::new_with_params(
+            UnitVector3::new_normalize(vector![normal[0], normal[1], normal[2]]),
+            distance,
+            alpha,
+            mu,
+        );
+        self.inner.add_halfspace(&halfspace);
+    }
 }
 
 #[wasm_bindgen]
