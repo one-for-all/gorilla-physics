@@ -96,3 +96,15 @@ macro_rules! assert_close {
         }
     };
 }
+
+#[macro_export]
+macro_rules! assert_vec_close {
+    ($left:expr, $right:expr, $tolerance:expr) => {
+        let left = $left;
+        let right = $right;
+        let tol = $tolerance;
+        for (a, b) in left.iter().zip(right.iter()) {
+            crate::assert_close!(a, b, tol);
+        }
+    };
+}

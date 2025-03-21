@@ -337,7 +337,9 @@ pub fn dynamics(state: &mut MechanismState, tau: &Vec<JointTorque>) -> Vec<Joint
 
 #[cfg(test)]
 mod dynamics_tests {
+
     use crate::{
+        assert_close, assert_vec_close,
         contact::HalfSpace,
         integrators::Integrator,
         joint::{
@@ -674,5 +676,66 @@ mod dynamics_tests {
         assert_close(x_midpoint, l_init / 2.0, 1e-5);
         assert!(x_A > 0.0);
         assert!(x_B < l_init);
+    }
+
+    /// A floating-base turning a point mass at end of rod
+    #[test]
+    fn motor_turning_mass() {
+        // Arrange
+        let base_frame = "base";
+        let m_base = 1.0;
+        let r_base = 1.0;
+        let base = RigidBody::new_sphere(m_base, r_base, base_frame);
+        let base_to_world = Transform3D::identity(base_frame, WORLD_FRAME);
+
+        let m = 1.0;
+        let r = 1.0;
+        let moment_x = m * r * r;
+        let moment_y = 0.0;
+        let moment_z = moment_x;
+        let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
+        let cross_part = vector![0., -m * r, 0.];
+        let mass_frame = "mass";
+        let mass = RigidBody::new(SpatialInertia::new(moment, cross_part, m, &mass_frame));
+        let mass_to_base = Transform3D::identity(&mass_frame, &base_frame);
+        let motor_axis = vector![0., 0., 1.0];
+
+        let bodies = vec![base, mass];
+        let treejoints = vec![
+            Joint::FloatingJoint(FloatingJoint::new(base_to_world)),
+            Joint::RevoluteJoint(RevoluteJoint::new(mass_to_base, motor_axis)),
+        ];
+        let mut state = MechanismState::new(treejoints, bodies);
+
+        // Act
+        let motor_torque = 1.0;
+        let tau = vec![
+            JointTorque::Spatial(SpatialVector {
+                angular: vector![0.0, 0., 0.0],
+                linear: vector![0.0, 0., 0.],
+            }),
+            JointTorque::Float(motor_torque),
+        ];
+        let acc = dynamics(&mut state, &tau);
+
+        // Assert
+        let base_moment_x = 2.0 / 5.0 * m_base * r_base * r_base;
+        let base_angular = -motor_torque / base_moment_x;
+        assert_vec_close!(
+            acc[0].spatial().angular,
+            vector![0., 0., base_angular],
+            1e-5
+        );
+        let base_linear_x = -motor_torque / r / m_base;
+        assert_vec_close!(
+            acc[0].spatial().linear,
+            vector![base_linear_x, 0.0, -GRAVITY],
+            1e-5
+        );
+        assert_close!(
+            acc[1].float(),
+            -base_angular + motor_torque / moment_x + -base_linear_x * r,
+            1e-5
+        );
     }
 }
