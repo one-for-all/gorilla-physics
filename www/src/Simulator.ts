@@ -329,6 +329,39 @@ export class Simulator {
     }
   }
 
+  updateCompassGait(poses: Float32Array) {
+    let hipPose = poses.subarray(0, 6);
+    this.setPose("hip", hipPose);
+
+    let leftLegPose = poses.subarray(6, 12);
+    this.setPose("left leg", leftLegPose);
+
+    let rightLegPose = poses.subarray(12, 18);
+    this.setPose("right leg", rightLegPose);
+  }
+
+  updateActuatedAnkleHopper(poses: Float32Array) {
+    let footPose = poses.subarray(0, 6);
+    this.setPose("foot", footPose);
+
+    let anklePose = poses.subarray(6, 12);
+    this.setPose("ankle", anklePose);
+
+    let bodyPose = poses.subarray(12, 18);
+    this.setPose("body", bodyPose);
+  }
+
+  updateActuatedHipHopper(poses: Float32Array) {
+    let footPose = poses.subarray(0, 6);
+    this.setPose("foot", footPose);
+
+    let hipPose = poses.subarray(6, 12);
+    this.setPose("hip", hipPose);
+
+    let bodyPose = poses.subarray(12, 18);
+    this.setPose("body", bodyPose);
+  }
+
   update1DHopper(poses: Float32Array) {
     let body_euler = [poses[0], poses[1], poses[2]];
     let body_pos = [poses[3], poses[4], poses[5]];
