@@ -1,9 +1,12 @@
 use crate::{
     contact::ContactPoint,
-    helpers::build_2d_hopper,
+    helpers::{build_2d_hopper, build_hopper},
     inertia::SpatialInertia,
     joint::{
-        floating::FloatingJoint, prismatic::PrismaticJoint, Joint, JointPosition, JointVelocity,
+        floating::FloatingJoint,
+        prismatic::{JointSpring, PrismaticJoint},
+        revolute::RevoluteJoint,
+        Joint, JointPosition, JointVelocity,
     },
     mechanism::MechanismState,
     pose::Pose,
@@ -11,11 +14,12 @@ use crate::{
     spatial_vector::SpatialVector,
     transform::Transform3D,
     types::Float,
+    WORLD_FRAME,
 };
 
 use super::InterfaceMechanismState;
 use crate::transform::Matrix4Ext;
-use na::{dvector, zero, Matrix4, UnitQuaternion, Vector3};
+use na::{zero, Matrix4, UnitQuaternion, Vector3};
 use nalgebra::{vector, Matrix3};
 use wasm_bindgen::prelude::*;
 
@@ -175,6 +179,98 @@ pub fn create2DHopper(
         JointVelocity::Float(0.0),
     ];
     state.update(&q_init, &v_init);
+
+    InterfaceMechanismState { inner: state }
+}
+
+#[wasm_bindgen]
+pub fn createActuatedAnkleHopper() -> InterfaceMechanismState {
+    let m_foot = 0.5;
+    let r_foot = 1.0;
+    let m_ankle = 0.5;
+    let r_ankle = 1.0;
+    let m_body = 10.0;
+    let r_body = 1.0;
+    let l_ankle_to_body = 1.0;
+
+    let foot_frame = "foot";
+    let foot = RigidBody::new_sphere(m_foot, r_foot, &foot_frame);
+    let foot_to_world = Transform3D::identity(&foot_frame, WORLD_FRAME);
+
+    let ankle_frame = "ankle";
+    let ankle = RigidBody::new_sphere(m_ankle, r_ankle, &ankle_frame);
+    let ankle_to_foot = Transform3D::identity(&ankle_frame, &foot_frame);
+    let ankle_axis = vector![0., -1., 0.];
+
+    let body_frame = "body";
+    let body = RigidBody::new_sphere(m_body, r_body, &body_frame);
+    let body_to_ankle = Transform3D::move_z(&body_frame, &ankle_frame, l_ankle_to_body);
+
+    let leg_axis = vector![0., 0., 1.0];
+    let leg_spring = JointSpring { k: 1e3, l: 0.0 };
+
+    let treejoints = vec![
+        Joint::FloatingJoint(FloatingJoint::new(foot_to_world)),
+        Joint::RevoluteJoint(RevoluteJoint::new(ankle_to_foot, ankle_axis)),
+        Joint::PrismaticJoint(PrismaticJoint::new_with_spring(
+            body_to_ankle,
+            leg_axis,
+            leg_spring,
+        )),
+    ];
+    let bodies = vec![foot, ankle, body];
+    let mut state = MechanismState::new(treejoints, bodies);
+
+    state.add_contact_point(&ContactPoint {
+        frame: foot_frame.to_string(),
+        location: zero(),
+    });
+
+    state.set_joint_q(
+        1,
+        JointPosition::Pose(Pose {
+            rotation: UnitQuaternion::identity(),
+            translation: vector![0., 0., 0.5],
+        }),
+    );
+    state.set_joint_v(
+        1,
+        JointVelocity::Spatial(SpatialVector {
+            angular: zero(),
+            linear: vector![0.1, 0.0, 0.0],
+        }),
+    );
+
+    InterfaceMechanismState { inner: state }
+}
+
+#[wasm_bindgen]
+pub fn createActuatedHipHopper() -> InterfaceMechanismState {
+    let m_foot = 1.0;
+    let r_foot = 1.0;
+    let m_hip = 0.5;
+    let r_hip = 1.0;
+    let m_body = 9.5;
+    let r_body = 1.0;
+    let l_foot_to_hip = 1.0;
+
+    let mut state = build_hopper(m_foot, r_foot, m_hip, r_hip, m_body, r_body, l_foot_to_hip);
+
+    state.set_joint_q(
+        1,
+        JointPosition::Pose(Pose {
+            rotation: UnitQuaternion::identity(),
+            translation: vector![0.0, 0., 0.5],
+        }),
+    );
+    state.set_joint_q(3, JointPosition::Float(0.0));
+    state.set_joint_v(
+        1,
+        JointVelocity::Spatial(SpatialVector {
+            angular: zero(),
+            linear: vector![0.0, 0.0, 0.0],
+        }),
+    );
 
     InterfaceMechanismState { inner: state }
 }
