@@ -32,9 +32,14 @@ pub struct SpatialInertia {
 }
 
 impl SpatialInertia {
-    pub fn new(moment: Matrix3<Float>, cross_part: Vector3<Float>, mass: Float) -> Self {
+    pub fn new(
+        moment: Matrix3<Float>,
+        cross_part: Vector3<Float>,
+        mass: Float,
+        frame: &str,
+    ) -> Self {
         SpatialInertia {
-            frame: "world".to_string(),
+            frame: frame.to_string(),
             moment,
             cross_part,
             mass,

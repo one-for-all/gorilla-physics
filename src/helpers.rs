@@ -1,6 +1,7 @@
 use crate::contact::ContactPoint;
 use crate::contact::SpringContact;
 use crate::joint::floating::FloatingJoint;
+use crate::joint::prismatic::JointSpring;
 use crate::joint::ToJointPositionVec;
 use crate::joint::ToJointVelocityVec;
 use crate::transform::Matrix4Ext;
@@ -14,6 +15,7 @@ use crate::{
     transform::Transform3D,
     types::Float,
 };
+use na::zero;
 use na::Rotation3;
 use na::UnitVector3;
 use na::{dvector, vector, Matrix3, Matrix4, Vector3};
@@ -368,6 +370,57 @@ pub fn build_SLIP(
 
     let direction = UnitVector3::new_normalize(vector![angle.sin(), 0., -angle.cos()]);
     state.add_spring_contact(&SpringContact::new(body_frame, l_rest, direction, k_spring));
+
+    state
+}
+
+/// Build a hip-actuated hopper
+///    base
+///  ( hip )
+///     |
+///     |
+///    foot
+pub fn build_hopper(
+    m_foot: Float,
+    r_foot: Float,
+    m_hip: Float,
+    r_hip: Float,
+    m_body: Float,
+    r_body: Float,
+    l_foot_to_hip: Float,
+) -> MechanismState {
+    let foot_frame = "foot";
+    let foot = RigidBody::new_sphere(m_foot, r_foot, &foot_frame);
+    let foot_to_world = Transform3D::identity(&foot_frame, WORLD_FRAME);
+
+    let hip_frame = "hip";
+    let hip = RigidBody::new_sphere(m_hip, r_hip, &hip_frame);
+    let hip_to_foot = Transform3D::move_z(&hip_frame, &foot_frame, l_foot_to_hip);
+
+    let body_frame = "body";
+    let body = RigidBody::new_sphere(m_body, r_body, &body_frame);
+    let body_to_hip = Transform3D::identity(&body_frame, &hip_frame);
+    let hip_axis = vector![0., 1., 0.];
+
+    let leg_axis = vector![0., 0., 1.0];
+    let leg_spring = JointSpring { k: 1e3, l: 0.0 };
+
+    let treejoints = vec![
+        Joint::FloatingJoint(FloatingJoint::new(foot_to_world)),
+        Joint::PrismaticJoint(PrismaticJoint::new_with_spring(
+            hip_to_foot,
+            leg_axis,
+            leg_spring,
+        )),
+        Joint::RevoluteJoint(RevoluteJoint::new(body_to_hip, hip_axis)),
+    ];
+    let bodies = vec![foot, hip, body];
+    let mut state = MechanismState::new(treejoints, bodies);
+
+    state.add_contact_point(&ContactPoint {
+        frame: foot_frame.to_string(),
+        location: zero(),
+    });
 
     state
 }

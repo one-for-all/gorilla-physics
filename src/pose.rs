@@ -2,7 +2,7 @@ use na::{Matrix4, UnitQuaternion, Vector3};
 
 use crate::types::Float;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Copy)]
 pub struct Pose {
     pub rotation: UnitQuaternion<Float>,
     pub translation: Vector3<Float>,

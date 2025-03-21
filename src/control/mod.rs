@@ -6,6 +6,7 @@ use crate::{mechanism::MechanismState, types::Float, GRAVITY};
 
 pub mod SLIP_control;
 pub mod energy_control;
+pub mod hopper_control;
 pub mod lqr;
 pub mod swingup;
 
