@@ -9,6 +9,9 @@ pub trait Matrix4Ext {
     /// Create the transformation matrix for a linear translation along the x-axis
     fn move_x(amount: Float) -> Matrix4<Float>;
 
+    /// Create the transformation matrix for a linear translation along the y-axis
+    fn move_y(amount: Float) -> Matrix4<Float>;
+
     /// Create the transformation matrix for a linear translation along the z-axis
     fn move_z(amount: Float) -> Matrix4<Float>;
 }
@@ -19,6 +22,16 @@ impl Matrix4Ext for Matrix4<Float> {
         Matrix4::new(
             1., 0., 0., amount, 
             0., 1., 0., 0., 
+            0., 0., 1., 0.,
+            0., 0., 0., 1.,
+        )
+    }
+
+    #[rustfmt::skip]
+    fn move_y(amount: Float) -> Matrix4<Float> {
+        Matrix4::new(
+            1., 0., 0., 0., 
+            0., 1., 0., amount, 
             0., 0., 1., 0.,
             0., 0., 0., 1.,
         )

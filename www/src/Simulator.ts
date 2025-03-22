@@ -215,6 +215,29 @@ export class Simulator {
     this.addBox("body", 0x00ff00, 0.2, 0.2, 0.2);
   }
 
+  addQuadruped() {
+    let l_hip = 0.2;
+    let l_knee = 0.2;
+    this.addBox("body", 0xffffff, 1.5, 0.5, 0.5);
+    this.addBox("fr_hip", 0xff0000, l_hip, l_hip, l_hip);
+    this.addBox("fr_knee", 0x00ff00, l_knee, l_knee, l_knee);
+    this.addBox("fl_hip", 0xff0000, l_hip, l_hip, l_hip);
+    this.addBox("fl_knee", 0x00ff00, l_knee, l_knee, l_knee);
+    this.addBox("br_hip", 0xff0000, l_hip, l_hip, l_hip);
+    this.addBox("br_knee", 0x00ff00, l_knee, l_knee, l_knee);
+    this.addBox("bl_hip", 0xff0000, l_hip, l_hip, l_hip);
+    this.addBox("bl_knee", 0x00ff00, l_knee, l_knee, l_knee);
+
+    let radius_foot = 0.1;
+    for (let i = 0; i < 12; i++) {
+      const footGeometry = new THREE.SphereGeometry(radius_foot, 32, 32);
+      const footMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+      const foot = new THREE.Mesh(footGeometry, footMaterial);
+      this.meshes.set(`foot ${i + 1}`, foot);
+      this.graphics.scene.add(foot);
+    }
+  }
+
   add1DHopper(w_body: number, h_body: number, r_leg: number, r_foot: number) {
     const bodyGeometry = new THREE.BoxGeometry(w_body, w_body, h_body);
     const bodyMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
@@ -362,6 +385,53 @@ export class Simulator {
     this.setPose("body", bodyPose);
   }
 
+  updateQuadruped(poses: Float32Array, contact_positions: Float32Array) {
+    let i = 0;
+    let bodyPose = poses.subarray(i, i + 6);
+    this.setPose("body", bodyPose);
+
+    i += 6;
+    let frHipPose = poses.subarray(i, i + 6);
+    this.setPose("fr_hip", frHipPose);
+
+    i += 6;
+    let frKneePose = poses.subarray(i, i + 6);
+    this.setPose("fr_knee", frKneePose);
+
+    i += 6;
+    let flHipPose = poses.subarray(i, i + 6);
+    this.setPose("fl_hip", flHipPose);
+
+    i += 6;
+    let flKneePose = poses.subarray(i, i + 6);
+    this.setPose("fl_knee", flKneePose);
+
+    i += 6;
+    let brHipPose = poses.subarray(i, i + 6);
+    this.setPose("br_hip", brHipPose);
+
+    i += 6;
+    let brKneePose = poses.subarray(i, i + 6);
+    this.setPose("br_knee", brKneePose);
+
+    i += 6;
+    let blHipPose = poses.subarray(i, i + 6);
+    this.setPose("bl_hip", blHipPose);
+
+    i += 6;
+    let blKneePose = poses.subarray(i, i + 6);
+    this.setPose("bl_knee", blKneePose);
+
+    for (let i = 0; i < contact_positions.length; i += 3) {
+      let foot = this.meshes.get(`foot ${i / 3 + 1}`);
+      foot.position.set(
+        contact_positions[i],
+        contact_positions[i + 1],
+        contact_positions[i + 2]
+      );
+    }
+  }
+
   update1DHopper(poses: Float32Array) {
     let body_euler = [poses[0], poses[1], poses[2]];
     let body_pos = [poses[3], poses[4], poses[5]];
@@ -431,13 +501,8 @@ export class Simulator {
     this.time += dt;
 
     let poses = this.simulator.poses();
-    // let contact_positions = this.simulator.contact_positions();
-    // this.updateRimlessWheel(poses, contact_positions);
-    // this.updateCube(poses);
-    // this.update1DHopper(poses);
-    // this.update2DHopper(poses);
-    // this.update2DHopper2(poses);
-    this.updateSpherePose(poses);
+    let contact_positions = this.simulator.contact_positions();
+    this.updateQuadruped(poses, contact_positions);
 
     requestAnimationFrame((t) => this.run(t));
   }

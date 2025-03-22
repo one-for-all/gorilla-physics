@@ -1,4 +1,5 @@
 use crate::contact::ContactPoint;
+use crate::integrators::Integrator;
 use crate::joint::floating::FloatingJoint;
 use crate::joint::JointVelocity;
 use crate::joint::ToFloatDVec;
@@ -39,6 +40,7 @@ pub mod cube;
 pub mod double_pendulum;
 pub mod hopper;
 pub mod pendulum;
+pub mod quadruped;
 pub mod rimless_wheel;
 
 #[wasm_bindgen]
@@ -70,12 +72,17 @@ impl InterfaceSimulator {
 
     #[wasm_bindgen]
     pub fn step(&mut self, dt: Float) -> js_sys::Float32Array {
-        let n_substep = 100;
+        let n_substep = 150;
         let mut q = vec![];
         for _ in 0..n_substep {
             // let torque = self.1 .0.vertical_control(&(self.0).0);
             let torque = self.controller.inner.control(&mut (self.state).inner);
-            let (_q, _v) = step(&mut (self.state).inner, dt / (n_substep as Float), &torque);
+            let (_q, _v) = step(
+                &mut (self.state).inner,
+                dt / (n_substep as Float),
+                &torque,
+                &Integrator::SemiImplicitEuler,
+            );
             q = _q;
         }
 
@@ -318,10 +325,7 @@ pub fn createSphere(mass: Float, radius: Float) -> InterfaceMechanismState {
     })];
     state.update(&q_init, &v_init);
 
-    state.add_contact_point(&ContactPoint {
-        frame: "ball".to_string(),
-        location: vector![0., 0., -r],
-    });
+    state.add_contact_point(&ContactPoint::new("ball", vector![0., 0., -r]));
 
     InterfaceMechanismState { inner: state }
 }
@@ -377,14 +381,8 @@ pub fn createCompassGait() -> InterfaceMechanismState {
     let bodies = vec![hip, left_leg, right_leg];
 
     let mut state = MechanismState::new(treejoints, bodies);
-    state.add_contact_point(&ContactPoint {
-        frame: left_leg_frame.to_string(),
-        location: vector![0., 0., -l_leg],
-    });
-    state.add_contact_point(&ContactPoint {
-        frame: right_leg_frame.to_string(),
-        location: vector![0., 0., -l_leg],
-    });
+    state.add_contact_point(&ContactPoint::new(left_leg_frame, vector![0., 0., -l_leg]));
+    state.add_contact_point(&ContactPoint::new(right_leg_frame, vector![0., 0., -l_leg]));
 
     state.set_joint_q(
         1,
