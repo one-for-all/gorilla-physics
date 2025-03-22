@@ -14,9 +14,26 @@ use crate::{
 pub struct ContactPoint {
     pub frame: String, // the frame the contact point is expressed in
     pub location: Vector3<Float>,
+    pub k: Float, // Spring constant
 }
 
 impl ContactPoint {
+    pub fn new(frame: &str, location: Vector3<Float>) -> Self {
+        ContactPoint {
+            frame: frame.to_string(),
+            location,
+            k: 50e3,
+        }
+    }
+
+    pub fn new_with_k(frame: &str, location: Vector3<Float>, k: Float) -> Self {
+        ContactPoint {
+            frame: frame.to_string(),
+            location,
+            k,
+        }
+    }
+
     /// Transform the contact point to be expressed in the "to" frame of transform
     pub fn transform(&self, transform: &Transform3D) -> Self {
         if self.frame != transform.from {
@@ -33,6 +50,7 @@ impl ContactPoint {
         ContactPoint {
             frame: transform.to.clone(),
             location,
+            k: self.k,
         }
     }
 
@@ -134,8 +152,13 @@ pub fn contact_dynamics(
                     continue;
                 }
                 let (penetration, normal) = contact_point.compute_contact(&halfspace);
-                let contact_force =
-                    calculate_contact_force(halfspace, &penetration, &velocity, &normal);
+                let contact_force = calculate_contact_force(
+                    halfspace,
+                    &penetration,
+                    &velocity,
+                    &normal,
+                    contact_point.k,
+                );
                 wrench += Wrench::from_force(&contact_point.location, &contact_force, "world");
             }
         }
@@ -220,13 +243,15 @@ pub fn calculate_contact_force(
     penetration: &Float,
     velocity: &Vector3<Float>,
     normal: &Vector3<Float>,
+    k_point: Float, // Spring constant of the point in contact
 ) -> Vector3<Float> {
     let z = penetration;
     let z_dot = -velocity.dot(normal);
 
     // Hunt-Crossley model for normal force
     let zn = z.powf(3.0 / 2.0);
-    let k = 50e3;
+    let k_halfspace = 50e3;
+    let k = k_halfspace * k_point / (k_halfspace + k_point);
     let a = halfspace.alpha; // how much velocity is lost
                              // coefficient of restitution e ~= 1-a*v_in
     let λ = 3.0 / 2.0 * a * k;
@@ -304,10 +329,7 @@ mod contact_tests {
         let axis = vector![0., 1., 0.];
 
         let mut state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
-        state.add_contact_point(&ContactPoint {
-            frame: "rod".to_string(),
-            location: vector![l, 0., 0.],
-        });
+        state.add_contact_point(&ContactPoint::new("rod", vector![l, 0., 0.]));
 
         state.add_halfspace(&&HalfSpace::new(Vector3::z_axis(), -5.0));
 
@@ -550,10 +572,7 @@ mod contact_tests {
         let ground = HalfSpace::new_with_params(Vector3::z_axis(), h_ground, alpha, mu);
         state.add_halfspace(&ground);
 
-        state.add_contact_point(&ContactPoint {
-            frame: ball_frame.to_string(),
-            location: vector![0.0, 0.0, 0.0],
-        });
+        state.add_contact_point(&ContactPoint::new(ball_frame, vector![0.0, 0.0, 0.0]));
 
         state.set_joint_v(
             1,
@@ -711,14 +730,8 @@ mod contact_tests {
         let bodies = vec![hip, left_leg, right_leg];
 
         let mut state = MechanismState::new(treejoints, bodies);
-        state.add_contact_point(&ContactPoint {
-            frame: left_leg_frame.to_string(),
-            location: vector![0., 0., -l_leg],
-        });
-        state.add_contact_point(&ContactPoint {
-            frame: right_leg_frame.to_string(),
-            location: vector![0., 0., -l_leg],
-        });
+        state.add_contact_point(&ContactPoint::new(left_leg_frame, vector![0., 0., -l_leg]));
+        state.add_contact_point(&ContactPoint::new(right_leg_frame, vector![0., 0., -l_leg]));
 
         let h_ground = 0.0;
         let angle: Float = Float::to_radians(5.0);
@@ -875,10 +888,7 @@ mod contact_tests {
         ];
         let bodies = vec![body, foot];
         let mut state = MechanismState::new(treejoints, bodies);
-        state.add_contact_point(&ContactPoint {
-            frame: foot_frame.to_string(),
-            location: Vector3::zeros(),
-        });
+        state.add_contact_point(&ContactPoint::new(foot_frame, Vector3::zeros()));
 
         let h_ground = -2.0;
         let alpha = 1.0;
@@ -961,10 +971,7 @@ mod contact_tests {
         ];
         let bodies = vec![body, foot];
         let mut state = MechanismState::new(treejoints, bodies);
-        state.add_contact_point(&ContactPoint {
-            frame: foot_frame.to_string(),
-            location: Vector3::zeros(),
-        });
+        state.add_contact_point(&ContactPoint::new(foot_frame, Vector3::zeros()));
 
         let h_ground = -2.0;
         let alpha = 1.0;
@@ -1041,15 +1048,9 @@ mod contact_tests {
         let bodies = vec![rod];
         let mut state = MechanismState::new(treejoints, bodies);
 
-        state.add_contact_point(&ContactPoint {
-            frame: rod_frame.to_string(),
-            location: vector![0.0, 0.0, 0.0],
-        });
+        state.add_contact_point(&ContactPoint::new(rod_frame, vector![0.0, 0.0, 0.0]));
 
-        state.add_contact_point(&ContactPoint {
-            frame: rod_frame.to_string(),
-            location: vector![0.0, 0.0, l],
-        });
+        state.add_contact_point(&ContactPoint::new(rod_frame, vector![0.0, 0.0, l]));
 
         let alpha = 1.0;
         let mu = 10.0;

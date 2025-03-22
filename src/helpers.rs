@@ -215,10 +215,7 @@ pub fn build_rimless_wheel(
     for i in 0..n_foot {
         let rotation = Rotation3::from_axis_angle(&Vector3::y_axis(), i as Float * 2.0 * alpha);
         let location = rotation * Vector3::new(0., 0., -l);
-        state.add_contact_point(&ContactPoint {
-            frame: body_frame.to_string(),
-            location,
-        });
+        state.add_contact_point(&ContactPoint::new(body_frame, location));
     }
 
     state
@@ -332,10 +329,7 @@ pub fn build_2d_hopper(
     let bodies = vec![body, hip, piston, leg];
     let mut state = MechanismState::new(treejoints, bodies);
 
-    state.add_contact_point(&ContactPoint {
-        frame: leg_frame.to_string(),
-        location: vector![0., 0., 0.],
-    });
+    state.add_contact_point(&ContactPoint::new(leg_frame, vector![0., 0., 0.]));
 
     state
 }
@@ -417,48 +411,46 @@ pub fn build_hopper(
     let bodies = vec![foot, hip, body];
     let mut state = MechanismState::new(treejoints, bodies);
 
-    state.add_contact_point(&ContactPoint {
-        frame: foot_frame.to_string(),
-        location: zero(),
-    });
+    // TODO: revisit hopper control tests with lower k
+    state.add_contact_point(&ContactPoint::new_with_k(foot_frame, zero(), 75e3));
 
     state
 }
 
 pub fn add_cube_contacts(state: &mut MechanismState, frame: &str, l: Float) {
     // Contact points on the bottom face
-    state.add_contact_point(&ContactPoint {
-        frame: frame.to_string(),
-        location: vector![l / 2.0, l / 2.0, -l / 2.0],
-    });
-    state.add_contact_point(&ContactPoint {
-        frame: frame.to_string(),
-        location: vector![l / 2.0, -l / 2.0, -l / 2.0],
-    });
-    state.add_contact_point(&ContactPoint {
-        frame: frame.to_string(),
-        location: vector![-l / 2.0, l / 2.0, -l / 2.0],
-    });
-    state.add_contact_point(&ContactPoint {
-        frame: frame.to_string(),
-        location: vector![-l / 2.0, -l / 2.0, -l / 2.0],
-    });
+    state.add_contact_point(&ContactPoint::new(
+        frame,
+        vector![l / 2.0, l / 2.0, -l / 2.0],
+    ));
+    state.add_contact_point(&ContactPoint::new(
+        frame,
+        vector![l / 2.0, -l / 2.0, -l / 2.0],
+    ));
+    state.add_contact_point(&ContactPoint::new(
+        frame,
+        vector![-l / 2.0, l / 2.0, -l / 2.0],
+    ));
+    state.add_contact_point(&ContactPoint::new(
+        frame,
+        vector![-l / 2.0, -l / 2.0, -l / 2.0],
+    ));
 
     // Contact Points on the top face
-    state.add_contact_point(&ContactPoint {
-        frame: frame.to_string(),
-        location: vector![l / 2.0, l / 2.0, l / 2.0],
-    });
-    state.add_contact_point(&ContactPoint {
-        frame: frame.to_string(),
-        location: vector![l / 2.0, -l / 2.0, l / 2.0],
-    });
-    state.add_contact_point(&ContactPoint {
-        frame: frame.to_string(),
-        location: vector![-l / 2.0, l / 2.0, l / 2.0],
-    });
-    state.add_contact_point(&ContactPoint {
-        frame: frame.to_string(),
-        location: vector![-l / 2.0, -l / 2.0, l / 2.0],
-    });
+    state.add_contact_point(&ContactPoint::new(
+        frame,
+        vector![l / 2.0, l / 2.0, l / 2.0],
+    ));
+    state.add_contact_point(&ContactPoint::new(
+        frame,
+        vector![l / 2.0, -l / 2.0, l / 2.0],
+    ));
+    state.add_contact_point(&ContactPoint::new(
+        frame,
+        vector![-l / 2.0, l / 2.0, l / 2.0],
+    ));
+    state.add_contact_point(&ContactPoint::new(
+        frame,
+        vector![-l / 2.0, -l / 2.0, l / 2.0],
+    ));
 }

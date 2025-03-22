@@ -73,10 +73,7 @@ mod hopper_control_tests {
         let bodies = vec![foot, ankle, body];
         let mut state = MechanismState::new(treejoints, bodies);
 
-        state.add_contact_point(&ContactPoint {
-            frame: foot_frame.to_string(),
-            location: zero(),
-        });
+        state.add_contact_point(&ContactPoint::new(foot_frame, zero()));
         let ground = HalfSpace::new_with_params(Vector3::z_axis(), 0.0, 1.0, 1.0);
         state.add_halfspace(&ground);
 
@@ -207,10 +204,10 @@ mod hopper_control_tests {
             let joint_twists = compute_joint_twists(&state);
             let twists = compute_twists_wrt_world(&state, &bodies_to_root, &joint_twists);
             let body_twist = twists.get(&3).unwrap();
-            let body_vel = body_twist.point_velocity(&ContactPoint {
-                frame: WORLD_FRAME.to_string(),
-                location: bodies_to_root.get(&3).unwrap().trans(),
-            });
+            let body_vel = body_twist.point_velocity(&ContactPoint::new(
+                WORLD_FRAME,
+                bodies_to_root.get(&3).unwrap().trans(),
+            ));
             let body_vx = body_vel.x;
 
             // Foot placement
@@ -238,10 +235,10 @@ mod hopper_control_tests {
             let body_twist = twists.get(&3).unwrap();
 
             // body velocity of the body frame, expressed in world frame
-            let body_vel = body_twist.point_velocity(&ContactPoint {
-                frame: WORLD_FRAME.to_string(),
-                location: bodies_to_root.get(&3).unwrap().trans(),
-            });
+            let body_vel = body_twist.point_velocity(&ContactPoint::new(
+                WORLD_FRAME,
+                bodies_to_root.get(&3).unwrap().trans(),
+            ));
             let body_vz = body_vel.z;
 
             // Bottom point
@@ -338,10 +335,10 @@ mod hopper_control_tests {
             if foot_z >= 0.0 {
                 // body velocity of the body frame, expressed in world frame
                 let body_twist = twists.get(&3).unwrap();
-                let body_vel = body_twist.point_velocity(&ContactPoint {
-                    frame: WORLD_FRAME.to_string(),
-                    location: bodies_to_root.get(&3).unwrap().trans(),
-                });
+                let body_vel = body_twist.point_velocity(&ContactPoint::new(
+                    WORLD_FRAME,
+                    bodies_to_root.get(&3).unwrap().trans(),
+                ));
                 let body_vx = body_vel.x;
 
                 let body_x = poses[2].translation.x;
@@ -393,10 +390,10 @@ mod hopper_control_tests {
             let body_twist = twists.get(&3).unwrap();
 
             // body velocity of the body frame, expressed in world frame
-            let body_vel = body_twist.point_velocity(&ContactPoint {
-                frame: WORLD_FRAME.to_string(),
-                location: bodies_to_root.get(&3).unwrap().trans(),
-            });
+            let body_vel = body_twist.point_velocity(&ContactPoint::new(
+                WORLD_FRAME,
+                bodies_to_root.get(&3).unwrap().trans(),
+            ));
             let body_vz = body_vel.z;
 
             // Bottom point, actuate the spring to jump the robot
