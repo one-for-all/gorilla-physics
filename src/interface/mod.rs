@@ -72,7 +72,7 @@ impl InterfaceSimulator {
 
     #[wasm_bindgen]
     pub fn step(&mut self, dt: Float) -> js_sys::Float32Array {
-        let n_substep = 150;
+        let n_substep = 50;
         let mut q = vec![];
         for _ in 0..n_substep {
             // let torque = self.1 .0.vertical_control(&(self.0).0);

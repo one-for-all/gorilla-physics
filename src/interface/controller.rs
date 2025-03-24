@@ -1,7 +1,7 @@
 use crate::{
     control::{
         energy_control::{Controller, Hopper1DController, Hopper2DController},
-        quadruped_control::QuadrupedStandingController,
+        quadruped_control::{QuadrupedStandingController, QuadrupedTrottingController},
     },
     joint::JointTorque,
     mechanism::MechanismState,
@@ -17,6 +17,20 @@ pub struct InterfaceController {
 #[wasm_bindgen]
 pub fn createQuadrupedStandingController() -> InterfaceController {
     let inner: Box<dyn Controller> = Box::new(QuadrupedStandingController {});
+    InterfaceController { inner }
+}
+
+#[wasm_bindgen]
+pub fn createQuadrupedTrottingController(
+    dt: Float,
+    target_x: Float,
+    default_foot_z: Float,
+) -> InterfaceController {
+    let inner: Box<dyn Controller> = Box::new(QuadrupedTrottingController::new(
+        dt,
+        target_x,
+        default_foot_z,
+    ));
     InterfaceController { inner }
 }
 
