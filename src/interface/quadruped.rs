@@ -1,18 +1,9 @@
-use na::{vector, Matrix3, Matrix4, UnitQuaternion};
+use na::{vector, UnitQuaternion};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{
-    contact::ContactPoint,
-    control::quadruped_control::QuadrupedTrottingController,
-    helpers::build_quadruped,
-    inertia::SpatialInertia,
-    joint::{floating::FloatingJoint, revolute::RevoluteJoint, Joint, JointPosition},
-    mechanism::MechanismState,
-    pose::Pose,
-    rigid_body::RigidBody,
-    transform::{Matrix4Ext, Transform3D},
-    types::Float,
-    PI, WORLD_FRAME,
+    control::quadruped_control::QuadrupedTrottingController, helpers::build_quadruped,
+    joint::JointPosition, pose::Pose, types::Float,
 };
 
 use super::InterfaceMechanismState;
