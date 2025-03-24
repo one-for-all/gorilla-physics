@@ -153,7 +153,7 @@ impl ToJointVelocityVec for Vec<Float> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum JointTorque {
     Float(Float),           // Single float-valued joint torque
     Spatial(SpatialVector), // 3D spatial wrench applied to floating joint
