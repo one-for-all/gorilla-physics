@@ -3,6 +3,7 @@
 use types::Float;
 pub extern crate nalgebra as na;
 
+pub mod collision;
 pub mod contact;
 pub mod control;
 pub mod double_pendulum;
