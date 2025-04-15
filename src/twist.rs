@@ -117,6 +117,7 @@ impl Twist {
     }
 
     /// Compute the velocity of the point that has this twist
+    /// TODO: Take a different struct than ContactPoint
     pub fn point_velocity(&self, contact_point: &ContactPoint) -> Vector3<Float> {
         if self.frame != contact_point.frame {
             panic!(
