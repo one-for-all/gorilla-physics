@@ -108,3 +108,20 @@ macro_rules! assert_vec_close {
         }
     };
 }
+
+#[cfg(test)]
+pub mod test_utils {
+    use na::{vector, Vector3};
+    use rand::{rngs::ThreadRng, Rng};
+
+    use crate::types::Float;
+
+    /// Build a Vector3 where each element is random between (-range, range)
+    pub fn random_vector(rng: &mut ThreadRng, range: Float) -> Vector3<Float> {
+        vector![
+            rng.random_range(-range..range),
+            rng.random_range(-range..range),
+            rng.random_range(-range..range)
+        ]
+    }
+}
