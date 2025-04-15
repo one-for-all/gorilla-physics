@@ -112,7 +112,7 @@ pub fn plot_trajectory(x: &Vec<Float>, y: &Vec<Float>, fname: &str) {
     let _ = chart.configure_mesh().draw();
 
     // Combine x and y into a vector of tuples
-    let trajectory: Vec<(f32, f32)> = x.iter().zip(y.iter()).map(|(&x, &y)| (x, y)).collect();
+    let trajectory: Vec<(Float, Float)> = x.iter().zip(y.iter()).map(|(&x, &y)| (x, y)).collect();
 
     // Draw the trajectory
     let _ = chart.draw_series(LineSeries::new(trajectory, &RED));
