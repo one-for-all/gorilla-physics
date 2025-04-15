@@ -40,10 +40,10 @@ impl Matrix4Ext for Matrix4<Float> {
     #[rustfmt::skip]
     fn move_z(amount: Float) -> Matrix4<Float> {
         Matrix4::new(
-                1., 0., 0., 0., 
-                0., 1., 0., 0., 
-                0., 0., 1., amount,
-                0., 0., 0., 1.,
+            1., 0., 0., 0., 
+            0., 1., 0., 0., 
+            0., 0., 1., amount,
+            0., 0., 0., 1.,
         )
     }
 }
@@ -91,6 +91,23 @@ impl Transform3D {
             from: from.to_string(),
             to: to.to_string(),
             mat: Matrix4::<Float>::move_z(amount)
+        }
+    }
+
+    /// Returns a transformation matrix of translation by amount
+    pub fn move_xyz(from: &str, to: &str, x: Float, y: Float, z: Float) -> Self {
+        #[rustfmt::skip]
+        let mat = Matrix4::new(
+            1.0, 0.0, 0.0, x,
+            0.0, 1.0, 0.0, y,
+            0.0, 0.0, 1.0, z,
+            0.0, 0.0, 0.0, 1.0,
+        );
+
+        Transform3D {
+            from: from.to_string(),
+            to: to.to_string(),
+            mat
         }
     }
 
