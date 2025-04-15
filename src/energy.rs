@@ -54,12 +54,12 @@ pub fn hopper_energy(state: &MechanismState, l_spring: &Float, k_spring: &Float)
 
 #[cfg(test)]
 mod energy_tests {
-    use std::f32::consts::PI;
 
     use crate::assert_close;
     use crate::integrators::Integrator;
     use crate::joint::ToJointPositionVec;
     use crate::joint::ToJointTorqueVec;
+    use crate::PI;
     use na::{dvector, vector, Matrix3, Matrix4};
 
     use crate::joint::ToJointVelocityVec;
