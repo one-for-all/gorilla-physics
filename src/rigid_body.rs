@@ -1,6 +1,7 @@
 use na::{dvector, vector, DVector, Matrix3, Vector3};
 
 use crate::{
+    collision::cuboid::Cuboid,
     contact::{ContactPoint, SpringContact},
     inertia::SpatialInertia,
     types::Float,
@@ -11,6 +12,7 @@ pub struct RigidBody {
     pub inertia: SpatialInertia,
     pub contact_points: DVector<ContactPoint>,
     pub spring_contacts: Vec<SpringContact>,
+    pub collision_geometry: Option<Cuboid>,
 }
 
 impl RigidBody {
@@ -19,6 +21,7 @@ impl RigidBody {
             inertia,
             contact_points: dvector![],
             spring_contacts: vec![],
+            collision_geometry: None,
         }
     }
 
@@ -46,6 +49,24 @@ impl RigidBody {
             cross_part,
             mass: m,
         })
+    }
+
+    pub fn new_cuboid(m: Float, w: Float, d: Float, h: Float, frame: &str) -> RigidBody {
+        let moment_x = m * (d * d + h * h) / 12.0;
+        let moment_y = m * (w * w + h * h) / 12.0;
+        let moment_z = m * (w * w + d * d) / 12.0;
+        let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
+        let cross_part = vector![0., 0., 0.];
+        RigidBody::new(SpatialInertia {
+            frame: frame.to_string(),
+            moment,
+            cross_part,
+            mass: m,
+        })
+    }
+
+    pub fn add_collider(&mut self, collision_geometry: Cuboid) {
+        self.collision_geometry = Some(collision_geometry);
     }
 
     pub fn add_contact_point(&mut self, contact_point: &ContactPoint) {
