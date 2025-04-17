@@ -24,7 +24,6 @@ use crate::types::Float;
 use crate::GRAVITY;
 use crate::WORLD_FRAME;
 use itertools::izip;
-use na::dvector;
 use na::DMatrix;
 use na::Matrix3;
 use na::Rotation3;
@@ -38,13 +37,13 @@ use nalgebra::DVector;
 /// Does not support closed kinematic chain yet.
 pub struct MechanismState {
     pub treejoints: Vec<Joint>, // treejoints[i-1] = joint of joint number i
-    pub treejointids: DVector<usize>,
+    pub treejointids: Vec<usize>,
     pub bodies: Vec<RigidBody>, // bodies[i-1] = body of body number i
     pub parents: Vec<usize>, // parents[i-1] -> the parent body number for joint of joint number i
     pub supports: Vec<HashSet<usize>>, // supports[i-1] -> all the bodies that joint i supports
     pub q: Vec<JointPosition>, // joint configuration/position vector
     pub v: Vec<JointVelocity>, // joint velocity vector
-    pub halfspaces: DVector<HalfSpace>,
+    pub halfspaces: Vec<HalfSpace>,
 }
 
 impl MechanismState {
@@ -115,13 +114,13 @@ impl MechanismState {
 
         let mut state = MechanismState {
             treejoints,
-            treejointids: DVector::from_vec(Vec::from_iter(1..njoints + 1)),
+            treejointids: Vec::from_iter(1..njoints + 1),
             bodies,
             parents,
             supports,
             q,
             v,
-            halfspaces: dvector![],
+            halfspaces: vec![],
         };
 
         state.update_collider_poses();
@@ -253,7 +252,7 @@ impl MechanismState {
     }
 
     pub fn add_halfspace(&mut self, halfspace: &HalfSpace) {
-        self.halfspaces = self.halfspaces.push(*halfspace);
+        self.halfspaces.push(*halfspace);
     }
 
     /// Add contact point to rigid body.
