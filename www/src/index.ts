@@ -2,26 +2,22 @@ import { Simulator } from "./Simulator";
 
 import("gorilla-physics").then((gorilla) => {
   let default_z = 0.8;
-  let state = gorilla.createQuadruped(1.0, default_z);
+  let state = gorilla.createPusher();
 
   let angle: number = (0.0 * Math.PI) / 180.0;
   let normal = new Float32Array([Math.sin(angle), 0.0, Math.cos(angle)]);
-  let h_ground = -0.0;
+  let h_ground = 0.0;
   let alpha = 1.0;
   let mu = 1.0;
   state.addHalfSpaceCustom(normal, h_ground, alpha, mu);
 
   let dt = 1.0 / (60.0 * 50.0);
-  let controller = gorilla.createQuadrupedTrottingController(
-    dt,
-    0.0,
-    -default_z
-  );
+  let controller = gorilla.createPusherController();
 
   let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
 
   let simulator = new Simulator(interfaceSimulator);
-  simulator.addQuadruped();
+  simulator.addPusher();
 
   simulator.addPlane(normal, h_ground, 100);
 

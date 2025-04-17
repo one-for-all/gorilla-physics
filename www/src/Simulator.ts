@@ -238,6 +238,12 @@ export class Simulator {
     }
   }
 
+  addPusher() {
+    this.addBox("extension", 0xffffff, 2.0, 0.5, 0.5);
+    this.addBox("lift", 0xff0000, 0.5, 0.1, 2.0);
+    this.addBox("cube", 0x00ff00, 0.5, 0.5, 0.5);
+  }
+
   add1DHopper(w_body: number, h_body: number, r_leg: number, r_foot: number) {
     const bodyGeometry = new THREE.BoxGeometry(w_body, w_body, h_body);
     const bodyMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
@@ -432,6 +438,20 @@ export class Simulator {
     }
   }
 
+  updatePusher(poses: Float32Array) {
+    let i = 0;
+    let extensionPose = poses.subarray(i, i + 6);
+    this.setPose("extension", extensionPose);
+
+    i += 6;
+    let liftPose = poses.subarray(i, i + 6);
+    this.setPose("lift", liftPose);
+
+    i += 6;
+    let cubePose = poses.subarray(i, i + 6);
+    this.setPose("cube", cubePose);
+  }
+
   update1DHopper(poses: Float32Array) {
     let body_euler = [poses[0], poses[1], poses[2]];
     let body_pos = [poses[3], poses[4], poses[5]];
@@ -495,14 +515,12 @@ export class Simulator {
     // TODO: measure and use the actual time elapsed
     const dt = 1 / this.fps;
 
-    // this.updateCartPose(pos);
-    // this.updateCartPole(qs[0], qs[1]);
     let qs = this.simulator.step(dt);
     this.time += dt;
 
     let poses = this.simulator.poses();
     let contact_positions = this.simulator.contact_positions();
-    this.updateQuadruped(poses, contact_positions);
+    this.updatePusher(poses);
 
     requestAnimationFrame((t) => this.run(t));
   }

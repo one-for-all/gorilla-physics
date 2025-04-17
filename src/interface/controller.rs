@@ -1,6 +1,7 @@
 use crate::{
     control::{
         energy_control::{Controller, Hopper1DController, Hopper2DController},
+        pusher_control::PusherController,
         quadruped_control::{QuadrupedStandingController, QuadrupedTrottingController},
     },
     joint::JointTorque,
@@ -68,6 +69,12 @@ pub fn createHopper2DController(
         l_leg,
         k_spring,
     ));
+    InterfaceController { inner }
+}
+
+#[wasm_bindgen]
+pub fn createPusherController() -> InterfaceController {
+    let inner: Box<dyn Controller> = Box::new(PusherController {});
     InterfaceController { inner }
 }
 
