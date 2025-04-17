@@ -8,6 +8,7 @@ pub mod SLIP_control;
 pub mod energy_control;
 pub mod hopper_control;
 pub mod lqr;
+pub mod pusher_control;
 pub mod quadruped_control;
 pub mod swingup;
 

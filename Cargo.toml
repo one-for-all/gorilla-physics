@@ -65,6 +65,9 @@ path = "examples/rod_by_spring.rs"
 name = "spring_drop"
 path = "examples/spring_drop.rs"
 
+[[bin]]
+name = "pusher"
+path = "examples/pusher.rs"
 
 [dependencies]
 itertools = "0.13.0"

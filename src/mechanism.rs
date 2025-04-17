@@ -113,7 +113,7 @@ impl MechanismState {
             }
         }
 
-        MechanismState {
+        let mut state = MechanismState {
             treejoints,
             treejointids: DVector::from_vec(Vec::from_iter(1..njoints + 1)),
             bodies,
@@ -122,7 +122,10 @@ impl MechanismState {
             q,
             v,
             halfspaces: dvector![],
-        }
+        };
+
+        state.update_collider_poses();
+        state
     }
 
     pub fn update(&mut self, q: &Vec<JointPosition>, v: &Vec<JointVelocity>) {
@@ -155,6 +158,21 @@ impl MechanismState {
                         panic!("Floating joint expects a Pose position");
                     }
                 }
+            }
+        }
+
+        self.update_collider_poses();
+    }
+
+    /// Updates the collider of each body to have the body's pose
+    fn update_collider_poses(&mut self) {
+        let bodies_to_root = compute_bodies_to_root(&self);
+        for (jointid, body) in izip!(self.treejointids.iter(), self.bodies.iter_mut()) {
+            if let Some(collider) = body.collider.as_mut() {
+                let body_to_root = bodies_to_root.get(jointid).unwrap();
+                collider.center = body_to_root.trans();
+                collider.rotation = UnitQuaternion::from_matrix(&body_to_root.rot());
+                collider.recompute_points();
             }
         }
     }

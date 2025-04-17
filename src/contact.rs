@@ -2,8 +2,10 @@ use std::collections::HashMap;
 use std::ops::Mul;
 
 use itertools::izip;
-use na::{zero, UnitVector3, Vector3};
+use na::{UnitVector3, Vector3};
 
+use crate::collision::epa::epa;
+use crate::collision::gjk::gjk;
 use crate::WORLD_FRAME;
 use crate::{
     control::energy_control::spring_force, mechanism::MechanismState, spatial_force::Wrench,
@@ -142,7 +144,7 @@ pub fn contact_dynamics(
         let body_to_root = bodies_to_root.get(bodyid).unwrap();
         let twist = twists.get(bodyid).unwrap();
 
-        // Handle rigid body contacts
+        // Handle rigid body contacts with halfspaces
         let contact_points = &body.contact_points;
         for contact_point in contact_points {
             let contact_point = contact_point.transform(body_to_root);
@@ -152,9 +154,9 @@ pub fn contact_dynamics(
                     continue;
                 }
                 let (penetration, normal) = contact_point.compute_contact(&halfspace);
-                let contact_force = calculate_contact_force(
+                let contact_force = calculate_contact_force_halfspace(
                     halfspace,
-                    &penetration,
+                    penetration,
                     &velocity,
                     &normal,
                     contact_point.k,
@@ -163,9 +165,9 @@ pub fn contact_dynamics(
             }
         }
 
-        // TODO: make it work with runge-kutta methods. Make it not requiring
+        // TODO: make it work with runge-kutta methods. i.e. Make it not requiring
         // modifying state
-        // Handle spring contacts
+        // Handle spring contacts with halfspaces
         let spring_contacts = &mut body.spring_contacts;
         for spring_contact in spring_contacts {
             let body_location = body_to_root.trans();
@@ -224,10 +226,46 @@ pub fn contact_dynamics(
         contact_wrenches.insert(*bodyid, wrench);
     }
 
+    // Compute contacts between body colliders
+    for (i, (jointid, body)) in izip!(state.treejointids.iter(), state.bodies.iter()).enumerate() {
+        for (next_jointid, next_body) in izip!(
+            state.treejointids.iter().skip(i + 1),
+            state.bodies.iter().skip(i + 1)
+        ) {
+            if let (Some(collider), Some(next_collider)) = (&body.collider, &next_body.collider) {
+                if let Some(mut poly) = gjk(&collider, &next_collider) {
+                    let (cp_a, cp_b) = epa(&mut poly, &collider, &next_collider);
+
+                    let body_twist = twists.get(jointid).unwrap();
+                    let cp_a_vel = body_twist.point_velocity(&ContactPoint::new(WORLD_FRAME, cp_a));
+                    let next_body_twist = twists.get(next_jointid).unwrap();
+                    let cp_b_vel =
+                        next_body_twist.point_velocity(&ContactPoint::new(WORLD_FRAME, cp_b));
+                    let velocity = cp_a_vel - cp_b_vel;
+
+                    let f_b_to_a = calculate_contact_force_collider(&cp_a, &cp_b, &velocity);
+                    let wrench_b_to_a = Wrench::from_force(&cp_a, &f_b_to_a, WORLD_FRAME);
+                    let wrench_a_to_b = Wrench::from_force(&cp_b, &-f_b_to_a, WORLD_FRAME);
+
+                    if let Some(wrench) = contact_wrenches.get_mut(jointid) {
+                        *wrench += wrench_b_to_a
+                    } else {
+                        contact_wrenches.insert(*jointid, wrench_b_to_a);
+                    }
+                    if let Some(wrench) = contact_wrenches.get_mut(next_jointid) {
+                        *wrench += wrench_a_to_b
+                    } else {
+                        contact_wrenches.insert(*next_jointid, wrench_a_to_b);
+                    }
+                }
+            }
+        }
+    }
+
     contact_wrenches
 }
 
-/// Calculate the contact force expressed in world frame
+/// Computes the contact force between two shapes A & B
 /// Ref: Normal force
 ///     1. Coeﬀicient of restitution interpreted as damping in vibroimpact,
 ///         K. H. Hunt and F. R. E. Crossley, 1975
@@ -238,28 +276,30 @@ pub fn contact_dynamics(
 ///         Castro, Alejandro M., et al., 2020
 ///     2. Drake: Modeling of Dry Friction
 ///         https://drake.mit.edu/doxygen_cxx/group__friction__model.html
-pub fn calculate_contact_force(
-    halfspace: &HalfSpace,
-    penetration: &Float,
-    velocity: &Vector3<Float>,
-    normal: &Vector3<Float>,
-    k_point: Float, // Spring constant of the point in contact
+///
+/// Returns the force from B towards A
+fn calculate_contact_force(
+    penetration: Float,        // Depth of AB intersection, value > 0
+    normal: &Vector3<Float>,   // Direction pointing towards A
+    velocity: &Vector3<Float>, // Velocity of contact point on A relative to point on B
+    k_A: Float,                // Spring constant of A
+    k_B: Float,                // Spring constant of B
+    alpha: Float, // how much velocity is lost, => coefficient of restitution e ~= 1-alpha*v_in
+    mu: Float,    // Coefficient of friction
 ) -> Vector3<Float> {
     let z = penetration;
     let z_dot = -velocity.dot(normal);
 
     // Hunt-Crossley model for normal force
     let zn = z.powf(3.0 / 2.0);
-    let k_halfspace = 50e3;
-    let k = k_halfspace * k_point / (k_halfspace + k_point);
-    let a = halfspace.alpha; // how much velocity is lost
-                             // coefficient of restitution e ~= 1-a*v_in
+    let k = k_A * k_B / (k_A + k_B);
+    let a = alpha;
     let λ = 3.0 / 2.0 * a * k;
     let π = (λ * zn * z_dot + k * zn).max(0.0);
-    let f_normal = π * normal;
+    let f_normal = π * *normal;
 
     // friction force in tangential direction - regularized coulomb friction
-    let v_t = velocity + z_dot * normal; // tangential velocity
+    let v_t = velocity + z_dot * *normal; // tangential velocity
     let v_t_norm = v_t.norm();
     let f_friction = {
         if v_t_norm == 0.0 {
@@ -267,7 +307,7 @@ pub fn calculate_contact_force(
         } else {
             let v_s = 1e-3; // slip tolerance, amount of velocity allowed for contact that should be stationary
             let s = v_t_norm / v_s;
-            let μ = halfspace.mu; // coefficient of friction
+            let μ = mu;
             let μ = {
                 if s > 1.0 {
                     μ
@@ -280,6 +320,42 @@ pub fn calculate_contact_force(
     };
 
     f_normal + f_friction
+}
+
+/// Computes contact force between two colliders
+/// Returns force from B to A
+pub fn calculate_contact_force_collider(
+    cp_a: &Vector3<Float>,     // Contact point on body A
+    cp_b: &Vector3<Float>,     // Contact point on body B
+    velocity: &Vector3<Float>, // Velocity of point A relative to point B
+) -> Vector3<Float> {
+    let penetration = cp_b - cp_a;
+    let normal = UnitVector3::new_normalize(penetration);
+    let k = 5e3;
+    let alpha = 1.0;
+    let mu = 1.0;
+    return calculate_contact_force(penetration.norm(), &normal, velocity, k, k, alpha, mu);
+}
+
+/// Computes contact force between a contact point and a halfspace
+/// Returns force from halfspace to the body
+pub fn calculate_contact_force_halfspace(
+    halfspace: &HalfSpace,
+    penetration: Float,
+    velocity: &Vector3<Float>,
+    normal: &Vector3<Float>,
+    k_point: Float, // Spring constant of the point in contact
+) -> Vector3<Float> {
+    let k_halfspace = 50e3;
+    return calculate_contact_force(
+        penetration,
+        normal,
+        velocity,
+        k_point,
+        k_halfspace,
+        halfspace.alpha,
+        halfspace.mu,
+    );
 }
 
 #[cfg(test)]

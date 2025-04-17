@@ -12,7 +12,7 @@ pub struct RigidBody {
     pub inertia: SpatialInertia,
     pub contact_points: DVector<ContactPoint>,
     pub spring_contacts: Vec<SpringContact>,
-    pub collision_geometry: Option<Cuboid>,
+    pub collider: Option<Cuboid>,
 }
 
 impl RigidBody {
@@ -21,7 +21,7 @@ impl RigidBody {
             inertia,
             contact_points: dvector![],
             spring_contacts: vec![],
-            collision_geometry: None,
+            collider: None,
         }
     }
 
@@ -66,7 +66,7 @@ impl RigidBody {
     }
 
     pub fn add_collider(&mut self, collision_geometry: Cuboid) {
-        self.collision_geometry = Some(collision_geometry);
+        self.collider = Some(collision_geometry);
     }
 
     pub fn add_contact_point(&mut self, contact_point: &ContactPoint) {
