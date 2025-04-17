@@ -91,13 +91,12 @@ impl MechanismState {
                         break;
                     }
                 }
-                if !has_parent {
-                    panic!(
-                        "joint {} has no parent body of frame {}\n",
-                        index + 1,
-                        j.transform().to
-                    );
-                }
+                assert!(
+                    has_parent,
+                    "joint {} has no parent body of frame {}\n",
+                    index + 1,
+                    j.transform().to
+                );
             }
 
             // Update supports array
@@ -175,7 +174,6 @@ impl MechanismState {
     }
 
     pub fn set_joint_q(&mut self, jointid: usize, q: JointPosition) {
-        self.q[jointid - 1] = q.clone();
         match &mut self.treejoints[jointid - 1] {
             Joint::RevoluteJoint(j) => {
                 if let JointPosition::Float(q) = q {
@@ -199,6 +197,7 @@ impl MechanismState {
                 }
             }
         }
+        self.q[jointid - 1] = q;
     }
 
     pub fn set_joint_v(&mut self, jointid: usize, v: JointVelocity) {
