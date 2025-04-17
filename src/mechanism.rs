@@ -29,7 +29,6 @@ use na::Matrix3;
 use na::Rotation3;
 use na::UnitQuaternion;
 use na::Vector3;
-use nalgebra::DVector;
 
 /// MechanismState stores the state information about the mechanism
 /// Joint i's child body is body i.
