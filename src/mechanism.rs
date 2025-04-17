@@ -72,13 +72,12 @@ impl MechanismState {
             }
 
             // Check that joint i has child body i
-            if j.transform().from != bodies[index].inertia.frame {
-                panic!(
-                    "joint {}'s child body is not body {}\n",
-                    index + 1,
-                    index + 1
-                );
-            }
+            assert!(
+                j.transform().from == bodies[index].inertia.frame,
+                "joint {}'s child body is not body {}\n",
+                index + 1,
+                index + 1
+            );
 
             // Find the parent of each joint
             if j.transform().to == WORLD_FRAME {
@@ -409,7 +408,7 @@ pub fn mass_matrix(
 mod mechanism_tests {
 
     use crate::transform::Matrix4Ext;
-    use na::{vector, Matrix3, Matrix4};
+    use na::{vector, DVector, Matrix3, Matrix4};
 
     use crate::joint::{floating::FloatingJoint, revolute::RevoluteJoint};
 
