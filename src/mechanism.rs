@@ -201,7 +201,7 @@ impl MechanismState {
     }
 
     pub fn set_joint_v(&mut self, jointid: usize, v: JointVelocity) {
-        self.v[jointid - 1] = v.clone();
+        self.v[jointid - 1] = v;
     }
 
     /// Computes the total kinetic energy of the system
