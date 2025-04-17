@@ -234,6 +234,7 @@ impl MechanismState {
         PE
     }
 
+    /// Computes the total energy of all the springs in the mechanism
     pub fn spring_energy(&self) -> Float {
         let mut E = 0.0;
         for (jointid, joint) in izip!(self.treejointids.iter(), self.treejoints.iter()) {
