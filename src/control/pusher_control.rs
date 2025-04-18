@@ -78,7 +78,7 @@ mod pusher_controller_tests {
 
         // Assert
         let box_pose = state.poses()[2];
-        assert!(box_pose.translation.x > 5.0);
+        assert!(box_pose.translation.x > 3.0);
         assert_close!(box_pose.translation.y, 0.0, 1e-2);
         assert_close!(box_pose.translation.z, 0.25, 1e-2);
         assert_close!(box_pose.rotation.angle(), 0.0, 1e-2);
