@@ -4,7 +4,7 @@ use crate::integrators::semi_implicit_euler;
 use crate::integrators::Integrator;
 use crate::joint::JointTorque;
 use crate::joint::JointVelocity;
-use crate::spatial_vector::SpatialVector;
+use crate::spatial::spatial_vector::SpatialVector;
 use crate::{joint::JointPosition, mechanism::MechanismState, types::Float};
 pub struct DynamicsResult {}
 

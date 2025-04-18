@@ -2,8 +2,11 @@ use na::{zero, Matrix3xX, Matrix4};
 use nalgebra::Vector3;
 
 use crate::{
-    geometric_jacobian::GeometricJacobian, spatial_acceleration::SpatialAcceleration,
-    transform::Transform3D, types::Float,
+    spatial::{
+        geometric_jacobian::GeometricJacobian, spatial_acceleration::SpatialAcceleration,
+        transform::Transform3D,
+    },
+    types::Float,
 };
 
 /// Give springiness to a joint

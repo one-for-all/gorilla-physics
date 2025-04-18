@@ -3,7 +3,7 @@ use std::ops::{Add, AddAssign};
 use na::{DMatrix, Point3, SMatrix, Vector3};
 use nalgebra::{vector, Matrix3};
 
-use crate::{transform::Transform3D, twist::Twist, types::Float};
+use crate::{spatial::transform::Transform3D, spatial::twist::Twist, types::Float};
 use itertools::izip;
 use std::collections::HashMap;
 

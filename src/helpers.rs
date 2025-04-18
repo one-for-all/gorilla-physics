@@ -3,7 +3,7 @@ use crate::contact::ContactPoint;
 use crate::contact::SpringContact;
 use crate::joint::floating::FloatingJoint;
 use crate::joint::prismatic::JointSpring;
-use crate::transform::Matrix4Ext;
+use crate::spatial::transform::Matrix4Ext;
 use crate::PI;
 use crate::WORLD_FRAME;
 use crate::{
@@ -11,7 +11,7 @@ use crate::{
     joint::{prismatic::PrismaticJoint, revolute::RevoluteJoint, Joint},
     mechanism::MechanismState,
     rigid_body::RigidBody,
-    transform::Transform3D,
+    spatial::transform::Transform3D,
     types::Float,
 };
 use na::zero;

@@ -9,16 +9,16 @@ use crate::{
         Joint, JointPosition, JointVelocity,
     },
     mechanism::MechanismState,
-    pose::Pose,
     rigid_body::RigidBody,
-    spatial_vector::SpatialVector,
-    transform::Transform3D,
+    spatial::pose::Pose,
+    spatial::spatial_vector::SpatialVector,
+    spatial::transform::Transform3D,
     types::Float,
     WORLD_FRAME,
 };
 
 use super::InterfaceMechanismState;
-use crate::transform::Matrix4Ext;
+use crate::spatial::transform::Matrix4Ext;
 use na::{zero, Matrix4, UnitQuaternion, Vector3};
 use nalgebra::{vector, Matrix3};
 use wasm_bindgen::prelude::*;

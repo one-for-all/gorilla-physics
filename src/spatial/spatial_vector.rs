@@ -1,6 +1,6 @@
 use std::ops::{Add, Div, Mul};
 
-use crate::{transform::Transform3D, types::Float};
+use crate::{spatial::transform::Transform3D, types::Float};
 use na::{zero, Vector3};
 
 #[derive(Clone, Debug, Copy)]

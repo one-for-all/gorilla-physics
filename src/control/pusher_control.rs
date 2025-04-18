@@ -1,4 +1,6 @@
-use crate::{joint::JointTorque, mechanism::MechanismState, spatial_vector::SpatialVector};
+use crate::{
+    joint::JointTorque, mechanism::MechanismState, spatial::spatial_vector::SpatialVector,
+};
 
 use super::energy_control::Controller;
 

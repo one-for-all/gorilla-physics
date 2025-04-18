@@ -1,5 +1,6 @@
 use crate::{
-    joint::JointTorque, mechanism::MechanismState, spatial_vector::SpatialVector, types::Float,
+    joint::JointTorque, mechanism::MechanismState, spatial::spatial_vector::SpatialVector,
+    types::Float,
 };
 
 pub struct SLIPController {

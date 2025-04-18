@@ -5,7 +5,6 @@ use crate::contact::ContactPoint;
 use crate::contact::HalfSpace;
 use crate::contact::SpringContact;
 use crate::energy::spring_elastic_energy;
-use crate::geometric_jacobian::GeometricJacobian;
 use crate::inertia::compute_inertias;
 use crate::inertia::kinetic_energy;
 use crate::inertia::SpatialInertia;
@@ -13,13 +12,14 @@ use crate::joint::Joint;
 use crate::joint::JointPosition;
 use crate::joint::JointVelocity;
 use crate::momentum::MomentumMatrix;
-use crate::pose::Pose;
 use crate::rigid_body::RigidBody;
-use crate::spatial_vector::SpatialVector;
-use crate::transform::compute_bodies_to_root;
-use crate::transform::Transform3D;
-use crate::twist::compute_joint_twists;
-use crate::twist::compute_twists_wrt_world;
+use crate::spatial::geometric_jacobian::GeometricJacobian;
+use crate::spatial::pose::Pose;
+use crate::spatial::spatial_vector::SpatialVector;
+use crate::spatial::transform::compute_bodies_to_root;
+use crate::spatial::transform::Transform3D;
+use crate::spatial::twist::compute_joint_twists;
+use crate::spatial::twist::compute_twists_wrt_world;
 use crate::types::Float;
 use crate::GRAVITY;
 use crate::WORLD_FRAME;
@@ -407,7 +407,7 @@ pub fn mass_matrix(
 #[cfg(test)]
 mod mechanism_tests {
 
-    use crate::transform::Matrix4Ext;
+    use crate::spatial::transform::Matrix4Ext;
     use na::{vector, DVector, Matrix3, Matrix4};
 
     use crate::joint::{floating::FloatingJoint, revolute::RevoluteJoint};

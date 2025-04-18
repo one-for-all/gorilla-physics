@@ -1,7 +1,7 @@
 use na::{DMatrix, Matrix3xX};
 
 use crate::{
-    geometric_jacobian::GeometricJacobian, inertia::SpatialInertia, types::Float,
+    inertia::SpatialInertia, spatial::geometric_jacobian::GeometricJacobian, types::Float,
     util::colwise_cross,
 };
 

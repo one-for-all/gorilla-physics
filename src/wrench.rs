@@ -7,7 +7,9 @@ use itertools::izip;
 use na::{dvector, DVector};
 use nalgebra::Vector3;
 
-use crate::{mechanism::MechanismState, transform::Transform3D, types::Float, WORLD_FRAME};
+use crate::{
+    mechanism::MechanismState, spatial::transform::Transform3D, types::Float, WORLD_FRAME,
+};
 
 /// A wrench represents a system of forces.
 /// The wrench w^i expressed in frame i in defined as

@@ -4,9 +4,9 @@ use crate::{
     inertia::compute_inertias,
     joint::{Joint, JointAcceleration, JointTorque, JointVelocity, ToFloatDVec},
     mechanism::mass_matrix,
-    spatial_vector::SpatialVector,
-    transform::{compute_bodies_to_root, Transform3D},
-    twist::{compute_joint_twists, compute_twists_wrt_world, Twist},
+    spatial::spatial_vector::SpatialVector,
+    spatial::transform::{compute_bodies_to_root, Transform3D},
+    spatial::twist::{compute_joint_twists, compute_twists_wrt_world, Twist},
     types::Float,
     util::{mul_inertia, se3_commutator},
     wrench::{compute_torques, Wrench},
@@ -17,7 +17,7 @@ use na::{vector, zero, DMatrix, DVector};
 use nalgebra::Vector3;
 use std::collections::HashMap;
 
-use crate::{mechanism::MechanismState, spatial_acceleration::SpatialAcceleration};
+use crate::{mechanism::MechanismState, spatial::spatial_acceleration::SpatialAcceleration};
 
 /// Apply the Newton-Euler equation to compute the wrench to move each body at
 /// given acceleration and velocity:
@@ -353,7 +353,7 @@ mod dynamics_tests {
     };
     use na::{dvector, vector, Matrix3, Matrix4};
 
-    use crate::transform::Matrix4Ext;
+    use crate::spatial::transform::Matrix4Ext;
     use crate::{
         double_pendulum::SimpleDoublePendulum,
         helpers::{build_double_pendulum, build_pendulum},

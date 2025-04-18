@@ -3,7 +3,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{
     control::quadruped_control::QuadrupedTrottingController, helpers::build_quadruped,
-    joint::JointPosition, pose::Pose, types::Float,
+    joint::JointPosition, spatial::pose::Pose, types::Float,
 };
 
 use super::InterfaceMechanismState;

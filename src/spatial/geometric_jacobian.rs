@@ -1,7 +1,7 @@
 use na::Matrix3xX;
 use std::ops::Mul;
 
-use crate::{transform::Transform3D, types::Float, util::colwise_cross};
+use crate::{spatial::transform::Transform3D, types::Float, util::colwise_cross};
 
 /// A geometric Jacobian maps a vector of joint velocities to a twist.
 #[derive(PartialEq, Debug)]

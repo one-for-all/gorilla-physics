@@ -2,10 +2,8 @@
 
 #[cfg(test)]
 mod hopper_control_tests {
-    use core::num;
 
     use na::{vector, zero, ComplexField, UnitQuaternion, Vector3};
-    use plotters::data;
 
     use crate::{
         assert_close,
@@ -20,18 +18,16 @@ mod hopper_control_tests {
             Joint, JointPosition, JointTorque, JointVelocity,
         },
         mechanism::MechanismState,
-        plot::{plot, plot2, plot_trajectory},
-        pose::{self, Pose},
+        plot::plot,
         rigid_body::RigidBody,
         simulate::step,
-        spatial_vector::SpatialVector,
-        transform::{compute_bodies_to_root, Transform3D},
-        twist::{compute_joint_twists, compute_twists_wrt_world},
+        spatial::pose::Pose,
+        spatial::spatial_vector::SpatialVector,
+        spatial::transform::{compute_bodies_to_root, Transform3D},
+        spatial::twist::{compute_joint_twists, compute_twists_wrt_world},
         types::Float,
         WORLD_FRAME,
     };
-
-    use super::*;
 
     #[ignore] // TODO: add a control method for ankle-actuated hopper
     #[test]

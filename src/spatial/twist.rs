@@ -10,8 +10,8 @@ use crate::{
     contact::ContactPoint,
     joint::{Joint, JointVelocity},
     mechanism::MechanismState,
-    spatial_acceleration::SpatialAcceleration,
-    transform::Transform3D,
+    spatial::spatial_acceleration::SpatialAcceleration,
+    spatial::transform::Transform3D,
     types::Float,
 };
 

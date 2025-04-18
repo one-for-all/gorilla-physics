@@ -1,8 +1,7 @@
 use na::{Matrix3, Matrix3xX, Matrix4};
 
-use crate::{
-    geometric_jacobian::GeometricJacobian, pose::Pose, transform::Transform3D, types::Float,
-};
+use crate::spatial::{geometric_jacobian::GeometricJacobian, pose::Pose, transform::Transform3D};
+use crate::types::Float;
 
 pub struct FloatingJoint {
     pub init_mat: Matrix4<Float>, // initial transform from successor frame to predecessor frame
@@ -59,7 +58,7 @@ mod floating_joint_tests {
         mechanism::MechanismState,
         rigid_body::RigidBody,
         simulate::simulate,
-        spatial_vector::SpatialVector,
+        spatial::spatial_vector::SpatialVector,
         util::{assert_close, assert_dvec_close},
         GRAVITY, PI,
     };

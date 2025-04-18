@@ -6,12 +6,11 @@ use na::{UnitVector3, Vector3};
 
 use crate::collision::epa::epa;
 use crate::collision::gjk::gjk;
+use crate::spatial::transform::Transform3D;
+use crate::spatial::twist::Twist;
 use crate::wrench::Wrench;
 use crate::WORLD_FRAME;
-use crate::{
-    control::energy_control::spring_force, mechanism::MechanismState, transform::Transform3D,
-    twist::Twist, types::Float,
-};
+use crate::{control::energy_control::spring_force, mechanism::MechanismState, types::Float};
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct ContactPoint {
@@ -365,7 +364,8 @@ mod contact_tests {
     use crate::helpers::add_cube_contacts;
     use crate::integrators::Integrator;
     use crate::joint::revolute::RevoluteJoint;
-    use crate::transform::Matrix4Ext;
+    use crate::spatial::spatial_vector::SpatialVector;
+    use crate::spatial::transform::Matrix4Ext;
     use crate::{
         assert_close,
         control::energy_control::Controller,
@@ -377,10 +377,9 @@ mod contact_tests {
             prismatic::{JointSpring, PrismaticJoint},
             Joint, JointPosition, JointVelocity, ToJointTorqueVec,
         },
-        pose::Pose,
         rigid_body::RigidBody,
         simulate::step,
-        spatial_vector::SpatialVector,
+        spatial::pose::Pose,
         util::assert_close,
         GRAVITY,
     };

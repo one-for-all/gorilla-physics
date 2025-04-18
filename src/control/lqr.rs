@@ -1,5 +1,5 @@
 use crate::joint::{JointTorque, ToFloatDVec, ToJointTorqueVec};
-use crate::transform::Matrix4Ext;
+use crate::spatial::transform::Matrix4Ext;
 use crate::PI;
 use crate::{mechanism::MechanismState, types::Float};
 use na::{DMatrix, Matrix1x4};
@@ -69,7 +69,7 @@ mod lqr_tests {
         helpers::{build_cart_pole, build_double_pendulum},
         joint::{JointPosition, ToFloatDVec, ToJointPositionVec},
         simulate::simulate,
-        transform::Transform3D,
+        spatial::transform::Transform3D,
         util::assert_dvec_close,
         PI,
     };

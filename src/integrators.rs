@@ -5,7 +5,7 @@ use crate::{
     dynamics::dynamics,
     joint::{JointAcceleration, JointPosition, JointTorque, JointVelocity},
     mechanism::MechanismState,
-    pose::Pose,
+    spatial::pose::Pose,
     types::Float,
     util::quaternion_derivative,
 };

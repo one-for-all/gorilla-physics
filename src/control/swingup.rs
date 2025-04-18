@@ -114,18 +114,16 @@ mod swingup_tests {
     use crate::assert_close;
     use crate::integrators::Integrator;
     use crate::joint::{ToJointPositionVec, ToJointVelocityVec};
-    use crate::util::assert_close;
     use itertools::izip;
     use na::{dvector, vector, DVector, Matrix3, Matrix4};
 
     use super::*;
-    use crate::transform::Matrix4Ext;
+    use crate::spatial::transform::Matrix4Ext;
     use crate::{
         energy::cart_pole_energy,
         helpers::{build_cart_pole, build_double_pendulum},
         joint::ToFloatDVec,
         simulate::simulate,
-        transform::Transform3D,
         util::assert_dvec_close,
     };
 

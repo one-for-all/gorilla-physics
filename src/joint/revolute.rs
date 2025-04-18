@@ -3,8 +3,11 @@ use nalgebra::Vector3;
 use std::ops::Mul;
 
 use crate::{
-    geometric_jacobian::GeometricJacobian, spatial_acceleration::SpatialAcceleration,
-    transform::Transform3D, types::Float,
+    spatial::{
+        geometric_jacobian::GeometricJacobian, spatial_acceleration::SpatialAcceleration,
+        transform::Transform3D,
+    },
+    types::Float,
 };
 
 /// Represents a revolute joint connecting a predecessor and a successor body.

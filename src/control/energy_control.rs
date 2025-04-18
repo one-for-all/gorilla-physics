@@ -2,7 +2,7 @@
 
 use crate::{
     energy::hopper_energy, joint::JointTorque, mechanism::MechanismState,
-    spatial_vector::SpatialVector, types::Float, GRAVITY,
+    spatial::spatial_vector::SpatialVector, types::Float, GRAVITY,
 };
 
 /// TODO: Add spring elements to mechanism state

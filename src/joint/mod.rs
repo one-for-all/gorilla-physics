@@ -5,10 +5,11 @@ use na::{dvector, DVector, Vector3};
 use prismatic::PrismaticJoint;
 use revolute::RevoluteJoint;
 
-use crate::{
+use crate::spatial::{
     geometric_jacobian::GeometricJacobian, pose::Pose, spatial_vector::SpatialVector,
-    transform::Transform3D, types::Float,
+    transform::Transform3D,
 };
+use crate::types::Float;
 
 pub mod floating;
 pub mod prismatic;

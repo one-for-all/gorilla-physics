@@ -3,7 +3,7 @@ use std::ops::Mul;
 
 use na::{zero, Vector3};
 
-use crate::transform::Transform3D;
+use crate::spatial::transform::Transform3D;
 use crate::types::Float;
 use crate::GRAVITY;
 

@@ -3,10 +3,10 @@ use crate::{
     inertia::SpatialInertia,
     joint::{floating::FloatingJoint, Joint, JointPosition, JointVelocity},
     mechanism::MechanismState,
-    pose::Pose,
     rigid_body::RigidBody,
-    spatial_vector::SpatialVector,
-    transform::Transform3D,
+    spatial::pose::Pose,
+    spatial::spatial_vector::SpatialVector,
+    spatial::transform::Transform3D,
     types::Float,
     PI,
 };

@@ -1,4 +1,6 @@
-use crate::{mechanism::MechanismState, transform::compute_bodies_to_root, types::Float, GRAVITY};
+use crate::{
+    mechanism::MechanismState, spatial::transform::compute_bodies_to_root, types::Float, GRAVITY,
+};
 
 pub fn spring_elastic_energy(l_rest: Float, l: Float, k: Float) -> Float {
     0.5 * k * (l - l_rest) * (l - l_rest)
@@ -63,13 +65,13 @@ mod energy_tests {
     use na::{dvector, vector, Matrix3, Matrix4};
 
     use crate::joint::ToJointVelocityVec;
-    use crate::transform::Matrix4Ext;
+    use crate::spatial::transform::Matrix4Ext;
     use crate::{
         energy::double_pendulum_energy,
         helpers::{build_cart_pole, build_double_pendulum},
         joint::JointPosition,
         simulate::simulate,
-        transform::Transform3D,
+        spatial::transform::Transform3D,
         types::Float,
         util::assert_dvec_close,
     };

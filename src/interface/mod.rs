@@ -4,9 +4,9 @@ use crate::joint::floating::FloatingJoint;
 use crate::joint::JointVelocity;
 use crate::joint::ToFloatDVec;
 use crate::joint::ToJointVelocityVec;
-use crate::pose::Pose;
-use crate::spatial_vector::SpatialVector;
-use crate::transform::compute_bodies_to_root;
+use crate::spatial::pose::Pose;
+use crate::spatial::spatial_vector::SpatialVector;
+use crate::spatial::transform::compute_bodies_to_root;
 use crate::WORLD_FRAME;
 use controller::InterfaceController;
 use itertools::izip;
@@ -19,7 +19,7 @@ use na::{vector, Matrix3, Matrix4};
 use wasm_bindgen::prelude::*;
 use web_sys::js_sys;
 
-use crate::transform::Matrix4Ext;
+use crate::spatial::transform::Matrix4Ext;
 use crate::{
     contact::HalfSpace,
     helpers::build_double_pendulum,
@@ -28,7 +28,7 @@ use crate::{
     mechanism::MechanismState,
     rigid_body::RigidBody,
     simulate::step,
-    transform::Transform3D,
+    spatial::transform::Transform3D,
     types::Float,
     PI,
 };

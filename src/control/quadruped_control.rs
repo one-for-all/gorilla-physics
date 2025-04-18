@@ -3,7 +3,7 @@ use na::{vector, ComplexField, Vector3, Vector4};
 use crate::{
     joint::{JointPosition, JointTorque},
     mechanism::MechanismState,
-    spatial_vector::SpatialVector,
+    spatial::spatial_vector::SpatialVector,
     types::Float,
     PI,
 };
@@ -312,7 +312,7 @@ mod quadruped_control_tests {
 
     use crate::{
         assert_close, assert_vec_close, contact::HalfSpace, helpers::build_quadruped,
-        integrators::Integrator, pose::Pose, simulate::step,
+        integrators::Integrator, simulate::step, spatial::pose::Pose,
     };
 
     use super::*;
