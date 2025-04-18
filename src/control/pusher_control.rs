@@ -2,7 +2,7 @@ use crate::{
     joint::JointTorque, mechanism::MechanismState, spatial::spatial_vector::SpatialVector,
 };
 
-use super::energy_control::Controller;
+use super::Controller;
 
 pub struct PusherController {}
 

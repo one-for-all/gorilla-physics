@@ -1,6 +1,6 @@
 use gorilla_physics::{
     contact::HalfSpace,
-    control::{energy_control::Controller, pusher_control::PusherController},
+    control::{pusher_control::PusherController, Controller},
     helpers::build_pusher,
     plot::plot,
     simulate::step,

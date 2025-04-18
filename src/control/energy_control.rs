@@ -5,6 +5,8 @@ use crate::{
     spatial::spatial_vector::SpatialVector, types::Float, GRAVITY,
 };
 
+use super::Controller;
+
 /// TODO: Add spring elements to mechanism state
 /// Force exerted by a spring
 /// F = -k * x
@@ -17,10 +19,6 @@ pub fn spring_force(l_rest: Float, l: Float, k: Float) -> Float {
 /// F = -k * x - b * v
 pub fn mechanical_stop(l_rest: Float, l: Float, v: Float, k: Float, b: Float) -> Float {
     -k * (l - l_rest) - b * v
-}
-
-pub trait Controller {
-    fn control(&mut self, state: &mut MechanismState) -> Vec<JointTorque>;
 }
 
 pub struct Hopper1DController {

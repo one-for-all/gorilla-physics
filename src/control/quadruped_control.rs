@@ -8,7 +8,7 @@ use crate::{
     PI,
 };
 
-use super::energy_control::Controller;
+use super::Controller;
 
 pub struct QuadrupedTrottingController {
     ticks: usize,

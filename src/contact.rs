@@ -361,6 +361,7 @@ pub fn calculate_contact_force_halfspace(
 #[cfg(test)]
 mod contact_tests {
 
+    use crate::control::Controller;
     use crate::helpers::add_cube_contacts;
     use crate::integrators::Integrator;
     use crate::joint::revolute::RevoluteJoint;
@@ -368,7 +369,6 @@ mod contact_tests {
     use crate::spatial::transform::Matrix4Ext;
     use crate::{
         assert_close,
-        control::energy_control::Controller,
         helpers::{build_SLIP, build_cube, build_rimless_wheel},
         inertia::SpatialInertia,
         interface::controller::NullController,

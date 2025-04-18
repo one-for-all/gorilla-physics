@@ -12,6 +12,10 @@ pub mod pusher_control;
 pub mod quadruped_control;
 pub mod swingup;
 
+pub trait Controller {
+    fn control(&mut self, state: &mut MechanismState) -> Vec<JointTorque>;
+}
+
 /// Control algorithm that effectively inverts the gravity for a pendulum system.
 /// u = 2mglsin(q) - Bv
 /// where q is the angle from the bottom, and Bv is the damping term.

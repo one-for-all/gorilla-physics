@@ -1,8 +1,9 @@
 use crate::{
     control::{
-        energy_control::{Controller, Hopper1DController, Hopper2DController},
+        energy_control::{Hopper1DController, Hopper2DController},
         pusher_control::PusherController,
         quadruped_control::{QuadrupedStandingController, QuadrupedTrottingController},
+        Controller,
     },
     joint::JointTorque,
     mechanism::MechanismState,
