@@ -5,7 +5,7 @@ use crate::{
     spatial::spatial_vector::SpatialVector, types::Float, GRAVITY,
 };
 
-use super::Controller;
+use super::{ControlInput, Controller};
 
 /// TODO: Add spring elements to mechanism state
 /// Force exerted by a spring
@@ -36,7 +36,11 @@ impl Controller for Hopper1DController {
     /// Control the hopper to jump to certain vertical height
     /// Ref: Hopping in Legged Systems-Modeling and Simulation for the Two-Dimensional One-Legged Case
     /// Marc Raibert, 1984
-    fn control(&mut self, state: &mut MechanismState) -> Vec<JointTorque> {
+    fn control(
+        &mut self,
+        state: &mut MechanismState,
+        _input: Option<&ControlInput>,
+    ) -> Vec<JointTorque> {
         let mut tau = vec![JointTorque::Spatial(SpatialVector::zero())]; // first floating joint unactuated
 
         let q1 = state.q[1].float();
@@ -137,7 +141,11 @@ impl Hopper2DController {
 }
 
 impl Controller for Hopper2DController {
-    fn control(&mut self, state: &mut MechanismState) -> Vec<JointTorque> {
+    fn control(
+        &mut self,
+        state: &mut MechanismState,
+        _input: Option<&ControlInput>,
+    ) -> Vec<JointTorque> {
         let mut tau = vec![JointTorque::Spatial(SpatialVector::zero())]; // first floating joint unactuated
 
         let q = state.q.clone();

@@ -8,7 +8,7 @@ use crate::{
     PI,
 };
 
-use super::Controller;
+use super::{ControlInput, Controller};
 
 pub struct QuadrupedTrottingController {
     ticks: usize,
@@ -29,7 +29,11 @@ pub struct QuadrupedTrottingController {
 
 impl Controller for QuadrupedTrottingController {
     /// Controller for trotting forward
-    fn control(&mut self, state: &mut MechanismState) -> Vec<JointTorque> {
+    fn control(
+        &mut self,
+        state: &mut MechanismState,
+        _input: Option<&ControlInput>,
+    ) -> Vec<JointTorque> {
         let x = state.q[0].pose().translation.x;
         let dx = x - self.target_x;
         let max_vx = 1.0;
@@ -280,7 +284,11 @@ pub struct QuadrupedStandingController {}
 
 impl Controller for QuadrupedStandingController {
     /// Control the quadruped to stand still
-    fn control(&mut self, state: &mut MechanismState) -> Vec<JointTorque> {
+    fn control(
+        &mut self,
+        state: &mut MechanismState,
+        _input: Option<&ControlInput>,
+    ) -> Vec<JointTorque> {
         let mut tau = vec![JointTorque::Spatial(SpatialVector::zero())]; // first floating joint unactuated
 
         let kp = 150.0;
@@ -460,7 +468,7 @@ mod quadruped_control_tests {
         let mut final_body_pose = Pose::identity();
         let mut final_body_vel = Vector3::zeros();
         for _ in 0..num_steps {
-            let tau = controller.control(&mut state);
+            let tau = controller.control(&mut state, None);
             let (q, v) = step(&mut state, dt, &tau, &Integrator::SemiImplicitEuler);
 
             final_body_pose = *q[0].pose();

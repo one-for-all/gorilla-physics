@@ -12,8 +12,22 @@ pub mod pusher_control;
 pub mod quadruped_control;
 pub mod swingup;
 
+pub struct ControlInput {
+    floats: Vec<Float>,
+}
+
+impl ControlInput {
+    pub fn new(floats: Vec<Float>) -> Self {
+        ControlInput { floats }
+    }
+}
+
 pub trait Controller {
-    fn control(&mut self, state: &mut MechanismState) -> Vec<JointTorque>;
+    fn control(
+        &mut self,
+        state: &mut MechanismState,
+        input: Option<&ControlInput>,
+    ) -> Vec<JointTorque>;
 }
 
 /// Control algorithm that effectively inverts the gravity for a pendulum system.

@@ -2,24 +2,48 @@ use crate::{
     joint::JointTorque, mechanism::MechanismState, spatial::spatial_vector::SpatialVector,
 };
 
-use super::Controller;
+use super::{ControlInput, Controller};
 
 pub struct PusherController {}
 
 impl Controller for PusherController {
-    fn control(&mut self, state: &mut MechanismState) -> Vec<JointTorque> {
+    fn control(
+        &mut self,
+        state: &mut MechanismState,
+        input: Option<&ControlInput>,
+    ) -> Vec<JointTorque> {
         let q_pusher = state.q[1].float();
         let v_pusher = state.v[1].float();
-        let q_pusher_desired = 3.0;
-        let q_d = q_pusher_desired - q_pusher;
-        let v_target = q_d.signum() * 10.0 * q_d.abs().min(0.1);
-        let tau_pusher = 100.0 * (v_target - v_pusher);
 
-        vec![
-            JointTorque::Float(0.0),
+        if input.is_none() {
+            let q_pusher_desired = 3.0;
+            let q_d = q_pusher_desired - q_pusher;
+            let v_target = q_d.signum() * 10.0 * q_d.abs().min(0.1);
+            let tau_pusher = 100.0 * (v_target - v_pusher);
+
+            return vec![
+                JointTorque::Float(0.0),
+                JointTorque::Float(tau_pusher),
+                JointTorque::Spatial(SpatialVector::zero()),
+            ];
+        }
+
+        let input = input.unwrap();
+        let input_base = input.floats[0];
+        let input_pusher = input.floats[1];
+
+        let v_base = state.v[0].float();
+        let v_base_desired = input_base;
+        let tau_base = 100.0 * (v_base_desired - v_base);
+
+        let v_pusher_desired = input_pusher;
+        let tau_pusher = 100.0 * (v_pusher_desired - v_pusher);
+
+        return vec![
+            JointTorque::Float(tau_base),
             JointTorque::Float(tau_pusher),
             JointTorque::Spatial(SpatialVector::zero()),
-        ]
+        ];
     }
 }
 
@@ -48,7 +72,7 @@ mod pusher_controller_tests {
         let dt = 1.0 / 1000.0;
         let num_steps = (final_time / dt) as usize;
         for _s in 0..num_steps {
-            let torque = controller.control(&mut state);
+            let torque = controller.control(&mut state, None);
             let (q, v) = step(&mut state, dt, &torque, &Integrator::SemiImplicitEuler);
         }
 

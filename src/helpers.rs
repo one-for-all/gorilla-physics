@@ -593,15 +593,16 @@ pub fn build_quadruped() -> MechanismState {
 pub fn build_pusher() -> MechanismState {
     // Build planar pusher robot
     let base_frame = "base";
-    let w_base = 2.0;
-    let base_link = RigidBody::new_cuboid(1.0, w_base, 0.5, 0.5, &base_frame);
-    let base_to_world = Transform3D::move_xyz(&base_frame, WORLD_FRAME, w_base / 2.0, 0.0, 2.0);
+    let w_base = 0.5;
+    let h_base = 0.5;
+    let base_link = RigidBody::new_cuboid(1.0, w_base, 0.5, h_base, &base_frame);
+    let base_to_world = Transform3D::move_xyz(&base_frame, WORLD_FRAME, 0.0, 0.0, 2.0);
 
     let pusher_frame = "pusher";
-    let h_pusher = 2.0;
+    let m_pusher = 1.0;
     let w_pusher = 0.2;
     let d_pusher = 0.2;
-    let m_pusher = 1.0;
+    let h_pusher = 1.75;
     let mut pusher_link =
         RigidBody::new_cuboid(m_pusher, w_pusher, d_pusher, h_pusher, &pusher_frame);
     pusher_link.add_collider(Cuboid::new_at_center(w_pusher, d_pusher, h_pusher));
@@ -610,15 +611,20 @@ pub fn build_pusher() -> MechanismState {
         &base_frame,
         w_base / 2.0 + w_pusher / 2.0,
         0.0,
-        -h_pusher / 2.0,
+        -h_base / 2.0 - h_pusher / 2.0,
     );
 
     let cube_frame = "cube";
     let l_cube = 0.5;
     let mut cube = RigidBody::new_cube(0.1, l_cube, &cube_frame);
     cube.add_collider(Cuboid::new_cube_at_center(l_cube));
-    let cube_to_world =
-        Transform3D::move_xyz(&cube_frame, WORLD_FRAME, w_base + 1.0, 0., l_cube / 2.0);
+    let cube_to_world = Transform3D::move_xyz(
+        &cube_frame,
+        WORLD_FRAME,
+        w_base + w_pusher + 0.5,
+        0.,
+        l_cube / 2.0,
+    );
 
     let bodies = vec![base_link, pusher_link, cube];
     let treejoints = vec![

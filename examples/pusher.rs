@@ -26,7 +26,7 @@ pub fn main() {
     let num_steps = (final_time / dt) as usize;
     let mut data1 = vec![];
     for ns in 0..num_steps {
-        let torque = controller.control(&mut state);
+        let torque = controller.control(&mut state, None);
         let (_q, v) = step(
             &mut state,
             dt,

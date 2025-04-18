@@ -1,5 +1,15 @@
 import { Simulator } from "./Simulator";
 
+export const keysPressed: Record<string, boolean> = {};
+
+document.addEventListener("keydown", (e) => {
+  keysPressed[e.key.toLowerCase()] = true;
+});
+
+document.addEventListener("keyup", (e) => {
+  keysPressed[e.key.toLowerCase()] = false;
+});
+
 import("gorilla-physics").then((gorilla) => {
   let default_z = 0.8;
   let state = gorilla.createPusher();

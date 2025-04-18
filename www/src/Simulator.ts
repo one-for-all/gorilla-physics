@@ -5,6 +5,7 @@ import { Graphics } from "./Graphics";
 import { Line2 } from "three/examples/jsm/lines/Line2";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
+import { keysPressed } from ".";
 
 export class Simulator {
   simulator: InterfaceSimulator;
@@ -16,6 +17,7 @@ export class Simulator {
   bob: THREE.Mesh;
   cart: THREE.Mesh;
   meshes: Map<string, THREE.Mesh>;
+  edgesMeshes: Map<string, THREE.LineSegments>;
   lines: Map<string, Line2>;
 
   fps: number;
@@ -26,6 +28,7 @@ export class Simulator {
 
     this.graphics = new Graphics();
     this.meshes = new Map();
+    this.edgesMeshes = new Map();
     this.lines = new Map();
     this.fps = 60;
     this.time = 0.0;
@@ -37,6 +40,12 @@ export class Simulator {
     const box = new THREE.Mesh(geometry, material);
     this.meshes.set(name, box);
     this.graphics.scene.add(box);
+
+    const edges = new THREE.EdgesGeometry(geometry);
+    const edgesMaterial = new THREE.LineBasicMaterial({ color: 0x000000 });
+    const edgesMesh = new THREE.LineSegments(edges, edgesMaterial);
+    this.edgesMeshes.set(name, edgesMesh);
+    this.graphics.scene.add(edgesMesh);
   }
 
   addSphere(name: string, color: number, radius: number) {
@@ -66,6 +75,12 @@ export class Simulator {
     let body = this.meshes.get(name);
     body.rotation.set(euler[0], euler[1], euler[2]);
     body.position.set(pos[0], pos[1], pos[2]);
+
+    let edges = this.edgesMeshes.get(name);
+    if (edges) {
+      edges.rotation.set(euler[0], euler[1], euler[2]);
+      edges.position.set(pos[0], pos[1], pos[2]);
+    }
   }
 
   setLineEndpoints(name: string, pos1: Float32Array, pos2: Float32Array) {
@@ -239,8 +254,8 @@ export class Simulator {
   }
 
   addPusher() {
-    this.addBox("extension", 0xffffff, 2.0, 0.5, 0.5);
-    this.addBox("lift", 0xff0000, 0.2, 0.2, 2.0);
+    this.addBox("extension", 0xffffff, 0.5, 0.5, 0.5);
+    this.addBox("lift", 0xff0000, 0.2, 0.2, 1.75);
     this.addBox("cube", 0x00ff00, 0.5, 0.5, 0.5);
   }
 
@@ -515,7 +530,22 @@ export class Simulator {
     // TODO: measure and use the actual time elapsed
     const dt = 1 / this.fps;
 
-    let qs = this.simulator.step(dt);
+    let control_input = new Float32Array(2);
+    let rotation_speed = 1.0;
+    if (keysPressed["a"]) {
+      control_input[0] = rotation_speed;
+    } else if (keysPressed["d"]) {
+      control_input[0] = -rotation_speed;
+    }
+
+    let linear_speed = 2.0;
+    if (keysPressed["w"]) {
+      control_input[1] = linear_speed;
+    } else if (keysPressed["s"]) {
+      control_input[1] = -linear_speed;
+    }
+
+    let qs = this.simulator.step(dt, control_input);
     this.time += dt;
 
     let poses = this.simulator.poses();

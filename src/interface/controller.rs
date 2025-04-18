@@ -3,7 +3,7 @@ use crate::{
         energy_control::{Hopper1DController, Hopper2DController},
         pusher_control::PusherController,
         quadruped_control::{QuadrupedStandingController, QuadrupedTrottingController},
-        Controller,
+        ControlInput, Controller,
     },
     joint::JointTorque,
     mechanism::MechanismState,
@@ -82,7 +82,11 @@ pub fn createPusherController() -> InterfaceController {
 pub struct NullController {}
 
 impl Controller for NullController {
-    fn control(&mut self, _state: &mut MechanismState) -> Vec<JointTorque> {
+    fn control(
+        &mut self,
+        _state: &mut MechanismState,
+        _input: Option<&ControlInput>,
+    ) -> Vec<JointTorque> {
         vec![]
     }
 }

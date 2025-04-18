@@ -891,7 +891,7 @@ mod contact_tests {
         let mut energies = vec![];
         let mut hs = vec![];
         for _ in 0..num_steps {
-            let torque = controller.control(&mut state);
+            let torque = controller.control(&mut state, None);
             let (q, v) = step(
                 &mut state,
                 dt,
