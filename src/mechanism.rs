@@ -35,9 +35,9 @@ use na::Vector3;
 /// Body 0 is by default world/root.
 /// Does not support closed kinematic chain yet.
 pub struct MechanismState {
-    pub treejoints: Vec<Joint>, // treejoints[i-1] = joint of joint number i
-    pub treejointids: Vec<usize>,
-    pub bodies: Vec<RigidBody>, // bodies[i-1] = body of body number i
+    pub treejoints: Vec<Joint>,   // treejoints[i-1] = joint of joint number i
+    pub treejointids: Vec<usize>, // consecutive numbers from 1 to len(treejoints)
+    pub bodies: Vec<RigidBody>,   // bodies[i-1] = body of body number i
     pub parents: Vec<usize>, // parents[i-1] -> the parent body number for joint of joint number i
     pub supports: Vec<HashSet<usize>>, // supports[i-1] -> all the bodies that joint i supports
     pub q: Vec<JointPosition>, // joint configuration/position vector

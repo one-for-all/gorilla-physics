@@ -6,10 +6,11 @@ use na::{UnitVector3, Vector3};
 
 use crate::collision::epa::epa;
 use crate::collision::gjk::gjk;
+use crate::wrench::Wrench;
 use crate::WORLD_FRAME;
 use crate::{
-    control::energy_control::spring_force, mechanism::MechanismState, spatial_force::Wrench,
-    transform::Transform3D, twist::Twist, types::Float,
+    control::energy_control::spring_force, mechanism::MechanismState, transform::Transform3D,
+    twist::Twist, types::Float,
 };
 
 #[derive(Clone, PartialEq, Debug)]

@@ -19,12 +19,12 @@ pub mod pose;
 pub mod rigid_body;
 pub mod simulate;
 pub mod spatial_acceleration;
-pub mod spatial_force;
 pub mod spatial_vector;
 pub mod transform;
 pub mod twist;
 pub mod types;
 pub mod util;
+pub mod wrench;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod plot;

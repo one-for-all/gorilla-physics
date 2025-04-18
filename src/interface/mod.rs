@@ -88,6 +88,7 @@ impl InterfaceSimulator {
         }
 
         // Convert to a format that Javascript can take
+        // TODO: make it into a reusable function
         let q = q.to_float_dvec();
         let q_js = js_sys::Float32Array::new_with_length(q.len() as u32);
         for (i, q) in q.iter().enumerate() {

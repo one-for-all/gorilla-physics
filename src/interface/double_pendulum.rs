@@ -3,10 +3,7 @@ use na::{vector, Matrix3, Matrix4};
 use wasm_bindgen::prelude::*;
 
 use crate::transform::Matrix4Ext;
-use crate::{
-    helpers::build_double_pendulum, joint::ToJointPositionVec, transform::Transform3D,
-    types::Float, PI,
-};
+use crate::{helpers::build_double_pendulum, joint::ToJointPositionVec, types::Float, PI};
 
 use super::InterfaceMechanismState;
 

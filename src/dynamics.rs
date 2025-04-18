@@ -4,12 +4,12 @@ use crate::{
     inertia::compute_inertias,
     joint::{Joint, JointAcceleration, JointTorque, JointVelocity, ToFloatDVec},
     mechanism::mass_matrix,
-    spatial_force::{compute_torques, Wrench},
     spatial_vector::SpatialVector,
     transform::{compute_bodies_to_root, Transform3D},
     twist::{compute_joint_twists, compute_twists_wrt_world, Twist},
     types::Float,
     util::{mul_inertia, se3_commutator},
+    wrench::{compute_torques, Wrench},
     GRAVITY,
 };
 use itertools::izip;
