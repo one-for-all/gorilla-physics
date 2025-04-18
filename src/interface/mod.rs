@@ -76,7 +76,6 @@ impl InterfaceSimulator {
         let n_substep = 50;
         let mut q = vec![];
         for _ in 0..n_substep {
-            // let torque = self.1 .0.vertical_control(&(self.0).0);
             let torque = self.controller.inner.control(&mut (self.state).inner);
             let (_q, _v) = step(
                 &mut (self.state).inner,

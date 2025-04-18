@@ -240,7 +240,7 @@ export class Simulator {
 
   addPusher() {
     this.addBox("extension", 0xffffff, 2.0, 0.5, 0.5);
-    this.addBox("lift", 0xff0000, 0.5, 0.1, 2.0);
+    this.addBox("lift", 0xff0000, 0.2, 0.2, 2.0);
     this.addBox("cube", 0x00ff00, 0.5, 0.5, 0.5);
   }
 

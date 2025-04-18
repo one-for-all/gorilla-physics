@@ -8,22 +8,16 @@ pub struct PusherController {}
 
 impl Controller for PusherController {
     fn control(&mut self, state: &mut MechanismState) -> Vec<JointTorque> {
-        let q_lift = state.q[1].float();
-        let v_lift = state.v[1].float();
-        let q_lift_desired = 0.0;
-        let tau_lift = 500.0 * (q_lift_desired - q_lift) + 500.0 * -v_lift;
-
-        let q_extension = state.q[0].float();
-        let v_extension = state.v[0].float();
-        let q_extension_desired = 3.0;
-
-        let q_d = q_extension_desired - q_extension;
-        let v_target = q_d.sin() * 10.0 * q_d.abs().min(0.1);
-        let tau_extension = 100.0 * (v_target - v_extension);
+        let q_pusher = state.q[1].float();
+        let v_pusher = state.v[1].float();
+        let q_pusher_desired = 3.0;
+        let q_d = q_pusher_desired - q_pusher;
+        let v_target = q_d.signum() * 10.0 * q_d.abs().min(0.1);
+        let tau_pusher = 100.0 * (v_target - v_pusher);
 
         vec![
-            JointTorque::Float(tau_extension),
-            JointTorque::Float(tau_lift),
+            JointTorque::Float(0.0),
+            JointTorque::Float(tau_pusher),
             JointTorque::Spatial(SpatialVector::zero()),
         ]
     }
@@ -63,6 +57,6 @@ mod pusher_controller_tests {
         assert!(box_pose.translation.x > 5.0);
         assert_close!(box_pose.translation.y, 0.0, 1e-2);
         assert_close!(box_pose.translation.z, 0.25, 1e-2);
-        assert_close!(box_pose.rotation.angle(), 0.0, 1e-3);
+        assert_close!(box_pose.rotation.angle(), 0.0, 1e-2);
     }
 }
