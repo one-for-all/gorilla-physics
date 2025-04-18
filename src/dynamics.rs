@@ -7,9 +7,9 @@ use crate::{
     spatial::spatial_vector::SpatialVector,
     spatial::transform::{compute_bodies_to_root, Transform3D},
     spatial::twist::{compute_joint_twists, compute_twists_wrt_world, Twist},
+    spatial::wrench::{compute_torques, Wrench},
     types::Float,
     util::{mul_inertia, se3_commutator},
-    wrench::{compute_torques, Wrench},
     GRAVITY,
 };
 use itertools::izip;

@@ -19,7 +19,6 @@ pub mod simulate;
 pub mod spatial;
 pub mod types;
 pub mod util;
-pub mod wrench;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod plot;

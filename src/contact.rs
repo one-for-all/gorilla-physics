@@ -8,7 +8,7 @@ use crate::collision::epa::epa;
 use crate::collision::gjk::gjk;
 use crate::spatial::transform::Transform3D;
 use crate::spatial::twist::Twist;
-use crate::wrench::Wrench;
+use crate::spatial::wrench::Wrench;
 use crate::WORLD_FRAME;
 use crate::{control::energy_control::spring_force, mechanism::MechanismState, types::Float};
 

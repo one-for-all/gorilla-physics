@@ -4,3 +4,4 @@ pub mod spatial_acceleration;
 pub mod spatial_vector;
 pub mod transform;
 pub mod twist;
+pub mod wrench;
