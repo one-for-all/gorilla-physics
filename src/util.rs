@@ -43,17 +43,20 @@ pub fn colwise_cross(a: &Vector3<Float>, b: &Matrix3xX<Float>) -> Matrix3xX<Floa
 }
 
 /// Compute the derivative of quaternion, given angular velocity:
-/// qdot = 1/2 * q \quaternion_product ω, 
+/// qdot = 1/2 * q \quaternion_product ω,
 /// where q is orientation as quaternion, and ω is angular velocity in body frame
-/// 
+///
 /// Ref: 1.5.2 & 1.5.4 in Quaternions and Dynamics, Basile Graf, 2007
-#[rustfmt::skip]
-pub fn quaternion_derivative(q: &UnitQuaternion<Float>, omega: &Vector3<Float>) -> Quaternion<Float> {
+pub fn quaternion_derivative(
+    q: &UnitQuaternion<Float>,
+    omega: &Vector3<Float>,
+) -> Quaternion<Float> {
     let w = q.w;
     let x = q.coords.x;
     let y = q.coords.y;
     let z = q.coords.z;
 
+    #[rustfmt::skip]
     let mat = Matrix4x3::new(
         -x, -y, -z, 
          w, -z,  y, 
