@@ -1,11 +1,11 @@
 use gorilla_physics::joint::ToJointPositionVec;
 use gorilla_physics::joint::ToJointVelocityVec;
-use gorilla_physics::transform::Matrix4Ext;
+use gorilla_physics::spatial::transform::Matrix4Ext;
 use gorilla_physics::{
     dynamics::bias_accelerations,
     helpers::build_double_pendulum,
-    transform::{compute_bodies_to_root, Transform3D},
-    twist::{compute_joint_twists, compute_twists_wrt_world},
+    spatial::transform::compute_bodies_to_root,
+    spatial::twist::{compute_joint_twists, compute_twists_wrt_world},
     types::Float,
 };
 use nalgebra::{vector, Matrix3, Matrix4};

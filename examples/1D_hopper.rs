@@ -1,8 +1,8 @@
-use gorilla_physics::control::energy_control::Controller;
+use gorilla_physics::control::Controller;
 use gorilla_physics::joint::floating::FloatingJoint;
 use gorilla_physics::joint::prismatic::PrismaticJoint;
 use gorilla_physics::joint::Joint;
-use gorilla_physics::transform::Matrix4Ext;
+use gorilla_physics::spatial::transform::Matrix4Ext;
 use gorilla_physics::{
     contact::{ContactPoint, HalfSpace},
     control::energy_control::Hopper1DController,
@@ -12,7 +12,7 @@ use gorilla_physics::{
     plot::plot,
     rigid_body::RigidBody,
     simulate::step,
-    transform::Transform3D,
+    spatial::transform::Transform3D,
     types::Float,
 };
 use nalgebra::{vector, Matrix3, Matrix4, Vector3};
@@ -98,20 +98,11 @@ pub fn main() {
     let bodies = vec![body, leg, foot];
     let mut state = MechanismState::new(treejoints, bodies);
 
-    state.add_contact_point(&ContactPoint {
-        frame: body_frame.to_string(),
-        location: vector![0., 0., 0.],
-    });
+    state.add_contact_point(&ContactPoint::new(body_frame, vector![0., 0., 0.]));
 
-    state.add_contact_point(&ContactPoint {
-        frame: leg_frame.to_string(),
-        location: vector![0., 0., 0.],
-    });
+    state.add_contact_point(&ContactPoint::new(leg_frame, vector![0., 0., 0.]));
 
-    state.add_contact_point(&ContactPoint {
-        frame: foot_frame.to_string(),
-        location: vector![0., 0., 0.],
-    });
+    state.add_contact_point(&ContactPoint::new(foot_frame, vector![0., 0., 0.]));
 
     let ground = HalfSpace::new(Vector3::z_axis(), -20.0);
     state.add_halfspace(&ground);
@@ -133,7 +124,7 @@ pub fn main() {
 
     let mut data: Vec<Float> = Vec::with_capacity(num_steps);
     for _ in 0..num_steps {
-        let torque = controller.control(&mut state);
+        let torque = controller.control(&mut state, None);
         let (_q, v) = step(
             &mut state,
             dt,

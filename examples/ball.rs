@@ -1,16 +1,16 @@
 use gorilla_physics::contact::{ContactPoint, HalfSpace};
-use gorilla_physics::control::energy_control::Controller;
+use gorilla_physics::control::Controller;
 use gorilla_physics::interface::controller::NullController;
 use gorilla_physics::joint::floating::FloatingJoint;
 use gorilla_physics::mechanism::MechanismState;
 use gorilla_physics::plot::{plot, plot_trajectory};
 use gorilla_physics::rigid_body::RigidBody;
 use gorilla_physics::simulate::step;
-use gorilla_physics::transform::Transform3D;
-use nalgebra::{dvector, vector, UnitQuaternion, Vector3};
+use gorilla_physics::spatial::transform::Transform3D;
+use nalgebra::{vector, UnitQuaternion, Vector3};
 
 use gorilla_physics::joint::{Joint, JointPosition, JointVelocity};
-use gorilla_physics::{pose::Pose, spatial_vector::SpatialVector, types::Float};
+use gorilla_physics::{spatial::pose::Pose, spatial::spatial_vector::SpatialVector, types::Float};
 
 pub fn main() {
     // Arrange
@@ -34,10 +34,7 @@ pub fn main() {
     let ground = HalfSpace::new_with_params(Vector3::z_axis(), h_ground, alpha, mu);
     state.add_halfspace(&ground);
 
-    state.add_contact_point(&ContactPoint {
-        frame: ball_frame.to_string(),
-        location: vector![0.0, 0.0, 0.0],
-    });
+    state.add_contact_point(&ContactPoint::new(ball_frame, vector![0.0, 0.0, 0.0]));
 
     let q_init = vec![JointPosition::Pose(Pose {
         rotation: UnitQuaternion::identity(),
@@ -61,7 +58,7 @@ pub fn main() {
     let mut data2: Vec<Float> = Vec::with_capacity(num_steps);
 
     for s in 0..num_steps {
-        let torque = controller.control(&mut state);
+        let torque = controller.control(&mut state, None);
         let (q, v) = step(
             &mut state,
             dt,

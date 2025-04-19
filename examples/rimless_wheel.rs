@@ -3,9 +3,9 @@ use gorilla_physics::{
     helpers::build_rimless_wheel,
     joint::{JointPosition, JointVelocity},
     plot::plot,
-    pose::Pose,
     simulate::step,
-    spatial_vector::SpatialVector,
+    spatial::pose::Pose,
+    spatial::spatial_vector::SpatialVector,
     types::Float,
     GRAVITY, PI,
 };

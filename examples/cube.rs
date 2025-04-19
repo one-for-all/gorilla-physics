@@ -3,9 +3,9 @@ use gorilla_physics::{
     helpers::build_cube,
     joint::{JointPosition, JointVelocity},
     plot::{plot, plot_trajectory},
-    pose::Pose,
     simulate::step,
-    spatial_vector::SpatialVector,
+    spatial::pose::Pose,
+    spatial::spatial_vector::SpatialVector,
     types::Float,
 };
 use nalgebra::{vector, UnitQuaternion, Vector3};

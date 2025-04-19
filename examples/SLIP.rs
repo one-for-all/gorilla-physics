@@ -1,13 +1,13 @@
 use gorilla_physics::{
     contact::HalfSpace,
-    control::energy_control::Controller,
+    control::Controller,
     helpers::build_SLIP,
     interface::controller::NullController,
     joint::{JointPosition, JointVelocity},
     plot::{plot, plot_trajectory},
-    pose::Pose,
     simulate::step,
-    spatial_vector::SpatialVector,
+    spatial::pose::Pose,
+    spatial::spatial_vector::SpatialVector,
     types::Float,
 };
 use nalgebra::{vector, UnitQuaternion, UnitVector3, Vector3};
@@ -58,7 +58,7 @@ pub fn main() {
     let mut v_z_prev = 0.0;
 
     for s in 0..num_steps {
-        let torque = controller.control(&mut state);
+        let torque = controller.control(&mut state, None);
         let (q, v) = step(
             &mut state,
             dt,
