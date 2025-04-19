@@ -10,19 +10,16 @@ Run all tests in lib:
 
 `cargo test --lib -- --nocapture`
 
-Run the pendulum example:
+Run the acrobot example:
 
-`cargo run --bin horizontal_rod_pendulum`
+`cargo run --bin acrobot`
 
-It should generate a plot that plots angle of the rod against the time axis.
-
-## TODO
-
-- Deploy the visualization to github page
-- Add section on visualization in README
+It should generate a plot ("acrobot swingup energy.png") that shows the total energy of the system against time.
 
 ## References
 
 It mainly implements the theory in Roy Featherstone's book [Rigid Body Dynamics Algorithm](https://royfeatherstone.org/).
 
 Also built with a lot of references to Julia package [RigidBodyDynamics.jl](https://github.com/JuliaRobotics/RigidBodyDynamics.jl).
+
+And with the help of a lot of papers. They are referenced in code when used.

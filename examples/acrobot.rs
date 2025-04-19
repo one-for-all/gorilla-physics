@@ -4,11 +4,11 @@ use gorilla_physics::plot::plot;
 use gorilla_physics::spatial::transform::Matrix4Ext;
 use gorilla_physics::{
     control::swingup::swingup_acrobot, energy::double_pendulum_potential_energy2,
-    helpers::build_double_pendulum, joint::ToFloatDVec, simulate::step,
-    spatial::transform::Transform3D, types::Float,
+    helpers::build_double_pendulum, joint::ToFloatDVec, simulate::step, types::Float,
 };
 use nalgebra::{dvector, vector, DVector, Matrix3, Matrix4};
 
+/// Acrobot swing up example
 pub fn main() {
     let m = 1.0;
     let l = 7.0;
@@ -40,7 +40,7 @@ pub fn main() {
     let mut qs: DVector<DVector<Float>> = dvector![];
     let mut vs: DVector<DVector<Float>> = dvector![];
     let mut taus: DVector<DVector<Float>> = dvector![];
-    let mut Es: Vec<Float> = vec![];
+    let mut data1 = vec![];
 
     let mut t = 0.0;
     let final_time = 30.0;
@@ -58,11 +58,10 @@ pub fn main() {
         vs.extend([v.to_float_dvec()]);
         taus.extend([torque.to_float_dvec()]);
 
-        Es.push(state.kinetic_energy() + double_pendulum_potential_energy2(&state, &m, &l));
+        data1.push(state.kinetic_energy() + double_pendulum_potential_energy2(&state, &m, &l));
+
         t += dt;
     }
 
-    let data = Es;
-
-    plot(&data, final_time, dt, num_steps, "acrobot swingup");
+    plot(&data1, final_time, dt, num_steps, "acrobot swingup energy");
 }
