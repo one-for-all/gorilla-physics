@@ -12,15 +12,81 @@
         overflow: hidden;
         width: 100%;
         display: flex;
+        position: relative;
       }
       #threejs {
         height: 100vh;
         flex: 1;
       }
+
+      /* WASD Overlay Styles */
+      .wasd-overlay {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        pointer-events: none; /* Allows clicks to pass through to canvas */
+      }
+
+      .wasd-row {
+        display: flex;
+        margin-bottom: 5px;
+      }
+
+      .wasd-key {
+        width: 40px;
+        height: 40px;
+        background-color: rgba(255, 255, 255, 0.2);
+        border: 2px solid rgba(255, 255, 255, 0.5);
+        border-radius: 5px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 0 5px;
+        color: white;
+        font-family: Arial, sans-serif;
+        font-weight: bold;
+        font-size: 18px;
+      }
+
+      .wasd-key.active {
+        background-color: rgba(255, 255, 255, 0.4);
+        transform: scale(0.95);
+      }
     </style>
   </head>
   <body>
     <div id="threejs"></div>
+    <!-- WASD Overlay -->
+    <div class="wasd-overlay">
+      <div class="wasd-row">
+        <div class="wasd-key" id="key-w">W</div>
+      </div>
+      <div class="wasd-row">
+        <div class="wasd-key" id="key-a">A</div>
+        <div class="wasd-key" id="key-s">S</div>
+        <div class="wasd-key" id="key-d">D</div>
+      </div>
+    </div>
     <script src="index.js"></script>
+    <script>
+      // Add key press highlighting
+      document.addEventListener("keydown", (e) => {
+        const key = e.key.toLowerCase();
+        if (key === "w" || key === "a" || key === "s" || key === "d") {
+          document.getElementById(`key-${key}`).classList.add("active");
+        }
+      });
+
+      document.addEventListener("keyup", (e) => {
+        const key = e.key.toLowerCase();
+        if (key === "w" || key === "a" || key === "s" || key === "d") {
+          document.getElementById(`key-${key}`).classList.remove("active");
+        }
+      });
+    </script>
   </body>
 </html>
