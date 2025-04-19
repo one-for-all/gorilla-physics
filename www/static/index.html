@@ -64,6 +64,36 @@
         transform: scale(0.95);
         box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
       }
+
+      /* Mobile portrait orientation styles */
+      @media (max-width: 768px) and (orientation: portrait) {
+        .wasd-overlay {
+          bottom: 30px;
+          left: 50%;
+          transform: translateX(-50%);
+        }
+
+        .wasd-key {
+          width: 80px;
+          height: 80px;
+          margin: 0 8px;
+          font-size: 32px;
+          border-radius: 15px;
+        }
+
+        .wasd-row {
+          margin-bottom: 12px;
+        }
+      }
+
+      /* Mobile landscape orientation */
+      @media (max-width: 768px) and (orientation: landscape) {
+        .wasd-key {
+          width: 60px;
+          height: 60px;
+          font-size: 24px;
+        }
+      }
     </style>
   </head>
   <body>
