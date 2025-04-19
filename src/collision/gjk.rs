@@ -10,8 +10,7 @@ use super::{
 const ORIGIN: Vector3<Float> = vector![0., 0., 0.];
 
 /// Perform GJK collision detection.
-/// Return:
-///     if in collision, a polytope, in Minkowski difference space, that encloses the origin
+/// Returns the Minkowski difference polytope, if in collision
 pub fn gjk(A: &Cuboid, B: &Cuboid) -> Option<Polytope> {
     // Keeps track of the vertices
     let mut simplex = vec![];
