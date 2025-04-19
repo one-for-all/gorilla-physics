@@ -28,7 +28,6 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        pointer-events: none; /* Allows clicks to pass through to canvas */
       }
 
       .wasd-row {
@@ -37,11 +36,11 @@
       }
 
       .wasd-key {
-        width: 40px;
-        height: 40px;
+        width: 50px;
+        height: 50px;
         background-color: rgba(255, 255, 255, 0.2);
         border: 2px solid rgba(255, 255, 255, 0.5);
-        border-radius: 5px;
+        border-radius: 8px;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -49,12 +48,21 @@
         color: white;
         font-family: Arial, sans-serif;
         font-weight: bold;
-        font-size: 18px;
+        font-size: 20px;
+        cursor: pointer;
+        user-select: none;
+        touch-action: manipulation;
+        transition: all 0.1s ease;
+      }
+
+      .wasd-key:hover {
+        background-color: rgba(255, 255, 255, 0.3);
       }
 
       .wasd-key.active {
         background-color: rgba(255, 255, 255, 0.4);
         transform: scale(0.95);
+        box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
       }
     </style>
   </head>
@@ -73,6 +81,54 @@
     </div>
     <script src="index.js"></script>
     <script>
+      // Create and dispatch keyboard events
+      function simulateKeyEvent(key, type) {
+        const event = new KeyboardEvent(type, {
+          key: key,
+          code: `Key${key.toUpperCase()}`,
+          bubbles: true,
+          cancelable: true,
+          composed: true,
+        });
+        document.dispatchEvent(event);
+      }
+
+      // Add mouse/touch event handlers for each key
+      ["w", "a", "s", "d"].forEach((key) => {
+        const element = document.getElementById(`key-${key}`);
+
+        // Mouse events
+        element.addEventListener("mousedown", () => {
+          element.classList.add("active");
+          simulateKeyEvent(key, "keydown");
+        });
+
+        element.addEventListener("mouseup", () => {
+          element.classList.remove("active");
+          simulateKeyEvent(key, "keyup");
+        });
+
+        element.addEventListener("mouseleave", () => {
+          if (element.classList.contains("active")) {
+            element.classList.remove("active");
+            simulateKeyEvent(key, "keyup");
+          }
+        });
+
+        // Touch events
+        element.addEventListener("touchstart", (e) => {
+          e.preventDefault();
+          element.classList.add("active");
+          simulateKeyEvent(key, "keydown");
+        });
+
+        element.addEventListener("touchend", (e) => {
+          e.preventDefault();
+          element.classList.remove("active");
+          simulateKeyEvent(key, "keyup");
+        });
+      });
+
       // Add key press highlighting
       document.addEventListener("keydown", (e) => {
         const key = e.key.toLowerCase();
