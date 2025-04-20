@@ -271,7 +271,12 @@ mod epa_tests {
 
     use na::{Quaternion, UnitQuaternion};
 
-    use crate::{assert_close, collision::gjk::gjk, util::test_utils::random_vector, PI};
+    use crate::{
+        assert_close,
+        collision::gjk::gjk,
+        util::test_utils::{random_quaternion, random_vector},
+        PI,
+    };
 
     use super::*;
 
@@ -363,8 +368,8 @@ mod epa_tests {
         let mut rng = rng();
 
         let total = 1000;
-        let mut sep_success = 0;
-        let mut col_success = 0;
+        let mut separation_success = 0;
+        let mut collision_success = 0;
         for _case in 0..total {
             // Arrange
             let center = random_vector(&mut rng, 1.0);
@@ -374,12 +379,7 @@ mod epa_tests {
 
             // move B in either x, y or z direction, to make it touch A
             let move_dir = rng.random_range(0..2);
-            let mut b_center = center
-                + vector![
-                    rng.random_range(-1e-2..1e-2),
-                    rng.random_range(-1e-2..1e-2),
-                    rng.random_range(-1e-2..1e-2),
-                ];
+            let mut b_center = center + random_vector(&mut rng, 1e-2);
             b_center[move_dir] = center[move_dir] + l_a / 2.0 + l_b / 2.0;
             let mut B = Cuboid::new_cube(b_center, UnitQuaternion::identity(), l_b);
 
@@ -387,16 +387,8 @@ mod epa_tests {
             let penetration = rng.random_range(0.0..1e-3);
             B.center[move_dir] -= penetration;
 
-            A.rotation = UnitQuaternion::from_euler_angles(
-                rng.random_range(-1e-2..1e-2),
-                rng.random_range(-1e-2..1e-2),
-                rng.random_range(-1e-2..1e-2),
-            );
-            B.rotation = UnitQuaternion::from_euler_angles(
-                rng.random_range(-1e-2..1e-2),
-                rng.random_range(-1e-2..1e-2),
-                rng.random_range(-1e-2..1e-2),
-            );
+            A.rotation = random_quaternion(&mut rng, 1e-2);
+            B.rotation = random_quaternion(&mut rng, 1e-2);
             A.recompute_points();
             B.recompute_points();
 
@@ -414,27 +406,27 @@ mod epa_tests {
             B_test.center += (cp_A - cp_B).scale(1.0 + scale_margin);
             B_test.recompute_points();
             if let Some(mut x) = gjk(&A, &B_test) {
-                println!("sep: {}", cp_A);
+                println!("sep: {}", cp_A - cp_B);
                 println!("remain: {}", epa(&mut x, &A, &B_test).0);
             }
             if gjk(&A, &B_test).is_none() {
-                sep_success += 1;
+                separation_success += 1;
             }
             B_test.center = B.center + (cp_A - cp_B).scale(1.0 - scale_margin);
             B_test.recompute_points();
             if gjk(&A, &B_test).is_some() {
-                col_success += 1;
+                collision_success += 1;
             }
 
             A_test.center += (cp_B - cp_A).scale(1.0 + scale_margin);
             A_test.recompute_points();
             if gjk(&A_test, &B).is_none() {
-                sep_success += 1;
+                separation_success += 1;
             }
             A_test.center = A.center + (cp_B - cp_A).scale(1.0 - scale_margin);
             A_test.recompute_points();
             if gjk(&A_test, &B).is_some() {
-                col_success += 1;
+                collision_success += 1;
             }
 
             let mut A_test = A.clone();
@@ -442,34 +434,34 @@ mod epa_tests {
             A_test.center += (cp_B_2 - cp_A_2).scale(1.0 + scale_margin);
             A_test.recompute_points();
             if let Some(mut x) = gjk(&B, &A_test) {
-                println!("sep: {}", cp_B_2);
+                println!("sep: {}", cp_B_2 - cp_A_2);
                 println!("remain: {}", epa(&mut x, &B, &A_test).0);
             }
             if gjk(&B, &A_test).is_none() {
-                sep_success += 1;
+                separation_success += 1;
             }
             A_test.center = A.center + (cp_B_2 - cp_A_2).scale(1.0 - scale_margin);
             A_test.recompute_points();
             if gjk(&B, &A_test).is_some() {
-                col_success += 1;
+                collision_success += 1;
             }
 
             B_test.center += (cp_A_2 - cp_B_2).scale(1.0 + scale_margin);
             B_test.recompute_points();
             if gjk(&B_test, &A).is_none() {
-                sep_success += 1;
+                separation_success += 1;
             }
             B_test.center = B.center + (cp_A_2 - cp_B_2).scale(1.0 - scale_margin);
             B_test.recompute_points();
             if gjk(&B_test, &A).is_some() {
-                col_success += 1;
+                collision_success += 1;
             }
         }
 
         let check_total = total * 4;
-        let separation_success_rate = sep_success as Float / check_total as Float;
+        let separation_success_rate = separation_success as Float / check_total as Float;
         assert_eq!(separation_success_rate, 1.0);
-        let collision_success_rate = col_success as Float / check_total as Float;
+        let collision_success_rate = collision_success as Float / check_total as Float;
         assert_eq!(collision_success_rate, 1.0);
     }
 
