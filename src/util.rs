@@ -114,7 +114,7 @@ macro_rules! assert_vec_close {
 
 #[cfg(test)]
 pub mod test_utils {
-    use na::{vector, Vector3};
+    use na::{vector, UnitQuaternion, Vector3};
     use rand::{rngs::ThreadRng, Rng};
 
     use crate::types::Float;
@@ -126,5 +126,15 @@ pub mod test_utils {
             rng.random_range(-range..range),
             rng.random_range(-range..range)
         ]
+    }
+
+    /// Build a UnitQuaternion from Euler angles, where each angle is random
+    /// between (-range, range)
+    pub fn random_quaternion(rng: &mut ThreadRng, range: Float) -> UnitQuaternion<Float> {
+        UnitQuaternion::from_euler_angles(
+            rng.random_range(-range..range),
+            rng.random_range(-range..range),
+            rng.random_range(-range..range),
+        )
     }
 }
