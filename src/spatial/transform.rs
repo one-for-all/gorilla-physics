@@ -54,7 +54,7 @@ impl Matrix4Ext for Matrix4<Float> {
 pub struct Transform3D {
     pub from: String,
     pub to: String,
-    pub mat: Matrix4<Float>,
+    pub mat: Matrix4<Float>, // TODO: maybe better represented by Isometry?
 }
 
 impl Transform3D {
