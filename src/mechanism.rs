@@ -166,9 +166,8 @@ impl MechanismState {
         for (jointid, body) in izip!(self.treejointids.iter(), self.bodies.iter_mut()) {
             if let Some(collider) = body.collider.as_mut() {
                 let body_to_root = bodies_to_root.get(jointid).unwrap();
-                collider.center = body_to_root.trans();
-                collider.rotation = UnitQuaternion::from_matrix(&body_to_root.rot());
-                collider.recompute_points();
+                collider.isometry.translation.vector = body_to_root.trans();
+                collider.isometry.rotation = UnitQuaternion::from_matrix(&body_to_root.rot());
             }
         }
     }

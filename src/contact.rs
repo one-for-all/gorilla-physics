@@ -4,8 +4,7 @@ use std::ops::Mul;
 use itertools::izip;
 use na::{UnitVector3, Vector3};
 
-use crate::collision::epa::epa;
-use crate::collision::gjk::gjk;
+use crate::collision::CollisionDetector;
 use crate::spatial::transform::Transform3D;
 use crate::spatial::twist::Twist;
 use crate::spatial::wrench::Wrench;
@@ -233,8 +232,9 @@ pub fn contact_dynamics(
             state.bodies.iter().skip(i + 1)
         ) {
             if let (Some(collider), Some(next_collider)) = (&body.collider, &next_body.collider) {
-                if let Some(mut poly) = gjk(&collider, &next_collider) {
-                    let (cp_a, cp_b) = epa(&mut poly, &collider, &next_collider);
+                let mut collision_detector = CollisionDetector::new(&collider, &next_collider);
+                if collision_detector.gjk() {
+                    let (cp_a, cp_b) = collision_detector.epa();
 
                     let body_twist = twists.get(jointid).unwrap();
                     let cp_a_vel = body_twist.point_velocity(&ContactPoint::new(WORLD_FRAME, cp_a));

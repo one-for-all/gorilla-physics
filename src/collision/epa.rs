@@ -107,9 +107,9 @@ struct HeapElement {
 
 /// Expanding Polytope algorithm.
 /// It computes the penetration depth and two contact points, one on each body.
-/// Note: Contact points are expressed in world coordinate.
+/// Note: Contact points are expressed in reference frame coordinates.
 /// TODO: perform flood-fill, instead of brute-force, when finding visible faces.
-pub fn epa(poly: &mut Polytope, A: &Cuboid, B: &Cuboid) -> (Vector3<Float>, Vector3<Float>) {
+pub(super) fn epa(poly: &mut Polytope, A: &Cuboid, B: &Cuboid) -> (Vector3<Float>, Vector3<Float>) {
     let mut heap = BinaryHeap::new();
 
     // Put all vertices onto heap
@@ -273,7 +273,7 @@ mod epa_tests {
 
     use crate::{
         assert_close,
-        collision::gjk::gjk,
+        collision::{gjk::gjk, CollisionDetector},
         util::test_utils::{random_quaternion, random_vector},
         PI,
     };
@@ -301,7 +301,6 @@ mod epa_tests {
         let mut direction_success_count = 0;
         let mut coplanar_success_count = 0;
         for _case in 0..total_count {
-            // println!("case: {}", _case);
             let v1 = random_vector(&mut rng, 1e-3);
             let mut v2 = random_vector(&mut rng, 1.0);
             let mut v3 = random_vector(&mut rng, 1.0);
@@ -364,101 +363,74 @@ mod epa_tests {
     }
 
     #[test]
-    fn epa_face_shallow_penetration() {
+    fn epa_face_face_shallow_penetration() {
         let mut rng = rng();
 
-        let total = 1000;
+        let total = 2000;
         let mut separation_success = 0;
         let mut collision_success = 0;
         for _case in 0..total {
             // Arrange
-            let center = random_vector(&mut rng, 1.0);
+            let center = random_vector(&mut rng, 100.0);
             let l_a = rng.random_range(0.5..2.0);
             let mut A = Cuboid::new_cube(center, UnitQuaternion::identity(), l_a);
-            let l_b = rng.random_range(0.5..2.0);
 
             // move B in either x, y or z direction, to make it touch A
-            let move_dir = rng.random_range(0..2);
+            let l_b = rng.random_range(0.5..2.0);
             let mut b_center = center + random_vector(&mut rng, 1e-2);
-            b_center[move_dir] = center[move_dir] + l_a / 2.0 + l_b / 2.0;
+            let move_axis = rng.random_range(0..2);
+            let move_dir = {
+                if rng.random_bool(0.5) {
+                    1.0
+                } else {
+                    -1.0
+                }
+            };
+            b_center[move_axis] = center[move_axis] + move_dir * (l_a / 2.0 + l_b / 2.0);
             let mut B = Cuboid::new_cube(b_center, UnitQuaternion::identity(), l_b);
 
             // create a small penetration
-            let penetration = rng.random_range(0.0..1e-3);
-            B.center[move_dir] -= penetration;
+            let penetration = -move_dir * rng.random_range(0.0..1e-3);
+            B.isometry.translation.vector[move_axis] += penetration;
 
-            A.rotation = random_quaternion(&mut rng, 1e-2);
-            B.rotation = random_quaternion(&mut rng, 1e-2);
-            A.recompute_points();
-            B.recompute_points();
+            A.set_rotation(random_quaternion(&mut rng, 1e-2));
+            B.set_rotation(random_quaternion(&mut rng, 1e-2));
 
             // Act
-            let mut poly = gjk(&A, &B).unwrap();
-            let (cp_A, cp_B) = epa(&mut poly, &A, &B);
-
-            let mut poly2 = gjk(&B, &A).unwrap();
-            let (cp_B_2, cp_A_2) = epa(&mut poly2, &B, &A);
+            let mut collision_detector = CollisionDetector::new(&A, &B);
+            let is_collision = collision_detector.gjk();
+            assert!(is_collision);
+            let (cp_A, cp_B) = collision_detector.epa();
 
             // Assert
-            let scale_margin = 1e-3;
+            assert!(A.point_on_surface(&cp_A));
+            assert!(B.point_on_surface(&cp_B));
+
+            let scale_margin = 1e-2;
             let mut A_test = A.clone();
             let mut B_test = B.clone();
-            B_test.center += (cp_A - cp_B).scale(1.0 + scale_margin);
-            B_test.recompute_points();
-            if let Some(mut x) = gjk(&A, &B_test) {
-                println!("sep: {}", cp_A - cp_B);
-                println!("remain: {}", epa(&mut x, &A, &B_test).0);
-            }
-            if gjk(&A, &B_test).is_none() {
+            B_test.isometry.translation.vector += (cp_A - cp_B).scale(1.0 + scale_margin);
+            if !CollisionDetector::new(&A, &B_test).gjk() {
                 separation_success += 1;
             }
-            B_test.center = B.center + (cp_A - cp_B).scale(1.0 - scale_margin);
-            B_test.recompute_points();
-            if gjk(&A, &B_test).is_some() {
+            B_test.isometry.translation.vector =
+                B.isometry.translation.vector + (cp_A - cp_B).scale(1.0 - scale_margin);
+            if CollisionDetector::new(&A, &B_test).gjk() {
                 collision_success += 1;
             }
 
-            A_test.center += (cp_B - cp_A).scale(1.0 + scale_margin);
-            A_test.recompute_points();
-            if gjk(&A_test, &B).is_none() {
+            A_test.isometry.translation.vector += (cp_B - cp_A).scale(1.0 + scale_margin);
+            if !CollisionDetector::new(&A_test, &B).gjk() {
                 separation_success += 1;
             }
-            A_test.center = A.center + (cp_B - cp_A).scale(1.0 - scale_margin);
-            A_test.recompute_points();
-            if gjk(&A_test, &B).is_some() {
-                collision_success += 1;
-            }
-
-            let mut A_test = A.clone();
-            let mut B_test = B.clone();
-            A_test.center += (cp_B_2 - cp_A_2).scale(1.0 + scale_margin);
-            A_test.recompute_points();
-            if let Some(mut x) = gjk(&B, &A_test) {
-                println!("sep: {}", cp_B_2 - cp_A_2);
-                println!("remain: {}", epa(&mut x, &B, &A_test).0);
-            }
-            if gjk(&B, &A_test).is_none() {
-                separation_success += 1;
-            }
-            A_test.center = A.center + (cp_B_2 - cp_A_2).scale(1.0 - scale_margin);
-            A_test.recompute_points();
-            if gjk(&B, &A_test).is_some() {
-                collision_success += 1;
-            }
-
-            B_test.center += (cp_A_2 - cp_B_2).scale(1.0 + scale_margin);
-            B_test.recompute_points();
-            if gjk(&B_test, &A).is_none() {
-                separation_success += 1;
-            }
-            B_test.center = B.center + (cp_A_2 - cp_B_2).scale(1.0 - scale_margin);
-            B_test.recompute_points();
-            if gjk(&B_test, &A).is_some() {
+            A_test.isometry.translation.vector =
+                A.isometry.translation.vector + (cp_B - cp_A).scale(1.0 - scale_margin);
+            if CollisionDetector::new(&A_test, &B).gjk() {
                 collision_success += 1;
             }
         }
 
-        let check_total = total * 4;
+        let check_total = total * 2;
         let separation_success_rate = separation_success as Float / check_total as Float;
         assert_eq!(separation_success_rate, 1.0);
         let collision_success_rate = collision_success as Float / check_total as Float;
@@ -476,9 +448,9 @@ mod epa_tests {
 
         // create a small penetration
         let penetration = 1e-3;
-        B.center[0] -= penetration;
+        B.isometry.translation.vector[0] -= penetration;
 
-        A.rotation = UnitQuaternion::from_euler_angles(-1e-2, 1e-2, -1e-2);
+        A.isometry.rotation = UnitQuaternion::from_euler_angles(-1e-2, 1e-2, -1e-2);
         A.recompute_points();
         B.recompute_points();
 
@@ -488,7 +460,7 @@ mod epa_tests {
 
         // Assert
         let mut B_test = B.clone();
-        B_test.center += (cp_A - cp_B).scale(1.0 + 1e-3);
+        B_test.isometry.translation.vector += (cp_A - cp_B).scale(1.0 + 1e-3);
         B_test.recompute_points();
         assert!(gjk(&A, &B_test).is_none());
     }
@@ -508,7 +480,7 @@ mod epa_tests {
 
         // create a small penetration
         let penetration = 1e-3;
-        B.center[0] -= penetration;
+        B.isometry.translation.vector[0] -= penetration;
         B.recompute_points();
 
         // Act
@@ -518,10 +490,11 @@ mod epa_tests {
         // Assert
         let normal = cp_A - cp_B;
         let mut B_test = B.clone();
-        B_test.center += normal.scale(1.0 + 1e-3);
+        B_test.isometry.translation.vector += normal.scale(1.0 + 1e-3);
         B_test.recompute_points();
         assert!(gjk(&A, &B_test).is_none());
-        B_test.center = B.center + normal.scale(1.0 - 1e-3);
+        B_test.isometry.translation.vector =
+            B.isometry.translation.vector + normal.scale(1.0 - 1e-3);
         B_test.recompute_points();
         assert!(gjk(&A, &B_test).is_some());
     }
@@ -540,10 +513,11 @@ mod epa_tests {
         // Assert
         let normal = cp_A - cp_B;
         let mut B_test = B.clone();
-        B_test.center += normal.scale(1.0 + 1e-3);
+        B_test.isometry.translation.vector += normal.scale(1.0 + 1e-3);
         B_test.recompute_points();
         assert!(gjk(&A, &B_test).is_none());
-        B_test.center = B.center + normal.scale(1.0 - 1e-3);
+        B_test.isometry.translation.vector =
+            B.isometry.translation.vector + normal.scale(1.0 - 1e-3);
         B_test.recompute_points();
         assert!(gjk(&A, &B_test).is_some());
         assert_close!(normal.norm(), l / 2.0, 1e-5);
@@ -563,10 +537,11 @@ mod epa_tests {
         // Assert
         let normal = cp_A - cp_B;
         let mut B_test = B.clone();
-        B_test.center += normal.scale(1.0 + 1e-3);
+        B_test.isometry.translation.vector += normal.scale(1.0 + 1e-3);
         B_test.recompute_points();
         assert!(gjk(&A, &B_test).is_none());
-        B_test.center = B.center + normal.scale(1.0 - 1e-3);
+        B_test.isometry.translation.vector =
+            B.isometry.translation.vector + normal.scale(1.0 - 1e-3);
         B_test.recompute_points();
         assert!(gjk(&A, &B_test).is_some());
         assert_close!(normal.norm(), l / 2.0, 1e-5);

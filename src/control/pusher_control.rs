@@ -15,6 +15,7 @@ impl Controller for PusherController {
         let q_pusher = state.q[1].float();
         let v_pusher = state.v[1].float();
 
+        // When no input command, control to default target q
         if input.is_none() {
             let q_pusher_desired = 3.0;
             let q_d = q_pusher_desired - q_pusher;

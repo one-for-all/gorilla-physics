@@ -11,16 +11,18 @@ const ORIGIN: Vector3<Float> = vector![0., 0., 0.];
 
 /// Perform GJK collision detection.
 /// Returns the Minkowski difference polytope, if in collision
-pub fn gjk(A: &Cuboid, B: &Cuboid) -> Option<Polytope> {
+pub(super) fn gjk(A: &Cuboid, B: &Cuboid) -> Option<Polytope> {
     // Keeps track of the vertices
     let mut simplex = vec![];
 
     // Pick an initial direction
     let mut direction = {
-        if A.center == B.center {
+        let center_A = A.isometry.translation.vector;
+        let center_B = B.isometry.translation.vector;
+        if center_A == center_B {
             vector![1., 0., 0.]
         } else {
-            A.center - B.center
+            center_A - center_B
         }
     };
 
@@ -221,18 +223,18 @@ mod gjk_tests {
 
             // create a small penetration
             let penetration = rng.random_range(0.0..1e-3);
-            B.center[move_dir] -= penetration;
+            B.isometry.translation.vector[move_dir] -= penetration;
 
-            A.rotation = UnitQuaternion::from_euler_angles(
+            A.set_rotation(UnitQuaternion::from_euler_angles(
                 rng.random_range(-1e-2..1e-2),
                 rng.random_range(-1e-2..1e-2),
                 rng.random_range(-1e-2..1e-2),
-            );
-            B.rotation = UnitQuaternion::from_euler_angles(
+            ));
+            B.set_rotation(UnitQuaternion::from_euler_angles(
                 rng.random_range(-1e-2..1e-2),
                 rng.random_range(-1e-2..1e-2),
                 rng.random_range(-1e-2..1e-2),
-            );
+            ));
             A.recompute_points();
             B.recompute_points();
 
@@ -271,18 +273,18 @@ mod gjk_tests {
             let mut B = Cuboid::new_cube(b_center, UnitQuaternion::identity(), l_b);
 
             let disturbance = rng.random_range(-1e-2..1e-2);
-            B.center[move_dir] += disturbance;
+            B.isometry.translation.vector[move_dir] += disturbance;
 
-            A.rotation = UnitQuaternion::from_euler_angles(
+            A.set_rotation(UnitQuaternion::from_euler_angles(
                 rng.random_range(-PI..PI),
                 rng.random_range(-PI..PI),
                 rng.random_range(-PI..PI),
-            );
-            B.rotation = UnitQuaternion::from_euler_angles(
+            ));
+            B.set_rotation(UnitQuaternion::from_euler_angles(
                 rng.random_range(-PI..PI),
                 rng.random_range(-PI..PI),
                 rng.random_range(-PI..PI),
-            );
+            ));
             A.recompute_points();
             B.recompute_points();
 
@@ -320,18 +322,18 @@ mod gjk_tests {
 
             // create a small separation
             let separation = rng.random_range(1e-1..2e-1);
-            B.center[move_dir] += separation;
+            B.isometry.translation.vector[move_dir] += separation;
 
-            A.rotation = UnitQuaternion::from_euler_angles(
+            A.set_rotation(UnitQuaternion::from_euler_angles(
                 rng.random_range(-1e-2..1e-2),
                 rng.random_range(-1e-2..1e-2),
                 rng.random_range(-1e-2..1e-2),
-            );
-            B.rotation = UnitQuaternion::from_euler_angles(
+            ));
+            B.set_rotation(UnitQuaternion::from_euler_angles(
                 rng.random_range(-1e-2..1e-2),
                 rng.random_range(-1e-2..1e-2),
                 rng.random_range(-1e-2..1e-2),
-            );
+            ));
             A.recompute_points();
             B.recompute_points();
 
