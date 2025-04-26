@@ -12,7 +12,7 @@ document.addEventListener("keyup", (e) => {
 
 import("gorilla-physics").then((gorilla) => {
   let default_z = 0.8;
-  let state = gorilla.createPusher();
+  let state = gorilla.createGripper();
 
   let angle: number = (0.0 * Math.PI) / 180.0;
   let normal = new Float32Array([Math.sin(angle), 0.0, Math.cos(angle)]);
@@ -22,12 +22,12 @@ import("gorilla-physics").then((gorilla) => {
   state.addHalfSpaceCustom(normal, h_ground, alpha, mu);
 
   let dt = 1.0 / (60.0 * 50.0);
-  let controller = gorilla.createPusherController();
+  let controller = gorilla.createGripperontroller();
 
   let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
 
   let simulator = new Simulator(interfaceSimulator);
-  simulator.addPusher();
+  simulator.addGripper();
 
   simulator.addPlane(normal, h_ground, 100);
 

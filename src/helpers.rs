@@ -638,3 +638,77 @@ pub fn build_pusher() -> MechanismState {
 
     state
 }
+
+pub fn build_gripper() -> MechanismState {
+    // Build gripper robot
+    let lift_frame = "lift";
+    let m_lift = 1.0;
+    let w_lift = 0.2;
+    let d_lift = 0.2;
+    let h_lift = 1.0;
+    let lift = RigidBody::new_cuboid(m_lift, w_lift, d_lift, h_lift, &lift_frame);
+    let lift_to_world = Transform3D::move_xyz(&lift_frame, WORLD_FRAME, 0.0, 0.0, 2.0);
+
+    let m_gripper = 0.5;
+    let w_gripper = 0.1;
+    let d_gripper = 0.4;
+    let h_gripper = 0.4;
+    let gripper_left_frame = "gripper_left";
+    let mut gripper_left = RigidBody::new_cuboid(
+        m_gripper,
+        w_gripper,
+        d_gripper,
+        h_gripper,
+        &gripper_left_frame,
+    );
+    gripper_left.add_collider(Cuboid::new_at_center(w_gripper, d_gripper, h_gripper));
+    let gripper_left_to_lift = Transform3D::move_xyz(
+        &gripper_left_frame,
+        &lift_frame,
+        -w_lift / 2.0 - w_gripper / 2.0 - 0.3,
+        0.0,
+        -h_lift / 2.0 - h_gripper / 2.0,
+    );
+
+    let gripper_right_frame = "gripper_right";
+    let mut gripper_right = RigidBody::new_cuboid(
+        m_gripper,
+        w_gripper,
+        d_gripper,
+        h_gripper,
+        &gripper_right_frame,
+    );
+    gripper_right.add_collider(Cuboid::new_at_center(w_gripper, d_gripper, h_gripper));
+    let gripper_right_to_lift = Transform3D::move_xyz(
+        &gripper_right_frame,
+        &lift_frame,
+        w_lift / 2.0 + w_gripper / 2.0 + 0.3,
+        0.0,
+        -h_lift / 2.0 - h_gripper / 2.0,
+    );
+
+    let cube_frame = "cube";
+    let l_cube = 0.5;
+    let mut cube = RigidBody::new_cube(0.1, l_cube, &cube_frame);
+    cube.add_collider(Cuboid::new_cube_at_center(l_cube));
+    let cube_to_world = Transform3D::move_xyz(&cube_frame, WORLD_FRAME, 0.0, 0., l_cube / 2.0);
+
+    let bodies = vec![lift, gripper_left, gripper_right, cube];
+    let treejoints = vec![
+        Joint::PrismaticJoint(PrismaticJoint::new(lift_to_world, vector![0.0, 0.0, -1.0])),
+        Joint::PrismaticJoint(PrismaticJoint::new(
+            gripper_left_to_lift,
+            vector![-1.0, 0.0, 0.0],
+        )),
+        Joint::PrismaticJoint(PrismaticJoint::new(
+            gripper_right_to_lift,
+            vector![1.0, 0.0, 0.0],
+        )),
+        Joint::FloatingJoint(FloatingJoint::new(cube_to_world)),
+    ];
+    let mut state = MechanismState::new(treejoints, bodies);
+
+    add_cube_contacts(&mut state, &cube_frame, l_cube);
+
+    state
+}

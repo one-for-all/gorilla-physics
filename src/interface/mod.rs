@@ -41,9 +41,9 @@ pub mod cube;
 pub mod double_pendulum;
 pub mod hopper;
 pub mod pendulum;
-pub mod pusher;
 pub mod quadruped;
 pub mod rimless_wheel;
+pub mod robot_arm;
 
 #[wasm_bindgen]
 extern "C" {

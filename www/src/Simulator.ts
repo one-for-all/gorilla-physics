@@ -259,6 +259,13 @@ export class Simulator {
     this.addBox("cube", 0x00ff00, 0.5, 0.5, 0.5);
   }
 
+  addGripper() {
+    this.addBox("lift", 0xff0000, 0.2, 0.2, 1.0);
+    this.addBox("gripper_left", 0x00ff00, 0.1, 0.4, 0.4);
+    this.addBox("gripper_right", 0x00ff00, 0.1, 0.4, 0.4);
+    this.addBox("cube", 0x0000ff, 0.5, 0.5, 0.5);
+  }
+
   add1DHopper(w_body: number, h_body: number, r_leg: number, r_foot: number) {
     const bodyGeometry = new THREE.BoxGeometry(w_body, w_body, h_body);
     const bodyMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
@@ -467,6 +474,25 @@ export class Simulator {
     this.setPose("cube", cubePose);
   }
 
+  // TODO: automate this
+  updateGripper(poses: Float32Array) {
+    let i = 0;
+    let liftPose = poses.subarray(i, i + 6);
+    this.setPose("lift", liftPose);
+
+    i += 6;
+    let gripperLeftPose = poses.subarray(i, i + 6);
+    this.setPose("gripper_left", gripperLeftPose);
+
+    i += 6;
+    let gripperRightPose = poses.subarray(i, i + 6);
+    this.setPose("gripper_right", gripperRightPose);
+
+    i += 6;
+    let cubePose = poses.subarray(i, i + 6);
+    this.setPose("cube", cubePose);
+  }
+
   update1DHopper(poses: Float32Array) {
     let body_euler = [poses[0], poses[1], poses[2]];
     let body_pos = [poses[3], poses[4], poses[5]];
@@ -531,18 +557,19 @@ export class Simulator {
     const dt = 1 / this.fps;
 
     let control_input = new Float32Array(2);
-    let rotation_speed = 1.0;
-    if (keysPressed["a"]) {
-      control_input[0] = rotation_speed;
-    } else if (keysPressed["d"]) {
-      control_input[0] = -rotation_speed;
+
+    // drop the arm
+    if (keysPressed["s"]) {
+      control_input[0] = 1.0;
+    } else {
+      control_input[0] = 0.0;
     }
 
-    let linear_speed = 2.0;
-    if (keysPressed["w"]) {
-      control_input[1] = linear_speed;
-    } else if (keysPressed["s"]) {
-      control_input[1] = -linear_speed;
+    // close the gripper
+    if (keysPressed[" "]) {
+      control_input[1] = 1.0;
+    } else {
+      control_input[1] = 0.0;
     }
 
     let qs = this.simulator.step(dt, control_input);
@@ -550,7 +577,7 @@ export class Simulator {
 
     let poses = this.simulator.poses();
     let contact_positions = this.simulator.contact_positions();
-    this.updatePusher(poses);
+    this.updateGripper(poses);
 
     requestAnimationFrame((t) => this.run(t));
   }

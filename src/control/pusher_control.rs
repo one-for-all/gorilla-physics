@@ -40,11 +40,11 @@ impl Controller for PusherController {
         let v_pusher_desired = input_pusher;
         let tau_pusher = 100.0 * (v_pusher_desired - v_pusher);
 
-        return vec![
+        vec![
             JointTorque::Float(tau_base),
             JointTorque::Float(tau_pusher),
             JointTorque::Spatial(SpatialVector::zero()),
-        ];
+        ]
     }
 }
 
@@ -60,7 +60,7 @@ mod pusher_controller_tests {
     use super::*;
 
     #[test]
-    fn robot_pusher() {
+    fn pusher_robot() {
         // Arrange
         let mut state = build_pusher();
         let ground = HalfSpace::new(Vector3::z_axis(), 0.0);
