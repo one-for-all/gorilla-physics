@@ -19,6 +19,8 @@ use na::Vector3;
 use na::{vector, Matrix3, Matrix4};
 use wasm_bindgen::prelude::*;
 use web_sys::js_sys;
+use web_sys::js_sys::Float32Array;
+use web_sys::js_sys::Uint32Array;
 
 use crate::spatial::transform::Matrix4Ext;
 use crate::{
@@ -40,6 +42,7 @@ pub mod controller;
 pub mod cube;
 pub mod double_pendulum;
 pub mod hopper;
+pub mod mass_spring_deformable;
 pub mod pendulum;
 pub mod quadruped;
 pub mod rimless_wheel;
@@ -403,4 +406,14 @@ pub fn createCompassGait() -> InterfaceMechanismState {
     state.set_joint_q(3, JointPosition::Float(Float::to_radians(-30.0)));
 
     InterfaceMechanismState { inner: state }
+}
+
+fn to_js_float_array(from: &Vec<Vector3<Float>>) -> js_sys::Float32Array {
+    let from: Vec<f32> = from.iter().flat_map(|v| [v.x, v.y, v.z]).collect();
+    js_sys::Float32Array::from(from.as_slice())
+}
+
+fn to_js_uint_array(from: &Vec<Vec<usize>>) -> js_sys::Uint32Array {
+    let from: Vec<u32> = from.iter().flatten().map(|v| *v as u32).collect();
+    js_sys::Uint32Array::from(from.as_slice())
 }

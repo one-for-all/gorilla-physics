@@ -1,14 +1,18 @@
-import { InterfaceSimulator } from "gorilla-physics";
+import {
+  InterfaceMassSpringDeformable,
+  InterfaceSimulator,
+} from "gorilla-physics";
 import * as THREE from "three";
 import { Graphics } from "./Graphics";
 
 import { Line2 } from "three/examples/jsm/lines/Line2";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
-import { keysPressed } from ".";
 
 export class Simulator {
   simulator: InterfaceSimulator;
+
+  massSpringBunny: InterfaceMassSpringDeformable;
 
   graphics: Graphics;
   length: number;
@@ -26,12 +30,45 @@ export class Simulator {
   constructor(simulator: InterfaceSimulator) {
     this.simulator = simulator;
 
+    this.massSpringBunny = null;
+
     this.graphics = new Graphics();
     this.meshes = new Map();
     this.edgesMeshes = new Map();
     this.lines = new Map();
     this.fps = 60;
     this.time = 0.0;
+  }
+
+  addBunny(bunny: InterfaceMassSpringDeformable) {
+    this.massSpringBunny = bunny;
+
+    const geometry = new THREE.BufferGeometry();
+    let vertices = this.massSpringBunny.vertices();
+    geometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
+
+    let facets = this.massSpringBunny.facets();
+    geometry.setIndex(new THREE.BufferAttribute(facets, 1));
+    geometry.computeVertexNormals();
+
+    const material = new THREE.MeshPhongMaterial({
+      color: 0x2194ce,
+      side: THREE.DoubleSide, // Render both sides of faces
+      flatShading: true,
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+    this.meshes.set("bunny", mesh);
+    this.graphics.scene.add(mesh);
+  }
+
+  updateBunny() {
+    let bunny = this.meshes.get("bunny");
+
+    let vertices = this.massSpringBunny.vertices();
+    bunny.geometry.setAttribute(
+      "position",
+      new THREE.BufferAttribute(vertices, 3)
+    );
   }
 
   addBox(name: string, color: number, w: number, d: number, h: number) {
@@ -556,28 +593,36 @@ export class Simulator {
     // TODO: measure and use the actual time elapsed
     const dt = 1 / this.fps;
 
-    let control_input = new Float32Array(2);
+    // let control_input = new Float32Array(2);
 
-    // drop the arm
-    if (keysPressed["s"]) {
-      control_input[0] = 1.0;
-    } else {
-      control_input[0] = 0.0;
+    // // drop the arm
+    // if (keysPressed["s"]) {
+    //   control_input[0] = 1.0;
+    // } else {
+    //   control_input[0] = 0.0;
+    // }
+
+    // // close the gripper
+    // if (keysPressed[" "]) {
+    //   control_input[1] = 1.0;
+    // } else {
+    //   control_input[1] = 0.0;
+    // }
+
+    // let qs = this.simulator.step(dt, control_input);
+    if (this.massSpringBunny) {
+      // drag the body towards right
+      let tau = new Float32Array(this.massSpringBunny.vertices().length);
+      tau[499 * 3] = 100.0;
+
+      this.massSpringBunny.step(dt, tau);
+      this.updateBunny();
     }
-
-    // close the gripper
-    if (keysPressed[" "]) {
-      control_input[1] = 1.0;
-    } else {
-      control_input[1] = 0.0;
-    }
-
-    let qs = this.simulator.step(dt, control_input);
     this.time += dt;
 
-    let poses = this.simulator.poses();
-    let contact_positions = this.simulator.contact_positions();
-    this.updateGripper(poses);
+    // let poses = this.simulator.poses();
+    // let contact_positions = this.simulator.contact_positions();
+    // this.updateGripper(poses);
 
     requestAnimationFrame((t) => this.run(t));
   }
