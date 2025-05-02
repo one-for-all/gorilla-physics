@@ -339,10 +339,12 @@ version = "0.1.0"
 dependencies = [
  "itertools",
  "nalgebra",
+ "nalgebra-sparse",
  "ordered-float",
  "plotters",
  "rand",
  "wasm-bindgen",
+ "wasm-bindgen-futures",
  "web-sys",
 ]
 
@@ -490,6 +492,16 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "nalgebra-sparse"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1107e2587bc373090389bd5b54e05ac3184fd02d7c102decf5d76b8feb84b2d0"
+dependencies = [
+ "nalgebra",
+ "num-traits",
 ]
 
 [[package]]
@@ -886,6 +898,18 @@ dependencies = [
  "quote",
  "syn",
  "wasm-bindgen-shared",
+]
+
+[[package]]
+name = "wasm-bindgen-futures"
+version = "0.4.39"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac36a15a220124ac510204aec1c3e5db8a22ab06fd6706d881dc6149f8ed9a12"
+dependencies = [
+ "cfg-if",
+ "js-sys",
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]

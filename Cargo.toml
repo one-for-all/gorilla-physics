@@ -69,12 +69,18 @@ path = "examples/spring_drop.rs"
 name = "pusher"
 path = "examples/pusher.rs"
 
+[[bin]]
+name = "read_bunny_mass_spring"
+path = "examples/read_bunny_mass_spring.rs"
+
 [dependencies]
 itertools = "0.13.0"
 nalgebra = "0.33"
+nalgebra-sparse = "0.10"
 plotters = "0.3.5"
-wasm-bindgen = "=0.2.89"
-web-sys = { version = "0.3.65", features = ['console'] }
+wasm-bindgen = "0.2"
+web-sys = { version = "0.3", features = ['console', "Window", "Response", "Request"] }
+wasm-bindgen-futures = "0.4"
 ordered-float = "5.0.0"
 
 [dev-dependencies]

@@ -8,3 +8,5 @@ target/
 pkg/
 
 dist/
+
+profile.json.gz

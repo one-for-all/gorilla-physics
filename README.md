@@ -16,6 +16,12 @@ Run the acrobot example:
 
 It should generate a plot ("acrobot swingup energy.png") that shows the total energy of the system against time.
 
+Profile the run-time of an example:
+
+`samply record cargo run --bin acrobot`
+
+This would run the example, and show profiling result & flame graph in browser, assuming [samply](https://github.com/mstange/samply) is installed, and Firefox profiler plugin (in Chrome) is installed.
+
 ## References
 
 It mainly implements the theory in Roy Featherstone's book [Rigid Body Dynamics Algorithm](https://royfeatherstone.org/).
