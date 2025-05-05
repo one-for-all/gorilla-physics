@@ -22,36 +22,37 @@ pub fn step(
     integrator: &Integrator,
 ) -> (Vec<JointPosition>, Vec<JointVelocity>) {
     // Fill tau with zero torques, if it is empty
-    let mut tau_in = vec![];
-    if tau.is_empty() {
-        for v in state.v.iter() {
-            match v {
-                JointVelocity::Float(_) => {
-                    tau_in.push(JointTorque::Float(0.0));
-                }
-                JointVelocity::Spatial(_) => {
-                    tau_in.push(JointTorque::Spatial(SpatialVector::zero()));
-                }
-            }
+    let tau = {
+        if tau.is_empty() {
+            &state
+                .v
+                .iter()
+                .map(|v| match v {
+                    JointVelocity::Float(_) => JointTorque::Float(0.0),
+                    JointVelocity::Spatial(_) => JointTorque::Spatial(SpatialVector::zero()),
+                })
+                .collect::<Vec<JointTorque>>()
+        } else {
+            tau
         }
-    } else {
-        tau_in = tau.clone();
-    }
+    };
 
     let (new_q, new_v) = {
         match integrator {
-            Integrator::SemiImplicitEuler => semi_implicit_euler(state, dt, &tau_in),
+            Integrator::SemiImplicitEuler => semi_implicit_euler(state, dt, &tau),
             Integrator::RungeKutta2 => {
-                if state.has_spring_contacts() {
-                    panic!("Cannot use Runge-Kutta 2 on state with spring contacts");
-                }
-                runge_kutta_2(state, dt, &tau_in)
+                assert!(
+                    !state.has_spring_contacts(),
+                    "Cannot use Runge-Kutta on state with spring contacts"
+                );
+                runge_kutta_2(state, dt, &tau)
             }
             Integrator::RungeKutta4 => {
-                if state.has_spring_contacts() {
-                    panic!("Cannot use Runge-Kutta 2 on state with spring contacts");
-                }
-                runge_kutta_4(state, dt, &tau_in)
+                assert!(
+                    !state.has_spring_contacts(),
+                    "Cannot use Runge-Kutta on state with spring contacts"
+                );
+                runge_kutta_4(state, dt, &tau)
             }
         }
     };
