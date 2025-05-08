@@ -90,7 +90,7 @@ impl InterfaceSimulator {
                 &mut (self.state).inner,
                 dt / (n_substep as Float),
                 &torque,
-                &Integrator::SemiImplicitEuler,
+                &Integrator::VelocityStepping,
             );
             q = _q;
         }

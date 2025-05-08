@@ -57,6 +57,8 @@ export class Simulator {
       flatShading: true,
     });
     const mesh = new THREE.Mesh(geometry, material);
+
+    mesh.frustumCulled = false; // prevent mesh disappearing
     this.meshes.set("bunny", mesh);
     this.graphics.scene.add(mesh);
   }
@@ -199,6 +201,7 @@ export class Simulator {
     const planeMaterial = new THREE.MeshPhongMaterial({
       color: 0x808080,
       side: THREE.DoubleSide, // Ensure it can be viewed from both sides
+      flatShading: true,
     });
 
     const plane = new THREE.Mesh(planeGeometry, planeMaterial);
@@ -224,7 +227,11 @@ export class Simulator {
 
   addCube(length: number) {
     const cubeGeometry = new THREE.BoxGeometry(length, length, length);
-    const cubeMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    const cubeMaterial = new THREE.MeshPhongMaterial({
+      color: 0x00ff00,
+      side: THREE.DoubleSide, // Render both sides of faces
+      flatShading: true,
+    });
     const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
     this.meshes.set("cube", cube);
     this.graphics.scene.add(cube);
@@ -593,7 +600,7 @@ export class Simulator {
     // TODO: measure and use the actual time elapsed
     const dt = 1 / this.fps;
 
-    // let control_input = new Float32Array(2);
+    let control_input = new Float32Array(2);
 
     // // drop the arm
     // if (keysPressed["s"]) {
@@ -609,19 +616,24 @@ export class Simulator {
     //   control_input[1] = 0.0;
     // }
 
-    // let qs = this.simulator.step(dt, control_input);
-    if (this.massSpringBunny) {
-      // drag the body towards right
-      let tau = new Float32Array(this.massSpringBunny.vertices().length);
-      tau[499 * 3] = 100.0;
+    // TODO: Currently some steps might take longer because of more computation.
+    // This results in inconsistent frame refresh rate. Make it consistent.
+    let qs = this.simulator.step(dt, control_input);
 
-      this.massSpringBunny.step(dt, tau);
-      this.updateBunny();
-    }
-    this.time += dt;
+    // if (this.massSpringBunny) {
+    //   // drag the body towards right
+    //   let tau = new Float32Array(this.massSpringBunny.vertices().length);
+    //   tau[499 * 3] = 100.0;
 
-    // let poses = this.simulator.poses();
-    // let contact_positions = this.simulator.contact_positions();
+    //   this.massSpringBunny.step(dt, tau);
+    //   this.updateBunny();
+    // }
+    // this.time += dt;
+
+    let poses = this.simulator.poses();
+    let contact_positions = this.simulator.contact_positions();
+    this.updateQuadruped(poses, contact_positions);
+    // this.updateCube(poses);
     // this.updateGripper(poses);
 
     requestAnimationFrame((t) => this.run(t));
