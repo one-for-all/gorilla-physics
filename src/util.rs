@@ -68,6 +68,16 @@ pub fn quaternion_derivative(
     Quaternion::from_parts(quaternion_dot[0], quaternion_dot.fixed_view::<3, 1>(1, 0))
 }
 
+/// Constructs skew-symmetric matrix of v, i.e. skew_symmetric(v) * k == v.cross(k)
+pub fn skew_symmetric(v: &Vector3<Float>) -> Matrix3<Float> {
+    #[rustfmt::skip]
+    return Matrix3::new(
+        0.0,    -v.z,   v.y, 
+        v.z,    0.0,    -v.x,
+        -v.y,   v.x,    0.0
+    );
+}
+
 // Helper function to log to the browser console
 pub fn console_log(message: &str) {
     web_sys::console::log_1(&message.into());

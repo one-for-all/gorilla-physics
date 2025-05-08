@@ -41,7 +41,7 @@ pub struct MechanismState {
     pub parents: Vec<usize>, // parents[i-1] -> the parent body number for joint of joint number i
     pub supports: Vec<HashSet<usize>>, // supports[i-1] -> all the bodies that joint i supports
     pub q: Vec<JointPosition>, // joint configuration/position vector
-    pub v: Vec<JointVelocity>, // joint velocity vector
+    pub v: Vec<JointVelocity>, // joint velocity vector. Note: velocities are expressed in each body frame
     pub halfspaces: Vec<HalfSpace>,
 }
 

@@ -51,7 +51,7 @@ mod floating_joint_tests {
 
     use crate::{
         assert_close,
-        dynamics::dynamics,
+        dynamics::dynamics_continuous,
         inertia::SpatialInertia,
         integrators::Integrator,
         joint::{Joint, JointPosition, JointTorque, JointVelocity, Pose, ToFloatDVec},
@@ -107,7 +107,7 @@ mod floating_joint_tests {
         state.update(&q_init, &v_init);
 
         // Act
-        let accels = dynamics(
+        let accels = dynamics_continuous(
             &mut state,
             &vec![JointTorque::Spatial(SpatialVector::zero())],
         );

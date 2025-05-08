@@ -4,18 +4,29 @@ use crate::{
     inertia::compute_inertias,
     joint::{Joint, JointAcceleration, JointTorque, JointVelocity, ToFloatDVec},
     mechanism::mass_matrix,
-    spatial::spatial_vector::SpatialVector,
-    spatial::transform::{compute_bodies_to_root, Transform3D},
-    spatial::twist::{compute_joint_twists, compute_twists_wrt_world, Twist},
-    spatial::wrench::{compute_torques, Wrench},
+    spatial::{
+        spatial_vector::SpatialVector,
+        transform::{compute_bodies_to_root, Transform3D},
+        twist::{compute_joint_twists, compute_twists_wrt_world, Twist},
+        wrench::{compute_torques, Wrench},
+    },
     types::Float,
-    util::{mul_inertia, se3_commutator},
+    util::{mul_inertia, se3_commutator, skew_symmetric},
     GRAVITY,
 };
+use clarabel::{
+    algebra::CscMatrix,
+    solver::{
+        DefaultSettings, DefaultSettingsBuilder, DefaultSolver, IPSolver,
+        SupportedConeT::{self, SecondOrderConeT},
+    },
+};
 use itertools::izip;
-use na::{vector, zero, DMatrix, DVector};
+use na::{
+    vector, zero, DMatrix, DVector, Matrix3, Matrix3x6, Matrix3xX, Matrix6, Matrix6xX, UnitVector3,
+};
 use nalgebra::Vector3;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::{mechanism::MechanismState, spatial::spatial_acceleration::SpatialAcceleration};
 
@@ -229,51 +240,35 @@ pub fn dynamics_bias(
 
 /// Solves the dynamics equation:
 /// M(q) vdot + c(q, v) = τ
-///
-/// Note: mass_matrix is lower-triangular matrix
 pub fn dynamics_solve(
     mass_matrix: &DMatrix<Float>,
     dynamics_bias: &DVector<Float>,
     tau: &DVector<Float>,
 ) -> DVector<Float> {
-    // Convert lower-triangular matrix to full symmetric matrix M
-    let mut M = mass_matrix.clone();
-    for i in 0..mass_matrix.nrows() {
-        for j in (i + 1)..mass_matrix.nrows() {
-            M[(i, j)] = mass_matrix[(j, i)];
-        }
-    }
-
     // dynamics bias term
     let c = dynamics_bias;
 
-    if let Some(vdot) = M.clone().lu().solve(&(tau - c)) {
-        vdot
-    } else {
-        panic!(
-            r#"Failed to solve for vdot in M(q) vdot + c(q, v) = 0
-        where M = {}, 
-              c = {}
+    let vdot = mass_matrix.clone().lu().solve(&(tau - c)).expect(&format!(
+        r#"Failed to solve for vdot in M(q) vdot + c(q, v) = τ
+            where M = {}, 
+                  c = {},
+                  τ = {}
         "#,
-            M, dynamics_bias
-        )
-    }
+        mass_matrix, dynamics_bias, tau
+    ));
+    vdot
 }
 
-/// Compute the joint acceleration vector vdot that satisfies the joint-space
-/// equations of motion:
-///     M(q)vdot + c(q, v) = τ
-/// given joint configuration vector q, joint velocity vector v, and joint
-/// torques τ.
-pub fn dynamics(state: &mut MechanismState, tau: &Vec<JointTorque>) -> Vec<JointAcceleration> {
-    if state.v.len() != tau.len() {
-        panic!(
-            "Joint velocity vector v length {} and joint torques vector τ length {} differ!",
-            state.v.len(),
-            tau.len()
-        );
-    }
-
+/// Compute the dynamic quantities necessary for solving both the continuous and
+/// discrete version of the dynamics problem
+fn dynamics_quantities(
+    state: &mut MechanismState,
+) -> (
+    HashMap<usize, Transform3D>,
+    HashMap<usize, Twist>,
+    HashMap<usize, Twist>,
+    DMatrix<Float>,
+) {
     // Compute the body to root frame transform for each body
     let bodies_to_root = compute_bodies_to_root(state);
 
@@ -283,20 +278,24 @@ pub fn dynamics(state: &mut MechanismState, tau: &Vec<JointTorque>) -> Vec<Joint
     // Compute the twist of the each body with respect to the world frame
     let twists = compute_twists_wrt_world(state, &bodies_to_root, &joint_twists);
 
-    // Compute the contact wrenches resulting from contacts
-    let contact_wrenches = contact_dynamics(state, &bodies_to_root, &twists);
+    let mass_matrix_lower = mass_matrix(state, &bodies_to_root);
 
-    let dynamics_bias = dynamics_bias(
-        state,
-        &bodies_to_root,
-        &joint_twists,
-        &twists,
-        &contact_wrenches,
-    ); // c(q, v) - τ_contact
+    // Convert lower-triangular matrix to full symmetric matrix M
+    let mut mass_matrix = mass_matrix_lower.clone();
+    for i in 0..mass_matrix_lower.nrows() {
+        for j in (i + 1)..mass_matrix_lower.nrows() {
+            mass_matrix[(i, j)] = mass_matrix_lower[(j, i)];
+        }
+    }
 
-    let mass_matrix = mass_matrix(state, &bodies_to_root);
+    (bodies_to_root, joint_twists, twists, mass_matrix)
+}
 
-    // Spring force from springs attached to prismatic joints
+/// Add the joint forces resulting from springs attached to prismatic joints
+fn addPrismaticJointSpringForce(
+    state: &MechanismState,
+    tau: &Vec<JointTorque>,
+) -> Vec<JointTorque> {
     let mut tau = tau.clone();
     for (jointid, joint) in izip!(state.treejointids.iter(), state.treejoints.iter()) {
         if let Joint::PrismaticJoint(joint) = joint {
@@ -309,30 +308,267 @@ pub fn dynamics(state: &mut MechanismState, tau: &Vec<JointTorque>) -> Vec<Joint
             }
         }
     }
+    tau
+}
+
+/// Compute the joint acceleration vector vdot that satisfies the joint-space
+/// equations of motion:
+///     M(q)vdot + c(q, v) = τ
+/// given joint configuration vector q, joint velocity vector v, and joint
+/// torques τ.
+pub fn dynamics_continuous(
+    state: &mut MechanismState,
+    tau: &Vec<JointTorque>,
+) -> Vec<JointAcceleration> {
+    let (bodies_to_root, joint_twists, twists, mass_matrix) = dynamics_quantities(state);
+
+    // Compute the contact wrenches resulting from contacts
+    let contact_wrenches = contact_dynamics(state, &bodies_to_root, &twists);
+
+    let dynamics_bias = dynamics_bias(
+        state,
+        &bodies_to_root,
+        &joint_twists,
+        &twists,
+        &contact_wrenches,
+    ); // c(q, v) - τ_contact
+
+    // Spring force from springs attached to prismatic joints
+    let tau = addPrismaticJointSpringForce(state, tau);
 
     let vdot = dynamics_solve(&mass_matrix, &dynamics_bias, &tau.to_float_dvec());
 
     // Convert from raw floats to joint acceleration types
-    let mut vdot_out = vec![];
     let mut i = 0;
-    for v in state.v.iter() {
-        match v {
+    state
+        .v
+        .iter()
+        .map(|v| match v {
             JointVelocity::Float(_) => {
-                vdot_out.push(JointAcceleration::Float(vdot[i]));
+                let vdot = vdot[i];
                 i += 1;
+                JointAcceleration::Float(vdot)
             }
             JointVelocity::Spatial(_) => {
                 let angular = vector![vdot[i], vdot[i + 1], vdot[i + 2]];
                 let linear = vector![vdot[i + 3], vdot[i + 4], vdot[i + 5]];
-                vdot_out.push(JointAcceleration::Spatial(SpatialVector {
-                    angular,
-                    linear,
-                }));
                 i += 6;
+                JointAcceleration::Spatial(SpatialVector { angular, linear })
+            }
+        })
+        .collect()
+}
+
+/// Dynamics method for velocity-stepping method
+pub fn dynamics_discrete(
+    state: &mut MechanismState,
+    tau: &Vec<JointTorque>,
+    dt: Float,
+) -> Vec<JointVelocity> {
+    let (bodies_to_root, joint_twists, twists, mass_matrix) = dynamics_quantities(state);
+
+    let dynamics_bias = dynamics_bias(
+        state,
+        &bodies_to_root,
+        &joint_twists,
+        &twists,
+        &HashMap::new(), // no explicit contact wrenches in velocity-stepping method
+    ); // c(q, v) - τ_contact
+
+    // Spring force from springs attached to prismatic joints
+    let tau = addPrismaticJointSpringForce(state, tau);
+
+    let v_current = state.v.to_float_dvec();
+    let v_update = dynamics_solve(
+        &mass_matrix,
+        &(dynamics_bias * dt),
+        &(tau.to_float_dvec() * dt),
+    );
+    let v_free = &v_current + v_update;
+
+    // Construct the building blocks for Jacobian between generalized v and
+    // contact frame velocity
+    // Ref: Contact and Friction Simulation for Computer Graphics, 2022,
+    // Section 1.5 The Coulomb Friction Law
+    let blocks: Vec<Matrix6xX<Float>> = izip!(state.treejointids.iter(), state.treejoints.iter())
+        .map(|(bodyid, joint)| {
+            let body_to_root = bodies_to_root.get(bodyid).unwrap();
+            let R = body_to_root.rot();
+            let r = body_to_root.trans();
+            let mut T = Matrix6::<Float>::zeros();
+            T.fixed_view_mut::<3, 3>(0, 0).copy_from(&R);
+            T.fixed_view_mut::<3, 3>(3, 0)
+                .copy_from(&(skew_symmetric(&r) * &R));
+            T.fixed_view_mut::<3, 3>(3, 3).copy_from(&R);
+            match joint {
+                Joint::RevoluteJoint(joint) => {
+                    T * Matrix6xX::from_column_slice(&[
+                        joint.axis[0],
+                        joint.axis[1],
+                        joint.axis[2],
+                        0.,
+                        0.,
+                        0.,
+                    ])
+                }
+                Joint::PrismaticJoint(joint) => {
+                    T * Matrix6xX::from_column_slice(&[
+                        0.,
+                        0.,
+                        0.,
+                        joint.axis[0],
+                        joint.axis[1],
+                        joint.axis[2],
+                    ])
+                }
+                Joint::FloatingJoint(_) => {
+                    Matrix6xX::from_columns(&T.column_iter().collect::<Vec<_>>())
+                }
+            }
+        })
+        .collect();
+
+    let v_new = {
+        // Vec of Jacobian rows, which will be assembled into the Jacobian
+        let mut Js: Vec<Matrix3xX<Float>> = vec![];
+        for (bodyid, body) in izip!(state.treejointids.iter(), state.bodies.iter()) {
+            let body_to_root = bodies_to_root.get(&bodyid).unwrap();
+            for contact_point in &body.contact_points {
+                let contact_point_world = contact_point.transform(body_to_root); // contact point in world frame
+                for halfspace in &state.halfspaces {
+                    if !contact_point_world.inside_halfspace(&halfspace) {
+                        continue;
+                    }
+                    // Contact frame axes, n is normal, t and b are tangential
+                    let n = halfspace.normal;
+                    let t = {
+                        let candidate = n.cross(&Vector3::x_axis());
+                        if candidate.norm() != 0.0 {
+                            UnitVector3::new_normalize(candidate)
+                        } else {
+                            UnitVector3::new_normalize(n.cross(&Vector3::y_axis()))
+                        }
+                    };
+                    let b = UnitVector3::new_normalize(n.cross(&t));
+                    let C = Matrix3::from_rows(&[n.transpose(), t.transpose(), b.transpose()]);
+
+                    // All the bodyids in the linkage from this body to root/world
+                    let mut linked_bodyids = HashSet::new();
+                    let mut currentid = *bodyid;
+                    while currentid != 0 {
+                        linked_bodyids.insert(currentid);
+                        currentid = state.parents[currentid - 1];
+                    }
+
+                    // Build the Jacobian that transforms generalized v into
+                    // world-frame spatial twist
+                    let mut H = Matrix6xX::zeros(v_free.len());
+                    let mut col_offset = 0;
+                    for jointid in state.treejointids.iter() {
+                        let n_cols = blocks[jointid - 1].ncols();
+                        if linked_bodyids.contains(jointid) {
+                            H.columns_mut(col_offset, n_cols)
+                                .copy_from(&blocks[jointid - 1]);
+                        }
+                        col_offset += n_cols;
+                    }
+
+                    // Jacobian that transforms world-frame spatial twist into
+                    // contact point world-frame velocity
+                    let mut X = Matrix3x6::zeros();
+                    let r = contact_point_world.location;
+                    X.columns_mut(0, 3).copy_from(&-skew_symmetric(&r));
+                    X.columns_mut(3, 3).copy_from(&Matrix3::identity());
+
+                    Js.push(C * X * H);
+                }
             }
         }
+
+        if Js.len() > 0 {
+            let mut J = DMatrix::zeros(3 * Js.len(), v_free.len());
+            for (i, m) in Js.iter().enumerate() {
+                J.rows_mut(i * 3, 3).copy_from(m);
+            }
+
+            // Formulate the second-order cone programming problem and solve it
+            // Ref: Contact Models in Robotics: a Comparative Analysis, 2024,
+            // Quentin Le Lidec and et al. III B. Cone Complementarity Problem
+            let mass_matrix_lu = mass_matrix.lu();
+            let G: DMatrix<Float> = &J
+                * mass_matrix_lu
+                    .try_inverse()
+                    .expect("Failed to invert mass matrix")
+                * J.transpose();
+            let g = &J * &v_free; // Can also incorporate restitution model here. ref: Section II Unilateral contact
+
+            let lambda = solve_cone_complementarity(&G, &g); // Contact frame force vectors
+            let v_next: DVector<Float> = v_free
+                + mass_matrix_lu
+                    .solve(&(J.transpose() * lambda))
+                    .expect("Failed to solve Mx = J^T λ");
+            v_next
+        } else {
+            v_free.clone()
+        }
+    };
+
+    // Convert from raw floats to joint velocity types
+    let mut i = 0;
+    state
+        .v
+        .iter()
+        .map(|v| match v {
+            JointVelocity::Float(_) => {
+                let v_new = v_new[i];
+                i += 1;
+                JointVelocity::Float(v_new)
+            }
+            JointVelocity::Spatial(_) => {
+                let angular = vector![v_new[i], v_new[i + 1], v_new[i + 2]];
+                let linear = vector![v_new[i + 3], v_new[i + 4], v_new[i + 5]];
+                i += 6;
+                JointVelocity::Spatial(SpatialVector { angular, linear })
+            }
+        })
+        .collect()
+}
+
+/// Solve the second-order cone programming problem for resolving contact
+fn solve_cone_complementarity(G: &DMatrix<Float>, g: &DVector<Float>) -> DVector<Float> {
+    let P = CscMatrix::from(G.row_iter());
+    let q: Vec<Float> = Vec::from(g.as_slice());
+
+    assert!(G.shape().0 % 3 == 0);
+    let n_constraints = G.shape().0 / 3;
+
+    let mut A_triplets = vec![];
+    let mu = 1.0; // TODO: special handling for zero friction
+    for i in 0..n_constraints {
+        let index = i * 3;
+        A_triplets.push((index, index, -mu));
+        A_triplets.push((index + 1, index + 1, -1.0));
+        A_triplets.push((index + 2, index + 2, -1.0));
     }
-    vdot_out
+    let A = CscMatrix::new_from_triplets(
+        P.m,
+        P.m,
+        A_triplets.iter().map(|x| x.0).collect(),
+        A_triplets.iter().map(|x| x.1).collect(),
+        A_triplets.iter().map(|x| x.2).collect(),
+    );
+
+    let b = vec![0.0; n_constraints * 3];
+    let cones: Vec<SupportedConeT<Float>> = vec![SecondOrderConeT(3); n_constraints];
+
+    let settings: DefaultSettings<Float> = DefaultSettingsBuilder::default()
+        .verbose(false)
+        .build()
+        .unwrap();
+    let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
+    solver.solve();
+
+    DVector::from(solver.solution.x)
 }
 
 #[cfg(test)]
@@ -385,7 +621,7 @@ mod dynamics_tests {
             crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         // Act
-        let joint_accels = dynamics(&mut state, &vec![0.0].to_joint_torque_vec());
+        let joint_accels = dynamics_continuous(&mut state, &vec![0.0].to_joint_torque_vec());
 
         // Assert
         assert_eq!(
@@ -417,7 +653,7 @@ mod dynamics_tests {
         let mut state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         // Act
-        let joint_accels = dynamics(&mut state, &vec![0.0].to_joint_torque_vec());
+        let joint_accels = dynamics_continuous(&mut state, &vec![0.0].to_joint_torque_vec());
 
         // Assert
         assert_eq!(
@@ -451,7 +687,7 @@ mod dynamics_tests {
         let mut state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         // Act
-        let joint_accels = dynamics(&mut state, &vec![0.0].to_joint_torque_vec());
+        let joint_accels = dynamics_continuous(&mut state, &vec![0.0].to_joint_torque_vec());
 
         // Assert
         let error = (joint_accels.to_float_dvec() - dvector![-3.0 * GRAVITY / (2.0 * l)]).abs();
@@ -482,7 +718,7 @@ mod dynamics_tests {
 
         // Act
         let torque = -m * GRAVITY * l / 2.0;
-        let joint_accels = dynamics(&mut state, &vec![torque].to_joint_torque_vec());
+        let joint_accels = dynamics_continuous(&mut state, &vec![torque].to_joint_torque_vec());
 
         // Assert
         let error = (joint_accels.to_float_dvec() - dvector![0.0]).abs();
@@ -513,7 +749,7 @@ mod dynamics_tests {
             crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
 
         // Act
-        let joint_accels = dynamics(&mut state, &vec![0.0].to_joint_torque_vec());
+        let joint_accels = dynamics_continuous(&mut state, &vec![0.0].to_joint_torque_vec());
 
         // Assert
         assert_eq!(joint_accels.to_float_dvec(), dvector![GRAVITY / l]);
@@ -566,7 +802,7 @@ mod dynamics_tests {
         let mut state = MechanismState::new(treejoints, bodies);
 
         // Act
-        let joint_accels = dynamics(&mut state, &vec![0.0, 0.0].to_joint_torque_vec());
+        let joint_accels = dynamics_continuous(&mut state, &vec![0.0, 0.0].to_joint_torque_vec());
 
         // Assert
         assert_dvec_close(
@@ -610,7 +846,7 @@ mod dynamics_tests {
         state.update(&q_init, &v_init);
 
         // Act
-        let vdot = dynamics(&mut state, &vec![0.0, 0.0].to_joint_torque_vec());
+        let vdot = dynamics_continuous(&mut state, &vec![0.0, 0.0].to_joint_torque_vec());
 
         // Assert
         let double_pendulum = SimpleDoublePendulum::new(m, m, l, l, q1, q2, q1dot, q2dot);
@@ -716,7 +952,7 @@ mod dynamics_tests {
             }),
             JointTorque::Float(motor_torque),
         ];
-        let acc = dynamics(&mut state, &tau);
+        let acc = dynamics_continuous(&mut state, &tau);
 
         // Assert
         let base_moment_x = 2.0 / 5.0 * m_base * r_base * r_base;

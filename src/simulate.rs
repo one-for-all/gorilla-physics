@@ -1,6 +1,7 @@
 use crate::integrators::runge_kutta_2;
 use crate::integrators::runge_kutta_4;
 use crate::integrators::semi_implicit_euler;
+use crate::integrators::velocity_stepping;
 use crate::integrators::Integrator;
 use crate::joint::JointTorque;
 use crate::joint::JointVelocity;
@@ -33,6 +34,13 @@ pub fn step(
                 })
                 .collect::<Vec<JointTorque>>()
         } else {
+            assert_eq!(
+                tau.len(),
+                state.v.len(),
+                "joint torques vector τ length {}  and Joint velocity vector v length {} differ!",
+                tau.len(),
+                state.v.len()
+            );
             tau
         }
     };
@@ -54,6 +62,7 @@ pub fn step(
                 );
                 runge_kutta_4(state, dt, &tau)
             }
+            Integrator::VelocityStepping => velocity_stepping(state, dt, &tau),
         }
     };
 

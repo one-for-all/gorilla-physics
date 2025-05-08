@@ -143,7 +143,7 @@ pub fn contact_dynamics(
         let body_to_root = bodies_to_root.get(bodyid).unwrap();
         let twist = twists.get(bodyid).unwrap();
 
-        // Handle rigid body contacts with halfspaces
+        // Handle point contacts with halfspaces
         let contact_points = &body.contact_points;
         for contact_point in contact_points {
             let contact_point = contact_point.transform(body_to_root);
