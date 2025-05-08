@@ -34,7 +34,7 @@ pub fn main() {
     let ground = HalfSpace::new_with_params(Vector3::z_axis(), h_ground, alpha, mu);
     state.add_halfspace(&ground);
 
-    state.add_contact_point(&ContactPoint::new(ball_frame, vector![0.0, 0.0, 0.0]));
+    state.add_contact_point(ContactPoint::new(ball_frame, vector![0.0, 0.0, 0.0]));
 
     let q_init = vec![JointPosition::Pose(Pose {
         rotation: UnitQuaternion::identity(),

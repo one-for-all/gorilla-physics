@@ -405,7 +405,7 @@ mod contact_tests {
         let axis = vector![0., 1., 0.];
 
         let mut state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
-        state.add_contact_point(&ContactPoint::new("rod", vector![l, 0., 0.]));
+        state.add_contact_point(ContactPoint::new("rod", vector![l, 0., 0.]));
 
         state.add_halfspace(&&HalfSpace::new(Vector3::z_axis(), -5.0));
 
@@ -648,7 +648,7 @@ mod contact_tests {
         let ground = HalfSpace::new_with_params(Vector3::z_axis(), h_ground, alpha, mu);
         state.add_halfspace(&ground);
 
-        state.add_contact_point(&ContactPoint::new(ball_frame, vector![0.0, 0.0, 0.0]));
+        state.add_contact_point(ContactPoint::new(ball_frame, vector![0.0, 0.0, 0.0]));
 
         state.set_joint_v(
             1,
@@ -806,8 +806,8 @@ mod contact_tests {
         let bodies = vec![hip, left_leg, right_leg];
 
         let mut state = MechanismState::new(treejoints, bodies);
-        state.add_contact_point(&ContactPoint::new(left_leg_frame, vector![0., 0., -l_leg]));
-        state.add_contact_point(&ContactPoint::new(right_leg_frame, vector![0., 0., -l_leg]));
+        state.add_contact_point(ContactPoint::new(left_leg_frame, vector![0., 0., -l_leg]));
+        state.add_contact_point(ContactPoint::new(right_leg_frame, vector![0., 0., -l_leg]));
 
         let h_ground = 0.0;
         let angle: Float = Float::to_radians(5.0);
@@ -964,7 +964,7 @@ mod contact_tests {
         ];
         let bodies = vec![body, foot];
         let mut state = MechanismState::new(treejoints, bodies);
-        state.add_contact_point(&ContactPoint::new(foot_frame, Vector3::zeros()));
+        state.add_contact_point(ContactPoint::new(foot_frame, Vector3::zeros()));
 
         let h_ground = -2.0;
         let alpha = 1.0;
@@ -1047,7 +1047,7 @@ mod contact_tests {
         ];
         let bodies = vec![body, foot];
         let mut state = MechanismState::new(treejoints, bodies);
-        state.add_contact_point(&ContactPoint::new(foot_frame, Vector3::zeros()));
+        state.add_contact_point(ContactPoint::new(foot_frame, Vector3::zeros()));
 
         let h_ground = -2.0;
         let alpha = 1.0;
@@ -1124,9 +1124,9 @@ mod contact_tests {
         let bodies = vec![rod];
         let mut state = MechanismState::new(treejoints, bodies);
 
-        state.add_contact_point(&ContactPoint::new(rod_frame, vector![0.0, 0.0, 0.0]));
+        state.add_contact_point(ContactPoint::new(rod_frame, vector![0.0, 0.0, 0.0]));
 
-        state.add_contact_point(&ContactPoint::new(rod_frame, vector![0.0, 0.0, l]));
+        state.add_contact_point(ContactPoint::new(rod_frame, vector![0.0, 0.0, l]));
 
         let alpha = 1.0;
         let mu = 10.0;

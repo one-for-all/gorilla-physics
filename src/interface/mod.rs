@@ -335,7 +335,7 @@ pub fn createSphere(mass: Float, radius: Float) -> InterfaceMechanismState {
     })];
     state.update(&q_init, &v_init);
 
-    state.add_contact_point(&ContactPoint::new("ball", vector![0., 0., -r]));
+    state.add_contact_point(ContactPoint::new("ball", vector![0., 0., -r]));
 
     InterfaceMechanismState { inner: state }
 }
@@ -391,8 +391,8 @@ pub fn createCompassGait() -> InterfaceMechanismState {
     let bodies = vec![hip, left_leg, right_leg];
 
     let mut state = MechanismState::new(treejoints, bodies);
-    state.add_contact_point(&ContactPoint::new(left_leg_frame, vector![0., 0., -l_leg]));
-    state.add_contact_point(&ContactPoint::new(right_leg_frame, vector![0., 0., -l_leg]));
+    state.add_contact_point(ContactPoint::new(left_leg_frame, vector![0., 0., -l_leg]));
+    state.add_contact_point(ContactPoint::new(right_leg_frame, vector![0., 0., -l_leg]));
 
     state.set_joint_q(
         1,

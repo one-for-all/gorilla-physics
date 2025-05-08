@@ -69,7 +69,7 @@ mod hopper_control_tests {
         let bodies = vec![foot, ankle, body];
         let mut state = MechanismState::new(treejoints, bodies);
 
-        state.add_contact_point(&ContactPoint::new(foot_frame, zero()));
+        state.add_contact_point(ContactPoint::new(foot_frame, zero()));
         let ground = HalfSpace::new_with_params(Vector3::z_axis(), 0.0, 1.0, 1.0);
         state.add_halfspace(&ground);
 

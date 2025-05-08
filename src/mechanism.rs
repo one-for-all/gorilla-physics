@@ -253,10 +253,11 @@ impl MechanismState {
     }
 
     /// Add contact point to rigid body.
-    pub fn add_contact_point(&mut self, point: &ContactPoint) {
+    pub fn add_contact_point(&mut self, point: ContactPoint) {
         for body in self.bodies.iter_mut() {
             if body.inertia.frame == point.frame {
                 body.add_contact_point(point);
+                return;
             }
         }
     }

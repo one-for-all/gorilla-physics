@@ -46,7 +46,7 @@ pub fn createRimlessWheel(r_body: Float, n_foot: usize) -> InterfaceMechanismSta
     for i in 0..n_foot {
         let rotation = Rotation3::from_axis_angle(&Vector3::y_axis(), i as Float * 2.0 * alpha);
         let location = rotation * Vector3::new(0., 0., -l);
-        state.add_contact_point(&ContactPoint::new(body_frame, location));
+        state.add_contact_point(ContactPoint::new(body_frame, location));
     }
 
     let q_init = vec![JointPosition::Pose(Pose {

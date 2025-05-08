@@ -49,7 +49,7 @@ pub fn main() {
     ];
     let bodies = vec![body, foot];
     let mut state = MechanismState::new(treejoints, bodies);
-    state.add_contact_point(&ContactPoint::new(foot_frame, Vector3::zeros()));
+    state.add_contact_point(ContactPoint::new(foot_frame, Vector3::zeros()));
 
     let h_ground = -2.0;
     let alpha = 1.0;

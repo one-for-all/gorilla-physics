@@ -10,7 +10,7 @@ use crate::{
 #[derive(Clone, PartialEq, Debug)]
 pub struct RigidBody {
     pub inertia: SpatialInertia,
-    pub contact_points: DVector<ContactPoint>,
+    pub contact_points: Vec<ContactPoint>,
     pub spring_contacts: Vec<SpringContact>,
     pub collider: Option<Cuboid>,
 }
@@ -19,7 +19,7 @@ impl RigidBody {
     pub fn new(inertia: SpatialInertia) -> Self {
         RigidBody {
             inertia,
-            contact_points: dvector![],
+            contact_points: vec![],
             spring_contacts: vec![],
             collider: None,
         }
@@ -69,14 +69,14 @@ impl RigidBody {
         self.collider = Some(collision_geometry);
     }
 
-    pub fn add_contact_point(&mut self, contact_point: &ContactPoint) {
+    pub fn add_contact_point(&mut self, contact_point: ContactPoint) {
         if self.inertia.frame != contact_point.frame {
             panic!(
                 "Contact point frame {} does not match body frame {}",
                 contact_point.frame, self.inertia.frame
             );
         }
-        self.contact_points = self.contact_points.push(contact_point.clone());
+        self.contact_points.push(contact_point);
     }
 
     pub fn add_spring_contact(&mut self, spring_contact: &SpringContact) {

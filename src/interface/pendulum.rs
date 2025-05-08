@@ -21,7 +21,7 @@ pub fn createSimplePendulum(mass: Float, length: Float) -> InterfaceMechanismSta
     let axis = vector![0., 1., 0.];
 
     let mut state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
-    state.add_contact_point(&ContactPoint::new("rod", vector![l, 0., 0.]));
+    state.add_contact_point(ContactPoint::new("rod", vector![l, 0., 0.]));
 
     InterfaceMechanismState { inner: state }
 }

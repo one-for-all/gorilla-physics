@@ -98,11 +98,11 @@ pub fn main() {
     let bodies = vec![body, leg, foot];
     let mut state = MechanismState::new(treejoints, bodies);
 
-    state.add_contact_point(&ContactPoint::new(body_frame, vector![0., 0., 0.]));
+    state.add_contact_point(ContactPoint::new(body_frame, vector![0., 0., 0.]));
 
-    state.add_contact_point(&ContactPoint::new(leg_frame, vector![0., 0., 0.]));
+    state.add_contact_point(ContactPoint::new(leg_frame, vector![0., 0., 0.]));
 
-    state.add_contact_point(&ContactPoint::new(foot_frame, vector![0., 0., 0.]));
+    state.add_contact_point(ContactPoint::new(foot_frame, vector![0., 0., 0.]));
 
     let ground = HalfSpace::new(Vector3::z_axis(), -20.0);
     state.add_halfspace(&ground);

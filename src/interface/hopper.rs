@@ -109,11 +109,11 @@ pub fn create1DHopper(
     let bodies = vec![body, leg, foot];
     let mut state = MechanismState::new(treejoints, bodies);
 
-    state.add_contact_point(&ContactPoint::new(body_frame, vector![0., 0., 0.]));
+    state.add_contact_point(ContactPoint::new(body_frame, vector![0., 0., 0.]));
 
-    state.add_contact_point(&ContactPoint::new(leg_frame, vector![0., 0., 0.]));
+    state.add_contact_point(ContactPoint::new(leg_frame, vector![0., 0., 0.]));
 
-    state.add_contact_point(&ContactPoint::new(foot_frame, vector![0., 0., 0.]));
+    state.add_contact_point(ContactPoint::new(foot_frame, vector![0., 0., 0.]));
 
     InterfaceMechanismState { inner: state }
 }
@@ -212,7 +212,7 @@ pub fn createActuatedAnkleHopper() -> InterfaceMechanismState {
     let bodies = vec![foot, ankle, body];
     let mut state = MechanismState::new(treejoints, bodies);
 
-    state.add_contact_point(&ContactPoint::new(foot_frame, zero()));
+    state.add_contact_point(ContactPoint::new(foot_frame, zero()));
 
     state.set_joint_q(
         1,
