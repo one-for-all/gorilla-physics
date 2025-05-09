@@ -91,7 +91,7 @@ pub fn main() {
     let alpha = 1.0; // velocity lost
     let mu = 0.5;
     let ground = HalfSpace::new_with_params(Vector3::z_axis(), h_ground, alpha, mu);
-    state.add_halfspace(&ground);
+    state.add_halfspace(ground);
 
     state.add_contact_point(ContactPoint::new(leg_frame, vector![0., 0., 0.]));
 

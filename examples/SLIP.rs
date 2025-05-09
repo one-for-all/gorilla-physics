@@ -33,7 +33,7 @@ pub fn main() {
     let mut state = build_SLIP(m, r, l_rest, angle, k_spring);
 
     let h_ground = -0.3;
-    state.add_halfspace(&HalfSpace::new(Vector3::z_axis(), h_ground));
+    state.add_halfspace(HalfSpace::new(Vector3::z_axis(), h_ground));
 
     let q_init = vec![JointPosition::Pose(Pose {
         rotation: UnitQuaternion::identity(),

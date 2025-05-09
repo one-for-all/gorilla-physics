@@ -71,7 +71,7 @@ mod hopper_control_tests {
 
         state.add_contact_point(ContactPoint::new(foot_frame, zero()));
         let ground = HalfSpace::new_with_params(Vector3::z_axis(), 0.0, 1.0, 1.0);
-        state.add_halfspace(&ground);
+        state.add_halfspace(ground);
 
         state.set_joint_q(
             1,
@@ -161,7 +161,7 @@ mod hopper_control_tests {
         let mut state = build_hopper(m_foot, r_foot, m_hip, r_hip, m_body, r_body, l_foot_to_hip);
 
         let ground = HalfSpace::new_with_params(Vector3::z_axis(), 0.0, 1.0, 1.0);
-        state.add_halfspace(&ground);
+        state.add_halfspace(ground);
 
         let initial_x = 0.5;
         state.set_joint_q(
@@ -270,7 +270,7 @@ mod hopper_control_tests {
         let mut state = build_hopper(m_foot, r_foot, m_hip, r_hip, m_body, r_body, l_foot_to_hip);
 
         let ground = HalfSpace::new_with_params(Vector3::z_axis(), 0.0, 1.0, 2.0);
-        state.add_halfspace(&ground);
+        state.add_halfspace(ground);
 
         // Give the hopper an initial height
         state.set_joint_q(

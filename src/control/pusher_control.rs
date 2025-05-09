@@ -64,7 +64,7 @@ mod pusher_controller_tests {
         // Arrange
         let mut state = build_pusher();
         let ground = HalfSpace::new(Vector3::z_axis(), 0.0);
-        state.add_halfspace(&ground);
+        state.add_halfspace(ground);
 
         let mut controller = PusherController {};
 

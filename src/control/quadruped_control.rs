@@ -458,7 +458,7 @@ mod quadruped_control_tests {
         let alpha = 1.0;
         let mu = 1.0;
         let ground = HalfSpace::new_with_params(Vector3::z_axis(), 0.0, alpha, mu);
-        state.add_halfspace(&ground);
+        state.add_halfspace(ground);
 
         let mut controller = QuadrupedTrottingController::new(dt, target_x, -default_z);
 

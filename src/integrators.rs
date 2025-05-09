@@ -219,7 +219,7 @@ mod integrators_tests {
         let angle = Float::to_radians(-10.0);
         let normal = UnitVector3::new_normalize(vector![angle.sin(), 0.0, angle.cos()]);
         let ground = HalfSpace::new(normal, 0.0);
-        state.add_halfspace(&ground);
+        state.add_halfspace(ground);
 
         // Act
         let final_time = 2.0;
@@ -253,7 +253,7 @@ mod integrators_tests {
                 translation: vector![0., 0., 5.0],
             }),
         );
-        state.add_halfspace(&HalfSpace::new(Vector3::z_axis(), 0.0));
+        state.add_halfspace(HalfSpace::new(Vector3::z_axis(), 0.0));
 
         // Act
         let final_time = 3.0;

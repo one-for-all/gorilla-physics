@@ -105,7 +105,7 @@ pub fn main() {
     state.add_contact_point(ContactPoint::new(foot_frame, vector![0., 0., 0.]));
 
     let ground = HalfSpace::new(Vector3::z_axis(), -20.0);
-    state.add_halfspace(&ground);
+    state.add_halfspace(ground);
 
     // Simulate
     let final_time = 30.0;

@@ -32,7 +32,7 @@ pub fn main() {
     let alpha = 2.0; // roughly how much velocity is lost
     let mu = 1.0;
     let ground = HalfSpace::new_with_params(Vector3::z_axis(), h_ground, alpha, mu);
-    state.add_halfspace(&ground);
+    state.add_halfspace(ground);
 
     state.add_contact_point(ContactPoint::new(ball_frame, vector![0.0, 0.0, 0.0]));
 

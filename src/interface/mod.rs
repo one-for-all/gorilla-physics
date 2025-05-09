@@ -185,7 +185,7 @@ impl InterfaceMechanismState {
             UnitVector3::new_normalize(vector![normal[0], normal[1], normal[2]]),
             distance,
         );
-        self.inner.add_halfspace(&halfspace);
+        self.inner.add_halfspace(halfspace);
     }
 
     #[wasm_bindgen]
@@ -202,7 +202,7 @@ impl InterfaceMechanismState {
             alpha,
             mu,
         );
-        self.inner.add_halfspace(&halfspace);
+        self.inner.add_halfspace(halfspace);
     }
 }
 

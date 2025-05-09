@@ -88,7 +88,7 @@ mod SLIP_control_tests {
         let mut state = build_SLIP(m, r, l_rest, init_angle, k_spring);
 
         let h_ground = -0.5;
-        state.add_halfspace(&HalfSpace::new(Vector3::z_axis(), h_ground));
+        state.add_halfspace(HalfSpace::new(Vector3::z_axis(), h_ground));
 
         let mut controller = SLIPController::new(
             1.0,  // k_pos
@@ -143,7 +143,7 @@ mod SLIP_control_tests {
         let mut state = build_SLIP(m, r, l_rest, init_angle, k_spring);
 
         let h_ground = -0.5;
-        state.add_halfspace(&HalfSpace::new(Vector3::z_axis(), h_ground));
+        state.add_halfspace(HalfSpace::new(Vector3::z_axis(), h_ground));
 
         let mut controller = SLIPController::new(
             1.0,  // k_pos

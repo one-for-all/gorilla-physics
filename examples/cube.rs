@@ -22,7 +22,7 @@ pub fn main() {
     let alpha = 1.0; // velocity lost
     let mu = 1.5; // coefficient of friction
     let ground = HalfSpace::new_with_params(Vector3::z_axis(), h_ground, alpha, mu);
-    state.add_halfspace(&ground);
+    state.add_halfspace(ground);
 
     let q_init = vec![JointPosition::Pose(Pose {
         rotation: UnitQuaternion::identity(),

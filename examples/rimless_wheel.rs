@@ -24,7 +24,7 @@ pub fn main() {
     let h_ground = -20.0;
     let angle: Float = Float::to_radians(10.0);
     let normal = UnitVector3::new_normalize(vector![angle.sin(), 0.0, angle.cos()]);
-    state.add_halfspace(&HalfSpace::new(normal, h_ground));
+    state.add_halfspace(HalfSpace::new(normal, h_ground));
 
     let q_init = vec![JointPosition::Pose(Pose {
         rotation: UnitQuaternion::identity(),

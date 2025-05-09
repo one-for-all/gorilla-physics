@@ -248,8 +248,8 @@ impl MechanismState {
         E
     }
 
-    pub fn add_halfspace(&mut self, halfspace: &HalfSpace) {
-        self.halfspaces.push(*halfspace);
+    pub fn add_halfspace(&mut self, halfspace: HalfSpace) {
+        self.halfspaces.push(halfspace);
     }
 
     /// Add contact point to rigid body.

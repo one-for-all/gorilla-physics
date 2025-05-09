@@ -55,7 +55,7 @@ pub fn main() {
     let alpha = 1.0;
     let mu = 0.0;
     let ground = HalfSpace::new_with_params(Vector3::z_axis(), h_ground, alpha, mu);
-    state.add_halfspace(&ground);
+    state.add_halfspace(ground);
 
     state.set_joint_v(
         1,

@@ -407,7 +407,7 @@ mod contact_tests {
         let mut state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
         state.add_contact_point(ContactPoint::new("rod", vector![l, 0., 0.]));
 
-        state.add_halfspace(&&HalfSpace::new(Vector3::z_axis(), -5.0));
+        state.add_halfspace(HalfSpace::new(Vector3::z_axis(), -5.0));
 
         // Act
         let final_time = 5.0;
@@ -434,7 +434,7 @@ mod contact_tests {
         let mut state = build_cube(m, l);
 
         let h_ground = -10.0;
-        state.add_halfspace(&HalfSpace::new(Vector3::z_axis(), h_ground));
+        state.add_halfspace(HalfSpace::new(Vector3::z_axis(), h_ground));
 
         let q_init = vec![JointPosition::Pose(Pose {
             rotation: UnitQuaternion::identity(),
@@ -473,7 +473,7 @@ mod contact_tests {
         let h_ground = -l / 2.0;
         let mu = 0.5;
         let ground = HalfSpace::new_with_params(Vector3::z_axis(), h_ground, 1.0, mu);
-        state.add_halfspace(&ground);
+        state.add_halfspace(ground);
 
         let q_init = vec![JointPosition::Pose(Pose {
             rotation: UnitQuaternion::identity(),
@@ -519,7 +519,7 @@ mod contact_tests {
         let mut state = build_cube(m, l);
 
         let h_ground = -10.0;
-        state.add_halfspace(&HalfSpace::new(Vector3::z_axis(), h_ground));
+        state.add_halfspace(HalfSpace::new(Vector3::z_axis(), h_ground));
 
         let q_init = vec![JointPosition::Pose(Pose {
             rotation: UnitQuaternion::identity(),
@@ -575,7 +575,7 @@ mod contact_tests {
         add_cube_contacts(&mut state, &cube2_frame, l);
 
         let h_ground = -10.0;
-        state.add_halfspace(&HalfSpace::new(Vector3::z_axis(), h_ground));
+        state.add_halfspace(HalfSpace::new(Vector3::z_axis(), h_ground));
 
         let q_init = vec![
             JointPosition::Pose(Pose {
@@ -646,7 +646,7 @@ mod contact_tests {
         let alpha = 1.0;
         let mu = 0.5;
         let ground = HalfSpace::new_with_params(Vector3::z_axis(), h_ground, alpha, mu);
-        state.add_halfspace(&ground);
+        state.add_halfspace(ground);
 
         state.add_contact_point(ContactPoint::new(ball_frame, vector![0.0, 0.0, 0.0]));
 
@@ -714,7 +714,7 @@ mod contact_tests {
         let alpha = 0.9;
         let mu = 0.5;
         let h_ground = -20.0;
-        state.add_halfspace(&HalfSpace::new_with_params(normal, h_ground, alpha, mu));
+        state.add_halfspace(HalfSpace::new_with_params(normal, h_ground, alpha, mu));
 
         let q_init = vec![JointPosition::Pose(Pose {
             rotation: UnitQuaternion::identity(),
@@ -815,7 +815,7 @@ mod contact_tests {
         let alpha = 1.0;
         let mu = 1.0;
         let ground = HalfSpace::new_with_params(normal, h_ground, alpha, mu);
-        state.add_halfspace(&ground);
+        state.add_halfspace(ground);
 
         state.set_joint_q(
             1,
@@ -867,7 +867,7 @@ mod contact_tests {
         let mut state = build_SLIP(m, r, l_rest, angle, k_spring);
 
         let h_ground = -0.3;
-        state.add_halfspace(&HalfSpace::new(Vector3::z_axis(), h_ground));
+        state.add_halfspace(HalfSpace::new(Vector3::z_axis(), h_ground));
 
         let q_init = vec![JointPosition::Pose(Pose {
             rotation: UnitQuaternion::identity(),
@@ -970,7 +970,7 @@ mod contact_tests {
         let alpha = 1.0;
         let mu = 0.0;
         let ground = HalfSpace::new_with_params(Vector3::z_axis(), h_ground, alpha, mu);
-        state.add_halfspace(&ground);
+        state.add_halfspace(ground);
 
         // Act
         let final_time = 4.0;
@@ -1053,7 +1053,7 @@ mod contact_tests {
         let alpha = 1.0;
         let mu = 0.5;
         let ground = HalfSpace::new_with_params(Vector3::z_axis(), h_ground, alpha, mu);
-        state.add_halfspace(&ground);
+        state.add_halfspace(ground);
 
         state.set_joint_v(
             1,
@@ -1133,7 +1133,7 @@ mod contact_tests {
         let normal = Vector3::z_axis();
         let h_ground = 0.0;
         let ground = HalfSpace::new_with_params(normal, h_ground, alpha, mu);
-        state.add_halfspace(&ground);
+        state.add_halfspace(ground);
 
         state.set_joint_q(
             1,
