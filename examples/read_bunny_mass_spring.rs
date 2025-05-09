@@ -1,5 +1,5 @@
-use gorilla_physics::{mass_spring_deformable::read_mass_spring_bunny, plot::plot, types::Float};
-use nalgebra::{dvector, DVector};
+use gorilla_physics::{mass_spring_deformable::read_mass_spring_bunny, plot::plot};
+use nalgebra::DVector;
 
 /// Read a bunny as a mass-spring model, and simulate it falling under gravity
 pub fn main() {

@@ -1,4 +1,4 @@
-use na::{dvector, vector, DVector, Matrix3, Vector3};
+use na::{vector, Matrix3, Vector3};
 
 use crate::{
     collision::cuboid::Cuboid,

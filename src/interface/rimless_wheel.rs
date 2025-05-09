@@ -12,7 +12,7 @@ use crate::{
 };
 
 use super::InterfaceMechanismState;
-use na::{dvector, vector, Matrix3, Rotation3, UnitQuaternion, Vector3};
+use na::{vector, Matrix3, Rotation3, UnitQuaternion, Vector3};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 #[wasm_bindgen]

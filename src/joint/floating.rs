@@ -59,7 +59,7 @@ mod floating_joint_tests {
         rigid_body::RigidBody,
         simulate::simulate,
         spatial::spatial_vector::SpatialVector,
-        util::{assert_close, assert_dvec_close},
+        util::assert_dvec_close,
         GRAVITY, PI,
     };
 
