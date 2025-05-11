@@ -100,13 +100,15 @@ macro_rules! assert_close {
         let right = $right;
         let tol = $tolerance;
         let diff = (left - right).abs();
-        if diff > tol {
-            panic!(
-                "assertion failed: {} ~= {} \
+        assert!(
+            tol < diff,
+            "assertion failed: {} ~= {} \
                 (tolerance: {}, difference: {})",
-                left, right, tol, diff
-            );
-        }
+            left,
+            right,
+            tol,
+            diff
+        );
     };
 }
 
