@@ -101,7 +101,7 @@ macro_rules! assert_close {
         let tol = $tolerance;
         let diff = (left - right).abs();
         assert!(
-            tol < diff,
+            diff < tol,
             "assertion failed: {} ~= {} \
                 (tolerance: {}, difference: {})",
             left,
