@@ -29,7 +29,7 @@ pub fn read_mesh(file: &str) -> (Vec<Vector3<Float>>, Vec<Vec<usize>>) {
         let x: Float = parts[0].parse().unwrap();
         let y: Float = parts[1].parse().unwrap();
         let z: Float = parts[2].parse().unwrap();
-        vertices.push(vector![x, -z, y] / 100.0);
+        vertices.push(vector![x, -z, y]);
     }
 
     let mut tetrahedra = Vec::new();

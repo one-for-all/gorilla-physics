@@ -10,7 +10,7 @@ use nalgebra_sparse::{CooMatrix, CscMatrix, CsrMatrix};
 use crate::{mesh::read_mesh, types::Float};
 
 /// Deformable modeled as mass-spring system.
-/// Ref: https://github.com/dilevin/CSC417-physics-based-animation
+/// Ref: Physics-based Animation, https://github.com/dilevin/CSC417-physics-based-animation
 pub struct MassSpringDeformable {
     pub vertices: Vec<Vector3<Float>>,
     pub tetrahedra: Vec<Vec<usize>>,
@@ -181,14 +181,7 @@ impl MassSpringDeformable {
     }
 
     pub fn step(&mut self, dt: Float, tau: &DVector<Float>) {
-        // TODO: remove the following. Keeping here for now for reference.
-        // CscCholesky factoring is too slow. It ends up taking the majority of
-        // execution time.
-        // let cholesky =
-        //     CscCholesky::factor(&self.mass_matrix).expect("Cholesky factorization failed");
-        // let qddot = cholesky.solve(&(-self.dV_dq() + tau));
-
-        let tau_in: &DVector<Float> = {
+        let tau: &DVector<Float> = {
             if tau.len() != 0 {
                 tau
             } else {
@@ -197,7 +190,7 @@ impl MassSpringDeformable {
         };
 
         // TODO: Do implicit integration for better stability.
-        let qddot = (-self.dV_dq() + tau_in) / (self.m / self.n_vertices as Float);
+        let qddot = (-self.dV_dq() + tau) / (self.m / self.n_vertices as Float);
         self.qdot += dt * qddot;
         self.q += dt * &self.qdot;
     }
@@ -215,7 +208,6 @@ impl MassSpringDeformable {
                 max_distance = distance;
             }
         }
-
         index
     }
 }
@@ -230,7 +222,7 @@ pub fn read_mass_spring_bunny() -> MassSpringDeformable {
 
     let (vertices, tetrahedra) = read_mesh(&buf);
     let n_vertices = vertices.len() as Float;
-    MassSpringDeformable::new(vertices, tetrahedra, 1.0 * n_vertices, 1e5)
+    MassSpringDeformable::new(vertices, tetrahedra, 100.0 * n_vertices, 1e5)
 }
 
 #[cfg(test)]
@@ -277,7 +269,7 @@ mod mass_spring_deformable_tests {
         }
 
         // Assert
-        assert_vec_close!(initial_qdot, bunny.qdot, 1e-4);
+        assert_vec_close!(initial_qdot, bunny.qdot, 1e-2);
     }
 
     /// Drag the body by a point, and expect whole body translation
@@ -290,9 +282,9 @@ mod mass_spring_deformable_tests {
         // Act
         let action_point_index = bunny.extreme_point(&vector![1.0, 0.0, 0.0]);
         let mut tau = DVector::zeros(bunny.n_vertices * 3);
-        tau[action_point_index * 3] = 100.0;
+        tau[action_point_index * 3] = 1e4;
 
-        let final_time = 1.0;
+        let final_time = 2.0;
         let dt = 1e-3;
         let num_steps = (final_time / dt) as usize;
         for _ in 0..num_steps {
@@ -305,8 +297,9 @@ mod mass_spring_deformable_tests {
         for i in 0..bunny.n_vertices {
             assert!(
                 diff_q[i * 3] > 0.0,
-                "{}th point did not move towards the drag direction",
-                i + 1
+                "{}th point did not move towards the drag direction, diff: {}",
+                i + 1,
+                diff_q[i * 3]
             );
         }
     }

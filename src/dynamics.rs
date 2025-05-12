@@ -542,7 +542,7 @@ fn solve_cone_complementarity(G: &DMatrix<Float>, g: &DVector<Float>) -> DVector
     assert!(G.shape().0 % 3 == 0);
     let n_constraints = G.shape().0 / 3;
 
-    let mut A_triplets = vec![];
+    let mut A_triplets: Vec<(usize, usize, Float)> = vec![];
     let mu = 1.0; // TODO: special handling for zero friction
     for i in 0..n_constraints {
         let index = i * 3;
