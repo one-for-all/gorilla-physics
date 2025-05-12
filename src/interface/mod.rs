@@ -39,6 +39,7 @@ pub mod cart_pole;
 pub mod controller;
 pub mod cube;
 pub mod double_pendulum;
+pub mod fem_deformable;
 pub mod hopper;
 pub mod mass_spring_deformable;
 pub mod pendulum;

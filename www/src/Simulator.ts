@@ -1,4 +1,5 @@
 import {
+  InterfaceFEMDeformable,
   InterfaceMassSpringDeformable,
   InterfaceSimulator,
 } from "gorilla-physics";
@@ -12,7 +13,8 @@ import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
 export class Simulator {
   simulator: InterfaceSimulator;
 
-  massSpringBunny: InterfaceMassSpringDeformable;
+  massSpringDeformable: InterfaceMassSpringDeformable;
+  femDeformable: InterfaceFEMDeformable;
 
   graphics: Graphics;
   length: number;
@@ -30,7 +32,8 @@ export class Simulator {
   constructor(simulator: InterfaceSimulator) {
     this.simulator = simulator;
 
-    this.massSpringBunny = null;
+    this.massSpringDeformable = null;
+    this.femDeformable = null;
 
     this.graphics = new Graphics();
     this.meshes = new Map();
@@ -40,14 +43,20 @@ export class Simulator {
     this.time = 0.0;
   }
 
-  addBunny(bunny: InterfaceMassSpringDeformable) {
-    this.massSpringBunny = bunny;
+  addDeformable(
+    deformable: InterfaceMassSpringDeformable | InterfaceFEMDeformable
+  ) {
+    if (deformable instanceof InterfaceMassSpringDeformable) {
+      this.massSpringDeformable = deformable;
+    } else {
+      this.femDeformable = deformable;
+    }
 
     const geometry = new THREE.BufferGeometry();
-    let vertices = this.massSpringBunny.vertices();
+    let vertices = deformable.vertices();
     geometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
 
-    let facets = this.massSpringBunny.facets();
+    let facets = deformable.facets();
     geometry.setIndex(new THREE.BufferAttribute(facets, 1));
     geometry.computeVertexNormals();
 
@@ -59,14 +68,14 @@ export class Simulator {
     const mesh = new THREE.Mesh(geometry, material);
 
     mesh.frustumCulled = false; // prevent mesh disappearing
-    this.meshes.set("bunny", mesh);
+    this.meshes.set("deformable", mesh);
     this.graphics.scene.add(mesh);
   }
 
-  updateBunny() {
-    let bunny = this.meshes.get("bunny");
+  updateDeformable() {
+    let bunny = this.meshes.get("deformable");
 
-    let vertices = this.massSpringBunny.vertices();
+    let vertices = this.femDeformable.vertices();
     bunny.geometry.setAttribute(
       "position",
       new THREE.BufferAttribute(vertices, 3)
@@ -237,7 +246,7 @@ export class Simulator {
     this.graphics.scene.add(cube);
   }
 
-  addRimlessWheel(radius: number, length: number, n_foot: number) {
+  addRimlessWheel(radius: number, n_foot: number) {
     // Add pivot at the center
     const pivotGeometry = new THREE.SphereGeometry(radius, 32, 32);
     const pivotMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
@@ -618,21 +627,26 @@ export class Simulator {
 
     // TODO: Currently some steps might take longer because of more computation.
     // This results in inconsistent frame refresh rate. Make it consistent.
-    let qs = this.simulator.step(dt, control_input);
+    // let qs = this.simulator.step(dt, control_input);
 
-    // if (this.massSpringBunny) {
-    //   // drag the body towards right
-    //   let tau = new Float32Array(this.massSpringBunny.vertices().length);
-    //   tau[499 * 3] = 100.0;
+    if (this.femDeformable) {
+      // drag the body towards right
+      let tau = new Float32Array(this.femDeformable.vertices().length);
+      // tau[499 * 3] = 1.0;
+      // tau[0 * 3] = -10.0;
+      // for (let i = 0; i < this.femBunny.vertices().length; i += 3) {
+      //   tau[i + 2] = -9.8;
+      // }
 
-    //   this.massSpringBunny.step(dt, tau);
-    //   this.updateBunny();
-    // }
-    // this.time += dt;
+      this.femDeformable.step(dt, tau);
+      this.updateDeformable();
+      console.log("time: %ss", this.time);
+      this.time += dt;
+    }
 
-    let poses = this.simulator.poses();
-    let contact_positions = this.simulator.contact_positions();
-    this.updateQuadruped(poses, contact_positions);
+    // let poses = this.simulator.poses();
+    // let contact_positions = this.simulator.contact_positions();
+    // this.updateQuadruped(poses, contact_positions);
     // this.updateCube(poses);
     // this.updateGripper(poses);
 
