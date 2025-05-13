@@ -5,8 +5,6 @@ use crate::types::Float;
 /// Read a .mesh file content into list of vertices & list of tetrahedra
 pub fn read_mesh(file: &str) -> (Vec<Vector3<Float>>, Vec<Vec<usize>>) {
     let mut lines = file.lines();
-
-    let mut vertices = Vec::new();
     let mut num_vertices_to_read = 0;
 
     // Read vertices number
@@ -21,18 +19,20 @@ pub fn read_mesh(file: &str) -> (Vec<Vector3<Float>>, Vec<Vec<usize>>) {
     }
 
     // Read vertices
-    for _ in 0..num_vertices_to_read {
-        let line = lines
-            .next()
-            .expect("There should still be vertex to be read");
-        let parts: Vec<&str> = line.split_whitespace().collect();
-        let x: Float = parts[0].parse().unwrap();
-        let y: Float = parts[1].parse().unwrap();
-        let z: Float = parts[2].parse().unwrap();
-        vertices.push(vector![x, -z, y]);
-    }
+    let vertices: Vec<Vector3<Float>> = (0..num_vertices_to_read)
+        .map(|_| {
+            let line = lines
+                .next()
+                .expect("There should still be vertex to be read");
+            let parts: Vec<&str> = line.split_whitespace().collect();
 
-    let mut tetrahedra = Vec::new();
+            let x: Float = parts[0].parse().unwrap();
+            let y: Float = parts[1].parse().unwrap();
+            let z: Float = parts[2].parse().unwrap();
+            vector![x, -z, y]
+        })
+        .collect();
+
     let mut num_tetrahedra_to_read = 0;
 
     // Read tetrahedra number
@@ -47,20 +47,22 @@ pub fn read_mesh(file: &str) -> (Vec<Vector3<Float>>, Vec<Vec<usize>>) {
     }
 
     // Read tetrahedra
-    for _ in 0..num_tetrahedra_to_read {
-        let line = lines
-            .next()
-            .expect("There should still be tetrahedron to be read");
-        let parts: Vec<&str> = line.split_whitespace().collect();
-        let tetrahedron: Vec<usize> = parts
-            .iter()
-            .take(4)
-            .map(|p| p.parse::<usize>().unwrap() - 1)
-            .collect::<Vec<_>>()
-            .try_into()
-            .unwrap();
-        tetrahedra.push(tetrahedron);
-    }
+    let tetrahedra = (0..num_tetrahedra_to_read)
+        .map(|_| {
+            let line = lines
+                .next()
+                .expect("There should still be tetrahedron to be read");
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            let tetrahedron: Vec<usize> = parts
+                .iter()
+                .take(4)
+                .map(|p| p.parse::<usize>().unwrap() - 1)
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap();
+            tetrahedron
+        })
+        .collect();
 
     (vertices, tetrahedra)
 }
