@@ -2,8 +2,9 @@ use itertools::izip;
 use na::{vector, DVector, Matrix3, Vector3};
 use nalgebra_sparse::factorization::CscCholesky;
 use nalgebra_sparse::{CooMatrix, CscMatrix};
+use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::collections::HashMap;
-use std::ops::AddAssign;
+use std::sync::Mutex;
 use std::{
     fs::File,
     io::{BufReader, Read},
@@ -179,39 +180,61 @@ impl FEMDeformable {
     }
 
     pub fn compute_internal_forces(&self) -> DVector<Float> {
-        let mut f = DVector::zeros(self.n_vertices * 3);
-        for (tetrahedron, B, W) in izip!(self.tetrahedra.iter(), self.B.iter(), self.W.iter()) {
-            let i_vi = tetrahedron[0] * 3;
-            let vi = vector![self.q[i_vi], self.q[i_vi + 1], self.q[i_vi + 2]];
-            let i_vj = tetrahedron[1] * 3;
-            let vj = vector![self.q[i_vj], self.q[i_vj + 1], self.q[i_vj + 2]];
-            let i_vk = tetrahedron[2] * 3;
-            let vk = vector![self.q[i_vk], self.q[i_vk + 1], self.q[i_vk + 2]];
-            let i_vl = tetrahedron[3] * 3;
-            let vl = vector![self.q[i_vl], self.q[i_vl + 1], self.q[i_vl + 2]];
+        let force_vec: Vec<Mutex<Vector3<Float>>> = (0..self.n_vertices)
+            .map(|_| Mutex::new(Vector3::zeros()))
+            .collect();
+        self.tetrahedra
+            .par_iter()
+            .zip_eq(self.B.par_iter())
+            .zip_eq(self.W.par_iter())
+            .for_each(|((tetrahedron, B), W)| {
+                let i_vi = tetrahedron[0] * 3;
+                let vi = vector![self.q[i_vi], self.q[i_vi + 1], self.q[i_vi + 2]];
+                let i_vj = tetrahedron[1] * 3;
+                let vj = vector![self.q[i_vj], self.q[i_vj + 1], self.q[i_vj + 2]];
+                let i_vk = tetrahedron[2] * 3;
+                let vk = vector![self.q[i_vk], self.q[i_vk + 1], self.q[i_vk + 2]];
+                let i_vl = tetrahedron[3] * 3;
+                let vl = vector![self.q[i_vl], self.q[i_vl + 1], self.q[i_vl + 2]];
 
-            let D = Matrix3::<Float>::from_columns(&[vl - vi, vl - vj, vl - vk]);
-            let F = D * B;
+                let D = Matrix3::<Float>::from_columns(&[vl - vi, vl - vj, vl - vk]);
+                let F = D * B;
 
-            let k = 6e3; //  Young's modulus. TODO: should be around 6e5 for rubber. reduced now for stability.
-            let v = 0.4; // Poisson's ratio
-            let mu = k / (2.0 * (1.0 + v));
-            let lambda = k * v / ((1.0 + v) * (1.0 - 2.0 * v));
-            let J = F.determinant();
-            let F_inv_T = F.try_inverse().unwrap().transpose();
-            let P = mu * (F - F_inv_T) + lambda * J.ln() * F_inv_T;
-            let H = -W / 6.0 * P * B.transpose();
+                let k = 6e3; // Young's modulus. TODO: should be around 6e5 for rubber. reduced now for stability.
+                let v = 0.4; // Poisson's ratio
+                let mu = k / (2.0 * (1.0 + v));
+                let lambda = k * v / ((1.0 + v) * (1.0 - 2.0 * v));
+                let J = F.determinant();
+                let F_inv_T = F.try_inverse().unwrap().transpose();
+                let P = mu * (F - F_inv_T) + lambda * J.ln() * F_inv_T;
+                let H = -W / 6.0 * P * B.transpose();
 
-            let h1 = -H.column(0);
-            let h2 = -H.column(1);
-            let h3 = -H.column(2);
+                let h1 = -H.column(0);
+                let h2 = -H.column(1);
+                let h3 = -H.column(2);
 
-            f.rows_mut(i_vi, 3).add_assign(h1);
-            f.rows_mut(i_vj, 3).add_assign(h2);
-            f.rows_mut(i_vk, 3).add_assign(h3);
-            f.rows_mut(i_vl, 3).add_assign(-h1 - h2 - h3);
-        }
-        f
+                let mut v_vi = force_vec[i_vi / 3].lock().unwrap();
+                *v_vi += h1;
+                drop(v_vi);
+                let mut v_vj = force_vec[i_vj / 3].lock().unwrap();
+                *v_vj += h2;
+                drop(v_vj);
+                let mut v_vk = force_vec[i_vk / 3].lock().unwrap();
+                *v_vk += h3;
+                drop(v_vk);
+                let mut v_vl = force_vec[i_vl / 3].lock().unwrap();
+                *v_vl += -h1 - h2 - h3;
+                drop(v_vl);
+            });
+        DVector::from_vec(
+            force_vec
+                .iter()
+                .flat_map(|x| {
+                    let x = *x.lock().unwrap();
+                    vec![x.x, x.y, x.z]
+                })
+                .collect(),
+        )
     }
 
     pub fn step(&mut self, dt: Float, tau: &DVector<Float>) {
@@ -248,6 +271,18 @@ impl FEMDeformable {
 
 pub fn read_fem_box() -> FEMDeformable {
     let path = "data/box.mesh";
+    let file = File::open(path).expect(&format!("{} should exist", path));
+    let mut reader = BufReader::new(file);
+
+    let mut buf: String = String::new();
+    let _ = reader.read_to_string(&mut buf);
+
+    let (vertices, tetrahedra) = read_mesh(&buf);
+    FEMDeformable::new(vertices, tetrahedra)
+}
+
+pub fn read_fem_bunny() -> FEMDeformable {
+    let path = "data/coarser_bunny.mesh";
     let file = File::open(path).expect(&format!("{} should exist", path));
     let mut reader = BufReader::new(file);
 

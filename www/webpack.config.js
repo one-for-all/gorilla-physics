@@ -10,7 +10,7 @@ const dist = path.resolve(__dirname, "dist");
  * @type {import('webpack').Configuration}
  */
 const webpackConfig = {
-  mode: isDev ? "development" : "production",
+  mode: "production", //  isDev ? "development" : "production", // TODO: Call stack size overflow if not built for production
   entry: "./src/index.ts",
   devtool: isDev ? "inline-source-map" : false,
   output: {
@@ -30,6 +30,12 @@ const webpackConfig = {
         test: /\.ts$/,
         use: "ts-loader",
       },
+      {
+        test: /\.js$/,
+        resolve: {
+          fullySpecified: false,
+        },
+      },
     ],
   },
   plugins: [
@@ -39,8 +45,20 @@ const webpackConfig = {
 
     new WasmPackPlugin({
       crateDirectory: "../",
+      extraArgs: "--target web",
     }),
   ],
+  devServer: {
+    headers: {
+      "Cross-Origin-Embedder-Policy": "require-corp",
+      "Cross-Origin-Opener-Policy": "same-origin",
+    },
+    static: {
+      directory: path.join(__dirname, "dist"),
+    },
+    compress: true,
+    port: 8080,
+  },
 };
 
 module.exports = webpackConfig;

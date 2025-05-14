@@ -47,6 +47,8 @@ pub mod quadruped;
 pub mod rimless_wheel;
 pub mod robot_arm;
 
+pub use wasm_bindgen_rayon::init_thread_pool;
+
 #[wasm_bindgen]
 extern "C" {
     fn alert(s: &str);

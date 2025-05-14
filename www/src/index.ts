@@ -1,7 +1,13 @@
-import { createFEMBox } from "gorilla-physics";
 import { Simulator } from "./Simulator";
 
 export const keysPressed: Record<string, boolean> = {};
+
+// Note: This following creates a custom memory model
+// const memory = new WebAssembly.Memory({
+//   initial: 4096, // 512 pages = 32MB
+//   maximum: 8192, // Optional: max memory size
+//   shared: true,
+// });
 
 document.addEventListener("keydown", (e) => {
   keysPressed[e.key.toLowerCase()] = true;
@@ -11,7 +17,14 @@ document.addEventListener("keyup", (e) => {
   keysPressed[e.key.toLowerCase()] = false;
 });
 
-import("gorilla-physics").then((gorilla) => {
+import("gorilla-physics").then(async (gorilla) => {
+  // await gorilla.default(
+  //   new URL("../../pkg/index_bg.wasm", import.meta.url),
+  //   memory
+  // );
+  await gorilla.default();
+  await gorilla.initThreadPool(navigator.hardwareConcurrency);
+
   let default_z = 0.8;
 
   let angle: number = (0.0 * Math.PI) / 180.0;
@@ -35,7 +48,7 @@ import("gorilla-physics").then((gorilla) => {
   // let simulator = new Simulator(interfaceSimulator);
   let simulator = new Simulator(null);
 
-  createFEMBox().then((box) => {
+  gorilla.createFEMBox().then((box) => {
     simulator.addDeformable(box);
   });
 

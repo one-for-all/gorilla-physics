@@ -78,11 +78,13 @@ itertools = "0.13.0"
 nalgebra = "0.33"
 nalgebra-sparse = "0.10"
 plotters = "0.3.5"
-wasm-bindgen = "0.2"
+wasm-bindgen = "0.2.89"
 web-sys = { version = "0.3", features = ['console', "Window", "Response", "Request"] }
-wasm-bindgen-futures = "0.4"
+wasm-bindgen-futures = "=0.4.50"
 ordered-float = "5.0.0"
 clarabel = "0"
+rayon = "1.10.0"
+wasm-bindgen-rayon = { path = "../wasm-bindgen-rayon"}
 
 [dev-dependencies]
 rand = "0.9.0"
