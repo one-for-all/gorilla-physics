@@ -6,7 +6,8 @@
   "main": "dist/main.js",
   "scripts": {
     "build": "rimraf dist pkg && webpack",
-    "start": "rimraf dist pkg && webpack serve --open --node-env development"
+    "start": "rimraf dist pkg && webpack serve --open --node-env development",
+    "prod": "rimraf dist pkg && webpack serve --open --node-env production"
   },
   "dependencies": {
     "gorilla-physics": "file:../pkg",

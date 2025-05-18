@@ -1,3 +1,4 @@
+use clarabel::algebra::VectorMath;
 use itertools::izip;
 use na::{vector, DVector, Matrix3, Vector3};
 use nalgebra_sparse::factorization::CscCholesky;
@@ -25,6 +26,9 @@ pub struct FEMDeformable {
     pub W: Vec<Float>, // Determinants of difference matrix of vertices of tetrahedra. i.e. 6 * volume of each tetrahedron
     pub mass_matrix: CscMatrix<Float>,
     pub mass_matrix_cholesky: CscCholesky<Float>,
+    pub mass_matrix_lumped: DVector<Float>, // Masses lumped to the vertices, i.e. all the masses of the deformable are assumed to be on the vertices
+
+    pub density: Float,
 
     pub boundary_facets: Vec<[usize; 3]>, // TODO: consistent boundary faces outward orientation
 
@@ -33,7 +37,7 @@ pub struct FEMDeformable {
 }
 
 impl FEMDeformable {
-    pub fn new(vertices: Vec<Vector3<Float>>, tetrahedra: Vec<Vec<usize>>) -> Self {
+    pub fn new(vertices: Vec<Vector3<Float>>, tetrahedra: Vec<Vec<usize>>, density: Float) -> Self {
         let n_vertices = vertices.len();
 
         let (B, W) = tetrahedra
@@ -67,9 +71,16 @@ impl FEMDeformable {
             vertices.iter().flat_map(|v| v.iter().copied()),
         );
 
-        let mass_matrix = FEMDeformable::compute_mass_matrix(&tetrahedra, &W, n_vertices, 100.0);
+        let mass_matrix = FEMDeformable::compute_mass_matrix(&tetrahedra, &W, n_vertices, density);
         let mass_matrix_cholesky = CscCholesky::factor(&mass_matrix)
             .expect("Cholesky should exist because mass matrix should be positive definite");
+
+        let mass_matrix_lumped: DVector<Float> = DVector::from_vec(
+            mass_matrix
+                .col_iter()
+                .map(|x| x.values().sum())
+                .collect::<Vec<_>>(),
+        );
 
         Self {
             vertices,
@@ -79,6 +90,8 @@ impl FEMDeformable {
             W,
             mass_matrix,
             mass_matrix_cholesky,
+            mass_matrix_lumped,
+            density,
             boundary_facets: vec![],
             q,
             qdot: DVector::zeros(n_vertices * 3),
@@ -178,25 +191,25 @@ impl FEMDeformable {
         self.boundary_facets = boundary_facets;
     }
 
-    pub fn compute_internal_forces(&self) -> DVector<Float> {
+    pub fn compute_internal_forces(&self, q: &DVector<Float>) -> DVector<Float> {
+        let k = 6e5; //  Young's modulus. TODO: should be around 6e5 for rubber. reduced now for stability.
+        let v = 0.4; // Poisson's ratio
+        let mu = k / (2.0 * (1.0 + v));
+        let lambda = k * v / ((1.0 + v) * (1.0 - 2.0 * v));
         let mut f = DVector::zeros(self.n_vertices * 3);
         for (tetrahedron, B, W) in izip!(self.tetrahedra.iter(), self.B.iter(), self.W.iter()) {
             let i_vi = tetrahedron[0] * 3;
-            let vi = vector![self.q[i_vi], self.q[i_vi + 1], self.q[i_vi + 2]];
+            let vi = vector![q[i_vi], q[i_vi + 1], q[i_vi + 2]];
             let i_vj = tetrahedron[1] * 3;
-            let vj = vector![self.q[i_vj], self.q[i_vj + 1], self.q[i_vj + 2]];
+            let vj = vector![q[i_vj], q[i_vj + 1], q[i_vj + 2]];
             let i_vk = tetrahedron[2] * 3;
-            let vk = vector![self.q[i_vk], self.q[i_vk + 1], self.q[i_vk + 2]];
+            let vk = vector![q[i_vk], q[i_vk + 1], q[i_vk + 2]];
             let i_vl = tetrahedron[3] * 3;
-            let vl = vector![self.q[i_vl], self.q[i_vl + 1], self.q[i_vl + 2]];
+            let vl = vector![q[i_vl], q[i_vl + 1], q[i_vl + 2]];
 
             let D = Matrix3::<Float>::from_columns(&[vl - vi, vl - vj, vl - vk]);
             let F = D * B;
 
-            let k = 6e3; //  Young's modulus. TODO: should be around 6e5 for rubber. reduced now for stability.
-            let v = 0.4; // Poisson's ratio
-            let mu = k / (2.0 * (1.0 + v));
-            let lambda = k * v / ((1.0 + v) * (1.0 - 2.0 * v));
             let J = F.determinant();
             let F_inv_T = F.try_inverse().unwrap().transpose();
             let P = mu * (F - F_inv_T) + lambda * J.ln() * F_inv_T;
@@ -215,18 +228,136 @@ impl FEMDeformable {
     }
 
     pub fn step(&mut self, dt: Float, tau: &DVector<Float>) {
-        let tau: &DVector<Float> = {
+        let tau: DVector<Float> = {
             if tau.len() != 0 {
-                tau
+                tau.clone()
             } else {
-                &DVector::zeros(self.n_vertices * 3)
+                DVector::zeros(self.n_vertices * 3)
             }
         };
 
-        let internal_force = self.compute_internal_forces();
-        let qddot = self.mass_matrix_cholesky.solve(&(internal_force + tau));
-        self.qdot += dt * qddot;
+        // TODO: Keep here for hack testing. Remove it later.
+        // It simulates gravity on the deformable.
+        // for (tetrahedron, determinant) in izip!(self.tetrahedra.iter(), self.W.iter()) {
+        //     let volume = determinant;
+        //     let v0 = tetrahedron[0];
+        //     let v1 = tetrahedron[1];
+        //     let v2 = tetrahedron[2];
+        //     let v3 = tetrahedron[3];
+        //     let gravity_force = -9.81 * self.density * volume / 4.0;
+        //     tau[v0 * 3 + 2] += gravity_force;
+        //     tau[v1 * 3 + 2] += gravity_force;
+        //     tau[v2 * 3 + 2] += gravity_force;
+        //     tau[v3 * 3 + 2] += gravity_force;
+        // }
+
+        // TODO: Keep here for hack testing. Remove it later.
+        // It simulates a half-space for collision with the body.
+        // let plane = -1.0;
+        // for i in 0..self.n_vertices {
+        //     let z = self.q[i * 3 + 2];
+        //     if z < plane {
+        //         let depth = plane - z;
+        //         let zn = depth.powf(3.0 / 2.0);
+        //         let vz = self.qdot[i * 3 + 2];
+        //         let z_dot = -vz;
+        //         let k = 50e2;
+        //         let a = 1.0;
+        //         let λ = 3.0 / 2.0 * a * k;
+        //         let π = (λ * zn * z_dot + k * zn).max(0.0);
+        //         tau[i * 3 + 2] += π;
+        //     }
+        // }
+
+        // TODO: This procedure is extremely slow. Need to speed it up.
+        let mut i = 0;
+        let max_iteration = 100;
+        let mut delta_x = DVector::repeat(self.n_vertices * 3, Float::INFINITY);
+        let mut q_next = self.q.clone(); // set initial guesses of q and qdot
+        let mut qdot_next = self.qdot.clone();
+        while i < max_iteration && !(delta_x.abs().max() < 1e-6) {
+            // Solve the linearized equation at this q to get better q, qdot estimate
+            let f = self.compute_internal_forces(&q_next) + &tau;
+            let b = (&self.qdot - &qdot_next).component_mul(&self.mass_matrix_lumped) / dt + f;
+
+            delta_x = conjugate_gradient(
+                |x| {
+                    self.compute_force_differential(&q_next, &-x)
+                        + self.mass_matrix_lumped.component_mul(&x) / (dt * dt)
+                },
+                &b,
+                &q_next,
+                1e-3,
+            );
+            q_next += &delta_x;
+            qdot_next += &delta_x / dt;
+            i += 1;
+        }
+        self.qdot = qdot_next;
         self.q += dt * &self.qdot;
+
+        // let internal_force = self.compute_internal_forces(&self.q);
+        // // let qddot = self.mass_matrix_cholesky.solve(&(internal_force + tau));
+        // let qddot = (internal_force + tau).component_div(&self.mass_matrix_lumped);
+        // self.qdot += dt * qddot;
+        // self.q += dt * &self.qdot;
+    }
+
+    /// Computes the dF for a given dq at current q.
+    /// i.e. df = -K dq, where K is the stiffness matrix, aka d^2V/dq^2
+    /// Ref:
+    ///     FEM Simulation of 3D Deformable Solids: A practitioner’s guide to theory, discretization and model reduction.
+    ///     Part One: The classical FEM method and discretization methodology,
+    ///     Eftychios D. Sifakis, 2012, Section 4.3 Force differentials
+    fn compute_force_differential(
+        &self,
+        q: &DVector<Float>,
+        dq: &DVector<Float>,
+    ) -> DVector<Float> {
+        // TODO: make parameters as attributes
+        let k = 6e5; //  Young's modulus.
+        let v = 0.4; // Poisson's ratio
+        let mu = k / (2.0 * (1.0 + v));
+        let lambda = k * v / ((1.0 + v) * (1.0 - 2.0 * v));
+        let mut df = DVector::zeros(self.n_vertices * 3);
+        for (tetrahedron, B, W) in izip!(self.tetrahedra.iter(), self.B.iter(), self.W.iter()) {
+            let i_vi = tetrahedron[0] * 3;
+            let i_vj = tetrahedron[1] * 3;
+            let i_vk = tetrahedron[2] * 3;
+            let i_vl = tetrahedron[3] * 3;
+            let vi = vector![q[i_vi], q[i_vi + 1], q[i_vi + 2]];
+            let vj = vector![q[i_vj], q[i_vj + 1], q[i_vj + 2]];
+            let vk = vector![q[i_vk], q[i_vk + 1], q[i_vk + 2]];
+            let vl = vector![q[i_vl], q[i_vl + 1], q[i_vl + 2]];
+            let D = Matrix3::<Float>::from_columns(&[vl - vi, vl - vj, vl - vk]);
+            let F = D * B;
+
+            let dvi = vector![dq[i_vi], dq[i_vi + 1], dq[i_vi + 2]];
+            let dvj = vector![dq[i_vj], dq[i_vj + 1], dq[i_vj + 2]];
+            let dvk = vector![dq[i_vk], dq[i_vk + 1], dq[i_vk + 2]];
+            let dvl = vector![dq[i_vl], dq[i_vl + 1], dq[i_vl + 2]];
+            let dD = Matrix3::<Float>::from_columns(&[dvl - dvi, dvl - dvj, dvl - dvk]);
+            let dF = dD * B;
+
+            let J = F.determinant();
+            let F_inv = F.try_inverse().unwrap();
+            let F_inv_T = F_inv.transpose();
+            let F_inv_dF = F_inv * dF;
+            let dP = mu * dF
+                + (mu - lambda * J.ln()) * F_inv_T * F_inv_dF.transpose()
+                + lambda * F_inv_dF.trace() * F_inv_T;
+            let dH = -W / 6.0 * dP * B.transpose();
+
+            let dh1 = -dH.column(0);
+            let dh2 = -dH.column(1);
+            let dh3 = -dH.column(2);
+
+            df.rows_mut(i_vi, 3).add_assign(dh1);
+            df.rows_mut(i_vj, 3).add_assign(dh2);
+            df.rows_mut(i_vk, 3).add_assign(dh3);
+            df.rows_mut(i_vl, 3).add_assign(-dh1 - dh2 - dh3);
+        }
+        df
     }
 
     /// Returns the index of the point that is furthest in given direction
@@ -246,6 +377,47 @@ impl FEMDeformable {
     }
 }
 
+/// Conjugate Gradient method for solving linear system A x = b, where A is
+/// positive-definite.
+/// Ref:
+///     An Introduction to the Conjugate Gradient Method Without the Agonizing
+///     Pain, Jonathan Richard Shewchuk, 1994, Section B2. Conjugate Gradients
+fn conjugate_gradient<F>(
+    A_mul: F,
+    b: &DVector<Float>,
+    x0: &DVector<Float>,
+    tol: Float,
+) -> DVector<Float>
+where
+    F: Fn(&DVector<Float>) -> DVector<Float>,
+{
+    let mut x = x0.clone();
+
+    let mut i = 1;
+    let mut r = b - A_mul(x0);
+    let mut d = r.clone();
+    let mut delta_new = r.norm_squared();
+
+    let max_iteration = 501;
+    // TODO: guard against or warn on NaN?
+    while i < max_iteration && !(delta_new < tol) {
+        let q = &A_mul(&d);
+        let alpha = delta_new / d.dot(&q);
+        x += alpha * &d;
+        if i % 50 == 0 {
+            r = b - A_mul(&x);
+        } else {
+            r -= alpha * q;
+        }
+        let delta_old = delta_new;
+        delta_new = r.norm_squared();
+        let beta = delta_new / delta_old;
+        d = &r + beta * &d;
+        i += 1;
+    }
+    x
+}
+
 pub fn read_fem_box() -> FEMDeformable {
     let path = "data/box.mesh";
     let file = File::open(path).expect(&format!("{} should exist", path));
@@ -255,7 +427,48 @@ pub fn read_fem_box() -> FEMDeformable {
     let _ = reader.read_to_string(&mut buf);
 
     let (vertices, tetrahedra) = read_mesh(&buf);
-    FEMDeformable::new(vertices, tetrahedra)
+    FEMDeformable::new(vertices, tetrahedra, 100.0)
+}
+
+#[cfg(test)]
+mod solver_tests {
+    use na::{Cholesky, DMatrix, DVector};
+    use rand::Rng;
+
+    use crate::{assert_vec_close, types::Float};
+
+    use super::conjugate_gradient;
+
+    #[test]
+    fn conjugate_gradient_random() {
+        // Arrange
+        let mut rng = rand::rng();
+
+        for _ in 0..100 {
+            let n = rng.random_range(1..=100);
+            let x0 = DVector::zeros(n);
+
+            // Create a random matrix A of size (n x n)
+            let a_data: Vec<Float> = (0..n * n).map(|_| rng.random_range(-1.0..1.0)).collect();
+            let a = DMatrix::from_vec(n, n, a_data);
+
+            // Compute A * A^T to get a symmetric positive semi-definite matrix
+            let mut A = &a * a.transpose();
+
+            // Ad n * I to make it strictly positive-definite
+            A += DMatrix::<Float>::identity(n, n) * (n as Float);
+
+            let b: DVector<Float> =
+                DVector::from_vec((0..n).map(|_| rng.random_range(-1.0..1.0)).collect());
+
+            // Act
+            let x_cg = conjugate_gradient(|x| &A * x, &b, &x0, 1e-10);
+
+            // Assert
+            let x_cholesky = Cholesky::new(A).unwrap().solve(&b);
+            assert_vec_close!(x_cg, x_cholesky, 1e-5);
+        }
+    }
 }
 
 #[cfg(test)]
@@ -277,9 +490,9 @@ mod fem_deformable_tests {
 
         // Act
         let final_time = 5.0;
-        let dt = 1.0 / 600.0;
+        let dt = 1.0 / 60.0;
         let num_steps = (final_time / dt) as usize;
-        for _ in 0..num_steps {
+        for _s in 0..num_steps {
             deformable.step(dt, &dvector![]);
         }
 
@@ -325,9 +538,9 @@ mod fem_deformable_tests {
         tau[action_point_index * 3 + 2] = force;
 
         let final_time = 2.0;
-        let dt = 1.0 / 600.0;
+        let dt = 1.0 / 60.0;
         let num_steps = (final_time / dt) as usize;
-        for _ in 0..num_steps {
+        for _s in 0..num_steps {
             deformable.step(dt, &tau);
         }
 
