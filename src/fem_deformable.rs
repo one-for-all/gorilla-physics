@@ -215,16 +215,11 @@ impl FEMDeformable {
         let mut f = DVector::zeros(self.n_vertices * 3);
         for (tetrahedron, B, W) in izip!(self.tetrahedra.iter(), self.B.iter(), self.W.iter()) {
             let i_vi = tetrahedron[0] * 3;
-            let vi = vector![q[i_vi], q[i_vi + 1], q[i_vi + 2]];
             let i_vj = tetrahedron[1] * 3;
-            let vj = vector![q[i_vj], q[i_vj + 1], q[i_vj + 2]];
             let i_vk = tetrahedron[2] * 3;
-            let vk = vector![q[i_vk], q[i_vk + 1], q[i_vk + 2]];
             let i_vl = tetrahedron[3] * 3;
-            let vl = vector![q[i_vl], q[i_vl + 1], q[i_vl + 2]];
 
-            let D = Matrix3::<Float>::from_columns(&[vl - vi, vl - vj, vl - vk]);
-            let F = D * B;
+            let F = FEMDeformable::compute_deformable_gradients(q, tetrahedron, B);
 
             let J = F.determinant();
             let F_inv_T = F.try_inverse().unwrap().transpose();
@@ -252,8 +247,8 @@ impl FEMDeformable {
             }
         };
 
-        // TODO: Keep here for hack testing. Remove it later.
-        // It simulates gravity on the deformable.
+        // // TODO: Keep here for hack testing. Remove it later.
+        // // It simulates gravity on the deformable.
         // for (tetrahedron, determinant) in izip!(self.tetrahedra.iter(), self.W.iter()) {
         //     let volume = determinant;
         //     let v0 = tetrahedron[0];
@@ -267,8 +262,8 @@ impl FEMDeformable {
         //     tau[v3 * 3 + 2] += gravity_force;
         // }
 
-        // TODO: Keep here for hack testing. Remove it later.
-        // It simulates a half-space for collision with the body.
+        // // TODO: Keep here for hack testing. Remove it later.
+        // // It simulates a half-space for collision with the body.
         // let plane = -1.0;
         // for i in 0..self.n_vertices {
         //     let z = self.q[i * 3 + 2];
@@ -296,9 +291,20 @@ impl FEMDeformable {
             let f = self.compute_internal_forces(&q_next) + &tau;
             let b = (&self.qdot - &qdot_next).component_mul(&self.mass_matrix_lumped) / dt + f;
 
+            let Fs: Vec<Matrix3<Float>> = izip!(self.tetrahedra.iter(), self.B.iter())
+                .map(|(tetrahedron, B)| {
+                    FEMDeformable::compute_deformable_gradients(&q_next, tetrahedron, B)
+                })
+                .collect();
+            let (Js, F_invs): (Vec<Float>, Vec<Matrix3<Float>>) = Fs
+                .iter()
+                .map(|F| (F.determinant(), F.try_inverse().unwrap()))
+                .collect::<(Vec<Float>, Vec<Matrix3<Float>>)>();
+            let F_inv_Ts: Vec<Matrix3<Float>> =
+                F_invs.iter().map(|F_inv| F_inv.transpose()).collect();
             delta_x = conjugate_gradient(
                 |x| {
-                    self.compute_force_differential(&q_next, &-x)
+                    self.compute_force_differential(&-x, &Fs, &Js, &F_invs, &F_inv_Ts)
                         + self.mass_matrix_lumped.component_mul(&x) / (dt * dt)
                 },
                 &b,
@@ -321,27 +327,33 @@ impl FEMDeformable {
 
     /// Computes the dF for a given dq at current q.
     /// i.e. df = -K dq, where K is the stiffness matrix, aka d^2V/dq^2
+    /// Fs is a vec of deformable gradients, one for each tetrahedron
     /// Ref:
     ///     FEM Simulation of 3D Deformable Solids: A practitioner’s guide to theory, discretization and model reduction.
     ///     Part One: The classical FEM method and discretization methodology,
     ///     Eftychios D. Sifakis, 2012, Section 4.3 Force differentials
     fn compute_force_differential(
         &self,
-        q: &DVector<Float>,
         dq: &DVector<Float>,
+        Fs: &Vec<Matrix3<Float>>,
+        Js: &Vec<Float>,
+        F_invs: &Vec<Matrix3<Float>>,
+        F_inv_Ts: &Vec<Matrix3<Float>>,
     ) -> DVector<Float> {
         let mut df = DVector::zeros(self.n_vertices * 3);
-        for (tetrahedron, B, W) in izip!(self.tetrahedra.iter(), self.B.iter(), self.W.iter()) {
+        for (tetrahedron, B, W, F, J, F_inv, F_inv_T) in izip!(
+            self.tetrahedra.iter(),
+            self.B.iter(),
+            self.W.iter(),
+            Fs.iter(),
+            Js.iter(),
+            F_invs.iter(),
+            F_inv_Ts.iter()
+        ) {
             let i_vi = tetrahedron[0] * 3;
             let i_vj = tetrahedron[1] * 3;
             let i_vk = tetrahedron[2] * 3;
             let i_vl = tetrahedron[3] * 3;
-            let vi = vector![q[i_vi], q[i_vi + 1], q[i_vi + 2]];
-            let vj = vector![q[i_vj], q[i_vj + 1], q[i_vj + 2]];
-            let vk = vector![q[i_vk], q[i_vk + 1], q[i_vk + 2]];
-            let vl = vector![q[i_vl], q[i_vl + 1], q[i_vl + 2]];
-            let D = Matrix3::<Float>::from_columns(&[vl - vi, vl - vj, vl - vk]);
-            let F = D * B;
 
             let dvi = vector![dq[i_vi], dq[i_vi + 1], dq[i_vi + 2]];
             let dvj = vector![dq[i_vj], dq[i_vj + 1], dq[i_vj + 2]];
@@ -350,9 +362,6 @@ impl FEMDeformable {
             let dD = Matrix3::<Float>::from_columns(&[dvl - dvi, dvl - dvj, dvl - dvk]);
             let dF = dD * B;
 
-            let J = F.determinant();
-            let F_inv = F.try_inverse().unwrap();
-            let F_inv_T = F_inv.transpose();
             let F_inv_dF = F_inv * dF;
             let dP = self.mu * dF
                 + (self.mu - self.lambda * J.ln()) * F_inv_T * F_inv_dF.transpose()
@@ -369,6 +378,25 @@ impl FEMDeformable {
             df.rows_mut(i_vl, 3).add_assign(-dh1 - dh2 - dh3);
         }
         df
+    }
+
+    /// Computes the deformable gradient for a single tetrahedron
+    /// i.e. returns F = dV/dq
+    fn compute_deformable_gradients(
+        q: &DVector<Float>,
+        tetrahedron: &Vec<usize>,
+        B: &Matrix3<Float>,
+    ) -> Matrix3<Float> {
+        let i_vi = tetrahedron[0] * 3;
+        let i_vj = tetrahedron[1] * 3;
+        let i_vk = tetrahedron[2] * 3;
+        let i_vl = tetrahedron[3] * 3;
+        let vi = vector![q[i_vi], q[i_vi + 1], q[i_vi + 2]];
+        let vj = vector![q[i_vj], q[i_vj + 1], q[i_vj + 2]];
+        let vk = vector![q[i_vk], q[i_vk + 1], q[i_vk + 2]];
+        let vl = vector![q[i_vl], q[i_vl + 1], q[i_vl + 2]];
+        let D = Matrix3::<Float>::from_columns(&[vl - vi, vl - vj, vl - vk]);
+        D * B
     }
 
     /// Returns the index of the point that is furthest in given direction
