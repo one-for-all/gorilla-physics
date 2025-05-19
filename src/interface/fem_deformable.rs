@@ -53,7 +53,7 @@ pub async fn createFEMBox() -> InterfaceFEMDeformable {
     let text_str = text.as_string().unwrap();
 
     let (vertices, tetrahedra) = read_mesh(&text_str);
-    let mut deformable = FEMDeformable::new(vertices, tetrahedra, 100.0);
+    let mut deformable = FEMDeformable::new(vertices, tetrahedra, 100.0, 6e5, 0.4);
     deformable.extract_boundary_facets();
 
     InterfaceFEMDeformable { inner: deformable }

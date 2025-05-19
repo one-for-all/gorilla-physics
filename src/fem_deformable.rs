@@ -29,6 +29,8 @@ pub struct FEMDeformable {
     pub mass_matrix_lumped: DVector<Float>, // Masses lumped to the vertices, i.e. all the masses of the deformable are assumed to be on the vertices
 
     pub density: Float,
+    pub mu: Float,     // Lamé coefficients, μ
+    pub lambda: Float, // Lamé coefficients, λ
 
     pub boundary_facets: Vec<[usize; 3]>, // TODO: consistent boundary faces outward orientation
 
@@ -37,7 +39,16 @@ pub struct FEMDeformable {
 }
 
 impl FEMDeformable {
-    pub fn new(vertices: Vec<Vector3<Float>>, tetrahedra: Vec<Vec<usize>>, density: Float) -> Self {
+    /// Create a FEM-based deformable
+    /// k is Young's modulus, i.e. a measure of stretch resistance
+    /// v is Poisson's ratio, i.e. a measure of incompressibility
+    pub fn new(
+        vertices: Vec<Vector3<Float>>,
+        tetrahedra: Vec<Vec<usize>>,
+        density: Float,
+        k: Float,
+        v: Float,
+    ) -> Self {
         let n_vertices = vertices.len();
 
         let (B, W) = tetrahedra
@@ -82,6 +93,13 @@ impl FEMDeformable {
                 .collect::<Vec<_>>(),
         );
 
+        // Compute Lamé coefficients from Young's modulus and Poisson's ratio
+        // Ref:
+        //      The classical FEM method and discretization methodology,
+        //      Eftychios D. Sifakis, 2012, Section 3.2 Linear Elasticity
+        let mu = k / (2.0 * (1.0 + v));
+        let lambda = k * v / ((1.0 + v) * (1.0 - 2.0 * v));
+
         Self {
             vertices,
             tetrahedra,
@@ -92,6 +110,8 @@ impl FEMDeformable {
             mass_matrix_cholesky,
             mass_matrix_lumped,
             density,
+            mu,
+            lambda,
             boundary_facets: vec![],
             q,
             qdot: DVector::zeros(n_vertices * 3),
@@ -192,10 +212,6 @@ impl FEMDeformable {
     }
 
     pub fn compute_internal_forces(&self, q: &DVector<Float>) -> DVector<Float> {
-        let k = 6e5; //  Young's modulus. TODO: should be around 6e5 for rubber. reduced now for stability.
-        let v = 0.4; // Poisson's ratio
-        let mu = k / (2.0 * (1.0 + v));
-        let lambda = k * v / ((1.0 + v) * (1.0 - 2.0 * v));
         let mut f = DVector::zeros(self.n_vertices * 3);
         for (tetrahedron, B, W) in izip!(self.tetrahedra.iter(), self.B.iter(), self.W.iter()) {
             let i_vi = tetrahedron[0] * 3;
@@ -212,7 +228,7 @@ impl FEMDeformable {
 
             let J = F.determinant();
             let F_inv_T = F.try_inverse().unwrap().transpose();
-            let P = mu * (F - F_inv_T) + lambda * J.ln() * F_inv_T;
+            let P = self.mu * (F - F_inv_T) + self.lambda * J.ln() * F_inv_T;
             let H = -W / 6.0 * P * B.transpose();
 
             let h1 = -H.column(0);
@@ -314,11 +330,6 @@ impl FEMDeformable {
         q: &DVector<Float>,
         dq: &DVector<Float>,
     ) -> DVector<Float> {
-        // TODO: make parameters as attributes
-        let k = 6e5; //  Young's modulus.
-        let v = 0.4; // Poisson's ratio
-        let mu = k / (2.0 * (1.0 + v));
-        let lambda = k * v / ((1.0 + v) * (1.0 - 2.0 * v));
         let mut df = DVector::zeros(self.n_vertices * 3);
         for (tetrahedron, B, W) in izip!(self.tetrahedra.iter(), self.B.iter(), self.W.iter()) {
             let i_vi = tetrahedron[0] * 3;
@@ -343,9 +354,9 @@ impl FEMDeformable {
             let F_inv = F.try_inverse().unwrap();
             let F_inv_T = F_inv.transpose();
             let F_inv_dF = F_inv * dF;
-            let dP = mu * dF
-                + (mu - lambda * J.ln()) * F_inv_T * F_inv_dF.transpose()
-                + lambda * F_inv_dF.trace() * F_inv_T;
+            let dP = self.mu * dF
+                + (self.mu - self.lambda * J.ln()) * F_inv_T * F_inv_dF.transpose()
+                + self.lambda * F_inv_dF.trace() * F_inv_T;
             let dH = -W / 6.0 * dP * B.transpose();
 
             let dh1 = -dH.column(0);
@@ -427,7 +438,7 @@ pub fn read_fem_box() -> FEMDeformable {
     let _ = reader.read_to_string(&mut buf);
 
     let (vertices, tetrahedra) = read_mesh(&buf);
-    FEMDeformable::new(vertices, tetrahedra, 100.0)
+    FEMDeformable::new(vertices, tetrahedra, 100.0, 6e5, 0.4)
 }
 
 #[cfg(test)]
