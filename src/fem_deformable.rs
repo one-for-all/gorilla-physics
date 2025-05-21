@@ -304,7 +304,7 @@ impl FEMDeformable {
                 F_invs.iter().map(|F_inv| F_inv.transpose()).collect();
             delta_x = conjugate_gradient(
                 |x| {
-                    self.compute_force_differential(&-x, &Fs, &Js, &F_invs, &F_inv_Ts)
+                    self.compute_force_differential(&-x, &Js, &F_invs, &F_inv_Ts)
                         + self.mass_matrix_lumped.component_mul(&x) / (dt * dt)
                 },
                 &b,
@@ -335,17 +335,15 @@ impl FEMDeformable {
     fn compute_force_differential(
         &self,
         dq: &DVector<Float>,
-        Fs: &Vec<Matrix3<Float>>,
         Js: &Vec<Float>,
         F_invs: &Vec<Matrix3<Float>>,
         F_inv_Ts: &Vec<Matrix3<Float>>,
     ) -> DVector<Float> {
         let mut df = DVector::zeros(self.n_vertices * 3);
-        for (tetrahedron, B, W, F, J, F_inv, F_inv_T) in izip!(
+        for (tetrahedron, B, W, J, F_inv, F_inv_T) in izip!(
             self.tetrahedra.iter(),
             self.B.iter(),
             self.W.iter(),
-            Fs.iter(),
             Js.iter(),
             F_invs.iter(),
             F_inv_Ts.iter()
