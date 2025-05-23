@@ -603,7 +603,7 @@ export class Simulator {
     this.setPose("hopper_leg", legPose);
   }
 
-  run(timestamp?: number) {
+  async run(timestamp?: number) {
     this.graphics.render();
 
     // TODO: measure and use the actual time elapsed
@@ -637,8 +637,7 @@ export class Simulator {
       // for (let i = 0; i < this.femBunny.vertices().length; i += 3) {
       //   tau[i + 2] = -9.8;
       // }
-
-      this.femDeformable.step(dt, tau);
+      await this.femDeformable.step(dt, tau);
       this.updateDeformable();
       console.log("time: %ss", this.time);
       this.time += dt;
