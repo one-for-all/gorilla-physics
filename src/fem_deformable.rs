@@ -302,13 +302,14 @@ impl FEMDeformable {
                 .collect::<(Vec<Float>, Vec<Matrix3<Float>>)>();
             let F_inv_Ts: Vec<Matrix3<Float>> =
                 F_invs.iter().map(|F_inv| F_inv.transpose()).collect();
+            let dx0: DVector<Float> = DVector::repeat(self.n_vertices * 3, 0.0);
             delta_x = conjugate_gradient(
                 |x| {
                     self.compute_force_differential(&-x, &Js, &F_invs, &F_inv_Ts)
                         + self.mass_matrix_lumped.component_mul(&x) / (dt * dt)
                 },
                 &b,
-                &q_next,
+                &dx0,
                 1e-3,
             );
             q_next += &delta_x;
