@@ -10,9 +10,10 @@ use std::{
     fs::File,
     io::{BufReader, Read},
 };
-use wgpu::{BindGroup, Buffer, ComputePipeline, Device, Queue, ShaderModule};
 
-use crate::gpu::{async_initialize_gpu, compute_dH, setup_compute_dH_pipeline, Matrix3x3};
+use crate::gpu::{
+    async_initialize_gpu, compute_dH, setup_compute_dH_pipeline, Matrix3x3, WgpuContext,
+};
 use crate::{mesh::read_mesh, types::Float};
 
 /// Deformable modeled by finite element method
@@ -40,24 +41,14 @@ pub struct FEMDeformable {
     pub q: DVector<Float>,
     pub qdot: DVector<Float>,
 
-    // GPU
-    pub device: Device,
-    pub queue: Queue,
-    pub shader_module: ShaderModule,
-    pipeline: ComputePipeline,
-    bind_group: BindGroup,
-
-    input_dq_buffer: Buffer,
-    input_F_invs_buffer: Buffer,
-    input_Js_buffer: Buffer,
-    output_dH_buffer: Buffer,
-    download_dH_buffer: Buffer,
+    // for working with GPU
+    pub wgpu_context: WgpuContext,
 }
 
 impl FEMDeformable {
     /// Create a FEM-based deformable
-    /// k is Young's modulus, i.e. a measure of stretch resistance
-    /// v is Poisson's ratio, i.e. a measure of incompressibility
+    /// k is Young's modulus, a measure of stretch resistance
+    /// v is Poisson's ratio, a measure of incompressibility
     pub async fn new(
         vertices: Vec<Vector3<Float>>,
         tetrahedra: Vec<Vec<usize>>,
@@ -153,6 +144,20 @@ impl FEMDeformable {
             lambda,
         );
 
+        let wgpu_context = WgpuContext {
+            device,
+            queue,
+            module: shader_module,
+            pipeline,
+            bind_group,
+            input_buffers: HashMap::from([
+                ("dq", input_dq_buffer),
+                ("F_invs", input_F_invs_buffer),
+                ("Js", input_Js_buffer),
+            ]),
+            output_buffers: HashMap::from([("dH", output_dH_buffer)]),
+            download_buffers: HashMap::from([("dH", download_dH_buffer)]),
+        };
         Self {
             vertices,
             tetrahedra,
@@ -168,16 +173,7 @@ impl FEMDeformable {
             boundary_facets: vec![],
             q,
             qdot: DVector::zeros(n_vertices * 3),
-            device,
-            queue,
-            shader_module,
-            pipeline,
-            bind_group,
-            input_dq_buffer,
-            input_F_invs_buffer,
-            input_Js_buffer,
-            output_dH_buffer,
-            download_dH_buffer,
+            wgpu_context,
         }
     }
 
@@ -371,17 +367,8 @@ impl FEMDeformable {
             let n_vertices = self.n_vertices;
             let tetrahedra = &self.tetrahedra;
             if cfg!(feature = "gpu") {
+                let wgpu_context = &self.wgpu_context;
                 let Js_bytemuck: &[u8] = bytemuck::cast_slice(&Js.as_slice());
-                let device = &self.device;
-                let queue = &self.queue;
-                let pipeline = &self.pipeline;
-                let bind_group = &self.bind_group;
-
-                let input_dq_buffer: &Buffer = &self.input_dq_buffer;
-                let input_F_invs_buffer: &Buffer = &self.input_F_invs_buffer;
-                let input_Js_buffer: &Buffer = &self.input_Js_buffer;
-                let output_dH_buffer: &Buffer = &self.output_dH_buffer;
-                let download_dH_buffer: &Buffer = &self.download_dH_buffer;
 
                 let padded_F_invs: &Vec<Matrix3x3> = &(F_invs
                     .iter()
@@ -406,15 +393,7 @@ impl FEMDeformable {
                             &-&x_clone,
                             Js_bytemuck,
                             padded_F_invs_bytemuck,
-                            device,
-                            queue,
-                            pipeline,
-                            bind_group,
-                            input_dq_buffer,
-                            input_F_invs_buffer,
-                            input_Js_buffer,
-                            output_dH_buffer,
-                            download_dH_buffer,
+                            wgpu_context,
                         )
                         .await
                             * dt
@@ -563,31 +542,24 @@ async fn gpu_compute_force_differential(
     dv: &DVector<Float>,
     Js_bytemuck: &[u8],
     padded_F_invs_bytemuck: &[u8],
-    device: &Device,
-    queue: &Queue,
-    pipeline: &ComputePipeline,
-    bind_group: &BindGroup,
-    input_dq_buffer: &Buffer,
-    input_F_invs_buffer: &Buffer,
-    input_Js_buffer: &Buffer,
-    output_dH_buffer: &Buffer,
-    download_dH_buffer: &Buffer,
+    wgpu_context: &WgpuContext,
 ) -> DVector<Float> {
-    queue.write_buffer(&input_dq_buffer, 0, bytemuck::cast_slice(&dv.as_slice()));
-    queue.write_buffer(&input_F_invs_buffer, 0, padded_F_invs_bytemuck);
-    queue.write_buffer(&input_Js_buffer, 0, Js_bytemuck);
+    wgpu_context.queue.write_buffer(
+        &wgpu_context.input_buffers["dq"],
+        0,
+        bytemuck::cast_slice(&dv.as_slice()),
+    );
+    wgpu_context.queue.write_buffer(
+        &wgpu_context.input_buffers["F_invs"],
+        0,
+        padded_F_invs_bytemuck,
+    );
+    wgpu_context
+        .queue
+        .write_buffer(&wgpu_context.input_buffers["Js"], 0, Js_bytemuck);
 
-    let dH_vec = compute_dH(
-        &device,
-        &queue,
-        pipeline,
-        bind_group,
-        output_dH_buffer,
-        download_dH_buffer,
-        tetrahedra,
-    )
-    .await;
-    download_dH_buffer.unmap();
+    let dH_vec = compute_dH(&wgpu_context, tetrahedra).await;
+    wgpu_context.download_buffers["dH"].unmap();
 
     let mut df = DVector::zeros(n_vertices * 3);
     for (tetrahedron, dH) in izip!(tetrahedra.iter(), dH_vec.iter()) {

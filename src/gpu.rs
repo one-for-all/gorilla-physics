@@ -1,9 +1,21 @@
-use std::num::NonZeroU64;
+use std::{collections::HashMap, num::NonZeroU64};
 
 use na::Matrix3;
 use wgpu::{util::DeviceExt, BindGroup, Buffer, ComputePipeline, Device, Queue, ShaderModule};
 
 use crate::types::Float;
+
+/// Convenience container of GPU related objects
+pub struct WgpuContext {
+    pub device: Device,
+    pub queue: Queue,
+    pub module: ShaderModule,
+    pub pipeline: ComputePipeline,
+    pub bind_group: BindGroup,
+    pub input_buffers: HashMap<&'static str, Buffer>,
+    pub output_buffers: HashMap<&'static str, Buffer>,
+    pub download_buffers: HashMap<&'static str, Buffer>,
+}
 
 /// Initialize the interface to the GPU
 pub async fn async_initialize_gpu() -> (Device, Queue) {
@@ -297,28 +309,26 @@ pub fn setup_compute_dH_pipeline(
 }
 
 pub async fn compute_dH(
-    device: &Device,
-    queue: &Queue,
-    pipeline: &ComputePipeline,
-    bind_group: &BindGroup,
-    output_dH_buffer: &Buffer,
-    download_dH_buffer: &Buffer,
+    wgpu_context: &WgpuContext,
     tetrahedra: &Vec<Vec<usize>>,
 ) -> Vec<Matrix3<Float>> {
-    let mut encoder =
-        device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+    let mut encoder = wgpu_context
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
     let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
         label: None,
         timestamp_writes: None,
     });
-    compute_pass.set_pipeline(&pipeline);
-    compute_pass.set_bind_group(0, bind_group, &[]);
+    compute_pass.set_pipeline(&wgpu_context.pipeline);
+    compute_pass.set_bind_group(0, &wgpu_context.bind_group, &[]);
 
     let workgroup_count = tetrahedra.len().div_ceil(64);
     compute_pass.dispatch_workgroups(workgroup_count as u32, 1, 1);
 
     drop(compute_pass);
 
+    let output_dH_buffer = &wgpu_context.output_buffers["dH"];
+    let download_dH_buffer = &wgpu_context.download_buffers["dH"];
     encoder.copy_buffer_to_buffer(
         &output_dH_buffer,
         0,
@@ -328,14 +338,14 @@ pub async fn compute_dH(
     );
 
     let command_buffer = encoder.finish();
-    queue.submit([command_buffer]);
+    wgpu_context.queue.submit([command_buffer]);
     let buffer_dF_slice = download_dH_buffer.slice(..);
 
     let (sender, receiver) = flume::bounded(1);
 
     buffer_dF_slice.map_async(wgpu::MapMode::Read, move |r| sender.send(r).unwrap());
 
-    device.poll(wgpu::PollType::Wait).unwrap();
+    wgpu_context.device.poll(wgpu::PollType::Wait).unwrap();
     receiver.recv_async().await.unwrap().unwrap();
     let data_dF = buffer_dF_slice.get_mapped_range();
     let dF: &[Matrix3x3] = bytemuck::cast_slice(&data_dF);
