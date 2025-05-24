@@ -74,18 +74,40 @@ name = "read_bunny_mass_spring"
 path = "examples/read_bunny_mass_spring.rs"
 
 [dependencies]
+cfg-if = "1"
 itertools = "0.13.0"
 nalgebra = "0.33"
 nalgebra-sparse = "0.10"
 plotters = "0.3.5"
-wasm-bindgen = "0.2"
-web-sys = { version = "0.3", features = ['console', "Window", "Response", "Request"] }
-wasm-bindgen-futures = "0.4"
 ordered-float = "5.0.0"
 clarabel = "0"
+wgpu = "25.0.0"
+pollster = "0.4"
+bytemuck = "1.22.0"
+flume = "0.11.1"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = ['console', "Window", "Response", "Request", "Document", "Element"] }
+# faer = "0.20"
+# faer-ext = "0.4"
+# rayon = "1.10.0"
+# wasm-bindgen-rayon = { path = "../wasm-bindgen-rayon"}
+
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { version = "1.45.0", features = ["full"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wgpu = { version = "25.0.0", features = ["webgl"]}
 
 [dev-dependencies]
 rand = "0.9.0"
 
 [build]
 # rustflags = ["-Awarnings"]
+
+[profile.release]
+strip = true
+
+[features]
+gpu = []

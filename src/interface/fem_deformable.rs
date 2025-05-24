@@ -32,12 +32,12 @@ impl InterfaceFEMDeformable {
         )
     }
 
-    pub fn step(&mut self, dt: Float, tau: Vec<Float>) {
+    pub async fn step(&mut self, dt: Float, tau: Vec<Float>) {
         let tau = DVector::from(tau);
 
         let n_substep = 1;
         for _ in 0..n_substep {
-            self.inner.step(dt / (n_substep as Float), &tau);
+            self.inner.step(dt / (n_substep as Float), &tau).await;
         }
     }
 }
@@ -53,7 +53,7 @@ pub async fn createFEMBox() -> InterfaceFEMDeformable {
     let text_str = text.as_string().unwrap();
 
     let (vertices, tetrahedra) = read_mesh(&text_str);
-    let mut deformable = FEMDeformable::new(vertices, tetrahedra, 100.0, 6e5, 0.4);
+    let mut deformable = FEMDeformable::new(vertices, tetrahedra, 100.0, 6e5, 0.4).await;
     deformable.extract_boundary_facets();
 
     InterfaceFEMDeformable { inner: deformable }

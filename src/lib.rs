@@ -10,6 +10,7 @@ pub mod double_pendulum;
 pub mod dynamics;
 pub mod energy;
 pub mod fem_deformable;
+pub mod gpu;
 pub mod inertia;
 pub mod integrators;
 pub mod joint;

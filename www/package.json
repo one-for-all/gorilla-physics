@@ -7,7 +7,10 @@
   "scripts": {
     "build": "rimraf dist pkg && webpack",
     "start": "rimraf dist pkg && webpack serve --open --node-env development",
-    "prod": "rimraf dist pkg && webpack serve --open --node-env production"
+    "prod": "rimraf dist pkg && webpack serve --open --node-env production",
+    "build:gpu": "FEATURE_GPU=1 npm run build",
+    "start:gpu": "FEATURE_GPU=1 npm run start",
+    "prod:gpu": "FEATURE_GPU=1 npm run prod"
   },
   "dependencies": {
     "gorilla-physics": "file:../pkg",
