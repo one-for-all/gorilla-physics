@@ -312,7 +312,7 @@ impl FEMDeformable {
 
         // // TODO: Keep here for hack testing. Remove it later.
         // // It simulates gravity on the deformable.
-        // for (tetrahedron, determinant) in izip!(self.tetrahedra.iter(), self.W.iter()) {
+        // for (tetrahedron, determinant) in izip!(self.tetrahedra.iter(), self.Ws.iter()) {
         //     let volume = determinant;
         //     let v0 = tetrahedron[0];
         //     let v1 = tetrahedron[1];
@@ -349,7 +349,7 @@ impl FEMDeformable {
         let mut delta_x = DVector::repeat(self.n_vertices * 3, Float::INFINITY);
         let mut q_next = self.q.clone(); // set initial guesses of q and qdot
         let mut qdot_next = self.qdot.clone();
-        while i < max_iteration && !(delta_x.abs().max() < 1e-6) {
+        while i < max_iteration && !(delta_x.abs().max() < 1e-6 / dt) {
             // Solve the linearized equation at this q to get better q, qdot estimate
             let f = self.compute_internal_forces(&q_next) + &tau;
             let b = (&self.qdot - &qdot_next).component_mul(&self.mass_matrix_lumped) / dt + f;
@@ -413,14 +413,19 @@ impl FEMDeformable {
                         download_dH_buffer,
                     )
                     .await
-                        + mass_matrix_lumped.component_mul(&x_clone) / (dt * dt)
+                        * dt
+                        + mass_matrix_lumped.component_mul(&x_clone) / (dt)
                 }
             };
 
-            delta_x = conjugate_gradient(f_A_mul, &b, &q_next, 1e-5).await;
+            let dx0: DVector<Float> = DVector::repeat(self.n_vertices * 3, 0.0);
+            // delta_x = conjugate_gradient(f_A_mul, &b, &dx0, 1e-3).await;
+            // q_next += &delta_x;
+            // qdot_next += &delta_x / dt;
+            delta_x = conjugate_gradient(f_A_mul, &b, &dx0, 1e-3).await;
+            q_next += &delta_x * dt;
+            qdot_next += &delta_x;
 
-            q_next += &delta_x;
-            qdot_next += &delta_x / dt;
             i += 1;
         }
         self.qdot = qdot_next;
@@ -536,7 +541,7 @@ async fn conjugate_gradient<F, Fut>(
     A_mul: F,
     b: &DVector<Float>,
     x0: &DVector<Float>,
-    tol: Float,
+    abs_tol: Float,
 ) -> DVector<Float>
 where
     F: Fn(&DVector<Float>) -> Fut,
@@ -551,7 +556,7 @@ where
 
     let max_iteration = 500;
     // TODO: guard against or warn on NaN?
-    while i < max_iteration && !(delta_new < tol) {
+    while i < max_iteration && !(delta_new < abs_tol) {
         let q: DVector<Float> = A_mul(&d).await;
         let alpha = delta_new / d.dot(&q);
         x += alpha * &d;
