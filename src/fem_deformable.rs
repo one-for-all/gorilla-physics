@@ -346,10 +346,10 @@ impl FEMDeformable {
         // TODO: This procedure is extremely slow. Need to speed it up.
         let mut i = 0;
         let max_iteration = 100;
-        let mut delta_x = DVector::repeat(self.n_vertices * 3, Float::INFINITY);
+        let mut delta_v = DVector::repeat(self.n_vertices * 3, Float::INFINITY);
         let mut q_next = self.q.clone(); // set initial guesses of q and qdot
         let mut qdot_next = self.qdot.clone();
-        while i < max_iteration && !(delta_x.abs().max() < 1e-6 / dt) {
+        while i < max_iteration && !(delta_v.abs().max() < 1e-4) {
             // Solve the linearized equation at this q to get better q, qdot estimate
             let f = self.compute_internal_forces(&q_next) + &tau;
             let b = (&self.qdot - &qdot_next).component_mul(&self.mass_matrix_lumped) / dt + f;
@@ -364,67 +364,92 @@ impl FEMDeformable {
                 .map(|F| (F.determinant(), F.try_inverse().unwrap()))
                 .collect::<(Vec<Float>, Vec<Matrix3<Float>>)>();
 
+            // initial guess of delta v
+            let dv0: DVector<Float> = DVector::repeat(self.n_vertices * 3, 0.0);
+
             let mass_matrix_lumped = &self.mass_matrix_lumped;
-            let Js_bytemuck: &[u8] = bytemuck::cast_slice(&Js.as_slice());
             let n_vertices = self.n_vertices;
             let tetrahedra = &self.tetrahedra;
-            let device = &self.device;
-            let queue = &self.queue;
-            let pipeline = &self.pipeline;
-            let bind_group = &self.bind_group;
+            if cfg!(feature = "gpu") {
+                let Js_bytemuck: &[u8] = bytemuck::cast_slice(&Js.as_slice());
+                let device = &self.device;
+                let queue = &self.queue;
+                let pipeline = &self.pipeline;
+                let bind_group = &self.bind_group;
 
-            let input_dq_buffer: &Buffer = &self.input_dq_buffer;
-            let input_F_invs_buffer: &Buffer = &self.input_F_invs_buffer;
-            let input_Js_buffer: &Buffer = &self.input_Js_buffer;
-            let output_dH_buffer: &Buffer = &self.output_dH_buffer;
-            let download_dH_buffer: &Buffer = &self.download_dH_buffer;
+                let input_dq_buffer: &Buffer = &self.input_dq_buffer;
+                let input_F_invs_buffer: &Buffer = &self.input_F_invs_buffer;
+                let input_Js_buffer: &Buffer = &self.input_Js_buffer;
+                let output_dH_buffer: &Buffer = &self.output_dH_buffer;
+                let download_dH_buffer: &Buffer = &self.download_dH_buffer;
 
-            let padded_F_invs: &Vec<Matrix3x3> = &(F_invs
-                .iter()
-                .map(|mat| {
-                    let mut cols = [[0.0; 4]; 3];
-                    for i in 0..3 {
-                        cols[i][0] = mat[(0, i)];
-                        cols[i][1] = mat[(1, i)];
-                        cols[i][2] = mat[(2, i)];
+                let padded_F_invs: &Vec<Matrix3x3> = &(F_invs
+                    .iter()
+                    .map(|mat| {
+                        let mut cols = [[0.0; 4]; 3];
+                        for i in 0..3 {
+                            cols[i][0] = mat[(0, i)];
+                            cols[i][1] = mat[(1, i)];
+                            cols[i][2] = mat[(2, i)];
+                        }
+                        Matrix3x3 { cols }
+                    })
+                    .collect());
+                let padded_F_invs_bytemuck: &[u8] = bytemuck::cast_slice(&padded_F_invs);
+
+                let f_A_mul = |x: &DVector<Float>| {
+                    let x_clone = x.clone();
+                    async move {
+                        gpu_compute_force_differential(
+                            n_vertices,
+                            tetrahedra,
+                            &-&x_clone,
+                            Js_bytemuck,
+                            padded_F_invs_bytemuck,
+                            device,
+                            queue,
+                            pipeline,
+                            bind_group,
+                            input_dq_buffer,
+                            input_F_invs_buffer,
+                            input_Js_buffer,
+                            output_dH_buffer,
+                            download_dH_buffer,
+                        )
+                        .await
+                            * dt
+                            + mass_matrix_lumped.component_mul(&x_clone) / dt
                     }
-                    Matrix3x3 { cols }
-                })
-                .collect());
-            let padded_F_invs_bytemuck: &[u8] = bytemuck::cast_slice(&padded_F_invs);
+                };
+                delta_v = conjugate_gradient(f_A_mul, &b, &dv0, 1e-3).await;
+            } else {
+                let F_inv_Ts: Vec<Matrix3<Float>> =
+                    F_invs.iter().map(|F_inv| F_inv.transpose()).collect();
+                let Bs = &self.Bs;
+                let Ws = &self.Ws;
+                let mu = self.mu;
+                let lambda = self.lambda;
+                let Js = &Js;
+                let F_invs = &F_invs;
+                let F_inv_Ts = &F_inv_Ts;
 
-            let f_A_mul = |x: &DVector<Float>| {
-                let x_clone = x.clone();
-                async move {
-                    compute_force_differential(
-                        n_vertices,
-                        tetrahedra,
-                        &-&x_clone,
-                        Js_bytemuck,
-                        padded_F_invs_bytemuck,
-                        device,
-                        queue,
-                        pipeline,
-                        bind_group,
-                        input_dq_buffer,
-                        input_F_invs_buffer,
-                        input_Js_buffer,
-                        output_dH_buffer,
-                        download_dH_buffer,
-                    )
-                    .await
-                        * dt
-                        + mass_matrix_lumped.component_mul(&x_clone) / (dt)
-                }
-            };
+                let f_A_mul = |x: &DVector<Float>| {
+                    let x_clone = x.clone();
+                    async move {
+                        cpu_compute_force_differential(
+                            n_vertices, tetrahedra, &-&x_clone, Bs, Ws, mu, lambda, Js, F_invs,
+                            F_inv_Ts,
+                        )
+                        .await
+                            * dt
+                            + mass_matrix_lumped.component_mul(&x_clone) / dt
+                    }
+                };
+                delta_v = conjugate_gradient(f_A_mul, &b, &dv0, 1e-3).await;
+            }
 
-            let dx0: DVector<Float> = DVector::repeat(self.n_vertices * 3, 0.0);
-            // delta_x = conjugate_gradient(f_A_mul, &b, &dx0, 1e-3).await;
-            // q_next += &delta_x;
-            // qdot_next += &delta_x / dt;
-            delta_x = conjugate_gradient(f_A_mul, &b, &dx0, 1e-3).await;
-            q_next += &delta_x * dt;
-            qdot_next += &delta_x;
+            qdot_next += &delta_v;
+            q_next += &delta_v * dt;
 
             i += 1;
         }
@@ -474,6 +499,57 @@ impl FEMDeformable {
     }
 }
 
+async fn cpu_compute_force_differential(
+    n_vertices: usize,
+    tetrahedra: &Vec<Vec<usize>>,
+    dv: &DVector<Float>,
+    Bs: &Vec<Matrix3<Float>>,
+    Ws: &Vec<Float>,
+    mu: Float,
+    lambda: Float,
+    Js: &Vec<Float>,
+    F_invs: &Vec<Matrix3<Float>>,
+    F_inv_Ts: &Vec<Matrix3<Float>>,
+) -> DVector<Float> {
+    let mut df = DVector::zeros(n_vertices * 3);
+    for (tetrahedron, B, W, J, F_inv, F_inv_T) in izip!(
+        tetrahedra.iter(),
+        Bs.iter(),
+        Ws.iter(),
+        Js.iter(),
+        F_invs.iter(),
+        F_inv_Ts.iter()
+    ) {
+        let i_vi = tetrahedron[0] * 3;
+        let i_vj = tetrahedron[1] * 3;
+        let i_vk = tetrahedron[2] * 3;
+        let i_vl = tetrahedron[3] * 3;
+
+        let dvi = vector![dv[i_vi], dv[i_vi + 1], dv[i_vi + 2]];
+        let dvj = vector![dv[i_vj], dv[i_vj + 1], dv[i_vj + 2]];
+        let dvk = vector![dv[i_vk], dv[i_vk + 1], dv[i_vk + 2]];
+        let dvl = vector![dv[i_vl], dv[i_vl + 1], dv[i_vl + 2]];
+        let dD = Matrix3::<Float>::from_columns(&[dvl - dvi, dvl - dvj, dvl - dvk]);
+        let dF = dD * B;
+
+        let F_inv_dF = F_inv * dF;
+        let dP = mu * dF
+            + (mu - lambda * J.ln()) * F_inv_T * F_inv_dF.transpose()
+            + lambda * F_inv_dF.trace() * F_inv_T;
+        let dH = -W / 6.0 * dP * B.transpose();
+
+        let dh1 = -dH.column(0);
+        let dh2 = -dH.column(1);
+        let dh3 = -dH.column(2);
+
+        df.rows_mut(i_vi, 3).add_assign(dh1);
+        df.rows_mut(i_vj, 3).add_assign(dh2);
+        df.rows_mut(i_vk, 3).add_assign(dh3);
+        df.rows_mut(i_vl, 3).add_assign(-dh1 - dh2 - dh3);
+    }
+    df
+}
+
 /// Computes the dF for a given dq at current q.
 /// i.e. returns df = -K dq, where K is the stiffness matrix, aka d^2V/dq^2
 /// Fs is a vec of deformable gradients, one for each tetrahedron
@@ -481,10 +557,10 @@ impl FEMDeformable {
 ///     FEM Simulation of 3D Deformable Solids: A practitioner’s guide to theory, discretization and model reduction.
 ///     Part One: The classical FEM method and discretization methodology,
 ///     Eftychios D. Sifakis, 2012, Section 4.3 Force differentials
-async fn compute_force_differential(
+async fn gpu_compute_force_differential(
     n_vertices: usize,
     tetrahedra: &Vec<Vec<usize>>,
-    dq: &DVector<Float>,
+    dv: &DVector<Float>,
     Js_bytemuck: &[u8],
     padded_F_invs_bytemuck: &[u8],
     device: &Device,
@@ -497,7 +573,7 @@ async fn compute_force_differential(
     output_dH_buffer: &Buffer,
     download_dH_buffer: &Buffer,
 ) -> DVector<Float> {
-    queue.write_buffer(&input_dq_buffer, 0, bytemuck::cast_slice(&dq.as_slice()));
+    queue.write_buffer(&input_dq_buffer, 0, bytemuck::cast_slice(&dv.as_slice()));
     queue.write_buffer(&input_F_invs_buffer, 0, padded_F_invs_bytemuck);
     queue.write_buffer(&input_Js_buffer, 0, Js_bytemuck);
 

@@ -6,6 +6,8 @@ const path = require("path");
 const isDev = process.env.NODE_ENV === "development";
 const dist = path.resolve(__dirname, "dist");
 
+const featureGPU = process.env.FEATURE_GPU === "1";
+
 /**
  * @type {import('webpack').Configuration}
  */
@@ -39,6 +41,7 @@ const webpackConfig = {
 
     new WasmPackPlugin({
       crateDirectory: "../",
+      extraArgs: featureGPU ? "--features gpu" : "",
     }),
   ],
 };
