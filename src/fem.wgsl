@@ -14,7 +14,7 @@ var<storage, read> F_invs: array<mat3x3f>;
 var<storage, read> Js: array<f32>;
 
 @group(0) @binding(5)
-var<storage, read> W_over_6s: array<f32>;
+var<storage, read> Ws: array<f32>;
 
 @group(0) @binding(6)
 var<storage, read_write> output_dH: array<mat3x3f>;
@@ -56,7 +56,7 @@ fn compute_dH(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let dP = mu * dF 
         + (mu - lambda * log(Js[index])) * F_inv_T * transpose(F_inv_dF) 
         + lambda * F_inv_dF_trace * F_inv_T;
-    let dH = W_over_6s[index] * dP * transpose(B);
+    let dH = Ws[index] * dP * transpose(B);
 
     output_dH[index] = dH;
 }

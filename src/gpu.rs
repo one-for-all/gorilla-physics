@@ -63,7 +63,7 @@ pub fn setup_compute_dH_pipeline(
     n_vertices: usize,
     tetrahedra: &Vec<Vec<usize>>,
     padded_Bs: &Vec<Matrix3x3>,
-    W_over_6s: &Vec<Float>,
+    Ws: &Vec<Float>,
     mu: Float,
     lambda: Float,
 ) -> (
@@ -115,9 +115,9 @@ pub fn setup_compute_dH_pipeline(
         mapped_at_creation: false,
     });
 
-    let input_W_over_6s_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("input W_over_6s buffer"),
-        contents: bytemuck::cast_slice(&W_over_6s.as_slice()),
+    let input_Ws_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("input Ws buffer"),
+        contents: bytemuck::cast_slice(&Ws.as_slice()),
         usage: wgpu::BufferUsages::STORAGE,
     });
 
@@ -129,7 +129,7 @@ pub fn setup_compute_dH_pipeline(
     });
 
     let download_dH_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("download_ dH buffer"),
+        label: Some("download dH buffer"),
         size: output_dH_buffer.size(),
         usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
         mapped_at_creation: false,
@@ -268,7 +268,7 @@ pub fn setup_compute_dH_pipeline(
             },
             wgpu::BindGroupEntry {
                 binding: 5,
-                resource: input_W_over_6s_buffer.as_entire_binding(),
+                resource: input_Ws_buffer.as_entire_binding(),
             },
             wgpu::BindGroupEntry {
                 binding: 6,

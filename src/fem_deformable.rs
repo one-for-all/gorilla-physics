@@ -28,7 +28,7 @@ pub struct FEMDeformable {
     pub n_vertices: usize,
 
     pub Bs: Vec<Matrix3<Float>>, // Inverses of difference matrix of vertices of tetrahedra
-    pub Ws: Vec<Float>, // Determinants of difference matrix of vertices of tetrahedra. i.e. 6 * volume of each tetrahedron
+    pub Ws: Vec<Float>, // (Determinants divided by 6) of difference matrix of vertices of tetrahedra. i.e. volume of each tetrahedron. Volumne = determminant / 6
     pub mass_matrix: CscMatrix<Float>,
     mass_matrix_cholesky: CscCholesky<Float>,
     pub mass_matrix_lumped: DVector<Float>, // Masses lumped to the vertices, i.e. all the masses of the deformable are assumed to be on the vertices
@@ -81,7 +81,7 @@ impl FEMDeformable {
                     "D should be invertible: {}, determinant: {}",
                     D, determinant
                 ));
-                (Be, determinant)
+                (Be, determinant / 6.0)
             })
             .unzip();
 
@@ -124,8 +124,6 @@ impl FEMDeformable {
             })
             .collect());
 
-        let W_over_6s: &Vec<Float> = &(Ws.iter().map(|x| x / 6.0).collect());
-
         let (
             shader_module,
             pipeline,
@@ -135,15 +133,7 @@ impl FEMDeformable {
             input_Js_buffer,
             output_dH_buffer,
             download_dH_buffer,
-        ) = setup_compute_dH_pipeline(
-            &device,
-            n_vertices,
-            &tetrahedra,
-            padded_Bs,
-            W_over_6s,
-            mu,
-            lambda,
-        );
+        ) = setup_compute_dH_pipeline(&device, n_vertices, &tetrahedra, padded_Bs, &Ws, mu, lambda);
 
         let wgpu_context = WgpuContext {
             device,
@@ -186,7 +176,7 @@ impl FEMDeformable {
         density: Float,
     ) -> CscMatrix<Float> {
         let mut M_triplets: HashMap<(usize, usize), Float> = HashMap::new();
-        for (tetrahedron, determinant) in izip!(tetrahedra.iter(), W.iter()) {
+        for (tetrahedron, volume) in izip!(tetrahedra.iter(), W.iter()) {
             for i in 0..4 {
                 for j in 0..4 {
                     let vi = tetrahedron[i];
@@ -195,10 +185,10 @@ impl FEMDeformable {
                     let value = M_triplets.get(&key).unwrap_or(&0.0);
                     if vi == vj {
                         // diagonal entries of mass matrix
-                        M_triplets.insert(key, value + density * determinant / 60.0);
+                        M_triplets.insert(key, value + density * volume / 10.0);
                     } else {
                         // off-diagonal entries of mass matrix
-                        M_triplets.insert(key, value + density * determinant / 120.0);
+                        M_triplets.insert(key, value + density * volume / 20.0);
                     }
                 }
             }
@@ -272,7 +262,9 @@ impl FEMDeformable {
 
     pub fn compute_internal_forces(&self, q: &DVector<Float>) -> DVector<Float> {
         let mut f = DVector::zeros(self.n_vertices * 3);
-        for (tetrahedron, B, W) in izip!(self.tetrahedra.iter(), self.Bs.iter(), self.Ws.iter()) {
+        for (tetrahedron, B, volume) in
+            izip!(self.tetrahedra.iter(), self.Bs.iter(), self.Ws.iter())
+        {
             let i_vi = tetrahedron[0] * 3;
             let i_vj = tetrahedron[1] * 3;
             let i_vk = tetrahedron[2] * 3;
@@ -283,7 +275,7 @@ impl FEMDeformable {
             let J = F.determinant();
             let F_inv_T = F.try_inverse().unwrap().transpose();
             let P = self.mu * (F - F_inv_T) + self.lambda * J.ln() * F_inv_T;
-            let H = W / 6.0 * P * B.transpose();
+            let H = *volume * P * B.transpose();
 
             let h1 = H.column(0);
             let h2 = H.column(1);
@@ -308,8 +300,8 @@ impl FEMDeformable {
 
         // // TODO: Keep here for hack testing. Remove it later.
         // // It simulates gravity on the deformable.
-        // for (tetrahedron, determinant) in izip!(self.tetrahedra.iter(), self.Ws.iter()) {
-        //     let volume = determinant;
+        // for (tetrahedron, volume) in izip!(self.tetrahedra.iter(), self.Ws.iter()) {
+        //     let volume = volume;
         //     let v0 = tetrahedron[0];
         //     let v1 = tetrahedron[1];
         //     let v2 = tetrahedron[2];
@@ -495,7 +487,7 @@ async fn cpu_compute_force_differential(
     F_inv_Ts: &Vec<Matrix3<Float>>,
 ) -> DVector<Float> {
     let mut df = DVector::zeros(n_vertices * 3);
-    for (tetrahedron, B, W, J, F_inv, F_inv_T) in izip!(
+    for (tetrahedron, B, volume, J, F_inv, F_inv_T) in izip!(
         tetrahedra.iter(),
         Bs.iter(),
         Ws.iter(),
@@ -520,7 +512,7 @@ async fn cpu_compute_force_differential(
         let dP = mu * dF
             + (mu - lambda * J.ln()) * F_inv_T * F_inv_dF.transpose()
             + lambda * F_inv_dF.trace() * F_inv_T;
-        let dH = W / 6.0 * dP * B.transpose();
+        let dH = *volume * dP * B.transpose();
 
         let dh1 = dH.column(0);
         let dh2 = dH.column(1);
