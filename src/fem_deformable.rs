@@ -28,7 +28,7 @@ pub struct FEMDeformable {
     pub n_vertices: usize,
 
     pub Bs: Vec<Matrix3<Float>>, // Inverses of difference matrix of vertices of tetrahedra
-    pub Ws: Vec<Float>, // (Determinants divided by 6) of difference matrix of vertices of tetrahedra. i.e. volume of each tetrahedron. Volumne = determminant / 6
+    pub Ws: Vec<Float>, // (Determinants divided by 6) of difference matrix of vertices of tetrahedra. i.e. undeformed volume of each tetrahedron. Volumne = determminant / 6
     pub mass_matrix: CscMatrix<Float>,
     mass_matrix_cholesky: CscCholesky<Float>,
     pub mass_matrix_lumped: DVector<Float>, // Masses lumped to the vertices, i.e. all the masses of the deformable are assumed to be on the vertices
