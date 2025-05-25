@@ -426,8 +426,8 @@ impl FEMDeformable {
                 delta_x = conjugate_gradient(A_mul_func, &b, &dx0, 1e-3).await;
             }
 
-            qdot_next += &delta_x;
-            q_next += &delta_x * dt;
+            qdot_next += &delta_x / dt;
+            q_next += &delta_x;
 
             i += 1;
         }
