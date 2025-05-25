@@ -6,15 +6,29 @@ I am learning a lot as I build it, so it is also a learning project for me.
 
 ## Getting Started
 
+### Testing
+
 Run all tests in lib:
 
 `cargo test --lib -- --nocapture`
+
+optionally w/ GPU implementation:
+
+`cargo test --lib --features gpu -- --nocapture`
+
+### Execution
 
 Run the acrobot example:
 
 `cargo run --bin acrobot`
 
+optionally w/ GPU implementation:
+
+`cargo run --bin acrobot --features gpu`
+
 It should generate a plot ("acrobot swingup energy.png") that shows the total energy of the system against time.
+
+### Profiling
 
 Profile the run-time of an example:
 

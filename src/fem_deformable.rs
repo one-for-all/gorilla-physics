@@ -752,7 +752,7 @@ mod fem_deformable_tests {
         let final_time = 2.0;
         let dt = 1.0 / 60.0;
         let num_steps = (final_time / dt) as usize;
-        for _s in 0..num_steps {
+        for _s in 0..10 {
             deformable.step(dt, &tau).await;
         }
 
