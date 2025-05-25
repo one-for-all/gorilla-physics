@@ -260,6 +260,7 @@ impl FEMDeformable {
         self.boundary_facets = boundary_facets;
     }
 
+    /// Compute internal elastic force f = -dV/dq, where V is the elastic energy
     pub fn compute_internal_forces(&self, q: &DVector<Float>) -> DVector<Float> {
         let mut f = DVector::zeros(self.n_vertices * 3);
         for (tetrahedron, B, volume) in
@@ -270,7 +271,7 @@ impl FEMDeformable {
             let i_vk = tetrahedron[2] * 3;
             let i_vl = tetrahedron[3] * 3;
 
-            let F = FEMDeformable::compute_deformable_gradients(q, tetrahedron, B);
+            let F = FEMDeformable::compute_deformation_gradients(q, tetrahedron, B);
 
             let J = F.determinant();
             let F_inv_T = F.try_inverse().unwrap().transpose();
@@ -345,7 +346,7 @@ impl FEMDeformable {
 
             let Fs: Vec<Matrix3<Float>> = izip!(self.tetrahedra.iter(), self.Bs.iter())
                 .map(|(tetrahedron, B)| {
-                    FEMDeformable::compute_deformable_gradients(&q_next, tetrahedron, B)
+                    FEMDeformable::compute_deformation_gradients(&q_next, tetrahedron, B)
                 })
                 .collect();
             let (Js, F_invs): (Vec<Float>, Vec<Matrix3<Float>>) = Fs
@@ -433,9 +434,9 @@ impl FEMDeformable {
         // self.q += dt * &self.qdot;
     }
 
-    /// Computes the deformable gradient for a single tetrahedron
-    /// i.e. returns F = dV/dq
-    fn compute_deformable_gradients(
+    /// Computes the deformation gradient for a single tetrahedron
+    /// i.e. returns F = dφ/dq
+    fn compute_deformation_gradients(
         q: &DVector<Float>,
         tetrahedron: &Vec<usize>,
         B: &Matrix3<Float>,
