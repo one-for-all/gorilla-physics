@@ -14,6 +14,7 @@ use std::{
 use crate::gpu::{
     async_initialize_gpu, compute_dH, setup_compute_dH_pipeline, Matrix3x3, WgpuContext,
 };
+use crate::GRAVITY;
 use crate::{mesh::read_mesh, types::Float};
 
 /// Deformable modeled by finite element method
@@ -29,7 +30,7 @@ pub struct FEMDeformable {
     pub Bs: Vec<Matrix3<Float>>, // Inverses of difference matrix of vertices of tetrahedra
     pub Ws: Vec<Float>, // Determinants of difference matrix of vertices of tetrahedra. i.e. 6 * volume of each tetrahedron
     pub mass_matrix: CscMatrix<Float>,
-    pub mass_matrix_cholesky: CscCholesky<Float>,
+    mass_matrix_cholesky: CscCholesky<Float>,
     pub mass_matrix_lumped: DVector<Float>, // Masses lumped to the vertices, i.e. all the masses of the deformable are assumed to be on the vertices
 
     pub density: Float,
@@ -184,7 +185,6 @@ impl FEMDeformable {
         n_vertices: usize,
         density: Float,
     ) -> CscMatrix<Float> {
-        // let mut M: CscMatrix<Float> = CscMatrix::zeros(self.n_vertices * 3, self.n_vertices * 3);
         let mut M_triplets: HashMap<(usize, usize), Float> = HashMap::new();
         for (tetrahedron, determinant) in izip!(tetrahedra.iter(), W.iter()) {
             for i in 0..4 {
@@ -194,11 +194,11 @@ impl FEMDeformable {
                     let key = (vi, vj);
                     let value = M_triplets.get(&key).unwrap_or(&0.0);
                     if vi == vj {
+                        // diagonal entries of mass matrix
                         M_triplets.insert(key, value + density * determinant / 60.0);
-                    // diagonal entries of mass matrix
                     } else {
-                        M_triplets.insert(key, value + density * determinant / 120.0);
                         // off-diagonal entries of mass matrix
+                        M_triplets.insert(key, value + density * determinant / 120.0);
                     }
                 }
             }
@@ -283,11 +283,11 @@ impl FEMDeformable {
             let J = F.determinant();
             let F_inv_T = F.try_inverse().unwrap().transpose();
             let P = self.mu * (F - F_inv_T) + self.lambda * J.ln() * F_inv_T;
-            let H = -W / 6.0 * P * B.transpose();
+            let H = W / 6.0 * P * B.transpose();
 
-            let h1 = -H.column(0);
-            let h2 = -H.column(1);
-            let h3 = -H.column(2);
+            let h1 = H.column(0);
+            let h2 = H.column(1);
+            let h3 = H.column(2);
 
             f.rows_mut(i_vi, 3).add_assign(h1);
             f.rows_mut(i_vj, 3).add_assign(h2);
@@ -314,7 +314,7 @@ impl FEMDeformable {
         //     let v1 = tetrahedron[1];
         //     let v2 = tetrahedron[2];
         //     let v3 = tetrahedron[3];
-        //     let gravity_force = -9.81 * self.density * volume / 4.0;
+        //     let gravity_force = -GRAVITY * self.density * volume / 4.0;
         //     tau[v0 * 3 + 2] += gravity_force;
         //     tau[v1 * 3 + 2] += gravity_force;
         //     tau[v2 * 3 + 2] += gravity_force;
@@ -339,14 +339,15 @@ impl FEMDeformable {
         //     }
         // }
 
-        // TODO: This procedure is extremely slow. Need to speed it up.
+        // TODO: This procedure can be slow. Find ways to speed it up.
         let mut i = 0;
         let max_iteration = 100;
-        let mut delta_v = DVector::repeat(self.n_vertices * 3, Float::INFINITY);
+        let mut delta_x = DVector::repeat(self.n_vertices * 3, Float::INFINITY);
         let mut q_next = self.q.clone(); // set initial guesses of q and qdot
         let mut qdot_next = self.qdot.clone();
-        while i < max_iteration && !(delta_v.abs().max() < 1e-4) {
-            // Solve the linearized equation at this q to get better q, qdot estimate
+        let dt_squared = dt * dt;
+        while i < max_iteration && !(delta_x.abs().max() < 1e-6) {
+            // Solve the linearized equation at this q to get better q, qdot estimates
             let f = self.compute_internal_forces(&q_next) + &tau;
             let b = (&self.qdot - &qdot_next).component_mul(&self.mass_matrix_lumped) / dt + f;
 
@@ -360,8 +361,8 @@ impl FEMDeformable {
                 .map(|F| (F.determinant(), F.try_inverse().unwrap()))
                 .collect::<(Vec<Float>, Vec<Matrix3<Float>>)>();
 
-            // initial guess of delta v
-            let dv0: DVector<Float> = DVector::repeat(self.n_vertices * 3, 0.0);
+            // initial guess of delta x
+            let dx0: DVector<Float> = DVector::repeat(self.n_vertices * 3, 0.0);
 
             let mass_matrix_lumped = &self.mass_matrix_lumped;
             let n_vertices = self.n_vertices;
@@ -384,7 +385,7 @@ impl FEMDeformable {
                     .collect());
                 let padded_F_invs_bytemuck: &[u8] = bytemuck::cast_slice(&padded_F_invs);
 
-                let f_A_mul = |x: &DVector<Float>| {
+                let A_mul_func = |x: &DVector<Float>| {
                     let x_clone = x.clone();
                     async move {
                         gpu_compute_force_differential(
@@ -396,11 +397,10 @@ impl FEMDeformable {
                             wgpu_context,
                         )
                         .await
-                            * dt
-                            + mass_matrix_lumped.component_mul(&x_clone) / dt
+                            + mass_matrix_lumped.component_mul(&x_clone) / dt_squared
                     }
                 };
-                delta_v = conjugate_gradient(f_A_mul, &b, &dv0, 1e-3).await;
+                delta_x = conjugate_gradient(A_mul_func, &b, &dx0, 1e-3).await;
             } else {
                 let F_inv_Ts: Vec<Matrix3<Float>> =
                     F_invs.iter().map(|F_inv| F_inv.transpose()).collect();
@@ -412,7 +412,7 @@ impl FEMDeformable {
                 let F_invs = &F_invs;
                 let F_inv_Ts = &F_inv_Ts;
 
-                let f_A_mul = |x: &DVector<Float>| {
+                let A_mul_func = |x: &DVector<Float>| {
                     let x_clone = x.clone();
                     async move {
                         cpu_compute_force_differential(
@@ -420,15 +420,14 @@ impl FEMDeformable {
                             F_inv_Ts,
                         )
                         .await
-                            * dt
-                            + mass_matrix_lumped.component_mul(&x_clone) / dt
+                            + mass_matrix_lumped.component_mul(&x_clone) / dt_squared
                     }
                 };
-                delta_v = conjugate_gradient(f_A_mul, &b, &dv0, 1e-3).await;
+                delta_x = conjugate_gradient(A_mul_func, &b, &dx0, 1e-3).await;
             }
 
-            qdot_next += &delta_v;
-            q_next += &delta_v * dt;
+            qdot_next += &delta_x;
+            q_next += &delta_x * dt;
 
             i += 1;
         }
@@ -453,11 +452,14 @@ impl FEMDeformable {
         let i_vj = tetrahedron[1] * 3;
         let i_vk = tetrahedron[2] * 3;
         let i_vl = tetrahedron[3] * 3;
-        let vi = vector![q[i_vi], q[i_vi + 1], q[i_vi + 2]];
-        let vj = vector![q[i_vj], q[i_vj + 1], q[i_vj + 2]];
-        let vk = vector![q[i_vk], q[i_vk + 1], q[i_vk + 2]];
-        let vl = vector![q[i_vl], q[i_vl + 1], q[i_vl + 2]];
-        let D = Matrix3::<Float>::from_columns(&[vl - vi, vl - vj, vl - vk]);
+
+        #[rustfmt::skip]
+        let D = Matrix3::<Float>::new(
+            q[i_vl] - q[i_vi],          q[i_vl] - q[i_vj],          q[i_vl] - q[i_vk],
+            q[i_vl + 1] - q[i_vi + 1],  q[i_vl + 1] - q[i_vj + 1],  q[i_vl + 1] - q[i_vk + 1],
+            q[i_vl + 2] - q[i_vi + 2],  q[i_vl + 2] - q[i_vj + 2],  q[i_vl + 2] - q[i_vk + 2],
+        );
+
         D * B
     }
 
@@ -478,10 +480,12 @@ impl FEMDeformable {
     }
 }
 
+/// CPU version of gpu_compute_force_differential.
+/// See gpu_compute_force_differential's doc.
 async fn cpu_compute_force_differential(
     n_vertices: usize,
     tetrahedra: &Vec<Vec<usize>>,
-    dv: &DVector<Float>,
+    dx: &DVector<Float>,
     Bs: &Vec<Matrix3<Float>>,
     Ws: &Vec<Float>,
     mu: Float,
@@ -504,22 +508,23 @@ async fn cpu_compute_force_differential(
         let i_vk = tetrahedron[2] * 3;
         let i_vl = tetrahedron[3] * 3;
 
-        let dvi = vector![dv[i_vi], dv[i_vi + 1], dv[i_vi + 2]];
-        let dvj = vector![dv[i_vj], dv[i_vj + 1], dv[i_vj + 2]];
-        let dvk = vector![dv[i_vk], dv[i_vk + 1], dv[i_vk + 2]];
-        let dvl = vector![dv[i_vl], dv[i_vl + 1], dv[i_vl + 2]];
-        let dD = Matrix3::<Float>::from_columns(&[dvl - dvi, dvl - dvj, dvl - dvk]);
-        let dF = dD * B;
+        #[rustfmt::skip]
+        let dD = Matrix3::<Float>::new(
+            dx[i_vl] - dx[i_vi],          dx[i_vl] - dx[i_vj],          dx[i_vl] - dx[i_vk],
+            dx[i_vl + 1] - dx[i_vi + 1],  dx[i_vl + 1] - dx[i_vj + 1],  dx[i_vl + 1] - dx[i_vk + 1],
+            dx[i_vl + 2] - dx[i_vi + 2],  dx[i_vl + 2] - dx[i_vj + 2],  dx[i_vl + 2] - dx[i_vk + 2],
+        );
 
+        let dF = dD * B;
         let F_inv_dF = F_inv * dF;
         let dP = mu * dF
             + (mu - lambda * J.ln()) * F_inv_T * F_inv_dF.transpose()
             + lambda * F_inv_dF.trace() * F_inv_T;
-        let dH = -W / 6.0 * dP * B.transpose();
+        let dH = W / 6.0 * dP * B.transpose();
 
-        let dh1 = -dH.column(0);
-        let dh2 = -dH.column(1);
-        let dh3 = -dH.column(2);
+        let dh1 = dH.column(0);
+        let dh2 = dH.column(1);
+        let dh3 = dH.column(2);
 
         df.rows_mut(i_vi, 3).add_assign(dh1);
         df.rows_mut(i_vj, 3).add_assign(dh2);
@@ -539,7 +544,7 @@ async fn cpu_compute_force_differential(
 async fn gpu_compute_force_differential(
     n_vertices: usize,
     tetrahedra: &Vec<Vec<usize>>,
-    dv: &DVector<Float>,
+    dx: &DVector<Float>,
     Js_bytemuck: &[u8],
     padded_F_invs_bytemuck: &[u8],
     wgpu_context: &WgpuContext,
@@ -547,7 +552,7 @@ async fn gpu_compute_force_differential(
     wgpu_context.queue.write_buffer(
         &wgpu_context.input_buffers["dq"],
         0,
-        bytemuck::cast_slice(&dv.as_slice()),
+        bytemuck::cast_slice(&dx.as_slice()),
     );
     wgpu_context.queue.write_buffer(
         &wgpu_context.input_buffers["F_invs"],
@@ -602,7 +607,7 @@ where
     let mut d = r.clone();
     let mut delta_new = r.norm_squared();
 
-    let max_iteration = 500;
+    let max_iteration = 100;
     // TODO: guard against or warn on NaN?
     while i < max_iteration && !(delta_new < abs_tol) {
         let q: DVector<Float> = A_mul(&d).await;
@@ -617,9 +622,9 @@ where
         delta_new = r.norm_squared();
         let beta = delta_new / delta_old;
         d = &r + beta * &d;
+
         i += 1;
     }
-    // println!("conjugate\n");
     x
 }
 
@@ -696,7 +701,6 @@ mod fem_deformable_tests {
     use super::*;
 
     /// Stays stationay under no force
-    // #[test]
     #[tokio::test]
     async fn stationary() {
         // Arrange
