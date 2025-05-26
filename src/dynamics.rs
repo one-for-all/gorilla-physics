@@ -389,7 +389,7 @@ pub fn dynamics_discrete(
     // Construct the building blocks for Jacobian between generalized v and
     // contact frame velocity
     // Ref: Contact and Friction Simulation for Computer Graphics, 2022,
-    // Section 1.5 The Coulomb Friction Law
+    //      Section 1.5 The Coulomb Friction Law
     let blocks: Vec<Matrix6xX<Float>> = izip!(state.treejointids.iter(), state.treejoints.iter())
         .map(|(bodyid, joint)| {
             let body_to_root = bodies_to_root.get(bodyid).unwrap();
@@ -502,7 +502,8 @@ pub fn dynamics_discrete(
                 * J.transpose();
             let g = &J * &v_free; // Can also incorporate restitution model here. ref: Section II Unilateral contact
 
-            let lambda = solve_cone_complementarity(&G, &g); // Contact frame force vectors
+            let P = CscMatrix::from(G.row_iter());
+            let lambda = solve_cone_complementarity(&P, &g); // Contact frame force vectors
             let v_next: DVector<Float> = v_free
                 + mass_matrix_lu
                     .solve(&(J.transpose() * lambda))
@@ -535,12 +536,11 @@ pub fn dynamics_discrete(
 }
 
 /// Solve the second-order cone programming problem for resolving contact
-fn solve_cone_complementarity(G: &DMatrix<Float>, g: &DVector<Float>) -> DVector<Float> {
-    let P = CscMatrix::from(G.row_iter());
+pub fn solve_cone_complementarity(P: &CscMatrix<Float>, g: &DVector<Float>) -> DVector<Float> {
     let q: Vec<Float> = Vec::from(g.as_slice());
 
-    assert!(G.shape().0 % 3 == 0);
-    let n_constraints = G.shape().0 / 3;
+    assert!(P.m % 3 == 0);
+    let n_constraints = P.m / 3;
 
     let mut A_triplets: Vec<(usize, usize, Float)> = vec![];
     let mu = 1.0; // TODO: special handling for zero friction

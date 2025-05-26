@@ -1,4 +1,4 @@
-use na::DVector;
+use na::{vector, DVector, UnitVector3};
 use wasm_bindgen::{prelude::wasm_bindgen, JsCast};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
@@ -6,7 +6,7 @@ use web_sys::{
     window, Response,
 };
 
-use crate::{fem_deformable::FEMDeformable, mesh::read_mesh, types::Float};
+use crate::{contact::HalfSpace, fem_deformable::FEMDeformable, mesh::read_mesh, types::Float};
 
 #[wasm_bindgen]
 pub struct InterfaceFEMDeformable {
@@ -35,7 +35,7 @@ impl InterfaceFEMDeformable {
     pub async fn step(&mut self, dt: Float, tau: Vec<Float>) {
         let tau = DVector::from(tau);
 
-        let n_substep = 1;
+        let n_substep = 3;
         for _ in 0..n_substep {
             self.inner.step(dt / (n_substep as Float), &tau).await;
         }
@@ -54,6 +54,13 @@ pub async fn createFEMBox() -> InterfaceFEMDeformable {
 
     let (vertices, tetrahedra) = read_mesh(&text_str);
     let mut deformable = FEMDeformable::new(vertices, tetrahedra, 100.0, 6e5, 0.4).await;
+
+    let angle = Float::to_radians(0.0);
+    let normal = UnitVector3::new_normalize(vector![angle.sin(), 0.0, angle.cos()]);
+    let ground = HalfSpace::new(normal, -1.2);
+    deformable.add_halfspace(ground);
+    deformable.enable_gravity = true;
+
     deformable.extract_boundary_facets();
 
     InterfaceFEMDeformable { inner: deformable }
