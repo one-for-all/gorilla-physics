@@ -500,7 +500,7 @@ pub fn dynamics_discrete(
                     .try_inverse()
                     .expect("Failed to invert mass matrix")
                 * J.transpose();
-            let g = &J * &v_free; // Can also incorporate restitution model here. ref: Section II Unilateral contact
+            let g = &J * &v_free; // Can also incorporate restitution model, or resolve penetration error here. ref: Section II Unilateral contact
 
             let P = CscMatrix::from(G.row_iter());
             let lambda = solve_cone_complementarity(&P, &g); // Contact frame force vectors
