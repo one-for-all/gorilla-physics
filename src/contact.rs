@@ -227,18 +227,18 @@ pub fn contact_dynamics(
 
     // Compute contacts between body colliders
     for (i, (jointid, body)) in izip!(state.treejointids.iter(), state.bodies.iter()).enumerate() {
-        for (next_jointid, next_body) in izip!(
+        for (other_jointid, other_body) in izip!(
             state.treejointids.iter().skip(i + 1),
             state.bodies.iter().skip(i + 1)
         ) {
-            if let (Some(collider), Some(next_collider)) = (&body.collider, &next_body.collider) {
+            if let (Some(collider), Some(next_collider)) = (&body.collider, &other_body.collider) {
                 let mut collision_detector = CollisionDetector::new(&collider, &next_collider);
                 if collision_detector.gjk() {
                     let (cp_a, cp_b) = collision_detector.epa();
 
                     let body_twist = twists.get(jointid).unwrap();
                     let cp_a_vel = body_twist.point_velocity(&ContactPoint::new(WORLD_FRAME, cp_a));
-                    let next_body_twist = twists.get(next_jointid).unwrap();
+                    let next_body_twist = twists.get(other_jointid).unwrap();
                     let cp_b_vel =
                         next_body_twist.point_velocity(&ContactPoint::new(WORLD_FRAME, cp_b));
                     let velocity = cp_a_vel - cp_b_vel;
@@ -252,10 +252,10 @@ pub fn contact_dynamics(
                     } else {
                         contact_wrenches.insert(*jointid, wrench_b_to_a);
                     }
-                    if let Some(wrench) = contact_wrenches.get_mut(next_jointid) {
+                    if let Some(wrench) = contact_wrenches.get_mut(other_jointid) {
                         *wrench += wrench_a_to_b
                     } else {
-                        contact_wrenches.insert(*next_jointid, wrench_a_to_b);
+                        contact_wrenches.insert(*other_jointid, wrench_a_to_b);
                     }
                 }
             }

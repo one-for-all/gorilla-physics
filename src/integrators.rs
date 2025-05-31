@@ -192,6 +192,9 @@ mod integrators_tests {
     use crate::assert_close;
     use crate::assert_vec_close;
     use crate::contact::HalfSpace;
+    use crate::control::pusher_control::PusherController;
+    use crate::control::Controller;
+    use crate::helpers::build_pusher;
     use crate::helpers::build_quadruped;
     use crate::simulate::step;
     use crate::{helpers::build_cube, spatial::spatial_vector::SpatialVector, PI};
@@ -271,5 +274,30 @@ mod integrators_tests {
         let body_vel = state.v[0].spatial();
         assert_vec_close!(body_vel.linear, Vector3::<Float>::zeros(), 1e-3);
         assert_vec_close!(body_vel.angular, Vector3::<Float>::zeros(), 1e-3);
+    }
+
+    #[test]
+    fn velocity_stepping_box_pusher() {
+        // Arrange
+        let mut state = build_pusher();
+        let ground = HalfSpace::new(Vector3::z_axis(), 0.0);
+        state.add_halfspace(ground);
+
+        let mut controller = PusherController {};
+
+        // Act
+        let final_time = 5.0;
+        let dt = 1.0 / 120.0;
+        let num_steps = (final_time / dt) as usize;
+        for _s in 0..num_steps {
+            let torque = controller.control(&mut state, None);
+            let (q, v) = step(&mut state, dt, &torque, &Integrator::VelocityStepping);
+        }
+
+        // Assert
+        let box_pose = state.poses()[2];
+        assert!(box_pose.translation.x > 3.0);
+        assert_close!(box_pose.translation.y, 0.0, 0.2);
+        assert_close!(box_pose.translation.z, 0.25, 1e-2);
     }
 }

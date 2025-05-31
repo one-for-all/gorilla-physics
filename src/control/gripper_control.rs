@@ -4,9 +4,9 @@ use crate::{
 
 use super::{ControlInput, Controller};
 
-pub struct GripperController {}
+pub struct GripperManualController {}
 
-impl Controller for GripperController {
+impl Controller for GripperManualController {
     fn control(
         &mut self,
         state: &mut MechanismState,

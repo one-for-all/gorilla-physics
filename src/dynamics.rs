@@ -1,4 +1,5 @@
 use crate::{
+    collision::CollisionDetector,
     contact::contact_dynamics,
     control::energy_control::spring_force,
     inertia::compute_inertias,
@@ -433,54 +434,57 @@ pub fn dynamics_discrete(
         let mut Js: Vec<Matrix3xX<Float>> = vec![];
         for (bodyid, body) in izip!(state.treejointids.iter(), state.bodies.iter()) {
             let body_to_root = bodies_to_root.get(&bodyid).unwrap();
+
+            // Handle point contacts with halfspaces
             for contact_point in &body.contact_points {
                 let contact_point_world = contact_point.transform(body_to_root); // contact point in world frame
                 for halfspace in &state.halfspaces {
                     if !contact_point_world.inside_halfspace(&halfspace) {
                         continue;
                     }
-                    // Contact frame axes, n is normal, t and b are tangential
-                    let n = halfspace.normal;
-                    let t = {
-                        let candidate = n.cross(&Vector3::x_axis());
-                        if candidate.norm() != 0.0 {
-                            UnitVector3::new_normalize(candidate)
-                        } else {
-                            UnitVector3::new_normalize(n.cross(&Vector3::y_axis()))
-                        }
-                    };
-                    let b = UnitVector3::new_normalize(n.cross(&t));
-                    let C = Matrix3::from_rows(&[n.transpose(), t.transpose(), b.transpose()]);
+                    let J = compose_contact_jacobian(
+                        &state,
+                        &halfspace.normal,
+                        &contact_point_world.location,
+                        *bodyid,
+                        None,
+                        v_free.len(),
+                        &blocks,
+                    );
+                    Js.push(J);
+                }
+            }
+        }
 
-                    // All the bodyids in the linkage from this body to root/world
-                    let mut linked_bodyids = HashSet::new();
-                    let mut currentid = *bodyid;
-                    while currentid != 0 {
-                        linked_bodyids.insert(currentid);
-                        currentid = state.parents[currentid - 1];
+        // Handle contacts between body colliders
+        for (i, (bodyid, body)) in izip!(state.treejointids.iter(), state.bodies.iter()).enumerate()
+        {
+            for (other_bodyid, other_body) in izip!(
+                state.treejointids.iter().skip(i + 1),
+                state.bodies.iter().skip(i + 1)
+            ) {
+                if let (Some(collider), Some(other_collider)) =
+                    (&body.collider, &other_body.collider)
+                {
+                    let mut collision_detector = CollisionDetector::new(&collider, &other_collider);
+                    if !collision_detector.gjk() {
+                        continue;
                     }
+                    let (cp_a, cp_b) = collision_detector.epa();
 
-                    // Build the Jacobian that transforms generalized v into
-                    // world-frame spatial twist
-                    let mut H = Matrix6xX::zeros(v_free.len());
-                    let mut col_offset = 0;
-                    for jointid in state.treejointids.iter() {
-                        let n_cols = blocks[jointid - 1].ncols();
-                        if linked_bodyids.contains(jointid) {
-                            H.columns_mut(col_offset, n_cols)
-                                .copy_from(&blocks[jointid - 1]);
-                        }
-                        col_offset += n_cols;
-                    }
+                    // Contact frame normal
+                    let n = UnitVector3::new_normalize(cp_b - cp_a);
 
-                    // Jacobian that transforms world-frame spatial twist into
-                    // contact point world-frame velocity
-                    let mut X = Matrix3x6::zeros();
-                    let r = contact_point_world.location;
-                    X.columns_mut(0, 3).copy_from(&-skew_symmetric(&r));
-                    X.columns_mut(3, 3).copy_from(&Matrix3::identity());
-
-                    Js.push(C * X * H);
+                    let J = compose_contact_jacobian(
+                        &state,
+                        &n,
+                        &cp_a,
+                        *bodyid,
+                        Some(*other_bodyid),
+                        v_free.len(),
+                        &blocks,
+                    );
+                    Js.push(J);
                 }
             }
         }
@@ -535,6 +539,77 @@ pub fn dynamics_discrete(
         .collect()
 }
 
+/// Given contact information, compute the contact Jacobian that transforms
+/// generalized velocity to contact frame velocity
+fn compose_contact_jacobian(
+    state: &MechanismState,
+    normal: &UnitVector3<Float>,
+    contact_point: &Vector3<Float>,
+    bodyid: usize,
+    other_bodyid: Option<usize>, // None if the other body is static, such as halfspaces
+    dof: usize,                  // degrees of freedom of system
+    blocks: &Vec<Matrix6xX<Float>>, // Jacobian blocks
+) -> Matrix3xX<Float> {
+    // t and b are contact frame tangential directions
+    let t = {
+        let candidate = normal.cross(&Vector3::x_axis());
+        if candidate.norm() != 0.0 {
+            UnitVector3::new_normalize(candidate)
+        } else {
+            UnitVector3::new_normalize(normal.cross(&Vector3::y_axis()))
+        }
+    };
+    let b = UnitVector3::new_normalize(normal.cross(&t));
+    let C = Matrix3::from_rows(&[normal.transpose(), t.transpose(), b.transpose()]);
+
+    // All the bodyids in the linkage from this body to root/world
+    let mut linked_bodyids = HashSet::new();
+    let mut currentid = bodyid;
+    while currentid != 0 {
+        linked_bodyids.insert(currentid);
+        currentid = state.parents[currentid - 1];
+    }
+
+    // All the bodyids in the linkage from other body to root/world
+    let mut linked_other_bodyids = HashSet::new();
+    if let Some(other_bodyid) = other_bodyid {
+        let mut currentid = other_bodyid;
+        while currentid != 0 {
+            linked_other_bodyids.insert(currentid);
+            currentid = state.parents[currentid - 1];
+        }
+    }
+
+    // Build the Jacobian that transforms generalized v into
+    // world-frame spatial twist
+    let mut H = Matrix6xX::zeros(dof);
+    let mut col_offset = 0;
+    for jointid in state.treejointids.iter() {
+        let n_cols = blocks[jointid - 1].ncols();
+        if linked_bodyids.contains(jointid) {
+            H.columns_mut(col_offset, n_cols)
+                .copy_from(&blocks[jointid - 1]);
+        } else if linked_other_bodyids.contains(jointid) {
+            // TODO: Handle self-collision. It probably just
+            // means that this block of H would be zero, since
+            // this joint would have no effect on relative
+            // contact velocity.
+            H.columns_mut(col_offset, n_cols)
+                .copy_from(&-&blocks[jointid - 1]);
+        }
+        col_offset += n_cols;
+    }
+
+    // Jacobian that transforms world-frame spatial twist into
+    // contact point world-frame velocity
+    let mut X = Matrix3x6::zeros();
+    let r = contact_point;
+    X.columns_mut(0, 3).copy_from(&-skew_symmetric(&r));
+    X.columns_mut(3, 3).copy_from(&Matrix3::identity());
+
+    C * X * H
+}
+
 /// Solve the second-order cone programming problem for resolving contact
 pub fn solve_cone_complementarity(P: &CscMatrix<Float>, g: &DVector<Float>) -> DVector<Float> {
     let q: Vec<Float> = Vec::from(g.as_slice());
@@ -543,7 +618,7 @@ pub fn solve_cone_complementarity(P: &CscMatrix<Float>, g: &DVector<Float>) -> D
     let n_constraints = P.m / 3;
 
     let mut A_triplets: Vec<(usize, usize, Float)> = vec![];
-    let mu = 1.0; // TODO: special handling for zero friction
+    let mu = 0.9; // TODO: special handling for zero friction
     for i in 0..n_constraints {
         let index = i * 3;
         A_triplets.push((index, index, -mu));

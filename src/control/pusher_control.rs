@@ -20,7 +20,7 @@ impl Controller for PusherController {
             let q_pusher_desired = 3.0;
             let q_d = q_pusher_desired - q_pusher;
             let v_target = q_d.signum() * 10.0 * q_d.abs().min(0.1);
-            let tau_pusher = 100.0 * (v_target - v_pusher);
+            let tau_pusher = 20.0 * (v_target - v_pusher);
 
             return vec![
                 JointTorque::Float(0.0),
@@ -35,10 +35,10 @@ impl Controller for PusherController {
 
         let v_base = state.v[0].float();
         let v_base_desired = input_base;
-        let tau_base = 100.0 * (v_base_desired - v_base);
+        let tau_base = 20.0 * (v_base_desired - v_base);
 
         let v_pusher_desired = input_pusher;
-        let tau_pusher = 100.0 * (v_pusher_desired - v_pusher);
+        let tau_pusher = 20.0 * (v_pusher_desired - v_pusher);
 
         vec![
             JointTorque::Float(tau_base),

@@ -21,8 +21,8 @@ pub fn main() {
 
     println!("Before: cube position: {}", state.poses()[2].translation);
 
-    let final_time = 10.0;
-    let dt = 1.0 / 1000.0;
+    let final_time = 1.0;
+    let dt = 1.0 / 120.0;
     let num_steps = (final_time / dt) as usize;
     let mut data1 = vec![];
     for ns in 0..num_steps {
@@ -31,7 +31,7 @@ pub fn main() {
             &mut state,
             dt,
             &torque,
-            &gorilla_physics::integrators::Integrator::SemiImplicitEuler,
+            &gorilla_physics::integrators::Integrator::VelocityStepping,
         );
 
         data1.push(_q[2].pose().translation.x);
