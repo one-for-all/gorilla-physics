@@ -9,6 +9,7 @@ import { Graphics } from "./Graphics";
 import { Line2 } from "three/examples/jsm/lines/Line2";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
+import { keysPressed } from ".";
 
 export class Simulator {
   simulator: InterfaceSimulator;
@@ -611,6 +612,20 @@ export class Simulator {
 
     let control_input = new Float32Array(2);
 
+    let rotation_speed = 1.0;
+    if (keysPressed["a"]) {
+      control_input[0] = rotation_speed;
+    } else if (keysPressed["d"]) {
+      control_input[0] = -rotation_speed;
+    }
+
+    let linear_speed = 2.0;
+    if (keysPressed["w"]) {
+      control_input[1] = linear_speed;
+    } else if (keysPressed["s"]) {
+      control_input[1] = -linear_speed;
+    }
+
     // // drop the arm
     // if (keysPressed["s"]) {
     //   control_input[0] = 1.0;
@@ -627,27 +642,29 @@ export class Simulator {
 
     // TODO: Currently some steps might take longer because of more computation.
     // This results in inconsistent frame refresh rate. Make it consistent.
-    // let qs = this.simulator.step(dt, control_input);
+    let qs = this.simulator.step(dt, control_input);
+    // console.log("time: %ss", this.time);
+    this.time += dt;
 
-    if (this.femDeformable) {
-      // drag the body towards right
-      let tau = new Float32Array(this.femDeformable.vertices().length);
-      // tau[499 * 3] = 1.0;
-      // tau[0 * 3] = -10.0;
-      // for (let i = 0; i < this.femBunny.vertices().length; i += 3) {
-      //   tau[i + 2] = -9.8;
-      // }
-      await this.femDeformable.step(dt, tau);
-      this.updateDeformable();
-      console.log("time: %ss", this.time);
-      this.time += dt;
-    }
+    // if (this.femDeformable) {
+    //   // drag the body towards right
+    //   let tau = new Float32Array(this.femDeformable.vertices().length);
+    //   // tau[499 * 3] = 1.0;
+    //   // tau[0 * 3] = -10.0;
+    //   // for (let i = 0; i < this.femBunny.vertices().length; i += 3) {
+    //   //   tau[i + 2] = -9.8;
+    //   // }
+    //   await this.femDeformable.step(dt, tau);
+    //   this.updateDeformable();
+    //   console.log("time: %ss", this.time);
+    //   this.time += dt;
+    // }
 
-    // let poses = this.simulator.poses();
+    let poses = this.simulator.poses();
     // let contact_positions = this.simulator.contact_positions();
     // this.updateQuadruped(poses, contact_positions);
     // this.updateCube(poses);
-    // this.updateGripper(poses);
+    this.updatePusher(poses);
 
     requestAnimationFrame((t) => this.run(t));
   }

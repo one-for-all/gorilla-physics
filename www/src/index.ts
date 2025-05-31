@@ -1,4 +1,3 @@
-import { createFEMBox } from "gorilla-physics";
 import { Simulator } from "./Simulator";
 
 export const keysPressed: Record<string, boolean> = {};
@@ -23,22 +22,26 @@ import("gorilla-physics").then((gorilla) => {
   let dt = 1.0 / (60.0 * 50.0);
 
   let l_cube = 1.0;
+  // let state = gorilla.createGripper();
+  let state = gorilla.createPusher();
   // let state = gorilla.createCube(l_cube);
   // let delta_z = 0.8;
   // let state = gorilla.createQuadruped(1.0, delta_z);
-  // state.addHalfSpace(normal, h_ground);
+  state.addHalfSpace(normal, h_ground);
 
-  let controller = gorilla.createNullController();
+  // let controller = gorilla.createNullController();
+  let controller = gorilla.createPusherController();
   // let controller = gorilla.createQuadrupedTrottingController(dt, 0.0, -delta_z);
-  // let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
+  let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
 
-  // let simulator = new Simulator(interfaceSimulator);
-  let simulator = new Simulator(null);
+  let simulator = new Simulator(interfaceSimulator);
+  // let simulator = new Simulator(null);
 
-  createFEMBox().then((box) => {
-    simulator.addDeformable(box);
-  });
+  // createFEMBox().then((box) => {
+  //   simulator.addDeformable(box);
+  // });
 
+  simulator.addPusher();
   // simulator.addCube(l_cube);
   // simulator.addQuadruped();
   // simulator.addPlane(normal, h_ground, 100);

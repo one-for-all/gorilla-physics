@@ -1,7 +1,7 @@
 use crate::{
     control::{
         energy_control::{Hopper1DController, Hopper2DController},
-        gripper_control::GripperController,
+        gripper_control::GripperManualController,
         pusher_control::PusherController,
         quadruped_control::{QuadrupedStandingController, QuadrupedTrottingController},
         ControlInput, Controller,
@@ -81,8 +81,8 @@ pub fn createPusherController() -> InterfaceController {
 }
 
 #[wasm_bindgen]
-pub fn createGripperontroller() -> InterfaceController {
-    let inner: Box<dyn Controller> = Box::new(GripperController {});
+pub fn createGripperManualController() -> InterfaceController {
+    let inner: Box<dyn Controller> = Box::new(GripperManualController {});
     InterfaceController { inner }
 }
 
