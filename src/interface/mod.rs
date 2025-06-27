@@ -50,6 +50,7 @@ pub mod pendulum;
 pub mod quadruped;
 pub mod rimless_wheel;
 pub mod robot_arm;
+pub mod util;
 
 #[wasm_bindgen]
 extern "C" {

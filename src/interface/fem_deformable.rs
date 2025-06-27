@@ -8,6 +8,8 @@ use web_sys::{
 
 use crate::{contact::HalfSpace, fem_deformable::FEMDeformable, mesh::read_mesh, types::Float};
 
+use super::util::read_web_file;
+
 #[wasm_bindgen]
 pub struct InterfaceFEMDeformable {
     pub(crate) inner: FEMDeformable,
@@ -44,15 +46,9 @@ impl InterfaceFEMDeformable {
 
 #[wasm_bindgen]
 pub async fn createFEMBox() -> InterfaceFEMDeformable {
-    let window = window().expect("no global `window` exists");
-    let resp_value = JsFuture::from(window.fetch_with_str("box.mesh"))
-        .await
-        .unwrap();
-    let resp: Response = resp_value.dyn_into().unwrap();
-    let text = JsFuture::from(resp.text().unwrap()).await.unwrap();
-    let text_str = text.as_string().unwrap();
+    let buf = read_web_file("box.mesh").await;
 
-    let (vertices, tetrahedra) = read_mesh(&text_str);
+    let (vertices, tetrahedra) = read_mesh(&buf);
     let mut deformable = FEMDeformable::new(vertices, tetrahedra, 100.0, 6e5, 0.4).await;
 
     let angle = Float::to_radians(10.0);

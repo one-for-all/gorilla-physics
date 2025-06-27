@@ -11,19 +11,12 @@ use crate::{
     PI,
 };
 
-use super::InterfaceMechanismState;
+use super::{util::read_web_file, InterfaceMechanismState};
 
 /// Create a rigid body box from a box mesh file
 #[wasm_bindgen]
 pub async fn createRigidMeshBox() -> InterfaceMechanismState {
-    // TODO: abstract file reading into a function
-    let window = window().expect("no global `window` exists");
-    let resp_value = JsFuture::from(window.fetch_with_str("box.mesh"))
-        .await
-        .unwrap();
-    let resp: Response = resp_value.dyn_into().unwrap();
-    let buf = JsFuture::from(resp.text().unwrap()).await.unwrap();
-    let buf = buf.as_string().unwrap();
+    let buf = read_web_file("box.mesh").await;
 
     let mesh = Mesh::new_from_str(&buf);
 

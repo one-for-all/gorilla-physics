@@ -8,7 +8,7 @@ use web_sys::{
 
 use crate::{mass_spring_deformable::MassSpringDeformable, mesh::read_mesh, types::Float};
 
-use super::to_js_uint_array;
+use super::{to_js_uint_array, util::read_web_file};
 
 #[wasm_bindgen]
 pub struct InterfaceMassSpringDeformable {
@@ -63,15 +63,9 @@ impl InterfaceMassSpringDeformable {
 
 #[wasm_bindgen]
 pub async fn createMassSpringBunny() -> InterfaceMassSpringDeformable {
-    let window = window().expect("no global `window` exists");
-    let resp_value = JsFuture::from(window.fetch_with_str("coarse_bunny.mesh"))
-        .await
-        .unwrap();
-    let resp: Response = resp_value.dyn_into().unwrap();
-    let text = JsFuture::from(resp.text().unwrap()).await.unwrap();
-    let text_str = text.as_string().unwrap();
+    let buf = read_web_file("coarse_bunny.mesh").await;
 
-    let (vertices, tetrahedra) = read_mesh(&text_str);
+    let (vertices, tetrahedra) = read_mesh(&buf);
     let n_vertices = vertices.len() as Float;
     let mut bunny = MassSpringDeformable::new(vertices, tetrahedra, 1.0 * n_vertices, 1e5);
     bunny.extract_boundary_facets();
