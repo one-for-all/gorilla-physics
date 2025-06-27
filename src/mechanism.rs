@@ -12,6 +12,7 @@ use crate::joint::Joint;
 use crate::joint::JointPosition;
 use crate::joint::JointVelocity;
 use crate::momentum::MomentumMatrix;
+use crate::rigid_body::Collider;
 use crate::rigid_body::RigidBody;
 use crate::spatial::geometric_jacobian::GeometricJacobian;
 use crate::spatial::pose::Pose;
@@ -25,8 +26,10 @@ use crate::GRAVITY;
 use crate::WORLD_FRAME;
 use itertools::izip;
 use na::DMatrix;
+use na::Isometry3;
 use na::Matrix3;
 use na::Rotation3;
+use na::Translation3;
 use na::UnitQuaternion;
 use na::Vector3;
 
@@ -166,8 +169,19 @@ impl MechanismState {
         for (jointid, body) in izip!(self.treejointids.iter(), self.bodies.iter_mut()) {
             if let Some(collider) = body.collider.as_mut() {
                 let body_to_root = bodies_to_root.get(jointid).unwrap();
-                collider.isometry.translation.vector = body_to_root.trans();
-                collider.isometry.rotation = UnitQuaternion::from_matrix(&body_to_root.rot());
+                let translation = Translation3::from(body_to_root.trans());
+                let isometry = Isometry3::from_parts(
+                    translation,
+                    UnitQuaternion::from_matrix(&body_to_root.rot()),
+                );
+                match collider {
+                    Collider::Cuboid(cuboid) => {
+                        cuboid.isometry = isometry;
+                    }
+                    Collider::Mesh(mesh) => {
+                        mesh.update_isometry(&isometry);
+                    }
+                }
             }
         }
     }

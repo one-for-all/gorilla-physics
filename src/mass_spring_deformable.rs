@@ -7,7 +7,7 @@ use itertools::izip;
 use na::{vector, DVector, Vector3};
 use nalgebra_sparse::{CooMatrix, CscMatrix, CsrMatrix};
 
-use crate::{mesh::read_mesh, types::Float};
+use crate::{mesh::read_mesh, types::Float, util::read_file};
 
 /// Deformable modeled as mass-spring system.
 /// Ref: Physics-based Animation, https://github.com/dilevin/CSC417-physics-based-animation
@@ -213,12 +213,8 @@ impl MassSpringDeformable {
 }
 
 pub fn read_mass_spring_bunny() -> MassSpringDeformable {
-    let path = "data/coarse_bunny.mesh";
-    let file = File::open(path).expect(&format!("{} should exist", path));
-    let mut reader = BufReader::new(file);
-
-    let mut buf: String = String::new();
-    let _ = reader.read_to_string(&mut buf);
+    let file_path = "data/coarse_bunny.mesh";
+    let buf = read_file(file_path);
 
     let (vertices, tetrahedra) = read_mesh(&buf);
     let n_vertices = vertices.len() as Float;

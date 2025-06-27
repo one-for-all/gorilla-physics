@@ -5,7 +5,7 @@ use crate::types::Float;
 #[derive(Clone, PartialEq, Debug)]
 /// Box shape for collision detection
 pub struct Cuboid {
-    pub isometry: Isometry3<Float>, // transform from colllider frame to reference frame
+    pub isometry: Isometry3<Float>, // transform from colllider frame to world frame
 
     pub w: Float,
     pub d: Float,

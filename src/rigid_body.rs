@@ -4,15 +4,31 @@ use crate::{
     collision::cuboid::Cuboid,
     contact::{ContactPoint, SpringContact},
     inertia::SpatialInertia,
+    mesh::Mesh,
     types::Float,
 };
+
+#[derive(Clone, PartialEq, Debug)]
+pub enum Collider {
+    Mesh(Mesh),
+    Cuboid(Cuboid),
+}
+
+impl Collider {
+    pub fn mesh(&self) -> &Mesh {
+        match self {
+            Collider::Mesh(mesh) => mesh,
+            _ => panic!("Collider is not a Mesh"),
+        }
+    }
+}
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct RigidBody {
     pub inertia: SpatialInertia,
     pub contact_points: Vec<ContactPoint>,
     pub spring_contacts: Vec<SpringContact>,
-    pub collider: Option<Cuboid>,
+    pub collider: Option<Collider>,
 }
 
 impl RigidBody {
@@ -22,6 +38,15 @@ impl RigidBody {
             contact_points: vec![],
             spring_contacts: vec![],
             collider: None,
+        }
+    }
+
+    pub fn new_mesh(mesh: Mesh, inertia: SpatialInertia) -> Self {
+        RigidBody {
+            inertia,
+            contact_points: vec![],
+            spring_contacts: vec![],
+            collider: Some(Collider::Mesh(mesh)),
         }
     }
 
@@ -66,7 +91,7 @@ impl RigidBody {
     }
 
     pub fn add_collider(&mut self, collision_geometry: Cuboid) {
-        self.collider = Some(collision_geometry);
+        self.collider = Some(Collider::Cuboid(collision_geometry));
     }
 
     pub fn add_contact_point(&mut self, contact_point: ContactPoint) {

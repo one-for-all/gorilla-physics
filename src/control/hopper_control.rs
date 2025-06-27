@@ -256,6 +256,7 @@ mod hopper_control_tests {
     /// Servo attitude control to hop the robot to a specified position
     /// Ref: Hopping in Legged Systems-Modeling and Simulation for the
     /// Two-Dimensional One-Legged Case, Marc Raibert, 1984
+    /// TODO: Speed up this test.
     #[test]
     fn servo_attitude_position_control() {
         // Arrange

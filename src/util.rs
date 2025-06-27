@@ -1,3 +1,8 @@
+use std::{
+    fs::File,
+    io::{BufReader, Read},
+};
+
 use na::{DVector, Matrix3xX, Matrix4x3, Quaternion, UnitQuaternion};
 use nalgebra::{Matrix3, Vector3};
 use web_sys::{self};
@@ -91,6 +96,17 @@ pub fn assert_dvec_close(a: &DVector<Float>, b: &DVector<Float>, tol: Float) {
     for (a, b) in a.iter().zip(b.iter()) {
         assert!((a - b).abs() < tol, "{} != {}", a, b);
     }
+}
+
+/// Read a file into a string
+pub fn read_file(file_path: &str) -> String {
+    let file = File::open(file_path).expect(&format!("{} should exist", file_path));
+    let mut reader = BufReader::new(file);
+
+    let mut buf: String = String::new();
+    let _ = reader.read_to_string(&mut buf);
+
+    buf
 }
 
 #[macro_export]

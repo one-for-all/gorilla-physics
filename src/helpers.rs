@@ -3,6 +3,7 @@ use crate::contact::ContactPoint;
 use crate::contact::SpringContact;
 use crate::joint::floating::FloatingJoint;
 use crate::joint::prismatic::JointSpring;
+use crate::mesh::Mesh;
 use crate::spatial::transform::Matrix4Ext;
 use crate::PI;
 use crate::WORLD_FRAME;
@@ -707,5 +708,22 @@ pub fn build_gripper() -> MechanismState {
 
     add_cube_contacts(&mut state, &cube_frame, l_cube);
 
+    state
+}
+
+pub fn build_rigid_mesh_box(mesh: Mesh, l: Float) -> MechanismState {
+    let m = 1.0;
+    let moment_x = m * l * l / 6.0;
+    let moment = Matrix3::from_diagonal(&vector![moment_x, moment_x, moment_x]);
+    let cross_part = vector![0., 0., 0.];
+    let frame = "box";
+    let spatial_inertia = SpatialInertia::new(moment, cross_part, m, frame);
+
+    let body_to_world = Transform3D::identity(frame, WORLD_FRAME);
+    let body = RigidBody::new_mesh(mesh, spatial_inertia);
+
+    let treejoints = vec![Joint::FloatingJoint(FloatingJoint::new(body_to_world))];
+    let bodies = vec![body];
+    let state = MechanismState::new(treejoints, bodies);
     state
 }

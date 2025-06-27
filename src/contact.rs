@@ -5,6 +5,7 @@ use itertools::izip;
 use na::{UnitVector3, Vector3};
 
 use crate::collision::CollisionDetector;
+use crate::rigid_body::Collider;
 use crate::spatial::transform::Transform3D;
 use crate::spatial::twist::Twist;
 use crate::spatial::wrench::Wrench;
@@ -232,31 +233,44 @@ pub fn contact_dynamics(
             state.bodies.iter().skip(i + 1)
         ) {
             if let (Some(collider), Some(next_collider)) = (&body.collider, &other_body.collider) {
-                let mut collision_detector = CollisionDetector::new(&collider, &next_collider);
-                if collision_detector.gjk() {
-                    let (cp_a, cp_b) = collision_detector.epa();
+                match collider {
+                    Collider::Cuboid(collider) => match next_collider {
+                        Collider::Cuboid(next_collider) => {
+                            let mut collision_detector =
+                                CollisionDetector::new(&collider, &next_collider);
+                            if collision_detector.gjk() {
+                                let (cp_a, cp_b) = collision_detector.epa();
 
-                    let body_twist = twists.get(jointid).unwrap();
-                    let cp_a_vel = body_twist.point_velocity(&ContactPoint::new(WORLD_FRAME, cp_a));
-                    let next_body_twist = twists.get(other_jointid).unwrap();
-                    let cp_b_vel =
-                        next_body_twist.point_velocity(&ContactPoint::new(WORLD_FRAME, cp_b));
-                    let velocity = cp_a_vel - cp_b_vel;
+                                let body_twist = twists.get(jointid).unwrap();
+                                let cp_a_vel = body_twist
+                                    .point_velocity(&ContactPoint::new(WORLD_FRAME, cp_a));
+                                let next_body_twist = twists.get(other_jointid).unwrap();
+                                let cp_b_vel = next_body_twist
+                                    .point_velocity(&ContactPoint::new(WORLD_FRAME, cp_b));
+                                let velocity = cp_a_vel - cp_b_vel;
 
-                    let f_b_to_a = calculate_contact_force_collider(&cp_a, &cp_b, &velocity);
-                    let wrench_b_to_a = Wrench::from_force(&cp_a, &f_b_to_a, WORLD_FRAME);
-                    let wrench_a_to_b = Wrench::from_force(&cp_b, &-f_b_to_a, WORLD_FRAME);
+                                let f_b_to_a =
+                                    calculate_contact_force_collider(&cp_a, &cp_b, &velocity);
+                                let wrench_b_to_a =
+                                    Wrench::from_force(&cp_a, &f_b_to_a, WORLD_FRAME);
+                                let wrench_a_to_b =
+                                    Wrench::from_force(&cp_b, &-f_b_to_a, WORLD_FRAME);
 
-                    if let Some(wrench) = contact_wrenches.get_mut(jointid) {
-                        *wrench += wrench_b_to_a
-                    } else {
-                        contact_wrenches.insert(*jointid, wrench_b_to_a);
-                    }
-                    if let Some(wrench) = contact_wrenches.get_mut(other_jointid) {
-                        *wrench += wrench_a_to_b
-                    } else {
-                        contact_wrenches.insert(*other_jointid, wrench_a_to_b);
-                    }
+                                if let Some(wrench) = contact_wrenches.get_mut(jointid) {
+                                    *wrench += wrench_b_to_a
+                                } else {
+                                    contact_wrenches.insert(*jointid, wrench_b_to_a);
+                                }
+                                if let Some(wrench) = contact_wrenches.get_mut(other_jointid) {
+                                    *wrench += wrench_a_to_b
+                                } else {
+                                    contact_wrenches.insert(*other_jointid, wrench_a_to_b);
+                                }
+                            }
+                        }
+                        _ => {}
+                    },
+                    _ => {}
                 }
             }
         }

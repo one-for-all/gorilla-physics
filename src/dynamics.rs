@@ -5,6 +5,7 @@ use crate::{
     inertia::compute_inertias,
     joint::{Joint, JointAcceleration, JointTorque, JointVelocity, ToFloatDVec},
     mechanism::mass_matrix,
+    rigid_body::Collider,
     spatial::{
         spatial_vector::SpatialVector,
         transform::{compute_bodies_to_root, Transform3D},
@@ -456,6 +457,34 @@ pub fn dynamics_discrete(
             }
         }
 
+        // Handle contacts between body colliders and half-spaces
+        for (bodyid, body) in izip!(state.treejointids.iter(), state.bodies.iter()) {
+            if let Some(collider) = &body.collider {
+                match collider {
+                    Collider::Mesh(mesh) => {
+                        for vertex in &mesh.vertices {
+                            for halfspace in &state.halfspaces {
+                                if !halfspace.has_inside(&vertex) {
+                                    continue;
+                                }
+                                let J = compose_contact_jacobian(
+                                    &state,
+                                    &halfspace.normal,
+                                    &vertex,
+                                    *bodyid,
+                                    None,
+                                    v_free.len(),
+                                    &blocks,
+                                );
+                                Js.push(J);
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+
         // Handle contacts between body colliders
         for (i, (bodyid, body)) in izip!(state.treejointids.iter(), state.bodies.iter()).enumerate()
         {
@@ -466,25 +495,34 @@ pub fn dynamics_discrete(
                 if let (Some(collider), Some(other_collider)) =
                     (&body.collider, &other_body.collider)
                 {
-                    let mut collision_detector = CollisionDetector::new(&collider, &other_collider);
-                    if !collision_detector.gjk() {
-                        continue;
-                    }
-                    let (cp_a, cp_b) = collision_detector.epa();
+                    match collider {
+                        Collider::Cuboid(collider) => match other_collider {
+                            Collider::Cuboid(other_collider) => {
+                                let mut collision_detector =
+                                    CollisionDetector::new(&collider, &other_collider);
+                                if !collision_detector.gjk() {
+                                    continue;
+                                }
+                                let (cp_a, cp_b) = collision_detector.epa();
 
-                    // Contact frame normal
-                    let n = UnitVector3::new_normalize(cp_b - cp_a);
+                                // Contact frame normal
+                                let n = UnitVector3::new_normalize(cp_b - cp_a);
 
-                    let J = compose_contact_jacobian(
-                        &state,
-                        &n,
-                        &cp_a,
-                        *bodyid,
-                        Some(*other_bodyid),
-                        v_free.len(),
-                        &blocks,
-                    );
-                    Js.push(J);
+                                let J = compose_contact_jacobian(
+                                    &state,
+                                    &n,
+                                    &cp_a,
+                                    *bodyid,
+                                    Some(*other_bodyid),
+                                    v_free.len(),
+                                    &blocks,
+                                );
+                                Js.push(J);
+                            }
+                            _ => {}
+                        },
+                        _ => {}
+                    };
                 }
             }
         }
@@ -618,7 +656,7 @@ pub fn solve_cone_complementarity(P: &CscMatrix<Float>, g: &DVector<Float>) -> D
     let n_constraints = P.m / 3;
 
     let mut A_triplets: Vec<(usize, usize, Float)> = vec![];
-    let mu = 0.9; // TODO: special handling for zero friction
+    let mu = 1.0; // TODO: special handling for zero friction
     for i in 0..n_constraints {
         let index = i * 3;
         A_triplets.push((index, index, -mu));

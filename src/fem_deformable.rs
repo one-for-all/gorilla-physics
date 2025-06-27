@@ -17,6 +17,7 @@ use crate::dynamics::solve_cone_complementarity;
 use crate::gpu::{
     async_initialize_gpu, compute_dH, setup_compute_dH_pipeline, Matrix3x3, WgpuContext,
 };
+use crate::util::read_file;
 use crate::GRAVITY;
 use crate::{mesh::read_mesh, types::Float};
 
@@ -25,7 +26,7 @@ use crate::{mesh::read_mesh, types::Float};
 ///     Physics-based Animation, https://github.com/dilevin/CSC417-physics-based-animation
 ///     FEM Simulation of 3D Deformable Solids, 2012, Eftychios D. Sifakis
 pub struct FEMDeformable {
-    pub vertices: Vec<Vector3<Float>>,
+    pub vertices: Vec<Vector3<Float>>, // Only set at construction. Not updated by stepping.
     pub tetrahedra: Vec<Vec<usize>>,
 
     pub n_vertices: usize,
@@ -717,12 +718,8 @@ where
 }
 
 pub async fn read_fem_box() -> FEMDeformable {
-    let path = "data/box.mesh";
-    let file = File::open(path).expect(&format!("{} should exist", path));
-    let mut reader = BufReader::new(file);
-
-    let mut buf: String = String::new();
-    let _ = reader.read_to_string(&mut buf);
+    let file_path = "data/box.mesh";
+    let buf = read_file(file_path);
 
     let (vertices, tetrahedra) = read_mesh(&buf);
     FEMDeformable::new(vertices, tetrahedra, 100.0, 6e5, 0.4).await
