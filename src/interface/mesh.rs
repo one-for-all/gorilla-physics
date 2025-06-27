@@ -1,7 +1,5 @@
 use na::{vector, UnitQuaternion, Vector3};
-use wasm_bindgen::{prelude::wasm_bindgen, JsCast};
-use wasm_bindgen_futures::JsFuture;
-use web_sys::{window, Response};
+use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{
     helpers::build_rigid_mesh_box,
