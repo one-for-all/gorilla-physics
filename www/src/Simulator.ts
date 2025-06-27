@@ -83,6 +83,36 @@ export class Simulator {
     );
   }
 
+  addMesh(body_id: number, name: string) {
+    const geometry = new THREE.BufferGeometry();
+    let vertices = this.simulator.vertices(body_id);
+    geometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
+
+    let facets = this.simulator.facets(body_id);
+    geometry.setIndex(new THREE.BufferAttribute(facets, 1));
+    geometry.computeVertexNormals();
+
+    const material = new THREE.MeshPhongMaterial({
+      color: 0x2194ce,
+      side: THREE.DoubleSide, // Render both sides of faces
+      flatShading: true,
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+
+    mesh.frustumCulled = false; // prevent mesh disappearing
+    this.meshes.set(name, mesh);
+    this.graphics.scene.add(mesh);
+  }
+
+  updateMesh(body_id: number, name: string) {
+    let mesh = this.meshes.get(name);
+    let vertices = this.simulator.vertices(body_id);
+    mesh.geometry.setAttribute(
+      "position",
+      new THREE.BufferAttribute(vertices, 3)
+    );
+  }
+
   addBox(name: string, color: number, w: number, d: number, h: number) {
     const geometry = new THREE.BoxGeometry(w, d, h);
     const material = new THREE.MeshBasicMaterial({ color: color });
@@ -660,11 +690,13 @@ export class Simulator {
     //   this.time += dt;
     // }
 
-    let poses = this.simulator.poses();
+    // let poses = this.simulator.poses();
+    this.updateMesh(0, "box");
+
     // let contact_positions = this.simulator.contact_positions();
     // this.updateQuadruped(poses, contact_positions);
     // this.updateCube(poses);
-    this.updatePusher(poses);
+    // this.updatePusher(poses);
 
     requestAnimationFrame((t) => this.run(t));
   }

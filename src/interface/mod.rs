@@ -12,6 +12,7 @@ use crate::WORLD_FRAME;
 use controller::InterfaceController;
 use itertools::izip;
 use na::zero;
+use na::DVector;
 use na::Rotation3;
 use na::UnitQuaternion;
 use na::UnitVector3;
@@ -19,6 +20,8 @@ use na::Vector3;
 use na::{vector, Matrix3, Matrix4};
 use wasm_bindgen::prelude::*;
 use web_sys::js_sys;
+use web_sys::js_sys::Float32Array;
+use web_sys::js_sys::Uint32Array;
 
 use crate::spatial::transform::Matrix4Ext;
 use crate::{
@@ -42,6 +45,7 @@ pub mod double_pendulum;
 pub mod fem_deformable;
 pub mod hopper;
 pub mod mass_spring_deformable;
+pub mod mesh;
 pub mod pendulum;
 pub mod quadruped;
 pub mod rimless_wheel;
@@ -110,6 +114,18 @@ impl InterfaceSimulator {
     #[wasm_bindgen]
     pub fn contact_positions(&self) -> js_sys::Float32Array {
         self.state.contact_positions()
+    }
+
+    /// Get the vertices of the collider mesh on a body
+    #[wasm_bindgen]
+    pub fn vertices(&self, body_id: usize) -> js_sys::Float32Array {
+        self.state.vertices(body_id)
+    }
+
+    /// Get the faces of the collider mesh on a body
+    #[wasm_bindgen]
+    pub fn facets(&self, body_id: usize) -> Uint32Array {
+        self.state.facets(body_id)
     }
 }
 
@@ -199,6 +215,40 @@ impl InterfaceMechanismState {
             mu,
         );
         self.inner.add_halfspace(halfspace);
+    }
+
+    /// Get the vertices of the collider mesh on a body
+    #[wasm_bindgen]
+    pub fn vertices(&self, body_id: usize) -> Float32Array {
+        let vertices = &self.inner.bodies[body_id]
+            .collider
+            .as_ref()
+            .expect(&format!("body {} should have mesh", body_id))
+            .mesh()
+            .vertices;
+        let q = DVector::from_iterator(
+            vertices.len() * 3,
+            vertices.iter().flat_map(|v| v.iter().copied()),
+        );
+        Float32Array::from(q.as_slice().to_vec().as_slice())
+    }
+
+    /// Get the vertices of the collider mesh on a body
+    #[wasm_bindgen]
+    pub fn facets(&self, body_id: usize) -> Uint32Array {
+        let facets = &self.inner.bodies[body_id]
+            .collider
+            .as_ref()
+            .expect(&format!("body {} should have mesh", body_id))
+            .mesh()
+            .faces;
+        Uint32Array::from(
+            facets
+                .iter()
+                .flat_map(|f| [f[0] as u32, f[1] as u32, f[2] as u32])
+                .collect::<Vec<u32>>()
+                .as_slice(),
+        )
     }
 }
 
