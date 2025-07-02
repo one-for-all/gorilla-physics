@@ -1,0 +1,10 @@
+# Unit tetrahedron
+v 0 0 0 # origin
+v 1 0 0 # on x-axis
+v 0 1 0 # on y-axis
+v 0 0 1 # on z-axis
+
+f 1 3 2 # normal: (0, 0, -1)
+f 1 2 4 # normal: (0, -1, 0)
+f 1 4 3 # normal: (-1, 0, 0)
+f 2 3 4 # normal: (1, 1, 1) / sqrt(3)
