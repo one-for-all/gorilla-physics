@@ -32,6 +32,7 @@ pub struct SpatialInertia {
 }
 
 impl SpatialInertia {
+    // TODO: Auto-check positive-definiteness
     pub fn new(
         moment: Matrix3<Float>,
         cross_part: Vector3<Float>,
