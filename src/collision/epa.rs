@@ -63,7 +63,7 @@ fn solve_closest_point_direct(
     result
 }
 
-/// Computes the barycentric cooridates for closest point on a face, by area method.
+/// Computes the barycentric cooridates for closest point from origin on a face, by area method.
 /// i.e. λ for which v = λ * (v1, v2, v3)
 /// Ref: Computing the Barycentric Coordinates of a Projected Point, by Wolfgang
 /// Heidrich, 2005
