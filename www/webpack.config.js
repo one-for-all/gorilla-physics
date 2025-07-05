@@ -44,6 +44,10 @@ const webpackConfig = {
       extraArgs: featureGPU ? "--features gpu" : "",
     }),
   ],
+  // To disable warning on screen
+  // stats: {
+  //   warnings: false,
+  // },
 };
 
 module.exports = webpackConfig;
