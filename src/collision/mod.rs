@@ -11,6 +11,7 @@ pub mod epa;
 pub mod gjk;
 pub mod mesh;
 pub mod polytope;
+pub mod triangle;
 
 pub fn addEdgeIfNotExisting(E: &mut Vec<(usize, usize)>, edge: (usize, usize)) {
     // remove reverse edge
