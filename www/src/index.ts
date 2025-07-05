@@ -1,4 +1,4 @@
-import { createRigidMeshBox } from "gorilla-physics";
+import { createTwoRigidCubes } from "gorilla-physics";
 import { Simulator } from "./Simulator";
 
 export const keysPressed: Record<string, boolean> = {};
@@ -14,7 +14,7 @@ document.addEventListener("keyup", (e) => {
 import("gorilla-physics").then((gorilla) => {
   let default_z = 0.8;
 
-  let angle: number = (10.0 * Math.PI) / 180.0;
+  let angle: number = (0.0 * Math.PI) / 180.0;
   let normal = new Float32Array([Math.sin(angle), 0.0, Math.cos(angle)]);
   let h_ground = 0.0;
   let alpha = 1.0;
@@ -47,14 +47,15 @@ import("gorilla-physics").then((gorilla) => {
   // simulator.addQuadruped();
   // simulator.addPlane(normal, h_ground, 100);
 
-  createRigidMeshBox().then((state) => {
+  createTwoRigidCubes().then((state) => {
     state.addHalfSpace(normal, h_ground);
 
     let controller = gorilla.createNullController();
     let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
     let simulator = new Simulator(interfaceSimulator);
 
-    simulator.addMesh(0, "box");
+    simulator.addMesh(0, "mesh1");
+    simulator.addMesh(0, "mesh2");
     simulator.addPlane(normal, h_ground, 100);
 
     // Important: Set initial camera position

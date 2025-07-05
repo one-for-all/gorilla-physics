@@ -6,7 +6,9 @@ use web_sys::{
     window, Response,
 };
 
-use crate::{mass_spring_deformable::MassSpringDeformable, mesh::read_mesh, types::Float};
+use crate::{
+    collision::mesh::read_mesh, mass_spring_deformable::MassSpringDeformable, types::Float,
+};
 
 use super::{to_js_uint_array, util::read_web_file};
 

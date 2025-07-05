@@ -6,7 +6,9 @@ use web_sys::{
     window, Response,
 };
 
-use crate::{contact::HalfSpace, fem_deformable::FEMDeformable, mesh::read_mesh, types::Float};
+use crate::{
+    collision::mesh::read_mesh, contact::HalfSpace, fem_deformable::FEMDeformable, types::Float,
+};
 
 use super::util::read_web_file;
 
