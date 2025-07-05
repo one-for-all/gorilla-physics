@@ -2,9 +2,9 @@ use na::{vector, Matrix3, Vector3};
 
 use crate::{
     collision::cuboid::Cuboid,
+    collision::mesh::Mesh,
     contact::{ContactPoint, SpringContact},
     inertia::SpatialInertia,
-    mesh::Mesh,
     types::Float,
 };
 

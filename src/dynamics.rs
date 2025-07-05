@@ -1,5 +1,5 @@
 use crate::{
-    collision::CollisionDetector,
+    collision::{mesh::mesh_mesh_collision, CollisionDetector},
     contact::contact_dynamics,
     control::energy_control::spring_force,
     inertia::compute_inertias,
@@ -496,10 +496,10 @@ pub fn dynamics_discrete(
                     (&body.collider, &other_body.collider)
                 {
                     match collider {
-                        Collider::Cuboid(collider) => match other_collider {
-                            Collider::Cuboid(other_collider) => {
+                        Collider::Cuboid(cuboid) => match other_collider {
+                            Collider::Cuboid(other_cuboid) => {
                                 let mut collision_detector =
-                                    CollisionDetector::new(&collider, &other_collider);
+                                    CollisionDetector::new(&cuboid, &other_cuboid);
                                 if !collision_detector.gjk() {
                                     continue;
                                 }
@@ -521,7 +521,28 @@ pub fn dynamics_discrete(
                             }
                             _ => {}
                         },
-                        _ => {}
+                        Collider::Mesh(mesh) => match other_collider {
+                            Collider::Mesh(other_mesh) => {
+                                // TODO: set tolerance according to feature size
+                                let contacts = mesh_mesh_collision(mesh, other_mesh, 1e-2);
+                                let mesh_mesh_Js: Vec<Matrix3xX<Float>> = contacts
+                                    .iter()
+                                    .map(|(cp, n)| {
+                                        compose_contact_jacobian(
+                                            &state,
+                                            n,
+                                            cp,
+                                            *bodyid,
+                                            Some(*other_bodyid),
+                                            v_free.len(),
+                                            &blocks,
+                                        )
+                                    })
+                                    .collect();
+                                Js.extend(mesh_mesh_Js);
+                            }
+                            _ => {}
+                        },
                     };
                 }
             }
@@ -578,8 +599,9 @@ pub fn dynamics_discrete(
 }
 
 /// Given contact information, compute the contact Jacobian that transforms
-/// generalized velocity to contact frame velocity
-fn compose_contact_jacobian(
+/// generalized velocity to contact frame velocity.
+/// Contact frame normal pointing towards body, and away from other body
+pub fn compose_contact_jacobian(
     state: &MechanismState,
     normal: &UnitVector3<Float>,
     contact_point: &Vector3<Float>,

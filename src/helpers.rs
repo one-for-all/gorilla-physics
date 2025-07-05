@@ -1,9 +1,9 @@
 use crate::collision::cuboid::Cuboid;
+use crate::collision::mesh::Mesh;
 use crate::contact::ContactPoint;
 use crate::contact::SpringContact;
 use crate::joint::floating::FloatingJoint;
 use crate::joint::prismatic::JointSpring;
-use crate::mesh::Mesh;
 use crate::spatial::transform::Matrix4Ext;
 use crate::PI;
 use crate::WORLD_FRAME;
@@ -711,19 +711,131 @@ pub fn build_gripper() -> MechanismState {
     state
 }
 
-pub fn build_rigid_mesh_box(mesh: Mesh, l: Float) -> MechanismState {
+fn build_mesh_box_rigid_body(mesh: Mesh, l: Float, frame: &str) -> RigidBody {
     let m = 1.0;
     let moment_x = m * l * l / 6.0;
     let moment = Matrix3::from_diagonal(&vector![moment_x, moment_x, moment_x]);
     let cross_part = vector![0., 0., 0.];
-    let frame = "box";
     let spatial_inertia = SpatialInertia::new(moment, cross_part, m, frame);
 
+    RigidBody::new_mesh(mesh, spatial_inertia)
+}
+
+fn build_tetrahedron_rigid_body(mesh: Mesh, l: Float, frame: &str) -> RigidBody {
+    let m = 1.0;
+    let moment_diag = m / 5.0;
+    let moment_off_diag = -m / 20.0;
+
+    #[rustfmt::skip]
+    let moment = Matrix3::new(
+        moment_diag, moment_off_diag, moment_off_diag, 
+        moment_off_diag, moment_diag, moment_off_diag, 
+        moment_off_diag, moment_off_diag, moment_diag
+    );
+
+    let cross_part = vector![l / 4.0, l / 4.0, l / 4.0] * m;
+    let spatial_inertia = SpatialInertia::new(moment, cross_part, m, frame);
+
+    RigidBody::new_mesh(mesh, spatial_inertia)
+}
+
+fn build_cube_rigid_body(mesh: Mesh, l: Float, frame: &str) -> RigidBody {
+    let m = 1.0;
+    let moment_diag = m * l * l * 2.0 / 3.0;
+    let moment_off_diag = -m * l * l / 4.0;
+
+    #[rustfmt::skip]
+    let moment = Matrix3::new(
+        moment_diag, moment_off_diag, moment_off_diag, 
+        moment_off_diag, moment_diag, moment_off_diag, 
+        moment_off_diag, moment_off_diag, moment_diag
+    );
+
+    let cross_part = vector![l / 2.0, l / 2.0, l / 2.0] * m;
+    let spatial_inertia = SpatialInertia::new(moment, cross_part, m, frame);
+
+    RigidBody::new_mesh(mesh, spatial_inertia)
+}
+
+pub fn build_rigid_mesh_box(mesh: Mesh, l: Float) -> MechanismState {
+    let frame = "box";
+    let body = build_mesh_box_rigid_body(mesh, l, frame);
+
     let body_to_world = Transform3D::identity(frame, WORLD_FRAME);
-    let body = RigidBody::new_mesh(mesh, spatial_inertia);
 
     let treejoints = vec![Joint::FloatingJoint(FloatingJoint::new(body_to_world))];
     let bodies = vec![body];
-    let state = MechanismState::new(treejoints, bodies);
-    state
+    MechanismState::new(treejoints, bodies)
+}
+
+pub fn build_tetrahedron(mesh: Mesh, l: Float) -> MechanismState {
+    let frame = "tetrahedron";
+    let body = build_tetrahedron_rigid_body(mesh, l, frame);
+    let body_to_world = Transform3D::identity(frame, WORLD_FRAME); // Transform3D::move_xyz(frame, WORLD_FRAME, l / 4.0, l / 4.0, l / 4.0);
+
+    let treejoints = vec![Joint::FloatingJoint(FloatingJoint::new(body_to_world))];
+    let bodies = vec![body];
+    MechanismState::new(treejoints, bodies)
+}
+
+pub fn build_two_rigid_mesh_boxes(mesh: Mesh, l: Float) -> MechanismState {
+    let frame1 = "box1";
+    let mesh1 = mesh.clone();
+    let box1 = build_mesh_box_rigid_body(mesh1, l, frame1);
+
+    let frame2 = "box2";
+    let mesh2 = mesh;
+    let box2 = build_mesh_box_rigid_body(mesh2, l, frame2);
+    let bodies = vec![box1, box2];
+
+    let box1_to_world = Transform3D::identity(frame1, WORLD_FRAME);
+    let box2_to_world = Transform3D::identity(frame2, WORLD_FRAME);
+    let treejoints = vec![
+        Joint::FloatingJoint(FloatingJoint::new(box1_to_world)),
+        Joint::FloatingJoint(FloatingJoint::new(box2_to_world)),
+    ];
+
+    MechanismState::new(treejoints, bodies)
+}
+
+/// Buid two tetrahedrons from a minimalistic unit tetrahedron mesh
+pub fn build_two_tetrahedron(mesh: Mesh, l: Float) -> MechanismState {
+    let frame1 = "tetra1";
+    let mesh1 = mesh.clone();
+    let tetra1 = build_tetrahedron_rigid_body(mesh1, l, frame1);
+
+    let frame2 = "tetra2";
+    let mesh2 = mesh;
+    let tetra2 = build_tetrahedron_rigid_body(mesh2, l, frame2);
+    let bodies = vec![tetra1, tetra2];
+
+    let body1_to_world = Transform3D::identity(frame1, WORLD_FRAME);
+    let body2_to_world = Transform3D::identity(frame2, WORLD_FRAME);
+    let treejoints = vec![
+        Joint::FloatingJoint(FloatingJoint::new(body1_to_world)),
+        Joint::FloatingJoint(FloatingJoint::new(body2_to_world)),
+    ];
+
+    MechanismState::new(treejoints, bodies)
+}
+
+/// Buid two cubes from a minimalistic unit cube mesh
+pub fn build_two_cubes(mesh: Mesh, l: Float) -> MechanismState {
+    let frame1 = "cube1";
+    let mesh1 = mesh.clone();
+    let body1 = build_cube_rigid_body(mesh1, l, frame1);
+
+    let frame2 = "cube2";
+    let mesh2 = mesh;
+    let body2 = build_cube_rigid_body(mesh2, l, frame2);
+    let bodies = vec![body1, body2];
+
+    let body1_to_world = Transform3D::identity(frame1, WORLD_FRAME);
+    let body2_to_world = Transform3D::identity(frame2, WORLD_FRAME);
+    let treejoints = vec![
+        Joint::FloatingJoint(FloatingJoint::new(body1_to_world)),
+        Joint::FloatingJoint(FloatingJoint::new(body2_to_world)),
+    ];
+
+    MechanismState::new(treejoints, bodies)
 }

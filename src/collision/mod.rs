@@ -1,7 +1,7 @@
 use cuboid::Cuboid;
 use epa::epa;
 use gjk::gjk;
-use na::{Translation3, Vector3};
+use na::{Translation3, UnitVector3, Vector3};
 use polytope::Polytope;
 
 use crate::types::Float;
@@ -9,6 +9,7 @@ use crate::types::Float;
 pub mod cuboid;
 pub mod epa;
 pub mod gjk;
+pub mod mesh;
 pub mod polytope;
 
 pub fn addEdgeIfNotExisting(E: &mut Vec<(usize, usize)>, edge: (usize, usize)) {

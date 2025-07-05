@@ -16,7 +16,6 @@ pub mod integrators;
 pub mod joint;
 pub mod mass_spring_deformable;
 pub mod mechanism;
-pub mod mesh;
 pub mod momentum;
 pub mod rigid_body;
 pub mod simulate;

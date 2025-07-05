@@ -7,7 +7,7 @@ use itertools::izip;
 use na::{vector, DVector, Vector3};
 use nalgebra_sparse::{CooMatrix, CscMatrix, CsrMatrix};
 
-use crate::{mesh::read_mesh, types::Float, util::read_file};
+use crate::{collision::mesh::read_mesh, types::Float, util::read_file};
 
 /// Deformable modeled as mass-spring system.
 /// Ref: Physics-based Animation, https://github.com/dilevin/CSC417-physics-based-animation

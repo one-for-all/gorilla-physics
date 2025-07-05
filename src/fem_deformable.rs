@@ -12,6 +12,7 @@ use std::{
     io::{BufReader, Read},
 };
 
+use crate::collision::mesh::read_mesh;
 use crate::contact::HalfSpace;
 use crate::dynamics::solve_cone_complementarity;
 use crate::gpu::{
@@ -19,7 +20,6 @@ use crate::gpu::{
 };
 use crate::util::read_file;
 use crate::GRAVITY;
-use crate::{mesh::read_mesh, types::Float};
 
 /// Deformable modeled by finite element method
 /// Ref:

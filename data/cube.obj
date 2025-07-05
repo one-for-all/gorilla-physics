@@ -1,0 +1,22 @@
+# Unit cube
+v 0 0 0 # origin
+v 1 0 0 # front face
+v 1 0 1 # front face
+v 0 0 1 # front face
+v 0 1 0 # back face
+v 1 1 0 # back face
+v 1 1 1 # back face
+v 0 1 1 # back face
+
+f 1 2 4 # front face
+f 2 3 4 # front face
+f 5 8 6 # back face
+f 6 8 7 # back face
+f 1 4 5 # left face
+f 5 4 8 # left face
+f 2 6 3 # right face
+f 6 7 3 # right face
+f 4 3 7 # top face
+f 4 7 8 # top face
+f 1 5 2 # bottom face
+f 2 5 6 # bottom face 
