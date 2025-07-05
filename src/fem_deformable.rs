@@ -2,15 +2,11 @@ use clarabel::algebra::CscMatrix as ClarabelCscMatrix;
 use clarabel::algebra::VectorMath;
 use itertools::izip;
 use na::UnitVector3;
-use na::{vector, DMatrix, DVector, Matrix3, Vector3};
+use na::{vector, DVector, Matrix3, Vector3};
 use nalgebra_sparse::{CooMatrix, CscMatrix};
 use std::collections::HashMap;
 use std::future::Future;
 use std::ops::AddAssign;
-use std::{
-    fs::File,
-    io::{BufReader, Read},
-};
 
 use crate::collision::mesh::read_mesh;
 use crate::contact::HalfSpace;
@@ -18,6 +14,7 @@ use crate::dynamics::solve_cone_complementarity;
 use crate::gpu::{
     async_initialize_gpu, compute_dH, setup_compute_dH_pipeline, Matrix3x3, WgpuContext,
 };
+use crate::types::Float;
 use crate::util::read_file;
 use crate::GRAVITY;
 
@@ -370,7 +367,7 @@ impl FEMDeformable {
 
         // TODO: This procedure can be slow. Find ways to speed it up.
         let mut i = 0;
-        let max_iteration = 100;
+        let max_iteration = 10;
         let mut delta_x = DVector::repeat(self.n_vertices * 3, Float::INFINITY);
         let mut q_new = self.q.clone(); // set initial guesses of q and qdot
         let mut qdot_new = self.qdot.clone();
@@ -455,6 +452,19 @@ impl FEMDeformable {
                 delta_x = conjugate_gradient(A_mul_func, &b, &dx0, 1e-3).await;
             }
 
+            // TODO: backtracking line-search
+            // let mut alpha = 1.0;
+            // let E_0 = self.compute_energy(&qdot_new, dt);
+            // let mut qdot_update = &qdot_new + alpha * &delta_x / dt;
+            // let mut E_update = self.compute_energy(&qdot_update, dt);
+            // while E_update > E_0 && alpha > 1e-4 {
+            //     console_log("backtrack");
+            //     alpha *= 0.5;
+            //     qdot_update = &qdot_new + alpha * &delta_x / dt;
+            //     E_update = self.compute_energy(&qdot_update, dt);
+            // }
+            // qdot_new += alpha * &delta_x / dt;
+            // q_new += alpha * &delta_x;
 
             qdot_new += &delta_x / dt;
             q_new += &delta_x;
@@ -518,7 +528,6 @@ impl FEMDeformable {
             let lambda = solve_cone_complementarity(&P, &g);
             qdot_new += &J_mul_M_inverse.transpose() * lambda;
         }
-
 
         self.qdot = qdot_new;
         self.q += dt * &self.qdot;
@@ -696,7 +705,7 @@ where
     let mut d = r.clone();
     let mut delta_new = r.norm_squared();
 
-    let max_iteration = 100;
+    let max_iteration = 50;
     // TODO: guard against or warn on NaN?
     while i < max_iteration && !(delta_new < abs_tol) {
         let q: DVector<Float> = A_mul(&d).await;
@@ -711,7 +720,6 @@ where
         delta_new = r.norm_squared();
         let beta = delta_new / delta_old;
         d = &r + beta * &d;
-
         i += 1;
     }
     x
