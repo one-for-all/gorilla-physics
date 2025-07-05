@@ -73,6 +73,19 @@ path = "examples/pusher.rs"
 name = "read_bunny_mass_spring"
 path = "examples/read_bunny_mass_spring.rs"
 
+
+[[bin]]
+name = "fem"
+path = "examples/fem.rs"
+
+[[bin]]
+name = "socp"
+path = "examples/socp.rs"
+
+[[bin]]
+name = "constraint_contact"
+path = "examples/constraint_contact.rs"
+
 [dependencies]
 cfg-if = "1"
 itertools = "0.13.0"
