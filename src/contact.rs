@@ -5,7 +5,7 @@ use itertools::izip;
 use na::{UnitVector3, Vector3};
 
 use crate::collision::CollisionDetector;
-use crate::rigid_body::Collider;
+use crate::rigid_body::CollisionGeometry;
 use crate::spatial::transform::Transform3D;
 use crate::spatial::twist::Twist;
 use crate::spatial::wrench::Wrench;
@@ -233,9 +233,12 @@ pub fn contact_dynamics(
             state.bodies.iter().skip(i + 1)
         ) {
             if let (Some(collider), Some(next_collider)) = (&body.collider, &other_body.collider) {
-                match collider {
-                    Collider::Cuboid(collider) => match next_collider {
-                        Collider::Cuboid(next_collider) => {
+                if !collider.enabled || !next_collider.enabled {
+                    continue;
+                }
+                match &collider.geometry {
+                    CollisionGeometry::Cuboid(collider) => match &next_collider.geometry {
+                        CollisionGeometry::Cuboid(next_collider) => {
                             let mut collision_detector =
                                 CollisionDetector::new(&collider, &next_collider);
                             if collision_detector.gjk() {

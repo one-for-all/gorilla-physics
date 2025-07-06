@@ -770,8 +770,18 @@ mod mesh_tests {
         assert_vec_close!(tetra1_velocity.linear, Vector3::<Float>::zeros(), 1e-5);
 
         let contacts = mesh_mesh_collision(
-            &state.bodies[0].collider.as_ref().expect("body 0").mesh(),
-            &state.bodies[1].collider.as_ref().expect("body 1").mesh(),
+            &state.bodies[0]
+                .collider
+                .as_ref()
+                .expect("body 0")
+                .geometry
+                .mesh(),
+            &state.bodies[1]
+                .collider
+                .as_ref()
+                .expect("body 1")
+                .geometry
+                .mesh(),
             1e-2,
         );
         assert_eq!(contacts.len(), 0);

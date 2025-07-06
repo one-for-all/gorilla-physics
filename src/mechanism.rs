@@ -12,7 +12,7 @@ use crate::joint::Joint;
 use crate::joint::JointPosition;
 use crate::joint::JointVelocity;
 use crate::momentum::MomentumMatrix;
-use crate::rigid_body::Collider;
+use crate::rigid_body::CollisionGeometry;
 use crate::rigid_body::RigidBody;
 use crate::spatial::geometric_jacobian::GeometricJacobian;
 use crate::spatial::pose::Pose;
@@ -174,11 +174,11 @@ impl MechanismState {
                     translation,
                     UnitQuaternion::from_matrix(&body_to_root.rot()),
                 );
-                match collider {
-                    Collider::Cuboid(cuboid) => {
+                match &mut collider.geometry {
+                    CollisionGeometry::Cuboid(cuboid) => {
                         cuboid.isometry = isometry;
                     }
-                    Collider::Mesh(mesh) => {
+                    CollisionGeometry::Mesh(mesh) => {
                         mesh.update_isometry(&isometry);
                     }
                 }

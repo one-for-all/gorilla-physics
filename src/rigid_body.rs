@@ -9,15 +9,37 @@ use crate::{
 };
 
 #[derive(Clone, PartialEq, Debug)]
-pub enum Collider {
+pub struct Collider {
+    pub geometry: CollisionGeometry,
+    pub enabled: bool,
+}
+
+impl Collider {
+    fn new_mesh(mesh: Mesh) -> Self {
+        Collider {
+            geometry: CollisionGeometry::Mesh(mesh),
+            enabled: true,
+        }
+    }
+
+    fn new_cuboid(cuboid: Cuboid) -> Self {
+        Collider {
+            geometry: CollisionGeometry::Cuboid(cuboid),
+            enabled: true,
+        }
+    }
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub enum CollisionGeometry {
     Mesh(Mesh),
     Cuboid(Cuboid),
 }
 
-impl Collider {
+impl CollisionGeometry {
     pub fn mesh(&self) -> &Mesh {
         match self {
-            Collider::Mesh(mesh) => mesh,
+            CollisionGeometry::Mesh(mesh) => mesh,
             _ => panic!("Collider is not a Mesh"),
         }
     }
@@ -41,12 +63,14 @@ impl RigidBody {
         }
     }
 
-    pub fn new_mesh(mesh: Mesh, spatial_inertia: SpatialInertia) -> Self {
+    pub fn new_mesh(mesh: Mesh, spatial_inertia: SpatialInertia, collision_enabled: bool) -> Self {
+        let mut collider = Collider::new_mesh(mesh);
+        collider.enabled = collision_enabled;
         RigidBody {
             inertia: spatial_inertia,
             contact_points: vec![],
             spring_contacts: vec![],
-            collider: Some(Collider::Mesh(mesh)),
+            collider: Some(collider),
         }
     }
 
@@ -91,7 +115,7 @@ impl RigidBody {
     }
 
     pub fn add_collider(&mut self, collision_geometry: Cuboid) {
-        self.collider = Some(Collider::Cuboid(collision_geometry));
+        self.collider = Some(Collider::new_cuboid(collision_geometry));
     }
 
     pub fn add_contact_point(&mut self, contact_point: ContactPoint) {

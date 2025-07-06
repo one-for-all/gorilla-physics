@@ -718,7 +718,7 @@ fn build_mesh_box_rigid_body(mesh: Mesh, l: Float, frame: &str) -> RigidBody {
     let cross_part = vector![0., 0., 0.];
     let spatial_inertia = SpatialInertia::new(moment, cross_part, m, frame);
 
-    RigidBody::new_mesh(mesh, spatial_inertia)
+    RigidBody::new_mesh(mesh, spatial_inertia, true)
 }
 
 fn build_tetrahedron_rigid_body(mesh: Mesh, l: Float, frame: &str) -> RigidBody {
@@ -736,7 +736,7 @@ fn build_tetrahedron_rigid_body(mesh: Mesh, l: Float, frame: &str) -> RigidBody 
     let cross_part = vector![l / 4.0, l / 4.0, l / 4.0] * m;
     let spatial_inertia = SpatialInertia::new(moment, cross_part, m, frame);
 
-    RigidBody::new_mesh(mesh, spatial_inertia)
+    RigidBody::new_mesh(mesh, spatial_inertia, true)
 }
 
 fn build_cube_rigid_body(mesh: Mesh, l: Float, frame: &str) -> RigidBody {
@@ -754,7 +754,7 @@ fn build_cube_rigid_body(mesh: Mesh, l: Float, frame: &str) -> RigidBody {
     let cross_part = vector![l / 2.0, l / 2.0, l / 2.0] * m;
     let spatial_inertia = SpatialInertia::new(moment, cross_part, m, frame);
 
-    RigidBody::new_mesh(mesh, spatial_inertia)
+    RigidBody::new_mesh(mesh, spatial_inertia, true)
 }
 
 pub fn build_rigid_mesh_box(mesh: Mesh, l: Float) -> MechanismState {

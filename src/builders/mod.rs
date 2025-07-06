@@ -40,7 +40,7 @@ fn build_so101_base_body(mut mesh: Mesh, frame: &str) -> RigidBody {
     );
     mesh.update_base_isometry(&iso);
 
-    RigidBody::new_mesh(mesh, spatial_inertia)
+    RigidBody::new_mesh(mesh, spatial_inertia, false)
 }
 
 /// Build SO-Arm 101 from its URDF description
