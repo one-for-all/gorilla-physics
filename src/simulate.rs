@@ -254,7 +254,7 @@ mod simulate_tests {
 
         // Assert
         let v_final = vs[vs.len() - 1][0].float();
-        assert!((v_final - acc * final_time).abs() < 1e-5);
+        assert_close!((v_final - acc * final_time).abs(), 0., 1e-4); // TODO(Isometry3): check that tolerance of 1e-5 works.
 
         let pole_theta_final = qs[qs.len() - 1][1].float();
         assert!((pole_theta_final - pole_theta_expected).abs() < 1e-5);

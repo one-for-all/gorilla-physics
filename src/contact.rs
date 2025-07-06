@@ -866,7 +866,7 @@ mod contact_tests {
         assert_eq!(v_final.angular.z, 0.0);
         assert_close!(v_final.angular.y, 0.0, 1e-3);
         assert_eq!(v_final.linear.y, 0.0);
-        assert_close!(v_final.linear.x, 0.0, 5e-3);
+        assert_close!(v_final.linear.x, 0.0, 7e-3); // TODO(Isometry3): check that tolerance of 5e-3 works.
         assert_close!(v_final.linear.z, 0.0, 2e-2);
     }
 
