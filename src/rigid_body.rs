@@ -41,9 +41,9 @@ impl RigidBody {
         }
     }
 
-    pub fn new_mesh(mesh: Mesh, inertia: SpatialInertia) -> Self {
+    pub fn new_mesh(mesh: Mesh, spatial_inertia: SpatialInertia) -> Self {
         RigidBody {
-            inertia,
+            inertia: spatial_inertia,
             contact_points: vec![],
             spring_contacts: vec![],
             collider: Some(Collider::Mesh(mesh)),
