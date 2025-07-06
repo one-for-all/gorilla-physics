@@ -1,5 +1,6 @@
 use std::ops::{Add, Div, Mul};
 
+use fixed::FixedJoint;
 use floating::FloatingJoint;
 use na::{dvector, DVector, Vector3};
 use prismatic::PrismaticJoint;
@@ -11,10 +12,13 @@ use crate::spatial::{
 };
 use crate::types::Float;
 
+pub mod fixed;
 pub mod floating;
 pub mod prismatic;
 pub mod revolute;
+
 pub enum Joint {
+    FixedJoint(FixedJoint),
     RevoluteJoint(RevoluteJoint),
     PrismaticJoint(PrismaticJoint),
     FloatingJoint(FloatingJoint),
@@ -23,6 +27,7 @@ pub enum Joint {
 impl Joint {
     pub fn transform(&self) -> &Transform3D {
         match self {
+            Joint::FixedJoint(joint) => &joint.transform,
             Joint::RevoluteJoint(joint) => &joint.transform,
             Joint::PrismaticJoint(joint) => &joint.transform,
             Joint::FloatingJoint(joint) => &joint.transform,
@@ -31,6 +36,7 @@ impl Joint {
 
     pub fn axis(&self) -> &Vector3<Float> {
         match self {
+            Joint::FixedJoint(_) => panic!("Fixed joint has no axis"),
             Joint::RevoluteJoint(joint) => &joint.axis,
             Joint::PrismaticJoint(joint) => &joint.axis,
             Joint::FloatingJoint(_) => panic!("Floating joint has no axis"),
@@ -39,6 +45,7 @@ impl Joint {
 
     pub fn motion_subspace(&self) -> GeometricJacobian {
         match self {
+            Joint::FixedJoint(joint) => joint.motion_subspace(),
             Joint::RevoluteJoint(joint) => joint.motion_subspace(),
             Joint::PrismaticJoint(joint) => joint.motion_subspace(),
             Joint::FloatingJoint(joint) => joint.motion_subspace(),
@@ -54,6 +61,7 @@ pub trait ToFloatDVec {
 pub enum JointPosition {
     Float(Float), // Single float-valued joint position value
     Pose(Pose),   // 3D pose that represents the position of floating joint
+    None,         // for fixed joint
 }
 
 impl JointPosition {
@@ -84,6 +92,7 @@ impl ToFloatDVec for Vec<JointPosition> {
                     result.extend(v.rotation.coords.iter().cloned()); // [x, y, z, w]
                     result.extend(v.translation.iter().cloned());
                 }
+                JointPosition::None => {}
             }
         }
         result
@@ -106,6 +115,7 @@ impl ToJointPositionVec for Vec<Float> {
 pub enum JointVelocity {
     Float(Float),           // Single float-valued joint speed value
     Spatial(SpatialVector), // 3D spatial velocity of floating joint
+    None,                   // for fixed joint
 }
 
 impl JointVelocity {
@@ -136,6 +146,7 @@ impl ToFloatDVec for Vec<JointVelocity> {
                     result.extend(v.angular.iter().cloned());
                     result.extend(v.linear.iter().cloned());
                 }
+                JointVelocity::None => {}
             }
         }
         result
@@ -158,6 +169,7 @@ impl ToJointVelocityVec for Vec<Float> {
 pub enum JointTorque {
     Float(Float),           // Single float-valued joint torque
     Spatial(SpatialVector), // 3D spatial wrench applied to floating joint
+    None,                   // for fixed joint
 }
 
 impl JointTorque {
@@ -198,6 +210,7 @@ impl ToFloatDVec for Vec<JointTorque> {
                     result.extend(v.angular.iter().cloned());
                     result.extend(v.linear.iter().cloned());
                 }
+                JointTorque::None => {}
             }
         }
         result
@@ -208,6 +221,7 @@ impl ToFloatDVec for Vec<JointTorque> {
 pub enum JointAcceleration {
     Float(Float),           // Single float-valued joint acceleration value
     Spatial(SpatialVector), // 3D spatial acceleration of floating joint
+    None,                   // for fixed joint
 }
 
 impl JointAcceleration {
@@ -238,6 +252,7 @@ impl ToFloatDVec for Vec<JointAcceleration> {
                     result.extend(v.angular.iter().cloned());
                     result.extend(v.linear.iter().cloned());
                 }
+                JointAcceleration::None => {}
             }
         }
         result
@@ -251,6 +266,7 @@ impl Mul<Float> for &JointAcceleration {
         match self {
             JointAcceleration::Float(ja) => JointAcceleration::Float(ja * rhs),
             JointAcceleration::Spatial(ja) => JointAcceleration::Spatial(ja * rhs),
+            JointAcceleration::None => panic!("Fixed joint acceleration None cannot be multiplied"),
         }
     }
 }
@@ -262,6 +278,7 @@ impl Add for JointAcceleration {
         match self {
             JointAcceleration::Float(ja) => JointAcceleration::Float(ja + rhs.float()),
             JointAcceleration::Spatial(ja) => JointAcceleration::Spatial(&ja + rhs.spatial()),
+            JointAcceleration::None => panic!("Fixed joint acceleration None cannot be added"),
         }
     }
 }
@@ -273,6 +290,7 @@ impl Div<Float> for JointAcceleration {
         match self {
             JointAcceleration::Float(ja) => JointAcceleration::Float(ja / rhs),
             JointAcceleration::Spatial(ja) => JointAcceleration::Spatial(&ja / rhs),
+            JointAcceleration::None => panic!("Fixed joint acceleration None cannot be divided"),
         }
     }
 }

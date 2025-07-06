@@ -25,7 +25,8 @@ use clarabel::{
 };
 use itertools::izip;
 use na::{
-    vector, zero, DMatrix, DVector, Matrix3, Matrix3x6, Matrix3xX, Matrix6, Matrix6xX, UnitVector3,
+    dvector, vector, zero, DMatrix, DVector, Matrix3, Matrix3x6, Matrix3xX, Matrix6, Matrix6xX,
+    UnitVector3,
 };
 use nalgebra::Vector3;
 use std::collections::{HashMap, HashSet};
@@ -250,6 +251,10 @@ pub fn dynamics_solve(
     // dynamics bias term
     let c = dynamics_bias;
 
+    if mass_matrix.shape().0 == 0 {
+        return dvector![];
+    }
+
     let vdot = mass_matrix.clone().lu().solve(&(tau - c)).expect(&format!(
         r#"Failed to solve for vdot in M(q) vdot + c(q, v) = τ
             where M = {}, 
@@ -357,6 +362,7 @@ pub fn dynamics_continuous(
                 i += 6;
                 JointAcceleration::Spatial(SpatialVector { angular, linear })
             }
+            JointVelocity::None => JointAcceleration::None,
         })
         .collect()
 }
@@ -393,7 +399,7 @@ pub fn dynamics_discrete(
     // Ref: Contact and Friction Simulation for Computer Graphics, 2022,
     //      Section 1.5 The Coulomb Friction Law
     let blocks: Vec<Matrix6xX<Float>> = izip!(state.treejointids.iter(), state.treejoints.iter())
-        .map(|(bodyid, joint)| {
+        .filter_map(|(bodyid, joint)| {
             let body_to_root = bodies_to_root.get(bodyid).unwrap();
             let R = body_to_root.rot();
             let r = body_to_root.trans();
@@ -403,7 +409,7 @@ pub fn dynamics_discrete(
                 .copy_from(&(skew_symmetric(&r) * &R));
             T.fixed_view_mut::<3, 3>(3, 3).copy_from(&R);
             match joint {
-                Joint::RevoluteJoint(joint) => {
+                Joint::RevoluteJoint(joint) => Some(
                     T * Matrix6xX::from_column_slice(&[
                         joint.axis[0],
                         joint.axis[1],
@@ -411,9 +417,9 @@ pub fn dynamics_discrete(
                         0.,
                         0.,
                         0.,
-                    ])
-                }
-                Joint::PrismaticJoint(joint) => {
+                    ]),
+                ),
+                Joint::PrismaticJoint(joint) => Some(
                     T * Matrix6xX::from_column_slice(&[
                         0.,
                         0.,
@@ -421,11 +427,12 @@ pub fn dynamics_discrete(
                         joint.axis[0],
                         joint.axis[1],
                         joint.axis[2],
-                    ])
-                }
-                Joint::FloatingJoint(_) => {
-                    Matrix6xX::from_columns(&T.column_iter().collect::<Vec<_>>())
-                }
+                    ]),
+                ),
+                Joint::FloatingJoint(_) => Some(Matrix6xX::from_columns(
+                    &T.column_iter().collect::<Vec<_>>(),
+                )),
+                Joint::FixedJoint(_) => None,
             }
         })
         .collect();
@@ -600,6 +607,7 @@ pub fn dynamics_discrete(
                 i += 6;
                 JointVelocity::Spatial(SpatialVector { angular, linear })
             }
+            JointVelocity::None => JointVelocity::None,
         })
         .collect()
 }

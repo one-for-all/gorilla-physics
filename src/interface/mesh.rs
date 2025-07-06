@@ -137,13 +137,7 @@ pub async fn createSO101() -> InterfaceMechanismState {
     let base_buf = read_web_file("so101/base_so101_v2.obj").await;
     let base_mesh = Mesh::new_from_obj(&base_buf);
 
-    let mut state = build_so101(base_mesh);
-
-    let q_init = vec![JointPosition::Pose(Pose {
-        rotation: UnitQuaternion::identity(),
-        translation: vector![0.0, 0.0, 0.1],
-    })];
-    state.update_q(&q_init);
+    let state = build_so101(base_mesh);
 
     InterfaceMechanismState { inner: state }
 }

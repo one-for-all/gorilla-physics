@@ -31,6 +31,7 @@ pub fn step(
                 .map(|v| match v {
                     JointVelocity::Float(_) => JointTorque::Float(0.0),
                     JointVelocity::Spatial(_) => JointTorque::Spatial(SpatialVector::zero()),
+                    JointVelocity::None => JointTorque::None,
                 })
                 .collect::<Vec<JointTorque>>()
         } else {

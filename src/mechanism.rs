@@ -72,6 +72,10 @@ impl MechanismState {
                     q.push(JointPosition::Pose(Pose::identity()));
                     v.push(JointVelocity::Spatial(SpatialVector::zero()));
                 }
+                Joint::FixedJoint(_) => {
+                    q.push(JointPosition::None);
+                    v.push(JointVelocity::None);
+                }
             }
 
             // Check that joint i has child body i
@@ -134,27 +138,32 @@ impl MechanismState {
 
     pub fn update_q(&mut self, q: &Vec<JointPosition>) {
         self.q = q.clone();
-        for (joint, q) in izip!(self.treejoints.iter_mut(), q.iter()) {
+        for (joint, qi) in izip!(self.treejoints.iter_mut(), q.iter()) {
             match joint {
                 Joint::RevoluteJoint(j) => {
-                    if let JointPosition::Float(q) = q {
+                    if let JointPosition::Float(q) = qi {
                         j.update(q)
                     } else {
                         panic!("Revolute joint expects a Float position");
                     }
                 }
                 Joint::PrismaticJoint(j) => {
-                    if let JointPosition::Float(q) = q {
+                    if let JointPosition::Float(q) = qi {
                         j.update(q)
                     } else {
                         panic!("Prismatic joint expects a Float position");
                     }
                 }
                 Joint::FloatingJoint(j) => {
-                    if let JointPosition::Pose(q) = q {
+                    if let JointPosition::Pose(q) = qi {
                         j.update(q)
                     } else {
                         panic!("Floating joint expects a Pose position");
+                    }
+                }
+                Joint::FixedJoint(_) => {
+                    if !matches!(qi, JointPosition::None) {
+                        panic!("Fixed joint expects a None position");
                     }
                 }
             }
@@ -208,6 +217,9 @@ impl MechanismState {
                 } else {
                     panic!("Floating joint expects a Pose position");
                 }
+            }
+            Joint::FixedJoint(_) => {
+                panic!("Should not try to set a fixed joint's position");
             }
         }
         self.q[jointid - 1] = q;
@@ -379,6 +391,7 @@ pub fn mass_matrix(
         .map(|v| match v {
             JointVelocity::Float(_) => 1,
             JointVelocity::Spatial(_) => 6,
+            JointVelocity::None => 0,
         })
         .sum();
     let mut mass_matrix = DMatrix::zeros(n_v, n_v);

@@ -3,7 +3,7 @@ use na::{vector, Isometry3, Matrix3, Translation3, UnitQuaternion};
 use crate::{
     collision::mesh::Mesh,
     inertia::SpatialInertia,
-    joint::{floating::FloatingJoint, Joint},
+    joint::{fixed::FixedJoint, floating::FloatingJoint, Joint},
     mechanism::MechanismState,
     rigid_body::RigidBody,
     spatial::transform::Transform3D,
@@ -50,7 +50,7 @@ pub fn build_so101(base_mesh: Mesh) -> MechanismState {
     let base_body = build_so101_base_body(base_mesh, base_frame);
     let base_to_world = Transform3D::identity(base_frame, WORLD_FRAME);
 
-    let treejoints = vec![Joint::FloatingJoint(FloatingJoint::new(base_to_world))];
+    let treejoints = vec![Joint::FixedJoint(FixedJoint::new(base_to_world))];
     let bodies = vec![base_body];
     MechanismState::new(treejoints, bodies)
 }

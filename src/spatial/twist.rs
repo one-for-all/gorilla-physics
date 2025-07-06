@@ -57,6 +57,7 @@ impl Twist {
                 angular: v.spatial().angular,
                 linear: v.spatial().linear,
             },
+            Joint::FixedJoint(joint) => Twist::zero(&joint.transform.from, &joint.transform.to),
         }
     }
 

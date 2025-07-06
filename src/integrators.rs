@@ -130,6 +130,10 @@ fn euler_step(
                 new_v.push(JointVelocity::Spatial(new_vi));
                 new_q.push(JointPosition::Pose(new_qi));
             }
+            JointPosition::None => {
+                new_v.push(JointVelocity::None);
+                new_q.push(JointPosition::None);
+            }
         }
     }
 
@@ -149,6 +153,7 @@ fn semi_implicit_euler_step(
         .map(|(vi, vdoti)| match vi {
             JointVelocity::Float(vi) => JointVelocity::Float(vi + vdoti.float() * dt),
             JointVelocity::Spatial(vi) => JointVelocity::Spatial(vi + &(vdoti.spatial() * dt)),
+            JointVelocity::None => JointVelocity::None,
         })
         .collect();
 
@@ -178,6 +183,7 @@ fn compute_new_q(
                 };
                 JointPosition::Pose(new_qi)
             }
+            JointPosition::None => JointPosition::None,
         })
         .collect()
 }
