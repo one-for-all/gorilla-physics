@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+
+use itertools::Itertools;
 use na::{vector, Isometry3, Matrix2, Matrix2x1, Point3, UnitVector3, Vector3};
 
 use crate::types::Float;
@@ -111,7 +114,8 @@ impl Mesh {
     pub fn new_from_obj(content: &str) -> Self {
         let mut vertices = vec![];
         let mut faces = vec![];
-        let mut edges: Vec<([usize; 2], usize, usize)> = vec![];
+        // Intermediate representation for edges. key is edge, value is (face A, face B).
+        let mut edges_map: HashMap<(usize, usize), (usize, usize)> = HashMap::new();
         for line in content.lines() {
             let parts: Vec<&str> = line.split_whitespace().collect();
             if parts.len() < 1 {
@@ -151,27 +155,25 @@ impl Mesh {
                         - 1;
                     faces.push([i, j, k]);
 
-                    // TODO: Optimize the edge collection
                     // Add edges as well
                     let face_index = faces.len() - 1;
                     let e1 = [i, j];
                     let e2 = [j, k];
                     let e3 = [k, i];
                     for e_candidate in [e1, e2, e3].iter() {
-                        let mut exists = false;
-                        for e in edges.iter_mut() {
-                            if e.0[0] == e_candidate[0] && e.0[1] == e_candidate[1] {
-                                panic!("edge cannot be shared by two faces in its same direction: {:?}", e);
-                            }
-                            if e.0[0] == e_candidate[1] && e.0[1] == e_candidate[0] {
-                                exists = true;
-                                e.2 = face_index; // current face is face B
-                                break;
-                            }
+                        if let Some(e) = edges_map.get_mut(&(e_candidate[0], e_candidate[1])) {
+                            panic!(
+                                "edge cannot be shared by two faces in its same direction: {:?}",
+                                e
+                            );
                         }
-                        if !exists {
-                            edges.push((*e_candidate, face_index, face_index)); // this face B is placeholder.
+                        if let Some(e) = edges_map.get_mut(&(e_candidate[1], e_candidate[0])) {
+                            e.1 = face_index;
+                            continue;
                         }
+                        // Set face A and face B both to face_index. This face B is placeholder.
+                        edges_map
+                            .insert((e_candidate[0], e_candidate[1]), (face_index, face_index));
                     }
                 }
                 _ => {}
@@ -180,11 +182,12 @@ impl Mesh {
 
         // Check all edges have shared by two different faces, and compute the
         // normals of the two faces, and store them.
-        let edges: Vec<([usize; 2], Vector3<Float>, Vector3<Float>)> = edges
+        let edges: Vec<([usize; 2], Vector3<Float>, Vector3<Float>)> = edges_map
             .iter()
-            .map(|edge| {
-                let f_A = edge.1;
-                let f_B = edge.2;
+            .sorted()
+            .map(|(k, v)| {
+                let f_A = v.0;
+                let f_B = v.1;
                 assert_ne!(
                     f_A, f_B,
                     "edge should be shared by two different faces: {}, {}",
@@ -196,7 +199,8 @@ impl Mesh {
                 let f_B = faces[f_B];
                 let normal_B =
                     compute_normal(&[vertices[f_B[0]], vertices[f_B[1]], vertices[f_B[2]]]);
-                (edge.0, normal_A, normal_B)
+
+                ([k.0, k.1], normal_A, normal_B)
             })
             .collect();
 
