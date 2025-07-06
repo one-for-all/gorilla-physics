@@ -1,8 +1,4 @@
-
-use na::{
-    vector, Isometry3, Matrix2, Matrix2x1, Point3, UnitVector3,
-    Vector3,
-};
+use na::{vector, Isometry3, Matrix2, Matrix2x1, Point3, UnitVector3, Vector3};
 
 use crate::types::Float;
 
@@ -13,6 +9,7 @@ pub struct Mesh {
     pub faces: Vec<[usize; 3]>,
     pub edges: Vec<([usize; 2], Vector3<Float>, Vector3<Float>)>, // (edge, face A normal, face B normal). edge is consistent with A direction, opposite with B direction.
 
+    pub base_isometry: Isometry3<Float>, // The fixed isometry from body frame to mesh frame, initialized at the beginning.
     pub body_isometry: Isometry3<Float>, // Stores the isometry of the body frame to which mesh is attached. So that vertex positions can be updated relatively when body frame moves.
 }
 
@@ -52,7 +49,7 @@ impl Mesh {
             a_clone.sort();
             let mut b_clone = b.clone();
             b_clone.sort();
-            
+
             a_clone.cmp(&b_clone)
         });
 
@@ -85,8 +82,19 @@ impl Mesh {
             vertices,
             faces: boundary_facets,
             edges: vec![],
+            base_isometry: Isometry3::identity(),
             body_isometry: Isometry3::identity(),
         }
+    }
+
+    pub fn update_base_isometry(&mut self, iso: &Isometry3<Float>) {
+        let transform = iso;
+        self.vertices = self
+            .vertices
+            .iter()
+            .map(|v| transform.transform_point(&Point3::from(*v)).coords)
+            .collect::<Vec<Vector3<Float>>>();
+        self.base_isometry = *iso;
     }
 
     pub fn update_isometry(&mut self, iso: &Isometry3<Float>) {
@@ -120,11 +128,30 @@ impl Mesh {
                     // TODO: Each element in face line in obj file could be of
                     // format x/y/z where x is vertex index, y is material
                     // index, and z is vertex normal index. Handle it.
-                    let i: usize = parts[1].parse::<usize>().unwrap() - 1;
-                    let j: usize = parts[2].parse::<usize>().unwrap() - 1;
-                    let k: usize = parts[3].parse::<usize>().unwrap() - 1;
+                    let i: usize = parts[1]
+                        .split("/")
+                        .next()
+                        .unwrap()
+                        .parse::<usize>()
+                        .unwrap()
+                        - 1;
+                    let j: usize = parts[2]
+                        .split("/")
+                        .next()
+                        .unwrap()
+                        .parse::<usize>()
+                        .unwrap()
+                        - 1;
+                    let k: usize = parts[3]
+                        .split("/")
+                        .next()
+                        .unwrap()
+                        .parse::<usize>()
+                        .unwrap()
+                        - 1;
                     faces.push([i, j, k]);
 
+                    // TODO: Optimize the edge collection
                     // Add edges as well
                     let face_index = faces.len() - 1;
                     let e1 = [i, j];
@@ -177,6 +204,7 @@ impl Mesh {
             vertices: vertices,
             faces: faces,
             edges: edges,
+            base_isometry: Isometry3::identity(),
             body_isometry: Isometry3::identity(),
         }
     }
@@ -319,7 +347,7 @@ pub fn edge_edge_collision(
     let n = x12.cross(&x34);
 
     // Skip if two edges are parallel
-    if n.norm()/(x12.norm()*x34.norm()) < 1e-3 {
+    if n.norm() / (x12.norm() * x34.norm()) < 1e-3 {
         return None;
     }
     let contact_normal = UnitVector3::new_normalize(n);
@@ -330,7 +358,6 @@ pub fn edge_edge_collision(
     if distance.abs() > tol {
         return None;
     }
-
 
     // Formulate and solve the normal equation for two edges, to find the
     // closest point between their line extensions.
@@ -743,10 +770,10 @@ mod mesh_tests {
         assert_vec_close!(tetra1_velocity.linear, Vector3::<Float>::zeros(), 1e-5);
 
         let contacts = mesh_mesh_collision(
-            &state.bodies[0].collider.as_ref().expect("body 0").mesh(), 
-            &state.bodies[1].collider.as_ref().expect("body 1").mesh(), 
-            1e-2
-        ); 
+            &state.bodies[0].collider.as_ref().expect("body 0").mesh(),
+            &state.bodies[1].collider.as_ref().expect("body 1").mesh(),
+            1e-2,
+        );
         assert_eq!(contacts.len(), 0);
     }
 

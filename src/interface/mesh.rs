@@ -2,6 +2,7 @@ use na::{vector, UnitQuaternion, Vector3};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{
+    builders::build_so101,
     collision::mesh::Mesh,
     helpers::{
         build_rigid_mesh_box, build_tetrahedron, build_two_cubes, build_two_rigid_mesh_boxes,
@@ -126,6 +127,22 @@ pub async fn createTwoRigidCubes() -> InterfaceMechanismState {
             translation: vector![0., 0., 2.0 * l],
         }),
     ];
+    state.update_q(&q_init);
+
+    InterfaceMechanismState { inner: state }
+}
+
+#[wasm_bindgen]
+pub async fn createSO101() -> InterfaceMechanismState {
+    let base_buf = read_web_file("so101/base_so101_v2.obj").await;
+    let base_mesh = Mesh::new_from_obj(&base_buf);
+
+    let mut state = build_so101(base_mesh);
+
+    let q_init = vec![JointPosition::Pose(Pose {
+        rotation: UnitQuaternion::identity(),
+        translation: vector![0.0, 0.0, 0.1],
+    })];
     state.update_q(&q_init);
 
     InterfaceMechanismState { inner: state }

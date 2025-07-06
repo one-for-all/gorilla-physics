@@ -1,4 +1,4 @@
-import { createTwoRigidCubes } from "gorilla-physics";
+import { createSO101 } from "gorilla-physics";
 import { Simulator } from "./Simulator";
 
 export const keysPressed: Record<string, boolean> = {};
@@ -47,7 +47,7 @@ import("gorilla-physics").then((gorilla) => {
   // simulator.addQuadruped();
   // simulator.addPlane(normal, h_ground, 100);
 
-  createTwoRigidCubes().then((state) => {
+  createSO101().then((state) => {
     state.addHalfSpace(normal, h_ground);
 
     let controller = gorilla.createNullController();
@@ -55,12 +55,12 @@ import("gorilla-physics").then((gorilla) => {
     let simulator = new Simulator(interfaceSimulator);
 
     simulator.addMesh(0, "mesh1");
-    simulator.addMesh(0, "mesh2");
+    // simulator.addMesh(0, "mesh2");
     simulator.addPlane(normal, h_ground, 100);
 
     // Important: Set initial camera position
     let cameraPosition = {
-      eye: { x: 0.0, y: -15.0, z: 1.0 },
+      eye: { x: 0.0, y: -2.0, z: 0.0 },
       target: { x: 0.0, y: 0, z: 0.0 },
     };
     simulator.graphics.lookAt(cameraPosition);
