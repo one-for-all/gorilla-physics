@@ -90,7 +90,7 @@ pub fn build_so101(base_mesh: Mesh, shoulder_mesh: Mesh) -> MechanismState {
         shoulder_frame,
         base_frame,
         &vec![0.0388353, -8.97657e-09, 0.0624],
-        &vec![3.14159, 4.18253e-17, -3.1415], // TODO: -3.14159 vs -3.1415 makes huge difference. Fix it.
+        &vec![3.14159, 4.18253e-17, -3.1415], // TODO(Isometry3): -3.14159 vs -3.1415 makes huge difference. Fix it.
     );
 
     let treejoints = vec![
