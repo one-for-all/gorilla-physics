@@ -83,7 +83,7 @@ impl InterfaceSimulator {
     pub fn step(&mut self, dt: Float, control_input: Vec<Float>) -> js_sys::Float32Array {
         let input = ControlInput::new(control_input);
 
-        let n_substep = 10;
+        let n_substep = 1;
         let mut q = vec![];
         for _ in 0..n_substep {
             let torque = self.controller.inner.control(&mut (self.state).inner, None); // Some(&input));
@@ -225,6 +225,7 @@ impl InterfaceMechanismState {
             .collider
             .as_ref()
             .expect(&format!("body {} should have mesh", body_id))
+            .geometry
             .mesh()
             .vertices;
         let q = DVector::from_iterator(
@@ -241,6 +242,7 @@ impl InterfaceMechanismState {
             .collider
             .as_ref()
             .expect(&format!("body {} should have mesh", body_id))
+            .geometry
             .mesh()
             .faces;
         Uint32Array::from(
