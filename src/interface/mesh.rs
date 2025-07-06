@@ -137,7 +137,10 @@ pub async fn createSO101() -> InterfaceMechanismState {
     let base_buf = read_web_file("so101/base_so101_v2.obj").await;
     let base_mesh = Mesh::new_from_obj(&base_buf);
 
-    let state = build_so101(base_mesh);
+    let shoulder_buf = read_web_file("so101/rotation_pitch_so101_v1.obj").await;
+    let shoulder_mesh = Mesh::new_from_obj(&shoulder_buf);
+
+    let state = build_so101(base_mesh, shoulder_mesh);
 
     InterfaceMechanismState { inner: state }
 }

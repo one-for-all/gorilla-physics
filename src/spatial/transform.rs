@@ -1,6 +1,7 @@
 use std::{collections::HashMap, ops::Mul};
 
 use itertools::izip;
+use na::{Isometry3, Translation3, UnitQuaternion, UnitVector3};
 use nalgebra::{Matrix3, Matrix4, Vector3};
 
 use crate::{mechanism::MechanismState, types::Float};
@@ -71,6 +72,25 @@ impl Transform3D {
             from: from.to_string(),
             to: to.to_string(),
             mat: mat.clone(),
+        }
+    }
+
+    pub fn new_xyz_rpy(from: &str, to:&str, xyz: &Vec<Float>, rpy: &Vec<Float>) ->  Self {
+        let x = xyz[0];
+        let y = xyz[1];
+        let z = xyz[2];
+        let translation = Translation3::new(x, y, z);
+
+        let r = rpy[0];
+        let p = rpy[1];
+        let y = rpy[2];
+        let rotation = UnitQuaternion::from_euler_angles(r, p, y);
+
+        let isometry = Isometry3::from_parts(translation, rotation);
+        Transform3D {             
+            from: from.to_string(),
+            to: to.to_string(),
+            mat: isometry.to_homogeneous(),
         }
     }
 
@@ -146,20 +166,11 @@ impl Transform3D {
 
     /// Returns a transformation matrix from axis-angle
     /// https://en.wikipedia.org/wiki/Rotation_matrix
-    #[rustfmt::skip]
     pub fn rotation(axis: &Vector3<Float>, theta: &Float) -> Matrix4<Float> {
-        let x = axis.x;
-        let y = axis.y;
-        let z = axis.z;
-        let c = theta.cos();
-        let s = theta.sin();
-        let t = 1.0 - c;
-        Matrix4::new(
-            t * x * x + c,      t * x * y - s * z,  t * x * z + s * y,  0.0,
-            t * x * y + s * z,  t * y * y + c,      t * y * z - s * x,  0.0,
-            t * x * z - s * y,  t * y * z + s * x,  t * z * z + c,      0.0,
-            0.0,                0.0,                0.0,                1.0,
-        )
+        Isometry3::from_parts(
+            Translation3::<Float>::identity(), 
+            UnitQuaternion::from_axis_angle(&UnitVector3::new_normalize(*axis), *theta)
+        ).to_homogeneous()
     }
 
     /// Returns a transformation matrix of translation by amount
@@ -211,7 +222,7 @@ pub fn compute_bodies_to_root(state: &MechanismState) -> HashMap<usize, Transfor
     for (jointid, joint) in izip!(state.treejointids.iter(), state.treejoints.iter()) {
         let parentbodyid = state.parents[jointid-1];
         let bodyid = jointid;
-        let parent_to_root = bodies_to_root.get(&parentbodyid).unwrap();
+        let parent_to_root = bodies_to_root.get(&parentbodyid).unwrap();     
         let body_to_root = parent_to_root * &joint.transform();
         bodies_to_root.insert(*bodyid, body_to_root);
     }

@@ -141,22 +141,22 @@ impl MechanismState {
         for (joint, qi) in izip!(self.treejoints.iter_mut(), q.iter()) {
             match joint {
                 Joint::RevoluteJoint(j) => {
-                    if let JointPosition::Float(q) = qi {
-                        j.update(q)
+                    if let JointPosition::Float(qi) = qi {
+                        j.update(qi)
                     } else {
                         panic!("Revolute joint expects a Float position");
                     }
                 }
                 Joint::PrismaticJoint(j) => {
-                    if let JointPosition::Float(q) = qi {
-                        j.update(q)
+                    if let JointPosition::Float(qi) = qi {
+                        j.update(qi)
                     } else {
                         panic!("Prismatic joint expects a Float position");
                     }
                 }
                 Joint::FloatingJoint(j) => {
-                    if let JointPosition::Pose(q) = qi {
-                        j.update(q)
+                    if let JointPosition::Pose(qi) = qi {
+                        j.update(qi)
                     } else {
                         panic!("Floating joint expects a Pose position");
                     }
@@ -173,16 +173,14 @@ impl MechanismState {
     }
 
     /// Updates the collider of each body to have the body's pose
-    fn update_collider_poses(&mut self) {
+    pub fn update_collider_poses(&mut self) {
         let bodies_to_root = compute_bodies_to_root(&self);
         for (jointid, body) in izip!(self.treejointids.iter(), self.bodies.iter_mut()) {
             if let Some(collider) = body.collider.as_mut() {
                 let body_to_root = bodies_to_root.get(jointid).unwrap();
                 let translation = Translation3::from(body_to_root.trans());
-                let isometry = Isometry3::from_parts(
-                    translation,
-                    UnitQuaternion::from_matrix(&body_to_root.rot()),
-                );
+                let rotation = UnitQuaternion::from_matrix(&body_to_root.rot());
+                let isometry = Isometry3::from_parts(translation, rotation);
                 match &mut collider.geometry {
                     CollisionGeometry::Cuboid(cuboid) => {
                         cuboid.isometry = isometry;
@@ -402,10 +400,16 @@ pub fn mass_matrix(
     let mut i_index = 0; // row index for putting in Hij
     let mut j_index = 0; // column index for putting in Hij
     for i in state.treejointids.iter() {
+        if matches!(state.treejoints.get(i - 1).unwrap(), Joint::FixedJoint(_)) {
+            continue;
+        }
         let Ici = crb_inertias.get(i).unwrap();
         let Si = motion_subspaces.get(i).unwrap();
         let Fi = MomentumMatrix::mul(Ici, Si);
         for j in 1..=*i {
+            if matches!(state.treejoints.get(j - 1).unwrap(), Joint::FixedJoint(_)) {
+                continue;
+            }
             let Sj = motion_subspaces.get(&j).unwrap();
             let nrows = Si.dim();
             let ncols = Sj.dim();

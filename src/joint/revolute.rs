@@ -1,4 +1,4 @@
-use na::{Matrix3xX, Matrix4};
+use na::{Isometry3, Matrix3, Matrix3xX, Matrix4, Translation3, UnitQuaternion, UnitVector3};
 use nalgebra::Vector3;
 use std::ops::Mul;
 
@@ -60,10 +60,23 @@ impl RevoluteJoint {
 
     /// Update the transform to be intial transform rotated around axis by q
     pub fn update(&mut self, q: &Float) {
+        // TODO: get rid of using Matrix4 as transformation matrix. Use
+        // Isometry3 instead. It is more precise.
+        let init_translation = Translation3::new(
+            self.init_mat[(0, 3)],
+            self.init_mat[(1, 3)],
+            self.init_mat[(2, 3)],
+        );
+        let init_rotation_matrix: Matrix3<Float> = self.init_mat.fixed_view::<3, 3>(0, 0).into();
+        let init_rot: UnitQuaternion<Float> = UnitQuaternion::from_matrix(&init_rotation_matrix);
+        let init_iso = Isometry3::from_parts(init_translation.into(), init_rot);
+        let new_iso =
+            init_iso * UnitQuaternion::from_axis_angle(&UnitVector3::new_normalize(self.axis), *q);
+
         self.transform = Transform3D {
             from: self.transform.from.clone(),
             to: self.transform.to.clone(),
-            mat: self.init_mat * Transform3D::rotation(&self.axis, q),
+            mat: new_iso.to_homogeneous(),
         };
     }
 }

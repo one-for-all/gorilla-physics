@@ -55,12 +55,12 @@ import("gorilla-physics").then((gorilla) => {
     let simulator = new Simulator(interfaceSimulator);
 
     simulator.addMesh(0, "mesh1");
-    // simulator.addMesh(0, "mesh2");
+    simulator.addMesh(1, "mesh2");
     simulator.addPlane(normal, h_ground, 100);
 
     // Important: Set initial camera position
     let cameraPosition = {
-      eye: { x: 0.0, y: -2.0, z: 0.0 },
+      eye: { x: 0.0, y: -1.0, z: 0.5 },
       target: { x: 0.0, y: 0, z: 0.0 },
     };
     simulator.graphics.lookAt(cameraPosition);

@@ -1,14 +1,16 @@
 use std::collections::HashMap;
 
 use itertools::Itertools;
-use na::{vector, Isometry3, Matrix2, Matrix2x1, Point3, UnitVector3, Vector3};
+use na::{vector, Isometry3, Matrix2, Matrix2x1, Point3, UnitQuaternion, UnitVector3, Vector3};
 
 use crate::types::Float;
 
 /// Mesh collider
 #[derive(Clone, PartialEq, Debug)]
 pub struct Mesh {
-    pub vertices: Vec<Vector3<Float>>,
+    pub base_vertices: Vec<Vector3<Float>>, // vertex positions expressed in body frame
+
+    pub vertices: Vec<Vector3<Float>>, // vertex positions expressed in world frame
     pub faces: Vec<[usize; 3]>,
     pub edges: Vec<([usize; 2], Vector3<Float>, Vector3<Float>)>, // (edge, face A normal, face B normal). edge is consistent with A direction, opposite with B direction.
 
@@ -82,6 +84,7 @@ impl Mesh {
         }
 
         Mesh {
+            base_vertices: vertices.clone(),
             vertices,
             faces: boundary_facets,
             edges: vec![],
@@ -92,18 +95,21 @@ impl Mesh {
 
     pub fn update_base_isometry(&mut self, iso: &Isometry3<Float>) {
         let transform = iso;
-        self.vertices = self
-            .vertices
+        self.base_vertices = self
+            .base_vertices
             .iter()
             .map(|v| transform.transform_point(&Point3::from(*v)).coords)
             .collect::<Vec<Vector3<Float>>>();
         self.base_isometry = *iso;
+
+        self.vertices = self.base_vertices.clone();
     }
 
     pub fn update_isometry(&mut self, iso: &Isometry3<Float>) {
-        let transform = iso * self.body_isometry.inverse();
+        let transform = iso;
+
         self.vertices = self
-            .vertices
+            .base_vertices
             .iter()
             .map(|v| transform.transform_point(&Point3::from(*v)).coords)
             .collect::<Vec<Vector3<Float>>>();
@@ -205,6 +211,7 @@ impl Mesh {
             .collect();
 
         Mesh {
+            base_vertices: vertices.clone(),
             vertices: vertices,
             faces: faces,
             edges: edges,
