@@ -5,7 +5,7 @@ use crate::{
     inertia::compute_inertias,
     joint::{Joint, JointAcceleration, JointTorque, JointVelocity, ToFloatDVec},
     mechanism::mass_matrix,
-    rigid_body::Collider,
+    rigid_body::CollisionGeometry,
     spatial::{
         spatial_vector::SpatialVector,
         transform::{compute_bodies_to_root, Transform3D},
@@ -460,8 +460,11 @@ pub fn dynamics_discrete(
         // Handle contacts between body colliders and half-spaces
         for (bodyid, body) in izip!(state.treejointids.iter(), state.bodies.iter()) {
             if let Some(collider) = &body.collider {
-                match collider {
-                    Collider::Mesh(mesh) => {
+                if !collider.enabled {
+                    continue;
+                }
+                match &collider.geometry {
+                    CollisionGeometry::Mesh(mesh) => {
                         for vertex in &mesh.vertices {
                             for halfspace in &state.halfspaces {
                                 if !halfspace.has_inside(&vertex) {
@@ -495,9 +498,12 @@ pub fn dynamics_discrete(
                 if let (Some(collider), Some(other_collider)) =
                     (&body.collider, &other_body.collider)
                 {
-                    match collider {
-                        Collider::Cuboid(cuboid) => match other_collider {
-                            Collider::Cuboid(other_cuboid) => {
+                    if !collider.enabled || !other_collider.enabled {
+                        continue;
+                    }
+                    match &collider.geometry {
+                        CollisionGeometry::Cuboid(cuboid) => match &other_collider.geometry {
+                            CollisionGeometry::Cuboid(other_cuboid) => {
                                 let mut collision_detector =
                                     CollisionDetector::new(&cuboid, &other_cuboid);
                                 if !collision_detector.gjk() {
@@ -521,8 +527,8 @@ pub fn dynamics_discrete(
                             }
                             _ => {}
                         },
-                        Collider::Mesh(mesh) => match other_collider {
-                            Collider::Mesh(other_mesh) => {
+                        CollisionGeometry::Mesh(mesh) => match &other_collider.geometry {
+                            CollisionGeometry::Mesh(other_mesh) => {
                                 // TODO: set tolerance according to feature size
                                 let contacts = mesh_mesh_collision(mesh, other_mesh, 1e-2);
                                 let mesh_mesh_Js: Vec<Matrix3xX<Float>> = contacts
