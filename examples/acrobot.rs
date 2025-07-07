@@ -1,13 +1,12 @@
 use gorilla_physics::joint::ToJointPositionVec;
 use gorilla_physics::joint::ToJointVelocityVec;
 use gorilla_physics::plot::plot;
-use gorilla_physics::spatial::transform::Matrix4Ext;
 use gorilla_physics::{
     control::swingup::swingup_acrobot, energy::double_pendulum_potential_energy2,
     helpers::build_double_pendulum, joint::ToFloatDVec, simulate::step, types::Float,
 };
 use nalgebra::Isometry3;
-use nalgebra::{dvector, vector, DVector, Matrix3, Matrix4};
+use nalgebra::{dvector, vector, DVector, Matrix3};
 
 /// Acrobot swing up example
 pub fn main() {

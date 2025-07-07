@@ -54,7 +54,7 @@ pub fn main() {
     let v_init = vec![0.0, 0.0].to_joint_vel_vec();
     state.update(&q_init, &v_init);
 
-    let F_cart = 1.0; // force to be exerted on the cart
+    let _F_cart = 1.0; // force to be exerted on the cart
 
     let mut qs: DVector<DVector<Float>> = dvector![];
     let mut vs: DVector<DVector<Float>> = dvector![];

@@ -57,9 +57,9 @@ pub fn main() {
     let mut data1: Vec<Float> = Vec::with_capacity(num_steps);
     let mut data2: Vec<Float> = Vec::with_capacity(num_steps);
 
-    for s in 0..num_steps {
+    for _s in 0..num_steps {
         let torque = controller.control(&mut state, None);
-        let (q, v) = step(
+        let (_q, _v) = step(
             &mut state,
             dt,
             &torque,
