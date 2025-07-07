@@ -58,6 +58,7 @@ import("gorilla-physics").then((gorilla) => {
     simulator.addMesh(1, "mesh1");
     simulator.addMesh(2, "mesh2");
     simulator.addMesh(3, "mesh3");
+    simulator.addMesh(4, "mesh4");
     simulator.addPlane(normal, h_ground, 100);
 
     // Important: Set initial camera position
