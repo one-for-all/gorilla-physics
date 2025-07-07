@@ -76,9 +76,42 @@ fn build_so101_shoulder_body(mut mesh: Mesh, frame: &str) -> RigidBody {
     RigidBody::new_mesh(mesh, spatial_inertia, false)
 }
 
+fn build_so101_upper_arm_body(mut mesh: Mesh, frame: &str) -> RigidBody {
+    let m = 0.103;
+    let com = vector![-0.0898471, -0.00838224, 0.0184089];
+    let ixx = 4.08002e-05;
+    let ixy = -1.97819e-05;
+    let ixz = -4.03016e-08;
+    let iyy = 0.000147318;
+    let iyz = 8.97326e-09;
+    let izz = 0.000142487;
+
+    // inertia moment matrix about the center-of-mass
+    #[rustfmt::skip]
+    let moment_com = Matrix3::new(
+        ixx, ixy, ixz, 
+        ixy, iyy, iyz, 
+        ixz, iyz, izz
+    );
+
+    let moment =
+        moment_com + m * (com.norm_squared() * Matrix3::identity() - com * com.transpose());
+    let cross_part = m * com;
+    let spatial_inertia = SpatialInertia::new(moment, cross_part, m, frame);
+
+    // Update mesh initial pose relative to body frame
+    let iso = Isometry3::from_parts(
+        Translation3::new(-0.065085, 0.012, 0.0182),
+        UnitQuaternion::from_euler_angles(3.14159, -0., -1.30911e-30),
+    );
+    mesh.update_base_isometry(&iso);
+
+    RigidBody::new_mesh(mesh, spatial_inertia, false)
+}
+
 /// Build SO-Arm 101 from its URDF description
 /// Ref: https://github.com/TheRobotStudio/SO-ARM100/blob/main/Simulation/SO101/so101_new_calib.urdf
-pub fn build_so101(base_mesh: Mesh, shoulder_mesh: Mesh) -> MechanismState {
+pub fn build_so101(base_mesh: Mesh, shoulder_mesh: Mesh, upper_arm_mesh: Mesh) -> MechanismState {
     let base_frame = "base";
     let base_body = build_so101_base_body(base_mesh, base_frame);
     let base_to_world = Transform3D::identity(base_frame, WORLD_FRAME);
@@ -92,11 +125,21 @@ pub fn build_so101(base_mesh: Mesh, shoulder_mesh: Mesh) -> MechanismState {
         &vec![3.14159, 4.18253e-17, -3.14159],
     );
 
+    let upper_arm_frame = "upper_arm";
+    let upper_arm_body = build_so101_upper_arm_body(upper_arm_mesh, upper_arm_frame);
+    let upper_arm_to_shoulder = Transform3D::new_xyz_rpy(
+        upper_arm_frame,
+        shoulder_frame,
+        &vec![-0.0303992, -0.0182778, -0.054],
+        &vec![-1.5708, -1.5708, 0.],
+    );
+
     let treejoints = vec![
         Joint::FixedJoint(FixedJoint::new(base_to_world)),
-        Joint::RevoluteJoint(RevoluteJoint::new(shoulder_to_base, Vector3::z_axis())), // TODO: joint axis should be of unit vector type.
+        Joint::RevoluteJoint(RevoluteJoint::new(shoulder_to_base, Vector3::z_axis())),
+        Joint::RevoluteJoint(RevoluteJoint::new(upper_arm_to_shoulder, Vector3::z_axis())),
     ];
-    let bodies = vec![base_body, shoulder_body];
+    let bodies = vec![base_body, shoulder_body, upper_arm_body];
     MechanismState::new(treejoints, bodies)
 }
 
@@ -116,7 +159,10 @@ mod so101_tests {
         let shoulder_buf = read_file("data/so101/rotation_pitch_so101_v1.obj");
         let shoulder_mesh = Mesh::new_from_obj(&shoulder_buf);
 
-        let mut state = build_so101(base_mesh, shoulder_mesh);
+        let upper_arm_buf = read_file("data/so101/upper_arm_so101_v1.obj");
+        let upper_arm_mesh = Mesh::new_from_obj(&upper_arm_buf);
+
+        let mut state = build_so101(base_mesh, shoulder_mesh, upper_arm_mesh);
 
         // Act
         let dt = 1.0 / 60.0;

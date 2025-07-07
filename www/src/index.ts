@@ -54,8 +54,9 @@ import("gorilla-physics").then((gorilla) => {
     let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
     let simulator = new Simulator(interfaceSimulator);
 
-    simulator.addMesh(0, "mesh1");
-    simulator.addMesh(1, "mesh2");
+    simulator.addMesh(0, "mesh0");
+    simulator.addMesh(1, "mesh1");
+    simulator.addMesh(2, "mesh2");
     simulator.addPlane(normal, h_ground, 100);
 
     // Important: Set initial camera position
