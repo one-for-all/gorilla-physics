@@ -1,4 +1,4 @@
-use na::{Matrix4, UnitQuaternion, Vector3};
+use na::{Isometry3, Matrix4, Translation3, UnitQuaternion, Vector3};
 
 use crate::types::Float;
 
@@ -25,5 +25,10 @@ impl Pose {
             rotation: UnitQuaternion::identity(),
             translation: Vector3::zeros(),
         }
+    }
+
+    pub fn to_isometry(&self) -> Isometry3<Float> {
+        let translation = Translation3::from(self.translation);
+        Isometry3::from_parts(translation, self.rotation)
     }
 }

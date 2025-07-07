@@ -368,7 +368,7 @@ pub fn createSphere(mass: Float, radius: Float) -> InterfaceMechanismState {
     });
 
     let treejoints = vec![Joint::FloatingJoint(FloatingJoint {
-        init_mat: ball_to_world.iso.to_homogeneous().clone(),
+        init_iso: ball_to_world.iso,
         transform: ball_to_world,
     })];
     let bodies = vec![ball];

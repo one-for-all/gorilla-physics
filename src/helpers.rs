@@ -316,7 +316,7 @@ pub fn build_2d_hopper(
     // Create the hopper
     let treejoints = vec![
         Joint::FloatingJoint(FloatingJoint {
-            init_mat: body_to_world.iso.to_homogeneous().clone(),
+            init_iso: body_to_world.iso,
             transform: body_to_world,
         }),
         Joint::RevoluteJoint(RevoluteJoint {
@@ -358,7 +358,7 @@ pub fn build_SLIP(
     });
 
     let treejoints = vec![Joint::FloatingJoint(FloatingJoint {
-        init_mat: body_to_world.iso.to_homogeneous().clone(),
+        init_iso: body_to_world.iso,
         transform: body_to_world,
     })];
     let bodies = vec![body];

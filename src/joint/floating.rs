@@ -1,29 +1,24 @@
-use na::{Isometry3, Matrix3, Matrix3xX, Matrix4, Translation3, UnitQuaternion};
+use na::{Isometry3, Matrix3, Matrix3xX, UnitQuaternion};
 
 use crate::spatial::{geometric_jacobian::GeometricJacobian, pose::Pose, transform::Transform3D};
 use crate::types::Float;
 
 pub struct FloatingJoint {
-    pub init_mat: Matrix4<Float>, // initial transform from successor frame to predecessor frame
-    pub transform: Transform3D,   // transform from successor frame to predecessor frame
+    pub init_iso: Isometry3<Float>, // initial transform from successor frame to predecessor frame
+    pub transform: Transform3D,     // transform from successor frame to predecessor frame
 }
 
 impl FloatingJoint {
     pub fn new(transform: Transform3D) -> Self {
         Self {
-            init_mat: transform.iso.to_homogeneous().clone(),
+            init_iso: transform.iso,
             transform,
         }
     }
 
     /// Update the transform to be intial transform multiplied by pose
     pub fn update(&mut self, q: &Pose) {
-        let mat = self.init_mat * q.to_matrix();
-        let translation = Translation3::new(mat[(0, 3)], mat[(1, 3)], mat[(2, 3)]);
-        let rotation_matrix: Matrix3<Float> = mat.fixed_view::<3, 3>(0, 0).into();
-        let rot: UnitQuaternion<Float> = UnitQuaternion::from_matrix(&rotation_matrix);
-        let iso = Isometry3::from_parts(translation.into(), rot);
-
+        let iso = self.init_iso * q.to_isometry();
         self.transform.iso = iso;
     }
 
@@ -65,7 +60,6 @@ mod floating_joint_tests {
         rigid_body::RigidBody,
         simulate::simulate,
         spatial::spatial_vector::SpatialVector,
-        util::assert_dvec_close,
         GRAVITY, PI,
     };
 
@@ -96,7 +90,7 @@ mod floating_joint_tests {
         });
 
         let treejoints = vec![Joint::FloatingJoint(FloatingJoint {
-            init_mat: ball_to_world.iso.to_homogeneous().clone(),
+            init_iso: ball_to_world.iso,
             transform: ball_to_world,
         })];
         let bodies = vec![ball];
@@ -122,7 +116,7 @@ mod floating_joint_tests {
         assert_vec_close!(
             accels.to_float_dvec(),
             dvector![0.0, 0.0, 0.0, 4.948946, -6.959844, -6.566419],
-            1e-4 // TODO(Isometry3): should work with 1e-5
+            1e-5
         ); // Reference values from RigidBodyDynamics.jl
     }
 
@@ -151,7 +145,7 @@ mod floating_joint_tests {
         });
 
         let treejoints = vec![Joint::FloatingJoint(FloatingJoint {
-            init_mat: ball_to_world.iso.to_homogeneous().clone(),
+            init_iso: ball_to_world.iso,
             transform: ball_to_world,
         })];
         let bodies = vec![ball];

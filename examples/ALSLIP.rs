@@ -1,4 +1,3 @@
-use gorilla_physics::spatial::transform::Matrix4Ext;
 use gorilla_physics::{
     contact::{ContactPoint, HalfSpace},
     control::SLIP_control::ALSLIPController,
@@ -19,7 +18,7 @@ use gorilla_physics::{
     spatial::twist::{compute_joint_twists, compute_twists_wrt_world},
     types::Float,
 };
-use nalgebra::{vector, Isometry3, Matrix3, Matrix4, UnitQuaternion, Vector3};
+use nalgebra::{vector, Isometry3, Matrix3, UnitQuaternion, Vector3};
 
 /// Actuated Lossy Spring Loaded Inverted Pendulum (ALSLIP)
 /// Ref: Nonlinear Model Predictive Control for Rough-Terrain Robot Hopping, 2012
@@ -106,11 +105,11 @@ pub fn main() {
     };
     let treejoints = vec![
         Joint::FloatingJoint(FloatingJoint {
-            init_mat: body_to_world.iso.to_homogeneous().clone(),
+            init_iso: body_to_world.iso,
             transform: body_to_world,
         }),
         Joint::RevoluteJoint(RevoluteJoint {
-            init_iso: hip_to_body.iso.clone(),
+            init_iso: hip_to_body.iso,
             transform: hip_to_body,
             axis: axis_hip,
         }),

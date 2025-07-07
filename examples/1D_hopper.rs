@@ -2,7 +2,6 @@ use gorilla_physics::control::Controller;
 use gorilla_physics::joint::floating::FloatingJoint;
 use gorilla_physics::joint::prismatic::PrismaticJoint;
 use gorilla_physics::joint::Joint;
-use gorilla_physics::spatial::transform::Matrix4Ext;
 use gorilla_physics::{
     contact::{ContactPoint, HalfSpace},
     control::energy_control::Hopper1DController,
@@ -15,7 +14,7 @@ use gorilla_physics::{
     spatial::transform::Transform3D,
     types::Float,
 };
-use nalgebra::{vector, Isometry3, Matrix3, Matrix4, Vector3};
+use nalgebra::{vector, Isometry3, Matrix3, Vector3};
 
 pub fn main() {
     let w_body = 5.0;
@@ -89,7 +88,7 @@ pub fn main() {
     // Create the hopper
     let treejoints = vec![
         Joint::FloatingJoint(FloatingJoint {
-            init_mat: body_to_world.iso.to_homogeneous().clone(),
+            init_iso: body_to_world.iso,
             transform: body_to_world,
         }),
         Joint::PrismaticJoint(PrismaticJoint::new(leg_to_body, axis_leg)),

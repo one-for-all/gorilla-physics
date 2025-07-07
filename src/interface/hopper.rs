@@ -100,7 +100,7 @@ pub fn create1DHopper(
     // Create the hopper
     let treejoints = vec![
         Joint::FloatingJoint(FloatingJoint {
-            init_mat: body_to_world.iso.to_homogeneous().clone(),
+            init_iso: body_to_world.iso,
             transform: body_to_world,
         }),
         Joint::PrismaticJoint(PrismaticJoint::new(leg_to_body, axis_leg)),
