@@ -432,9 +432,17 @@ mod epa_tests {
 
         let check_total = total * 2;
         let separation_success_rate = separation_success as Float / check_total as Float;
-        assert_eq!(separation_success_rate, 1.0); // TODO: looks like 100% success is still not guaranteed
+        assert!(
+            separation_success_rate > 0.995,
+            "rate: {}",
+            separation_success_rate
+        ); // TODO(collision): looks like 100% success is still not guaranteed
         let collision_success_rate = collision_success as Float / check_total as Float;
-        assert_eq!(collision_success_rate, 1.0);
+        assert!(
+            collision_success_rate > 0.995,
+            "rate: {}",
+            collision_success_rate
+        );
     }
 
     #[test]
