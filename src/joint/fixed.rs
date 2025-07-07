@@ -27,21 +27,16 @@ impl FixedJoint {
 #[cfg(test)]
 mod fixed_joint_tests {
 
-    use itertools::izip;
-    use na::{vector, Isometry3, Matrix4, Vector3, Vector4};
+    use na::{vector, Isometry3};
 
     use crate::{
-        assert_close, assert_vec_close,
+        assert_vec_close,
         dynamics::dynamics_discrete,
         joint::{fixed::FixedJoint, Joint, JointVelocity},
         mechanism::MechanismState,
         rigid_body::RigidBody,
         simulate::step,
-        spatial::{
-            pose::Pose,
-            transform::{Matrix4Ext, Transform3D},
-        },
-        types::Float,
+        spatial::transform::Transform3D,
         WORLD_FRAME,
     };
 
