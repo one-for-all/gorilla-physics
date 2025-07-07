@@ -10,6 +10,7 @@ use crate::{
     },
     joint::{JointPosition, JointVelocity},
     spatial::{pose::Pose, spatial_vector::SpatialVector},
+    PI,
 };
 
 use super::{util::read_web_file, InterfaceMechanismState};
@@ -52,8 +53,8 @@ pub async fn createTwoRigidTetrahedron() -> InterfaceMechanismState {
             translation: vector![0.0, 0.0, 0.0],
         }),
         JointPosition::Pose(Pose {
-            rotation: UnitQuaternion::identity(),
-            translation: vector![0.2, 0.2, 2.0 * l],
+            rotation: UnitQuaternion::from_euler_angles(0., PI / 2.0, 0.),
+            translation: vector![0.0, 0.0, 2.0],
         }),
     ];
     state.update_q(&q_init);

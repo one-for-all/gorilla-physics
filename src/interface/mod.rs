@@ -13,6 +13,8 @@ use controller::InterfaceController;
 use itertools::izip;
 use na::zero;
 use na::DVector;
+use na::Isometry;
+use na::Isometry3;
 use na::Rotation3;
 use na::UnitQuaternion;
 use na::UnitVector3;
@@ -83,7 +85,7 @@ impl InterfaceSimulator {
     pub fn step(&mut self, dt: Float, control_input: Vec<Float>) -> js_sys::Float32Array {
         let input = ControlInput::new(control_input);
 
-        let n_substep = 1;
+        let n_substep = 2;
         let mut q = vec![];
         for _ in 0..n_substep {
             let torque = self.controller.inner.control(&mut (self.state).inner, None); // Some(&input));
@@ -147,13 +149,11 @@ impl InterfaceMechanismState {
 
         let mut poses = vec![];
         for jointid in self.inner.treejointids.iter() {
-            let body_to_root = bodies_to_root.get(jointid).unwrap().mat;
+            let body_to_root = bodies_to_root.get(jointid).unwrap().iso;
+            let rotation = body_to_root.rotation;
+            let translation = body_to_root.translation.vector;
 
-            let rotation_matrix: Matrix3<Float> = body_to_root.fixed_view::<3, 3>(0, 0).into();
-            let rotation = Rotation3::from_matrix(&rotation_matrix);
-            let translation = body_to_root.fixed_view::<3, 1>(0, 3);
-
-            let euler = rotation.euler_angles();
+            let euler = rotation.euler_angles(); // TODO: use a more stable representation? to avoid jumping effects.
             poses.extend_from_slice(&[euler.0, euler.1, euler.2]);
             poses.extend_from_slice(&[translation[0], translation[1], translation[2]]);
         }
@@ -266,7 +266,7 @@ pub fn createRodPendulumAtBottom(length: Float) -> InterfaceMechanismState {
     let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
     let cross_part = vector![0.0, 0.0, -m * l / 2.0];
 
-    let rod_to_world = Matrix4::identity(); // transformation from rod to world frame
+    let rod_to_world = Isometry3::identity(); // transformation from rod to world frame
     let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
     let mut state = crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
@@ -292,11 +292,11 @@ pub fn createRodPendulum(length: Float) -> InterfaceMechanismState {
 
     let rod_frame = "rod";
     let world_frame = "world";
-    let rod_to_world = Transform3D::new(rod_frame, world_frame, &Matrix4::identity());
+    let rod_to_world = Transform3D::identity(rod_frame, world_frame);
     let axis = vector![0.0, 1.0, 0.0];
 
     let treejoints = vec![Joint::RevoluteJoint(RevoluteJoint {
-        init_mat: rod_to_world.mat.clone(),
+        init_iso: rod_to_world.iso.clone(),
         transform: rod_to_world,
         axis,
     })];
@@ -322,8 +322,8 @@ pub fn createDoublePendulumHorizontal(length: Float) -> InterfaceMechanismState 
     let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
     let cross_part = vector![m * l, 0., 0.];
 
-    let rod1_to_world = Matrix4::identity();
-    let rod2_to_rod1 = Matrix4::<Float>::move_x(l);
+    let rod1_to_world = Isometry3::identity();
+    let rod2_to_rod1 = Isometry3::translation(l, 0., 0.);
     let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
     let mut state = build_double_pendulum(
@@ -368,7 +368,7 @@ pub fn createSphere(mass: Float, radius: Float) -> InterfaceMechanismState {
     });
 
     let treejoints = vec![Joint::FloatingJoint(FloatingJoint {
-        init_mat: ball_to_world.mat.clone(),
+        init_mat: ball_to_world.iso.to_homogeneous().clone(),
         transform: ball_to_world,
     })];
     let bodies = vec![ball];

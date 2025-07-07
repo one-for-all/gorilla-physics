@@ -85,6 +85,10 @@ impl Twist {
         let angular = rot.mul(self.angular);
         let linear = rot.mul(self.linear) + trans.cross(&angular);
 
+        let angular = transform.iso.rotation * self.angular;
+        let linear =
+            transform.iso.rotation * self.linear + transform.iso.translation.vector.cross(&angular);
+
         Twist {
             body: self.body.clone(),
             base: self.base.clone(),
@@ -196,12 +200,15 @@ pub fn compute_twists_wrt_world(
 #[cfg(test)]
 #[rustfmt::skip]
 mod tests {
-    use nalgebra::{vector, Matrix4};
+    use na::{Isometry3, Translation3, UnitQuaternion};
+    use nalgebra::vector;
+
+    use crate::{assert_vec_close, PI};
 
     use super::*;
 
     #[test]
-    fn test_transform() {
+    fn test_transform1() {
         // Arrange
         let twist_in_body = Twist {
             body: "body".to_string(),
@@ -210,15 +217,12 @@ mod tests {
             angular: vector![0., 1., 0.],
             linear: vector![0., 0., 0.],
         };
+        let rot = UnitQuaternion::from_axis_angle(&Vector3::x_axis(), PI/2.0);
+        let iso = Isometry3::from_parts(Translation3::new(5., 0., 0.), rot);
         let transform = Transform3D {
             from: "body".to_string(),
             to: "root".to_string(),
-            mat: Matrix4::new(
-                1., 0., 0., 5.,
-                0., 0., -1., 0.,
-                0., 1., 0., 0.,
-                0., 0., 0., 1.,
-            ),
+            iso
         };
 
         // Act
@@ -226,15 +230,16 @@ mod tests {
 
         // Assert
         assert_eq!(
-            twist_in_root,
-            Twist {
-                body: "body".to_string(),
-                base: "base".to_string(),
-                frame: "root".to_string(),
-                angular: vector![0., 0., 1.],
-                linear: vector![0., -5., 0.],
-            }
+            twist_in_root.body, "body"
         );
+        assert_eq!(
+            twist_in_root.base, "base"
+        );
+        assert_eq!(
+            twist_in_root.frame, "root"
+        );
+        assert_vec_close!(twist_in_root.angular, vector![0., 0., 1.], 1e-6);
+        assert_vec_close!(twist_in_root.linear, vector![0., -5., 0.], 1e-6);
     }
 
     #[test]
@@ -247,15 +252,12 @@ mod tests {
             angular: vector![0., 0., 0.],
             linear: vector![0., 1., 0.],
         };
+        let rot = UnitQuaternion::from_axis_angle(&Vector3::x_axis(), PI/2.0);
+        let iso = Isometry3::from_parts(Translation3::new(5., 0., 0.), rot);
         let transform = Transform3D {
             from: "body".to_string(),
             to: "root".to_string(),
-            mat: Matrix4::new(
-                1., 0., 0., 5.,
-                0., 0., -1., 0.,
-                0., 1., 0., 0.,
-                0., 0., 0., 1.,
-            ),
+            iso,
         };
 
         // Act
@@ -263,14 +265,15 @@ mod tests {
 
         // Assert
         assert_eq!(
-            twist_in_root,
-            Twist {
-                body: "body".to_string(),
-                base: "base".to_string(),
-                frame: "root".to_string(),
-                angular: vector![0., 0., 0.],
-                linear: vector![0., 0., 1.],
-            }
+            twist_in_root.body, "body"
         );
+        assert_eq!(
+            twist_in_root.base, "base"
+        );
+        assert_eq!(
+            twist_in_root.frame, "root"
+        );
+        assert_vec_close!(twist_in_root.angular, vector![0., 0., 0.], 1e-6);
+        assert_vec_close!(twist_in_root.linear, vector![0., 0., 1.], 1e-6);
     }
 }

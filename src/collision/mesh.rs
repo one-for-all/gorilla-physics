@@ -757,7 +757,7 @@ mod mesh_tests {
             }),
             JointPosition::Pose(Pose {
                 rotation: UnitQuaternion::identity(),
-                translation: vector![0.0, 0.0, 2.0 * l],
+                translation: vector![-l / 2.0, -l / 2.0, 2.0 * l],
             }),
         ];
         state.update_q(&q_init);
@@ -769,7 +769,7 @@ mod mesh_tests {
 
         // Act
         let final_time = 2.0;
-        let dt = 1.0 / 60.0;
+        let dt = 1.0 / 600.0;
         let num_steps = (final_time / dt) as usize;
         for _s in 0..num_steps {
             let torque = vec![];

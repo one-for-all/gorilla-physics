@@ -15,7 +15,7 @@ use gorilla_physics::{
     spatial::transform::Transform3D,
     types::Float,
 };
-use nalgebra::{vector, Matrix3, Matrix4, Vector3};
+use nalgebra::{vector, Isometry3, Matrix3, Matrix4, Vector3};
 
 pub fn main() {
     let w_body = 5.0;
@@ -56,7 +56,7 @@ pub fn main() {
     let leg_to_body = Transform3D {
         from: leg_frame.to_string(),
         to: body_frame.to_string(),
-        mat: Matrix4::<Float>::move_z(-body_leg_length),
+        iso: Isometry3::translation(0., 0., -body_leg_length),
     };
     let leg = RigidBody::new(SpatialInertia {
         frame: leg_frame.to_string(),
@@ -77,7 +77,7 @@ pub fn main() {
     let foot_to_leg = Transform3D {
         from: foot_frame.to_string(),
         to: leg_frame.to_string(),
-        mat: Matrix4::<Float>::move_z(-leg_foot_length),
+        iso: Isometry3::translation(0., 0., -leg_foot_length),
     };
     let foot = RigidBody::new(SpatialInertia {
         frame: foot_frame.to_string(),
@@ -89,7 +89,7 @@ pub fn main() {
     // Create the hopper
     let treejoints = vec![
         Joint::FloatingJoint(FloatingJoint {
-            init_mat: body_to_world.mat.clone(),
+            init_mat: body_to_world.iso.to_homogeneous().clone(),
             transform: body_to_world,
         }),
         Joint::PrismaticJoint(PrismaticJoint::new(leg_to_body, axis_leg)),

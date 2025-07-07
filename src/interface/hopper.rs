@@ -19,7 +19,7 @@ use crate::{
 
 use super::InterfaceMechanismState;
 use crate::spatial::transform::Matrix4Ext;
-use na::{zero, Matrix4, UnitQuaternion, Vector3};
+use na::{zero, Isometry3, Matrix4, UnitQuaternion, Vector3};
 use nalgebra::{vector, Matrix3};
 use wasm_bindgen::prelude::*;
 
@@ -65,7 +65,7 @@ pub fn create1DHopper(
     let leg_to_body = Transform3D {
         from: leg_frame.to_string(),
         to: body_frame.to_string(),
-        mat: Matrix4::<Float>::move_z(-body_leg_length),
+        iso: Isometry3::translation(0., 0., -body_leg_length),
     };
     let leg = RigidBody::new(SpatialInertia {
         frame: leg_frame.to_string(),
@@ -88,7 +88,7 @@ pub fn create1DHopper(
     let foot_to_leg = Transform3D {
         from: foot_frame.to_string(),
         to: leg_frame.to_string(),
-        mat: Matrix4::<Float>::move_z(-leg_foot_length),
+        iso: Isometry3::translation(0., 0., -leg_foot_length),
     };
     let foot = RigidBody::new(SpatialInertia {
         frame: foot_frame.to_string(),
@@ -100,7 +100,7 @@ pub fn create1DHopper(
     // Create the hopper
     let treejoints = vec![
         Joint::FloatingJoint(FloatingJoint {
-            init_mat: body_to_world.mat.clone(),
+            init_mat: body_to_world.iso.to_homogeneous().clone(),
             transform: body_to_world,
         }),
         Joint::PrismaticJoint(PrismaticJoint::new(leg_to_body, axis_leg)),

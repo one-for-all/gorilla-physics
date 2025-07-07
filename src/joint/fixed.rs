@@ -28,7 +28,7 @@ impl FixedJoint {
 mod fixed_joint_tests {
 
     use itertools::izip;
-    use na::Matrix4;
+    use na::{vector, Isometry3, Matrix4, Vector3, Vector4};
 
     use crate::{
         assert_close, assert_vec_close,
@@ -71,10 +71,10 @@ mod fixed_joint_tests {
         let frame = "body";
         let body = RigidBody::new_cube(1.0, 1.0, frame);
 
-        let translation = Matrix4::<Float>::move_x(1.0);
-        let rotation = Transform3D::rot_x(1.0);
-        let init_mat = translation * rotation;
-        let body_to_world = Transform3D::new(frame, WORLD_FRAME, &init_mat);
+        let translation = Isometry3::translation(1.0, 0., 0.);
+        let rotation = Isometry3::rotation(vector![1., 0., 0.]);
+        let init_iso = translation * rotation;
+        let body_to_world = Transform3D::new(frame, WORLD_FRAME, &init_iso);
         let treejoints = vec![Joint::FixedJoint(FixedJoint::new(body_to_world))];
         let bodies = vec![body];
 
@@ -95,6 +95,6 @@ mod fixed_joint_tests {
 
         // Assert
         let pose = state.poses()[0];
-        assert_vec_close!(pose.to_matrix(), init_mat, 1e-6);
+        assert_vec_close!(pose.to_matrix(), init_iso.to_homogeneous(), 1e-6);
     }
 }

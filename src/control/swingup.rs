@@ -115,7 +115,7 @@ mod swingup_tests {
     use crate::integrators::Integrator;
     use crate::joint::{ToJointPositionVec, ToJointVelocityVec};
     use itertools::izip;
-    use na::{dvector, vector, DVector, Matrix3, Matrix4};
+    use na::{dvector, vector, DVector, Isometry3, Matrix3, Matrix4};
 
     use super::*;
     use crate::spatial::transform::Matrix4Ext;
@@ -139,8 +139,8 @@ mod swingup_tests {
         let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
         let cross_part = vector![m * l, 0., 0.];
 
-        let rod1_to_world = Matrix4::identity();
-        let rod2_to_rod1 = Matrix4::<Float>::move_x(l);
+        let rod1_to_world = Isometry3::identity();
+        let rod2_to_rod1 = Isometry3::translation(l, 0., 0.);
         let axis = vector![0.0, -1.0, 0.0];
 
         let mut state = build_double_pendulum(

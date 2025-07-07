@@ -1,4 +1,4 @@
-use na::{zero, Matrix3xX, Matrix4};
+use na::{zero, Isometry3, Matrix3, Matrix3xX, Matrix4, Transform3, Translation3, UnitQuaternion};
 use nalgebra::Vector3;
 
 use crate::{
@@ -29,7 +29,7 @@ pub struct PrismaticJoint {
 impl PrismaticJoint {
     pub fn new(transform: Transform3D, axis: Vector3<Float>) -> Self {
         Self {
-            init_mat: transform.mat,
+            init_mat: transform.iso.to_homogeneous(),
             transform,
             axis,
             spring: None,
@@ -42,7 +42,7 @@ impl PrismaticJoint {
         spring: JointSpring,
     ) -> Self {
         Self {
-            init_mat: transform.mat,
+            init_mat: transform.iso.to_homogeneous(),
             transform,
             axis,
             spring: Some(spring),
@@ -73,10 +73,16 @@ impl PrismaticJoint {
 
     /// Update the transform to be intial transform moved along axis by q
     pub fn update(&mut self, q: &Float) {
+        let mat = self.init_mat * Transform3D::translation(&self.axis, q);
+        let translation = Translation3::new(mat[(0, 3)], mat[(1, 3)], mat[(2, 3)]);
+        let rotation_matrix: Matrix3<Float> = mat.fixed_view::<3, 3>(0, 0).into();
+        let rot: UnitQuaternion<Float> = UnitQuaternion::from_matrix(&rotation_matrix);
+        let iso = Isometry3::from_parts(translation.into(), rot);
+
         self.transform = Transform3D {
             from: self.transform.from.clone(),
             to: self.transform.to.clone(),
-            mat: self.init_mat * Transform3D::translation(&self.axis, q),
+            iso: iso,
         };
     }
 }

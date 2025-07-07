@@ -178,9 +178,7 @@ impl MechanismState {
         for (jointid, body) in izip!(self.treejointids.iter(), self.bodies.iter_mut()) {
             if let Some(collider) = body.collider.as_mut() {
                 let body_to_root = bodies_to_root.get(jointid).unwrap();
-                let translation = Translation3::from(body_to_root.trans());
-                let rotation = UnitQuaternion::from_matrix(&body_to_root.rot());
-                let isometry = Isometry3::from_parts(translation, rotation);
+                let isometry = body_to_root.iso;
                 match &mut collider.geometry {
                     CollisionGeometry::Cuboid(cuboid) => {
                         cuboid.isometry = isometry;
@@ -302,15 +300,11 @@ impl MechanismState {
 
         let mut poses: Vec<Pose> = vec![];
         for jointid in self.treejointids.iter() {
-            let body_to_root = bodies_to_root.get(jointid).unwrap().mat;
-
-            let rotation_matrix: Matrix3<Float> = body_to_root.fixed_view::<3, 3>(0, 0).into();
-            let rotation = Rotation3::from_matrix(&rotation_matrix);
-            let translation = body_to_root.fixed_view::<3, 1>(0, 3);
+            let body_to_root = bodies_to_root.get(jointid).unwrap().iso;
 
             let pose = Pose {
-                rotation: UnitQuaternion::from_rotation_matrix(&rotation),
-                translation: Vector3::from(translation),
+                rotation: body_to_root.rotation,
+                translation: body_to_root.translation.vector,
             };
             poses.push(pose);
         }
@@ -494,7 +488,7 @@ mod mechanism_tests {
         let leg2_to_leg = Transform3D {
             from: leg2_frame.to_string(),
             to: leg_frame.to_string(),
-            mat: Matrix4::<Float>::move_z(-h_leg),
+            iso: Isometry3::translation(0., 0., -h_leg),
         };
         let leg2 = RigidBody::new(SpatialInertia {
             frame: leg2_frame.to_string(),
@@ -505,16 +499,16 @@ mod mechanism_tests {
 
         let treejoints = vec![
             Joint::FloatingJoint(FloatingJoint {
-                init_mat: body_to_world.mat.clone(),
+                init_mat: body_to_world.iso.to_homogeneous().clone(),
                 transform: body_to_world,
             }),
             Joint::RevoluteJoint(RevoluteJoint {
-                init_mat: leg_to_body.mat.clone(),
+                init_iso: leg_to_body.iso.clone(),
                 transform: leg_to_body,
                 axis: axis_leg,
             }),
             Joint::RevoluteJoint(RevoluteJoint {
-                init_mat: leg2_to_leg.mat.clone(),
+                init_iso: leg2_to_leg.iso.clone(),
                 transform: leg2_to_leg,
                 axis: axis_leg,
             }),

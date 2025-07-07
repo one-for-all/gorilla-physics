@@ -1,7 +1,7 @@
 use std::{collections::HashMap, ops::Mul};
 
 use itertools::izip;
-use na::{Isometry3, Translation3, UnitQuaternion, UnitVector3};
+use na::{Isometry, Isometry3, Translation3, UnitQuaternion, UnitVector3};
 use nalgebra::{Matrix3, Matrix4, Vector3};
 
 use crate::{mechanism::MechanismState, types::Float};
@@ -55,7 +55,7 @@ impl Matrix4Ext for Matrix4<Float> {
 pub struct Transform3D {
     pub from: String,
     pub to: String,
-    pub mat: Matrix4<Float>, // TODO: maybe better represented by Isometry?
+    pub iso: Isometry3<Float> 
 }
 
 impl Transform3D {
@@ -63,15 +63,15 @@ impl Transform3D {
         Transform3D {
             from: "body".to_string(),
             to: "world".to_string(),
-            mat: Matrix4::identity(),
+            iso: Isometry3::identity(),
         }
     }
 
-    pub fn new(from: &str, to: &str, mat: &Matrix4<Float>) -> Self {
+    pub fn new(from: &str, to: &str, iso: &Isometry3<Float>) -> Self {
         Transform3D {
             from: from.to_string(),
             to: to.to_string(),
-            mat: mat.clone(),
+            iso: iso.clone(), // TODO: take it rather than cloning it.
         }
     }
 
@@ -90,19 +90,19 @@ impl Transform3D {
         Transform3D {             
             from: from.to_string(),
             to: to.to_string(),
-            mat: isometry.to_homogeneous(),
+            iso: isometry,
         }
     }
 
     pub fn identity(from: &str, to: &str) -> Self {
-        Transform3D::new(from, to, &Matrix4::identity())
+        Transform3D::new(from, to, &Isometry3::identity())
     }
 
     pub fn move_x(from: &str, to: &str, amount: Float) -> Self {
         Transform3D {
             from: from.to_string(),
             to: to.to_string(),
-            mat: Matrix4::<Float>::move_x(amount)
+            iso: Isometry3::translation(amount, 0., 0.)
         }
     }
 
@@ -110,24 +110,16 @@ impl Transform3D {
         Transform3D {
             from: from.to_string(),
             to: to.to_string(),
-            mat: Matrix4::<Float>::move_z(amount)
+            iso: Isometry3::translation(0., 0., amount)
         }
     }
 
     /// Returns a transformation matrix of translation by amount
     pub fn move_xyz(from: &str, to: &str, x: Float, y: Float, z: Float) -> Self {
-        #[rustfmt::skip]
-        let mat = Matrix4::new(
-            1.0, 0.0, 0.0, x,
-            0.0, 1.0, 0.0, y,
-            0.0, 0.0, 1.0, z,
-            0.0, 0.0, 0.0, 1.0,
-        );
-
         Transform3D {
             from: from.to_string(),
             to: to.to_string(),
-            mat
+            iso: Isometry3::translation(x, y, z)
         }
     }
 
@@ -135,16 +127,16 @@ impl Transform3D {
         Transform3D {
             from: self.to.clone(),
             to: self.from.clone(),
-            mat: self.mat.try_inverse().unwrap(),
+            iso: self.iso.inverse(),
         }
     }
 
     pub fn rot(&self) -> Matrix3<Float> {
-        self.mat.fixed_view::<3, 3>(0, 0).into()
+        self.iso.rotation.to_rotation_matrix().matrix().into_owned()
     }
 
     pub fn trans(&self) -> Vector3<Float> {
-        self.mat.fixed_view::<3, 1>(0, 3).into()
+        self.iso.translation.vector
     }
 
     pub fn transform_point(&self, point: &Vector3<Float>) -> Vector3<Float> {
@@ -196,7 +188,7 @@ impl Mul for Transform3D {
         Transform3D {
             from: rhs.from,
             to: self.to,
-            mat: self.mat * rhs.mat,
+            iso: self.iso * rhs.iso,
         }
     }
 }
@@ -210,7 +202,7 @@ impl<'a, 'b> Mul<&'b Transform3D> for &'a Transform3D {
         Transform3D {
             from: rhs.from.clone(),
             to: self.to.clone(),
-            mat: self.mat * rhs.mat,
+            iso: self.iso * rhs.iso,
         }
     }
 }
@@ -239,56 +231,6 @@ mod tests {
     };
 
     use super::{compute_bodies_to_root, *};
-
-    #[test]
-    #[rustfmt::skip]
-    fn test_rot() {
-        // Arrange
-        let transform = Transform3D {
-            from: "a".to_string(),
-            to: "b".to_string(),
-            mat: Matrix4::new(
-                0.0, 0.1, 0.2, 0.3, 
-                1.0, 1.1, 1.2, 1.3, 
-                2.0, 2.1, 2.2, 2.3, 
-                3.0, 3.1, 3.2, 3.3,
-            ),
-        };
-
-        // Act
-        let rot = transform.rot();
-
-        // Assert
-        assert_eq!(
-            rot,
-            Matrix3::new(
-                0.0, 0.1, 0.2, 
-                1.0, 1.1, 1.2, 
-                2.0, 2.1, 2.2)
-        )
-    }
-
-    #[test]
-    #[rustfmt::skip]
-    fn test_trans() {
-        // Arrange
-        let transform = Transform3D {
-            from: "a".to_string(),
-            to: "b".to_string(),
-            mat: Matrix4::new(
-                0.0, 0.1, 0.2, 0.3, 
-                1.0, 1.1, 1.2, 1.3, 
-                2.0, 2.1, 2.2, 2.3, 
-                3.0, 3.1, 3.2, 3.3,
-            ),
-        };
-
-        // Act
-        let rot = transform.trans();
-
-        // Assert
-        assert_eq!(rot, Vector3::new(0.3, 1.3, 2.3))
-    }
 
     /// Verify compute_bodies_to_root fn on the following mechanism
     /// 3         5
@@ -328,10 +270,10 @@ mod tests {
         assert_eq!(*one_to_root, Transform3D::identity("1", WORLD_FRAME));
 
         let two_to_root = bodies_to_root.get(&2).unwrap();
-        assert_eq!(*two_to_root, Transform3D::new("2", WORLD_FRAME, &Matrix4::<Float>::move_x(-1.)));
+        assert_eq!(*two_to_root, Transform3D::new("2", WORLD_FRAME, &Isometry3::translation(-1., 0.,0.)));
 
         let five_to_root = bodies_to_root.get(&5).unwrap();
-        let five_to_root_mat = Matrix4::<Float>::move_x(1.) * Matrix4::<Float>::move_z(1.);
-        assert_eq!(*five_to_root, Transform3D::new("5", WORLD_FRAME, &five_to_root_mat));
+        let five_to_root_iso = Isometry3::translation(1., 0., 1.);
+        assert_eq!(*five_to_root, Transform3D::new("5", WORLD_FRAME, &five_to_root_iso));
     }
 }

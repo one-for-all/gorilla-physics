@@ -8,6 +8,7 @@ use gorilla_physics::{
     spatial::twist::{compute_joint_twists, compute_twists_wrt_world},
     types::Float,
 };
+use nalgebra::Isometry3;
 use nalgebra::{vector, Matrix3, Matrix4};
 
 /// Verify bias_acceleration function by looking at its result on a double-pendulum
@@ -21,8 +22,8 @@ pub fn main() {
     let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
     let cross_part = vector![0., 0., -m * l];
 
-    let rod1_to_world = Matrix4::identity();
-    let rod2_to_rod1 = Matrix4::<Float>::move_z(-l);
+    let rod1_to_world = Isometry3::identity();
+    let rod2_to_rod1 = Isometry3::translation(0., 0., -l);
     let axis = vector![0.0, 1.0, 0.0];
 
     let mut state = build_double_pendulum(

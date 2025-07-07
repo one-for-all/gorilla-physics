@@ -293,7 +293,7 @@ mod integrators_tests {
 
         // Act
         let final_time = 5.0;
-        let dt = 1.0 / 120.0;
+        let dt = 1.0 / 600.0;
         let num_steps = (final_time / dt) as usize;
         for _s in 0..num_steps {
             let torque = controller.control(&mut state, None);
@@ -302,7 +302,11 @@ mod integrators_tests {
 
         // Assert
         let box_pose = state.poses()[2];
-        assert!(box_pose.translation.x > 3.0);
+        assert!(
+            box_pose.translation.x > 3.0,
+            "x: {}",
+            box_pose.translation.x
+        );
         assert_close!(box_pose.translation.y, 0.0, 0.3); // TODO(Isometry3): check that tolerance of 0.2 works.
         assert_close!(box_pose.translation.z, 0.25, 1e-2);
     }

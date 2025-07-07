@@ -1,4 +1,4 @@
-use na::{vector, Matrix3, Matrix4};
+use na::{vector, Isometry3, Matrix3, Matrix4};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{contact::ContactPoint, helpers::build_pendulum, types::Float};
@@ -17,7 +17,7 @@ pub fn createSimplePendulum(mass: Float, length: Float) -> InterfaceMechanismSta
     let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
     let cross_part = vector![m * l, 0., 0.];
 
-    let rod_to_world = Matrix4::identity();
+    let rod_to_world = Isometry3::identity();
     let axis = vector![0., 1., 0.];
 
     let mut state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);

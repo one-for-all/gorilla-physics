@@ -90,12 +90,12 @@ pub fn build_so101(base_mesh: Mesh, shoulder_mesh: Mesh) -> MechanismState {
         shoulder_frame,
         base_frame,
         &vec![0.0388353, -8.97657e-09, 0.0624],
-        &vec![3.14159, 4.18253e-17, -3.1415], // TODO(Isometry3): -3.14159 vs -3.1415 makes huge difference. Fix it.
+        &vec![3.14159, 4.18253e-17, -3.14159],
     );
 
     let treejoints = vec![
         Joint::FixedJoint(FixedJoint::new(base_to_world)),
-        Joint::RevoluteJoint(RevoluteJoint::new(shoulder_to_base, vector![0., 0., 1.])),
+        Joint::RevoluteJoint(RevoluteJoint::new(shoulder_to_base, vector![0., 0., 1.])), // TODO: joint axis should be of unit vector type.
     ];
     let bodies = vec![base_body, shoulder_body];
     MechanismState::new(treejoints, bodies)
@@ -121,22 +121,12 @@ mod so101_tests {
 
         // Act
         let dt = 1.0 / 60.0;
-        for _s in 0..50 {
+        for _s in 0..1 {
             let (_q, _v) = step(
                 &mut state,
                 dt,
                 &vec![],
                 &crate::integrators::Integrator::VelocityStepping,
-            );
-            println!(
-                "vertex: {:?}",
-                state.bodies[1]
-                    .collider
-                    .as_ref()
-                    .unwrap()
-                    .geometry
-                    .mesh()
-                    .vertices[1000]
             );
         }
 

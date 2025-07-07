@@ -400,7 +400,7 @@ mod contact_tests {
         util::assert_close,
         GRAVITY,
     };
-    use na::{dvector, vector, zero, Matrix3, Matrix4, UnitQuaternion};
+    use na::{dvector, vector, zero, Isometry, Isometry3, Matrix3, Matrix4, UnitQuaternion};
 
     use crate::{helpers::build_pendulum, simulate::simulate, util::assert_dvec_close, PI};
 
@@ -418,7 +418,7 @@ mod contact_tests {
         let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
         let cross_part = vector![m * l, 0., 0.];
 
-        let rod_to_world = Matrix4::identity();
+        let rod_to_world = Isometry3::identity();
         let axis = vector![0., 1., 0.];
 
         let mut state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
@@ -963,7 +963,7 @@ mod contact_tests {
         let foot_to_body = Transform3D {
             from: foot_frame.to_string(),
             to: body_frame.to_string(),
-            mat: Matrix4::<Float>::move_z(-l_leg),
+            iso: Isometry3::translation(0., 0., -l_leg),
         };
         let axis_leg = vector![0.0, 0.0, -1.0];
 
@@ -1046,7 +1046,7 @@ mod contact_tests {
         let foot_to_body = Transform3D {
             from: foot_frame.to_string(),
             to: body_frame.to_string(),
-            mat: Matrix4::<Float>::move_z(-l_leg),
+            iso: Isometry3::translation(0., 0., -l_leg),
         };
         let axis_leg = vector![0.0, 0.0, -1.0];
 

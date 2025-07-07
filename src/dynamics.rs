@@ -736,7 +736,7 @@ mod dynamics_tests {
         util::assert_close,
         WORLD_FRAME,
     };
-    use na::{dvector, vector, Matrix3, Matrix4};
+    use na::{dvector, vector, Isometry, Isometry3, Matrix3, Matrix4, Translation3};
 
     use crate::spatial::transform::Matrix4Ext;
     use crate::{
@@ -763,7 +763,7 @@ mod dynamics_tests {
         let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
         let cross_part = vector![m * l / 2.0, 0.0, 0.0];
 
-        let rod_to_world = Matrix4::identity(); // transformation from rod to world frame
+        let rod_to_world = Isometry3::identity(); // transformation from rod to world frame
         let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
         let mut state =
@@ -796,7 +796,7 @@ mod dynamics_tests {
         let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
         let cross_part = vector![m * l / 2.0, 0.0, 0.0];
 
-        let rod_to_world = Transform3D::rot_x(PI / 2.0);
+        let rod_to_world = Isometry3::rotation(Vector3::x_axis().scale(PI / 2.0));
         let axis = vector![0.0, 0.0, 1.0];
 
         let mut state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
@@ -830,7 +830,7 @@ mod dynamics_tests {
         let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
         let cross_part = vector![m * l / 2.0, 0.0, 0.0];
 
-        let rod_to_world = Matrix4::<Float>::move_x(d) * Transform3D::rot_x(PI / 2.0);
+        let rod_to_world = Isometry3::new(vector![d, 0., 0.], Vector3::x_axis().scale(PI / 2.0));
         let axis = vector![0.0, 0.0, 1.0];
 
         let mut state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
@@ -859,7 +859,7 @@ mod dynamics_tests {
         let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
         let cross_part = vector![m * l / 2.0, 0.0, 0.0];
 
-        let rod_to_world = Matrix4::identity(); // transformation from rod to world frame
+        let rod_to_world = Isometry3::identity(); // transformation from rod to world frame
         let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
         let mut state =
@@ -891,7 +891,7 @@ mod dynamics_tests {
         let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
         let cross_part = vector![m * l, 0., 0.];
 
-        let rod_to_world = Matrix4::identity();
+        let rod_to_world = Isometry3::identity();
         let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
         let mut state =
@@ -918,18 +918,18 @@ mod dynamics_tests {
         let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
         let cross_part = vector![m * l, 0., 0.];
 
-        let rod1_to_world = Matrix4::identity();
-        let rod2_to_rod1 = Matrix4::<Float>::move_x(l);
+        let rod1_to_world = Isometry3::identity();
+        let rod2_to_rod1 = Isometry3::translation(l, 0., 0.);
         let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
         let treejoints = vec![
             Joint::RevoluteJoint(RevoluteJoint {
-                init_mat: rod1_to_world,
+                init_iso: rod1_to_world,
                 transform: Transform3D::new("rod1", "world", &rod1_to_world),
                 axis: axis.clone(),
             }),
             Joint::RevoluteJoint(RevoluteJoint {
-                init_mat: rod2_to_rod1,
+                init_iso: rod2_to_rod1,
                 transform: Transform3D::new("rod2", "rod1", &rod2_to_rod1),
                 axis: axis.clone(),
             }),
@@ -973,8 +973,8 @@ mod dynamics_tests {
         let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
         let cross_part = vector![0., 0., -m * l];
 
-        let rod1_to_world = Matrix4::identity();
-        let rod2_to_rod1 = Matrix4::<Float>::move_z(-l);
+        let rod1_to_world = Isometry3::identity();
+        let rod2_to_rod1 = Isometry3::translation(0., 0., -l);
         let axis = vector![0.0, 1.0, 0.0];
 
         let mut state = build_double_pendulum(

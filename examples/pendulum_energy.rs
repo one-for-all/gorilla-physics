@@ -3,7 +3,7 @@ use gorilla_physics::plot::plot;
 use gorilla_physics::{
     helpers::build_pendulum, mechanism::MechanismState, simulate::step, types::Float, GRAVITY,
 };
-use nalgebra::{dvector, vector, DVector, Matrix3, Matrix4};
+use nalgebra::{dvector, vector, DVector, Isometry3, Matrix3, Matrix4};
 
 fn potential_energy(state: &MechanismState, l: &Float) -> Float {
     let q = state.q[0].float();
@@ -23,7 +23,7 @@ pub fn main() {
     let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
     let cross_part = vector![m * l / 2.0, 0.0, 0.0];
 
-    let rod_to_world = Matrix4::identity();
+    let rod_to_world = Isometry3::identity();
     let axis = vector![0.0, 1.0, 0.0];
 
     let mut state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);

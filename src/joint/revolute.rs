@@ -14,15 +14,15 @@ use crate::{
 ///
 /// Note: joint frame is defined as the successor body frame
 pub struct RevoluteJoint {
-    pub init_mat: Matrix4<Float>, // initial transform from successor frame to predecessor frame
-    pub transform: Transform3D,   // transform from successor frame to predecessor frame
-    pub axis: Vector3<Float>,     // axis of rotation expressed in successor body frame
+    pub init_iso: Isometry3<Float>, // initial transform from successor frame to predecessor frame
+    pub transform: Transform3D,     // transform from successor frame to predecessor frame
+    pub axis: Vector3<Float>,       // axis of rotation expressed in successor body frame
 }
 
 impl RevoluteJoint {
     pub fn default() -> Self {
         RevoluteJoint {
-            init_mat: Matrix4::identity(),
+            init_iso: Isometry3::identity(),
             transform: Transform3D::default(),
             axis: Vector3::z(),
         }
@@ -30,7 +30,7 @@ impl RevoluteJoint {
 
     pub fn new(transform: Transform3D, axis: Vector3<Float>) -> Self {
         Self {
-            init_mat: transform.mat.clone(),
+            init_iso: transform.iso.clone(),
             transform,
             axis,
         }
@@ -60,23 +60,11 @@ impl RevoluteJoint {
 
     /// Update the transform to be intial transform rotated around axis by q
     pub fn update(&mut self, q: &Float) {
-        // TODO: get rid of using Matrix4 as transformation matrix. Use
-        // Isometry3 instead. It is more precise.
-        let init_translation = Translation3::new(
-            self.init_mat[(0, 3)],
-            self.init_mat[(1, 3)],
-            self.init_mat[(2, 3)],
-        );
-        let init_rotation_matrix: Matrix3<Float> = self.init_mat.fixed_view::<3, 3>(0, 0).into();
-        let init_rot: UnitQuaternion<Float> = UnitQuaternion::from_matrix(&init_rotation_matrix);
-        let init_iso = Isometry3::from_parts(init_translation.into(), init_rot);
-        let new_iso =
-            init_iso * UnitQuaternion::from_axis_angle(&UnitVector3::new_normalize(self.axis), *q);
-
         self.transform = Transform3D {
             from: self.transform.from.clone(),
             to: self.transform.to.clone(),
-            mat: new_iso.to_homogeneous(),
+            iso: self.init_iso
+                * UnitQuaternion::from_axis_angle(&UnitVector3::new_normalize(self.axis), *q),
         };
     }
 }

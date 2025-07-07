@@ -16,6 +16,8 @@ use crate::{
     types::Float,
 };
 use na::zero;
+use na::Isometry;
+use na::Isometry3;
 use na::Rotation3;
 use na::UnitVector3;
 use na::{vector, Matrix3, Matrix4, Vector3};
@@ -25,7 +27,7 @@ pub fn build_pendulum(
     mass: &Float,
     moment: &Matrix3<Float>,
     cross_part: &Vector3<Float>,
-    rod_to_world: &Matrix4<Float>,
+    rod_to_world: &Isometry3<Float>,
     axis: &Vector3<Float>,
 ) -> MechanismState {
     let rod_frame = "rod";
@@ -40,7 +42,7 @@ pub fn build_pendulum(
     });
 
     let treejoints = vec![Joint::RevoluteJoint(RevoluteJoint {
-        init_mat: rod_to_world.mat.clone(),
+        init_iso: rod_to_world.iso.clone(),
         transform: rod_to_world,
         axis: axis.clone(),
     })];
@@ -55,8 +57,8 @@ pub fn build_double_pendulum(
     mass: &Float,
     moment: &Matrix3<Float>,
     cross_part: &Vector3<Float>,
-    rod1_to_world: &Matrix4<Float>,
-    rod2_to_rod1: &Matrix4<Float>,
+    rod1_to_world: &Isometry3<Float>,
+    rod2_to_rod1: &Isometry3<Float>,
     axis: &Vector3<Float>,
 ) -> MechanismState {
     let rod1_frame = "rod1";
@@ -68,12 +70,12 @@ pub fn build_double_pendulum(
 
     let treejoints = vec![
         Joint::RevoluteJoint(RevoluteJoint {
-            init_mat: rod1_to_world.mat.clone(),
+            init_iso: rod1_to_world.iso.clone(),
             transform: rod1_to_world,
             axis: axis.clone(),
         }),
         Joint::RevoluteJoint(RevoluteJoint {
-            init_mat: rod2_to_rod1.mat.clone(),
+            init_iso: rod2_to_rod1.iso.clone(),
             transform: rod2_to_rod1,
             axis: axis.clone(),
         }),
@@ -106,7 +108,7 @@ pub fn build_cart(
     let cart_frame = "cart";
     let world_frame = "world";
 
-    let cart_to_world = Transform3D::new(cart_frame, world_frame, &Matrix4::identity());
+    let cart_to_world = Transform3D::identity(cart_frame, world_frame);
 
     let treejoints = vec![Joint::PrismaticJoint(PrismaticJoint::new(
         cart_to_world,
@@ -136,15 +138,15 @@ pub fn build_cart_pole(
     let cart_frame = "cart";
     let pole_frame = "pole";
 
-    let cart_to_world = Transform3D::new(cart_frame, world_frame, &Matrix4::identity());
+    let cart_to_world = Transform3D::identity(cart_frame, world_frame);
     let axis_cart = vector![1.0, 0.0, 0.0];
 
-    let pole_to_cart = Transform3D::new(pole_frame, cart_frame, &Matrix4::identity());
+    let pole_to_cart = Transform3D::identity(pole_frame, cart_frame);
 
     let treejoints = vec![
         Joint::PrismaticJoint(PrismaticJoint::new(cart_to_world, axis_cart)),
         Joint::RevoluteJoint(RevoluteJoint {
-            init_mat: pole_to_cart.mat.clone(),
+            init_iso: pole_to_cart.iso.clone(),
             transform: pole_to_cart,
             axis: *axis_pole,
         }),
@@ -262,7 +264,7 @@ pub fn build_2d_hopper(
     let hip_to_body = Transform3D {
         from: hip_frame.to_string(),
         to: body_frame.to_string(),
-        mat: Matrix4::<Float>::move_z(-body_hip_length),
+        iso: Isometry3::translation(0., 0., -body_hip_length),
     };
     let hip = RigidBody::new(SpatialInertia {
         frame: hip_frame.to_string(),
@@ -281,7 +283,7 @@ pub fn build_2d_hopper(
     let piston_to_hip = Transform3D {
         from: piston_frame.to_string(),
         to: hip_frame.to_string(),
-        mat: Matrix4::<Float>::move_z(-hip_piston_length),
+        iso: Isometry3::translation(0., 0., -hip_piston_length),
     };
     let piston = RigidBody::new(SpatialInertia {
         frame: piston_frame.to_string(),
@@ -302,7 +304,7 @@ pub fn build_2d_hopper(
     let leg_to_piston = Transform3D {
         from: leg_frame.to_string(),
         to: piston_frame.to_string(),
-        mat: Matrix4::<Float>::move_z(-piston_leg_length),
+        iso: Isometry3::translation(0., 0., -piston_leg_length),
     };
     let leg = RigidBody::new(SpatialInertia {
         frame: leg_frame.to_string(),
@@ -314,11 +316,11 @@ pub fn build_2d_hopper(
     // Create the hopper
     let treejoints = vec![
         Joint::FloatingJoint(FloatingJoint {
-            init_mat: body_to_world.mat.clone(),
+            init_mat: body_to_world.iso.to_homogeneous().clone(),
             transform: body_to_world,
         }),
         Joint::RevoluteJoint(RevoluteJoint {
-            init_mat: hip_to_body.mat.clone(),
+            init_iso: hip_to_body.iso.clone(),
             transform: hip_to_body,
             axis: axis_hip,
         }),
@@ -356,7 +358,7 @@ pub fn build_SLIP(
     });
 
     let treejoints = vec![Joint::FloatingJoint(FloatingJoint {
-        init_mat: body_to_world.mat.clone(),
+        init_mat: body_to_world.iso.to_homogeneous().clone(),
         transform: body_to_world,
     })];
     let bodies = vec![body];
@@ -488,7 +490,7 @@ pub fn build_quadruped() -> MechanismState {
     let fr_hip_to_base = Transform3D::new(
         &fr_hip_frame,
         &body_frame,
-        &(Matrix4::<Float>::move_x(w_body / 2.0) * Matrix4::<Float>::move_y(-d_body / 2.0)),
+        &Isometry3::translation(w_body / 2.0, -d_body / 2.0, 0.),
     );
 
     let fr_knee_frame = "fr_knee";
@@ -501,7 +503,7 @@ pub fn build_quadruped() -> MechanismState {
     let fl_hip_to_base = Transform3D::new(
         &fl_hip_frame,
         &body_frame,
-        &(Matrix4::<Float>::move_x(w_body / 2.0) * Matrix4::<Float>::move_y(d_body / 2.0)),
+        &Isometry3::translation(w_body / 2.0, d_body / 2.0, 0.),
     );
 
     let fl_knee_frame = "fl_knee";
@@ -514,7 +516,7 @@ pub fn build_quadruped() -> MechanismState {
     let br_hip_to_base = Transform3D::new(
         &br_hip_frame,
         &body_frame,
-        &(Matrix4::<Float>::move_x(-w_body / 2.0) * Matrix4::<Float>::move_y(-d_body / 2.0)),
+        &Isometry3::translation(-w_body / 2.0, -d_body / 2.0, 0.),
     );
 
     let br_knee_frame = "br_knee";
@@ -527,7 +529,7 @@ pub fn build_quadruped() -> MechanismState {
     let bl_hip_to_base = Transform3D::new(
         &bl_hip_frame,
         &body_frame,
-        &(Matrix4::<Float>::move_x(-w_body / 2.0) * Matrix4::<Float>::move_y(d_body / 2.0)),
+        &Isometry3::translation(-w_body / 2.0, d_body / 2.0, 0.),
     );
 
     let bl_knee_frame = "bl_knee";

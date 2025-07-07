@@ -117,6 +117,8 @@ mod control_tests {
     use crate::joint::ToJointPositionVec;
     use crate::joint::ToJointVelocityVec;
     use crate::{simulate::simulate, PI};
+    use na::Isometry;
+    use na::Isometry3;
     use na::{vector, Matrix3, Matrix4};
 
     use super::*;
@@ -134,7 +136,7 @@ mod control_tests {
         let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
         let cross_part = vector![0.0, 0.0, -m * l / 2.0];
 
-        let rod_to_world = Matrix4::identity(); // transformation from rod to world frame
+        let rod_to_world = Isometry3::identity(); // transformation from rod to world frame
         let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
         let mut state =
@@ -184,7 +186,7 @@ mod control_tests {
         let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
         let cross_part = vector![0.0, 0.0, -m * l / 2.0];
 
-        let rod_to_world = Matrix4::identity(); // transformation from rod to world frame
+        let rod_to_world = Isometry3::identity(); // transformation from rod to world frame
         let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
         let mut state =

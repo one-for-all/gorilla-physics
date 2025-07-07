@@ -10,7 +10,7 @@ use gorilla_physics::spatial::transform::Matrix4Ext;
 use gorilla_physics::spatial::transform::Transform3D;
 use gorilla_physics::WORLD_FRAME;
 use gorilla_physics::{spatial::spatial_vector::SpatialVector, types::Float};
-use nalgebra::{vector, zero, Matrix4, Vector3};
+use nalgebra::{vector, zero, Isometry3, Matrix4, Vector3};
 
 /// Simulate a spring connected by two spheres dropping to ground
 pub fn main() {
@@ -31,7 +31,7 @@ pub fn main() {
     let foot_to_body = Transform3D {
         from: foot_frame.to_string(),
         to: body_frame.to_string(),
-        mat: Matrix4::<Float>::move_z(-l_leg),
+        iso: Isometry3::translation(0., 0., -l_leg),
     };
     let axis_leg = vector![0.0, 0.0, -1.0];
 

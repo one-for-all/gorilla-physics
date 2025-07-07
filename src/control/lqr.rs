@@ -61,7 +61,7 @@ pub fn lqr_cart_pole(state: &MechanismState) -> Vec<JointTorque> {
 
 #[cfg(test)]
 mod lqr_tests {
-    use na::{dvector, vector, Matrix3, Matrix4};
+    use na::{dvector, vector, Isometry3, Matrix3, Matrix4};
 
     use crate::integrators::Integrator;
     use crate::joint::ToJointVelocityVec;
@@ -88,8 +88,8 @@ mod lqr_tests {
         let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
         let cross_part = vector![0., 0., -m * l];
 
-        let rod1_to_world = Matrix4::identity();
-        let rod2_to_rod1 = Matrix4::<Float>::move_z(-l);
+        let rod1_to_world = Isometry3::identity();
+        let rod2_to_rod1 = Isometry3::translation(0., 0., -l);
         let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
         let mut state = build_double_pendulum(

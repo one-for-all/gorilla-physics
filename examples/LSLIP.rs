@@ -19,7 +19,7 @@ use gorilla_physics::{
     types::Float,
     WORLD_FRAME,
 };
-use nalgebra::{vector, Matrix3, Matrix4, UnitQuaternion, Vector3};
+use nalgebra::{vector, Isometry3, Matrix3, Matrix4, UnitQuaternion, Vector3};
 
 /// Lossy Spring Loaded Inverted Pendulum (LSLIP)
 /// Ref: Nonlinear Model Predictive Control for Rough-Terrain Robot Hopping, 2012
@@ -58,7 +58,7 @@ pub fn main() {
     let leg_to_body = Transform3D {
         from: leg_frame.to_string(),
         to: body_frame.to_string(),
-        mat: Matrix4::<Float>::move_z(-l_leg),
+        iso: Isometry3::translation(0., 0., -l_leg),
     };
     let leg = RigidBody::new(SpatialInertia {
         frame: leg_frame.to_string(),
@@ -74,7 +74,7 @@ pub fn main() {
     };
     let treejoints = vec![
         Joint::FloatingJoint(FloatingJoint {
-            init_mat: body_to_world.mat.clone(),
+            init_mat: body_to_world.iso.to_homogeneous().clone(),
             transform: body_to_world,
         }),
         Joint::PrismaticJoint(PrismaticJoint::new_with_spring(
