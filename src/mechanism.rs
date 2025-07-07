@@ -497,16 +497,8 @@ mod mechanism_tests {
                 init_iso: body_to_world.iso,
                 transform: body_to_world,
             }),
-            Joint::RevoluteJoint(RevoluteJoint {
-                init_iso: leg_to_body.iso.clone(),
-                transform: leg_to_body,
-                axis: axis_leg,
-            }),
-            Joint::RevoluteJoint(RevoluteJoint {
-                init_iso: leg2_to_leg.iso.clone(),
-                transform: leg2_to_leg,
-                axis: axis_leg,
-            }),
+            Joint::RevoluteJoint(RevoluteJoint::new(leg_to_body, axis_leg)),
+            Joint::RevoluteJoint(RevoluteJoint::new(leg2_to_leg, axis_leg)),
         ];
         let bodies = vec![body, leg, leg2];
         let state = MechanismState::new(treejoints, bodies);

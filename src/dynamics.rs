@@ -736,9 +736,8 @@ mod dynamics_tests {
         util::assert_close,
         WORLD_FRAME,
     };
-    use na::{dvector, vector, Isometry, Isometry3, Matrix3, Matrix4, Translation3};
+    use na::{dvector, vector, Isometry3, Matrix3};
 
-    use crate::spatial::transform::Matrix4Ext;
     use crate::{
         double_pendulum::SimpleDoublePendulum,
         helpers::{build_double_pendulum, build_pendulum},
@@ -923,16 +922,14 @@ mod dynamics_tests {
         let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
 
         let treejoints = vec![
-            Joint::RevoluteJoint(RevoluteJoint {
-                init_iso: rod1_to_world,
-                transform: Transform3D::new("rod1", "world", &rod1_to_world),
-                axis: axis.clone(),
-            }),
-            Joint::RevoluteJoint(RevoluteJoint {
-                init_iso: rod2_to_rod1,
-                transform: Transform3D::new("rod2", "rod1", &rod2_to_rod1),
-                axis: axis.clone(),
-            }),
+            Joint::RevoluteJoint(RevoluteJoint::new(
+                Transform3D::new("rod1", "world", &rod1_to_world),
+                axis.clone(),
+            )),
+            Joint::RevoluteJoint(RevoluteJoint::new(
+                Transform3D::new("rod2", "rod1", &rod2_to_rod1),
+                axis.clone(),
+            )),
         ];
         let bodies = vec![
             RigidBody::new(SpatialInertia {

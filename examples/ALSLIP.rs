@@ -108,11 +108,7 @@ pub fn main() {
             init_iso: body_to_world.iso,
             transform: body_to_world,
         }),
-        Joint::RevoluteJoint(RevoluteJoint {
-            init_iso: hip_to_body.iso,
-            transform: hip_to_body,
-            axis: axis_hip,
-        }),
+        Joint::RevoluteJoint(RevoluteJoint::new(hip_to_body, axis_hip)),
         Joint::PrismaticJoint(PrismaticJoint::new_with_spring(
             leg_to_hip, axis_leg, spring,
         )),

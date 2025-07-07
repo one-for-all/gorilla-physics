@@ -1,4 +1,4 @@
-use na::{Isometry3, Matrix3, Matrix3xX, Matrix4, Translation3, UnitQuaternion, UnitVector3};
+use na::{Isometry3, Matrix3xX, UnitQuaternion, UnitVector3};
 use nalgebra::Vector3;
 use std::ops::Mul;
 
@@ -16,7 +16,7 @@ use crate::{
 pub struct RevoluteJoint {
     pub init_iso: Isometry3<Float>, // initial transform from successor frame to predecessor frame
     pub transform: Transform3D,     // transform from successor frame to predecessor frame
-    pub axis: Vector3<Float>,       // axis of rotation expressed in successor body frame
+    pub axis: UnitVector3<Float>,   // axis of rotation expressed in successor body frame
 }
 
 impl RevoluteJoint {
@@ -24,15 +24,15 @@ impl RevoluteJoint {
         RevoluteJoint {
             init_iso: Isometry3::identity(),
             transform: Transform3D::default(),
-            axis: Vector3::z(),
+            axis: Vector3::z_axis(),
         }
     }
 
     pub fn new(transform: Transform3D, axis: Vector3<Float>) -> Self {
         Self {
-            init_iso: transform.iso.clone(),
+            init_iso: transform.iso,
             transform,
-            axis,
+            axis: UnitVector3::new_normalize(axis),
         }
     }
 
@@ -63,8 +63,7 @@ impl RevoluteJoint {
         self.transform = Transform3D {
             from: self.transform.from.clone(),
             to: self.transform.to.clone(),
-            iso: self.init_iso
-                * UnitQuaternion::from_axis_angle(&UnitVector3::new_normalize(self.axis), *q),
+            iso: self.init_iso * UnitQuaternion::from_axis_angle(&self.axis, *q),
         };
     }
 }

@@ -41,11 +41,10 @@ pub fn build_pendulum(
         mass: mass.clone(),
     });
 
-    let treejoints = vec![Joint::RevoluteJoint(RevoluteJoint {
-        init_iso: rod_to_world.iso.clone(),
-        transform: rod_to_world,
-        axis: axis.clone(),
-    })];
+    let treejoints = vec![Joint::RevoluteJoint(RevoluteJoint::new(
+        rod_to_world,
+        axis.clone(),
+    ))];
     let bodies = vec![rod];
     let state = MechanismState::new(treejoints, bodies);
 
@@ -69,16 +68,14 @@ pub fn build_double_pendulum(
     let rod2_to_rod1 = Transform3D::new(rod2_frame, rod1_frame, &rod2_to_rod1);
 
     let treejoints = vec![
-        Joint::RevoluteJoint(RevoluteJoint {
-            init_iso: rod1_to_world.iso.clone(),
-            transform: rod1_to_world,
-            axis: axis.clone(),
-        }),
-        Joint::RevoluteJoint(RevoluteJoint {
-            init_iso: rod2_to_rod1.iso.clone(),
-            transform: rod2_to_rod1,
-            axis: axis.clone(),
-        }),
+        Joint::RevoluteJoint(RevoluteJoint::new(
+            rod1_to_world,
+            axis.clone(),
+        )),
+        Joint::RevoluteJoint(RevoluteJoint::new(
+            rod2_to_rod1,
+            axis.clone(),
+        )),
     ];
     let bodies = vec![
         RigidBody::new(SpatialInertia {
@@ -145,11 +142,10 @@ pub fn build_cart_pole(
 
     let treejoints = vec![
         Joint::PrismaticJoint(PrismaticJoint::new(cart_to_world, axis_cart)),
-        Joint::RevoluteJoint(RevoluteJoint {
-            init_iso: pole_to_cart.iso.clone(),
-            transform: pole_to_cart,
-            axis: *axis_pole,
-        }),
+        Joint::RevoluteJoint(RevoluteJoint::new(
+            pole_to_cart,
+            axis_pole.clone(),
+        )),
     ];
     let bodies = vec![
         RigidBody::new(SpatialInertia {
@@ -319,11 +315,10 @@ pub fn build_2d_hopper(
             init_iso: body_to_world.iso,
             transform: body_to_world,
         }),
-        Joint::RevoluteJoint(RevoluteJoint {
-            init_iso: hip_to_body.iso.clone(),
-            transform: hip_to_body,
-            axis: axis_hip,
-        }),
+        Joint::RevoluteJoint(RevoluteJoint::new(
+            hip_to_body,
+            axis_hip,
+        )),
         Joint::PrismaticJoint(PrismaticJoint::new(piston_to_hip, axis_piston)),
         Joint::PrismaticJoint(PrismaticJoint::new(leg_to_piston, axis_leg)),
     ];
