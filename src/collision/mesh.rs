@@ -12,7 +12,7 @@ pub struct Mesh {
 
     pub vertices: Vec<Vector3<Float>>, // vertex positions expressed in world frame
     pub faces: Vec<[usize; 3]>,
-    pub edges: Vec<([usize; 2], Vector3<Float>, Vector3<Float>)>, // (edge, face A normal, face B normal). edge is consistent with A direction, opposite with B direction.
+    pub edges: Vec<([usize; 2], usize, usize)>, // (edge, face A, face B). edge is consistent with A direction, opposite with B direction.
 
     pub base_isometry: Isometry3<Float>, // The fixed isometry from body frame to mesh frame, initialized at the beginning.
     pub body_isometry: Isometry3<Float>, // Stores the isometry of the body frame to which mesh is attached. So that vertex positions can be updated relatively when body frame moves.
@@ -186,9 +186,8 @@ impl Mesh {
             }
         }
 
-        // Check all edges have shared by two different faces, and compute the
-        // normals of the two faces, and store them.
-        let edges: Vec<([usize; 2], Vector3<Float>, Vector3<Float>)> = edges_map
+        // Check all edges have shared by two different faces
+        let edges: Vec<([usize; 2], usize, usize)> = edges_map
             .iter()
             .sorted()
             .map(|(k, v)| {
@@ -199,14 +198,7 @@ impl Mesh {
                     "edge should be shared by two different faces: {}, {}",
                     f_A, f_B
                 );
-                let f_A = faces[f_A];
-                let normal_A =
-                    compute_normal(&[vertices[f_A[0]], vertices[f_A[1]], vertices[f_A[2]]]);
-                let f_B = faces[f_B];
-                let normal_B =
-                    compute_normal(&[vertices[f_B[0]], vertices[f_B[1]], vertices[f_B[2]]]);
-
-                ([k.0, k.1], normal_A, normal_B)
+                ([k.0, k.1], f_A, f_B)
             })
             .collect();
 
@@ -549,8 +541,21 @@ pub fn mesh_mesh_collision(
                 other_vertices[other_edge.0[1]],
             ];
             if let Some((contact_point, contact_normal)) = edge_edge_collision(&e, &other_e, tol) {
-                let face_A_normal = other_edge.1;
-                let face_B_normal = other_edge.2;
+                let other_faces = &other_mesh.faces;
+                let f_A = other_faces[other_edge.1];
+                let f_B = other_faces[other_edge.2];
+                let face_A = [
+                    other_vertices[f_A[0]],
+                    other_vertices[f_A[1]],
+                    other_vertices[f_A[2]],
+                ];
+                let face_B = [
+                    other_vertices[f_B[0]],
+                    other_vertices[f_B[1]],
+                    other_vertices[f_B[2]],
+                ];
+                let face_A_normal = compute_normal(&face_A);
+                let face_B_normal = compute_normal(&face_B);
                 if let Some(contact_normal) = correct_contact_normal_direction(
                     &contact_normal,
                     &(other_e[1] - other_e[0]),
@@ -849,6 +854,25 @@ mod mesh_tests {
         let contacts = mesh_mesh_collision(&meshA, &meshB, 1e-2);
 
         // Assert
+        assert_eq!(contacts.len(), 1);
+    }
+
+    #[test]
+    fn tetra_tetra_collision4() {
+        // Arrange
+        let l = 1.0;
+        let buf = read_file("data/tetrahedron.obj");
+        let meshA = Mesh::new_from_obj(&buf);
+        let mut meshB = meshA.clone();
+        meshB.update_isometry(&Isometry3::new(
+            vector![l / 2.0, -l / 2.0, l],
+            Vector3::y_axis().scale(PI / 2.0),
+        ));
+
+        // Act
+        let contacts = mesh_mesh_collision(&meshA, &meshB, 1e-3);
+
+        // Arrange
         assert_eq!(contacts.len(), 1);
     }
 
