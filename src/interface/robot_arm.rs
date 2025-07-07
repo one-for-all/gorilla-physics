@@ -5,7 +5,7 @@ use crate::helpers::{build_gripper, build_pusher};
 use super::InterfaceMechanismState;
 
 #[wasm_bindgen]
-pub fn createPusher() -> InterfaceMechanismState {
+pub async fn createPusher() -> InterfaceMechanismState {
     let state = build_pusher();
 
     InterfaceMechanismState { inner: state }
