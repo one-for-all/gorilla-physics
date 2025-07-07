@@ -3,11 +3,10 @@ use na::{vector, Isometry3, Matrix3, Translation3, UnitQuaternion, Vector3};
 use crate::{
     collision::mesh::Mesh,
     inertia::SpatialInertia,
-    joint::{fixed::FixedJoint, floating::FloatingJoint, revolute::RevoluteJoint, Joint},
+    joint::{fixed::FixedJoint, revolute::RevoluteJoint, Joint},
     mechanism::MechanismState,
     rigid_body::RigidBody,
     spatial::transform::Transform3D,
-    types::Float,
     WORLD_FRAME,
 };
 
