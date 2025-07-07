@@ -88,6 +88,21 @@ pub fn console_log(message: &str) {
     web_sys::console::log_1(&message.into());
 }
 
+#[macro_export]
+macro_rules! flog {
+    ($($t:tt)*) => {
+        #[cfg(target_arch = "wasm32")]
+        {
+            use web_sys::console;
+            console::log_1(&format!($($t)*).into());
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            println!($($t)*);
+        }
+    };
+}
+
 pub fn assert_close(a: Float, b: Float, tol: Float) {
     assert!((a - b).abs() < tol, "{} != {}", a, b);
 }
