@@ -19,7 +19,7 @@ pub struct JointSpring {
 ///
 /// Note: joint frame is defined as the successor body frame
 pub struct PrismaticJoint {
-    pub init_mat: Matrix4<Float>,
+    pub init_iso: Isometry3<Float>,
     pub transform: Transform3D,
     pub axis: Vector3<Float>, // axis expressed in successor body frame
 
@@ -29,7 +29,7 @@ pub struct PrismaticJoint {
 impl PrismaticJoint {
     pub fn new(transform: Transform3D, axis: Vector3<Float>) -> Self {
         Self {
-            init_mat: transform.iso.to_homogeneous(),
+            init_iso: transform.iso,
             transform,
             axis,
             spring: None,
@@ -42,7 +42,7 @@ impl PrismaticJoint {
         spring: JointSpring,
     ) -> Self {
         Self {
-            init_mat: transform.iso.to_homogeneous(),
+            init_iso: transform.iso,
             transform,
             axis,
             spring: Some(spring),
@@ -73,11 +73,7 @@ impl PrismaticJoint {
 
     /// Update the transform to be intial transform moved along axis by q
     pub fn update(&mut self, q: &Float) {
-        let mat = self.init_mat * Transform3D::translation(&self.axis, q);
-        let translation = Translation3::new(mat[(0, 3)], mat[(1, 3)], mat[(2, 3)]);
-        let rotation_matrix: Matrix3<Float> = mat.fixed_view::<3, 3>(0, 0).into();
-        let rot: UnitQuaternion<Float> = UnitQuaternion::from_matrix(&rotation_matrix);
-        let iso = Isometry3::from_parts(translation.into(), rot);
+        let iso = self.init_iso * Translation3::from(self.axis.scale(*q));
 
         self.transform = Transform3D {
             from: self.transform.from.clone(),
