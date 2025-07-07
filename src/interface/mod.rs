@@ -13,19 +13,16 @@ use controller::InterfaceController;
 use itertools::izip;
 use na::zero;
 use na::DVector;
-use na::Isometry;
 use na::Isometry3;
-use na::Rotation3;
 use na::UnitQuaternion;
 use na::UnitVector3;
 use na::Vector3;
-use na::{vector, Matrix3, Matrix4};
+use na::{vector, Matrix3};
 use wasm_bindgen::prelude::*;
 use web_sys::js_sys;
 use web_sys::js_sys::Float32Array;
 use web_sys::js_sys::Uint32Array;
 
-use crate::spatial::transform::Matrix4Ext;
 use crate::{
     contact::HalfSpace,
     helpers::build_double_pendulum,
