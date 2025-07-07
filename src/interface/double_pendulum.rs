@@ -1,5 +1,5 @@
 use crate::joint::ToJointVelocityVec;
-use na::{vector, Isometry3, Matrix3, Matrix4};
+use na::{vector, Isometry3, Matrix3, Matrix4, Vector3};
 use wasm_bindgen::prelude::*;
 
 use crate::spatial::transform::Matrix4Ext;
@@ -20,7 +20,7 @@ pub fn createDoublePendulum(length: Float) -> InterfaceMechanismState {
 
     let rod1_to_world = Isometry3::identity();
     let rod2_to_rod1 = Isometry3::translation(l, 0., 0.);
-    let axis = vector![0.0, -1.0, 0.0]; // axis of joint rotation
+    let axis = -Vector3::y_axis(); // axis of joint rotation
 
     let mut state = build_double_pendulum(
         &m,

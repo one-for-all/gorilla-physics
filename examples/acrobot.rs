@@ -6,6 +6,7 @@ use gorilla_physics::{
     helpers::build_double_pendulum, joint::ToFloatDVec, simulate::step, types::Float,
 };
 use nalgebra::Isometry3;
+use nalgebra::Vector3;
 use nalgebra::{dvector, vector, DVector, Matrix3};
 
 /// Acrobot swing up example
@@ -21,7 +22,7 @@ pub fn main() {
 
     let rod1_to_world = Isometry3::identity();
     let rod2_to_rod1 = Isometry3::translation(l, 0., 0.);
-    let axis = vector![0.0, -1.0, 0.0];
+    let axis = -Vector3::y_axis();
 
     let mut state = build_double_pendulum(
         &m,

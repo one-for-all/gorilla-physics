@@ -119,6 +119,7 @@ mod control_tests {
     use crate::{simulate::simulate, PI};
     use na::Isometry;
     use na::Isometry3;
+    use na::Vector3;
     use na::{vector, Matrix3, Matrix4};
 
     use super::*;
@@ -137,10 +138,10 @@ mod control_tests {
         let cross_part = vector![0.0, 0.0, -m * l / 2.0];
 
         let rod_to_world = Isometry3::identity(); // transformation from rod to world frame
-        let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
+        let axis = Vector3::y_axis(); // axis of joint rotation
 
         let mut state =
-            crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+            crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, axis);
 
         let q_init = vec![0.1].to_joint_pos_vec(); // give it some initial displacement
         let v_init = vec![0.0].to_joint_vel_vec();
@@ -187,10 +188,10 @@ mod control_tests {
         let cross_part = vector![0.0, 0.0, -m * l / 2.0];
 
         let rod_to_world = Isometry3::identity(); // transformation from rod to world frame
-        let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
+        let axis = Vector3::y_axis(); // axis of joint rotation
 
         let mut state =
-            crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+            crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, axis);
 
         let q_init = vec![0.0].to_joint_pos_vec();
         let v_init = vec![0.1].to_joint_vel_vec(); // give it some initial velocity

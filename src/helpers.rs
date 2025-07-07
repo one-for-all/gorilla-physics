@@ -4,7 +4,6 @@ use crate::contact::ContactPoint;
 use crate::contact::SpringContact;
 use crate::joint::floating::FloatingJoint;
 use crate::joint::prismatic::JointSpring;
-use crate::spatial::transform::Matrix4Ext;
 use crate::PI;
 use crate::WORLD_FRAME;
 use crate::{
@@ -16,11 +15,10 @@ use crate::{
     types::Float,
 };
 use na::zero;
-use na::Isometry;
 use na::Isometry3;
 use na::Rotation3;
 use na::UnitVector3;
-use na::{vector, Matrix3, Matrix4, Vector3};
+use na::{vector, Matrix3, Vector3};
 
 /// Build a mechanism state of a pendulum
 pub fn build_pendulum(
@@ -28,7 +26,7 @@ pub fn build_pendulum(
     moment: &Matrix3<Float>,
     cross_part: &Vector3<Float>,
     rod_to_world: &Isometry3<Float>,
-    axis: &Vector3<Float>,
+    axis: UnitVector3<Float>,
 ) -> MechanismState {
     let rod_frame = "rod";
     let world_frame = "world";
@@ -43,7 +41,7 @@ pub fn build_pendulum(
 
     let treejoints = vec![Joint::RevoluteJoint(RevoluteJoint::new(
         rod_to_world,
-        axis.clone(),
+        axis,
     ))];
     let bodies = vec![rod];
     let state = MechanismState::new(treejoints, bodies);
@@ -58,7 +56,7 @@ pub fn build_double_pendulum(
     cross_part: &Vector3<Float>,
     rod1_to_world: &Isometry3<Float>,
     rod2_to_rod1: &Isometry3<Float>,
-    axis: &Vector3<Float>,
+    axis: &UnitVector3<Float>,
 ) -> MechanismState {
     let rod1_frame = "rod1";
     let rod2_frame = "rod2";
@@ -129,7 +127,7 @@ pub fn build_cart_pole(
     moment_pole: &Matrix3<Float>,
     cross_part_cart: &Vector3<Float>,
     cross_part_pole: &Vector3<Float>,
-    axis_pole: &Vector3<Float>,
+    axis_pole: UnitVector3<Float>,
 ) -> MechanismState {
     let world_frame = "world";
     let cart_frame = "cart";
@@ -144,7 +142,7 @@ pub fn build_cart_pole(
         Joint::PrismaticJoint(PrismaticJoint::new(cart_to_world, axis_cart)),
         Joint::RevoluteJoint(RevoluteJoint::new(
             pole_to_cart,
-            axis_pole.clone(),
+            axis_pole,
         )),
     ];
     let bodies = vec![
@@ -254,7 +252,7 @@ pub fn build_2d_hopper(
     let moment_x = 2.0 / 5.0 * m_hip * r_hip * r_hip;
     let moment_hip = Matrix3::from_diagonal(&vector![moment_x, moment_x, moment_x]);
     let cross_part_hip = vector![0.0, 0.0, 0.0];
-    let axis_hip = vector![0.0, 1.0, 0.0];
+    let axis_hip = Vector3::y_axis();
 
     let hip_frame = "hip";
     let hip_to_body = Transform3D {
@@ -391,7 +389,7 @@ pub fn build_hopper(
     let body_frame = "body";
     let body = RigidBody::new_sphere(m_body, r_body, &body_frame);
     let body_to_hip = Transform3D::identity(&body_frame, &hip_frame);
-    let hip_axis = vector![0., 1., 0.];
+    let hip_axis = Vector3::y_axis();
 
     let leg_axis = vector![0., 0., 1.0];
     let leg_spring = JointSpring { k: 1e3, l: 0.0 };
@@ -474,10 +472,10 @@ pub fn build_quadruped() -> MechanismState {
 
     let m_hip = 0.5;
     let l_hip = 0.2;
-    let hip_axis = vector![0., -1., 0.];
+    let hip_axis = -Vector3::y_axis();
     let m_knee = 0.5;
     let l_knee = 0.2;
-    let knee_axis = vector![0., -1., 0.];
+    let knee_axis = -Vector3::y_axis();
 
     // Create front right leg
     let fr_hip_frame = "fr_hip";
@@ -623,7 +621,7 @@ pub fn build_pusher() -> MechanismState {
 
     let bodies = vec![base_link, pusher_link, cube];
     let treejoints = vec![
-        Joint::RevoluteJoint(RevoluteJoint::new(base_to_world, vector![0.0, 0.0, 1.0])),
+        Joint::RevoluteJoint(RevoluteJoint::new(base_to_world, Vector3::z_axis())),
         Joint::PrismaticJoint(PrismaticJoint::new(pusher_to_base, vector![1.0, 0.0, 0.0])),
         Joint::FloatingJoint(FloatingJoint::new(cube_to_world)),
     ];

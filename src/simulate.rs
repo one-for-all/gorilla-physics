@@ -112,7 +112,7 @@ mod simulate_tests {
     };
 
     use super::*;
-    use na::{Isometry3, Matrix4};
+    use na::{Isometry3, Matrix4, Vector3};
     use nalgebra::{vector, Matrix3};
 
     #[test]
@@ -128,10 +128,10 @@ mod simulate_tests {
         let cross_part = vector![m * l / 2.0, 0.0, 0.0];
 
         let rod_to_world = Isometry3::identity(); // transformation from rod to world frame
-        let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
+        let axis = Vector3::y_axis(); // axis of joint rotation
 
         let mut state =
-            crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+            crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, axis);
 
         let initial_energy = 0.0 + 0.0; // E = PE + KE, both are zero at the start.
 
@@ -221,7 +221,7 @@ mod simulate_tests {
         let moment_z = 0.0;
         let moment_pole = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
         let cross_part_pole = vector![0.0, 0.0, -l_pole * m_pole];
-        let axis_pole = vector![0.0, 1.0, 0.0];
+        let axis_pole = Vector3::y_axis();
 
         let mut state = build_cart_pole(
             &m_cart,
@@ -230,7 +230,7 @@ mod simulate_tests {
             &moment_pole,
             &cross_part_cart,
             &cross_part_pole,
-            &axis_pole,
+            axis_pole,
         );
 
         let F_cart = 1.0; // force to be exerted on the cart

@@ -428,7 +428,7 @@ pub fn mass_matrix(
 #[cfg(test)]
 mod mechanism_tests {
 
-    use na::{vector, DVector, Matrix3};
+    use na::{vector, DVector, Matrix3, Vector3};
 
     use crate::joint::{floating::FloatingJoint, revolute::RevoluteJoint};
 
@@ -468,8 +468,7 @@ mod mechanism_tests {
         let moment_z = (w_leg * w_leg + w_leg * w_leg) * m_leg / 12.0;
         let moment_leg = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
         let cross_part_leg = vector![0.0, 0.0, -h_leg / 2.0 * m_leg];
-        let axis_leg = vector![0.0, 1.0, 0.0];
-
+        let axis_leg = Vector3::y_axis();
         let leg_frame = "leg";
         let leg_to_body = Transform3D::identity(&leg_frame, &body_frame);
         let leg = RigidBody::new(SpatialInertia {
@@ -530,12 +529,13 @@ mod mechanism_tests {
         let four_to_one = Transform3D::move_x("4", "1", 1.0);
         let five_to_four = Transform3D::move_z("5", "4", 1.0);
 
+        let axis = Vector3::y_axis();
         let treejoints = vec![
             Joint::FloatingJoint(FloatingJoint::new(one_to_world)),
-            Joint::RevoluteJoint(RevoluteJoint::new(two_to_one, vector![0., 1., 0.])),
-            Joint::RevoluteJoint(RevoluteJoint::new(three_to_two, vector![0., 1., 0.])),
-            Joint::RevoluteJoint(RevoluteJoint::new(four_to_one, vector![0., 1., 0.])),
-            Joint::RevoluteJoint(RevoluteJoint::new(five_to_four, vector![0., 1., 0.])),
+            Joint::RevoluteJoint(RevoluteJoint::new(two_to_one, axis)),
+            Joint::RevoluteJoint(RevoluteJoint::new(three_to_two, axis)),
+            Joint::RevoluteJoint(RevoluteJoint::new(four_to_one, axis)),
+            Joint::RevoluteJoint(RevoluteJoint::new(five_to_four, axis)),
         ];
         let bodies = vec![
             RigidBody::new_sphere(1., 1., "1"),

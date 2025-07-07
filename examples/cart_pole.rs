@@ -8,7 +8,7 @@ use gorilla_physics::{
     simulate::step,
     PI,
 };
-use nalgebra::{dvector, vector, DVector, Matrix3};
+use nalgebra::{dvector, vector, DVector, Matrix3, Vector3};
 
 use gorilla_physics::types::Float;
 
@@ -38,7 +38,7 @@ pub fn main() {
     let moment_z = 0.0;
     let moment_pole = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
     let cross_part_pole = vector![0.0, 0.0, -l_pole * m_pole];
-    let axis_pole = vector![0.0, -1.0, 0.0];
+    let axis_pole = -Vector3::y_axis();
 
     let mut state = build_cart_pole(
         &m_cart,
@@ -47,14 +47,14 @@ pub fn main() {
         &moment_pole,
         &cross_part_cart,
         &cross_part_pole,
-        &axis_pole,
+        axis_pole,
     );
 
     let q_init = vec![0.0, PI + 0.1].to_joint_pos_vec();
     let v_init = vec![0.0, 0.0].to_joint_vel_vec();
     state.update(&q_init, &v_init);
 
-    let _F_cart = 1.0; // force to be exerted on the cart
+    let _force_cart = 1.0; // force to be exerted on the cart
 
     let mut qs: DVector<DVector<Float>> = dvector![];
     let mut vs: DVector<DVector<Float>> = dvector![];

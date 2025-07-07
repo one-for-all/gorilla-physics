@@ -64,7 +64,7 @@ pub fn main() {
     let moment_x = 2.0 / 5.0 * m_hip * r_hip * r_hip;
     let moment_hip = Matrix3::from_diagonal(&vector![moment_x, moment_x, moment_x]);
     let cross_part_hip = vector![0.0, 0.0, 0.0];
-    let axis_hip = vector![0.0, 1.0, 0.0];
+    let axis_hip = Vector3::y_axis();
 
     let hip_frame = "hip";
     let hip_to_body = Transform3D {
@@ -83,7 +83,7 @@ pub fn main() {
     let moment_x = 2.0 / 5.0 * m_leg * r_leg * r_leg;
     let moment_leg = Matrix3::from_diagonal(&vector![moment_x, moment_x, moment_x]);
     let cross_part_leg = vector![0.0, 0.0, 0.0];
-    let axis_leg = vector![0.0, 0.0, -1.0];
+    let axis_leg = vector![0., 0., -1.];
 
     let leg_frame = "leg";
     let leg_to_hip = Transform3D {

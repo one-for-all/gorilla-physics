@@ -264,9 +264,9 @@ pub fn createRodPendulumAtBottom(length: Float) -> InterfaceMechanismState {
     let cross_part = vector![0.0, 0.0, -m * l / 2.0];
 
     let rod_to_world = Isometry3::identity(); // transformation from rod to world frame
-    let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
+    let axis = Vector3::y_axis(); // axis of joint rotation
 
-    let mut state = crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+    let mut state = crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, axis);
 
     let q_init = vec![JointPosition::Float(0.1)];
     let v_init = vec![0.0].to_joint_vel_vec();
@@ -290,7 +290,7 @@ pub fn createRodPendulum(length: Float) -> InterfaceMechanismState {
     let rod_frame = "rod";
     let world_frame = "world";
     let rod_to_world = Transform3D::identity(rod_frame, world_frame);
-    let axis = vector![0.0, 1.0, 0.0];
+    let axis = Vector3::y_axis();
 
     let treejoints = vec![Joint::RevoluteJoint(RevoluteJoint::new(rod_to_world, axis))];
     let bodies = vec![RigidBody::new(SpatialInertia {
@@ -317,7 +317,7 @@ pub fn createDoublePendulumHorizontal(length: Float) -> InterfaceMechanismState 
 
     let rod1_to_world = Isometry3::identity();
     let rod2_to_rod1 = Isometry3::translation(l, 0., 0.);
-    let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
+    let axis = Vector3::y_axis(); // axis of joint rotation
 
     let mut state = build_double_pendulum(
         &m,
@@ -421,9 +421,9 @@ pub fn createCompassGait() -> InterfaceMechanismState {
 
     let hip_to_world = Transform3D::identity(hip_frame, WORLD_FRAME);
     let left_leg_to_hip = Transform3D::identity(left_leg_frame, hip_frame);
-    let left_leg_axis = vector![0., -1., 0.];
+    let left_leg_axis = -Vector3::y_axis();
     let right_leg_to_hip = Transform3D::identity(right_leg_frame, hip_frame);
-    let right_leg_axis = vector![0., -1., 0.];
+    let right_leg_axis = -Vector3::y_axis();
     let treejoints = vec![
         Joint::FloatingJoint(FloatingJoint::new(hip_to_world)),
         Joint::RevoluteJoint(RevoluteJoint::new(left_leg_to_hip, left_leg_axis)),

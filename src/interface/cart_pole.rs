@@ -3,6 +3,7 @@ use crate::helpers::build_cart_pole;
 use crate::joint::ToJointPositionVec;
 use crate::joint::ToJointVelocityVec;
 use crate::types::Float;
+use na::Vector3;
 use nalgebra::{vector, Matrix3};
 use wasm_bindgen::prelude::*;
 
@@ -23,7 +24,7 @@ pub fn createCartPole(length: Float) -> InterfaceMechanismState {
     let moment_z = 0.0;
     let moment_pole = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
     let cross_part_pole = vector![0.0, 0.0, -l_pole * m_pole];
-    let axis_pole = vector![0.0, -1.0, 0.0];
+    let axis_pole = -Vector3::y_axis();
 
     let mut state = build_cart_pole(
         &m_cart,
@@ -32,7 +33,7 @@ pub fn createCartPole(length: Float) -> InterfaceMechanismState {
         &moment_pole,
         &cross_part_cart,
         &cross_part_pole,
-        &axis_pole,
+        axis_pole,
     );
 
     let q_init = vec![0.0, 0.1].to_joint_pos_vec(); // -(PI / 2.0 + 1.5)

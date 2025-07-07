@@ -28,11 +28,11 @@ impl RevoluteJoint {
         }
     }
 
-    pub fn new(transform: Transform3D, axis: Vector3<Float>) -> Self {
+    pub fn new(transform: Transform3D, axis: UnitVector3<Float>) -> Self {
         Self {
             init_iso: transform.iso,
             transform,
-            axis: UnitVector3::new_normalize(axis),
+            axis,
         }
     }
 

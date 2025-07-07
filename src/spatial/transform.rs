@@ -245,12 +245,13 @@ mod tests {
         let four_to_one = Transform3D::move_x("4", "1", 1.0);
         let five_to_four = Transform3D::move_z("5", "4", 1.0);
 
+        let axis = Vector3::y_axis(); 
         let treejoints = vec![
             Joint::FloatingJoint(FloatingJoint::new(one_to_world)),
-            Joint::RevoluteJoint(RevoluteJoint::new(two_to_one, vector![0., 1., 0.])),
-            Joint::RevoluteJoint(RevoluteJoint::new(three_to_two, vector![0., 1., 0.])),
-            Joint::RevoluteJoint(RevoluteJoint::new(four_to_one, vector![0., 1., 0.])),
-            Joint::RevoluteJoint(RevoluteJoint::new(five_to_four, vector![0., 1., 0.])),
+            Joint::RevoluteJoint(RevoluteJoint::new(two_to_one, axis)),
+            Joint::RevoluteJoint(RevoluteJoint::new(three_to_two, axis)),
+            Joint::RevoluteJoint(RevoluteJoint::new(four_to_one, axis)),
+            Joint::RevoluteJoint(RevoluteJoint::new(five_to_four, axis)),
         ];
         let bodies = vec![
             RigidBody::new_sphere(1., 1., "1"), 

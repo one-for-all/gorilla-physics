@@ -62,6 +62,7 @@ mod energy_tests {
     use crate::PI;
     use na::Isometry;
     use na::Isometry3;
+    use na::Vector3;
     use na::{dvector, vector, Matrix3, Matrix4};
 
     use crate::joint::ToJointVelocityVec;
@@ -91,7 +92,7 @@ mod energy_tests {
 
         let rod1_to_world = Isometry3::identity();
         let rod2_to_rod1 = Isometry3::translation(0., 0., -l);
-        let axis = vector![0.0, 1.0, 0.0];
+        let axis = Vector3::y_axis();
 
         let mut state = build_double_pendulum(
             &m,
@@ -142,7 +143,7 @@ mod energy_tests {
         let moment_z = 0.0;
         let moment_pole = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
         let cross_part_pole = vector![0.0, 0.0, -l_pole * m_pole];
-        let axis_pole = vector![0.0, -1.0, 0.0];
+        let axis_pole = -Vector3::y_axis();
 
         let mut state = build_cart_pole(
             &m_cart,
@@ -151,7 +152,7 @@ mod energy_tests {
             &moment_pole,
             &cross_part_cart,
             &cross_part_pole,
-            &axis_pole,
+            axis_pole,
         );
 
         let q_init = vec![JointPosition::Float(0.0), JointPosition::Float(PI + 0.1)];

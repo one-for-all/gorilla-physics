@@ -763,10 +763,10 @@ mod dynamics_tests {
         let cross_part = vector![m * l / 2.0, 0.0, 0.0];
 
         let rod_to_world = Isometry3::identity(); // transformation from rod to world frame
-        let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
+        let axis = Vector3::y_axis(); // axis of joint rotation
 
         let mut state =
-            crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+            crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, axis);
 
         // Act
         let joint_accels = dynamics_continuous(&mut state, &vec![0.0].to_joint_torque_vec());
@@ -796,9 +796,9 @@ mod dynamics_tests {
         let cross_part = vector![m * l / 2.0, 0.0, 0.0];
 
         let rod_to_world = Isometry3::rotation(Vector3::x_axis().scale(PI / 2.0));
-        let axis = vector![0.0, 0.0, 1.0];
+        let axis = Vector3::z_axis();
 
-        let mut state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+        let mut state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, axis);
 
         // Act
         let joint_accels = dynamics_continuous(&mut state, &vec![0.0].to_joint_torque_vec());
@@ -830,9 +830,9 @@ mod dynamics_tests {
         let cross_part = vector![m * l / 2.0, 0.0, 0.0];
 
         let rod_to_world = Isometry3::new(vector![d, 0., 0.], Vector3::x_axis().scale(PI / 2.0));
-        let axis = vector![0.0, 0.0, 1.0];
+        let axis = Vector3::z_axis();
 
-        let mut state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+        let mut state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, axis);
 
         // Act
         let joint_accels = dynamics_continuous(&mut state, &vec![0.0].to_joint_torque_vec());
@@ -859,10 +859,10 @@ mod dynamics_tests {
         let cross_part = vector![m * l / 2.0, 0.0, 0.0];
 
         let rod_to_world = Isometry3::identity(); // transformation from rod to world frame
-        let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
+        let axis = Vector3::y_axis(); // axis of joint rotation
 
         let mut state =
-            crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+            crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, axis);
 
         // Act
         let torque = -m * GRAVITY * l / 2.0;
@@ -891,10 +891,10 @@ mod dynamics_tests {
         let cross_part = vector![m * l, 0., 0.];
 
         let rod_to_world = Isometry3::identity();
-        let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
+        let axis = Vector3::y_axis(); // axis of joint rotation
 
         let mut state =
-            crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+            crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, axis);
 
         // Act
         let joint_accels = dynamics_continuous(&mut state, &vec![0.0].to_joint_torque_vec());
@@ -919,7 +919,7 @@ mod dynamics_tests {
 
         let rod1_to_world = Isometry3::identity();
         let rod2_to_rod1 = Isometry3::translation(l, 0., 0.);
-        let axis = vector![0.0, 1.0, 0.0]; // axis of joint rotation
+        let axis = Vector3::y_axis(); // axis of joint rotation
 
         let treejoints = vec![
             Joint::RevoluteJoint(RevoluteJoint::new(
@@ -972,7 +972,7 @@ mod dynamics_tests {
 
         let rod1_to_world = Isometry3::identity();
         let rod2_to_rod1 = Isometry3::translation(0., 0., -l);
-        let axis = vector![0.0, 1.0, 0.0];
+        let axis = Vector3::y_axis();
 
         let mut state = build_double_pendulum(
             &m,
@@ -1080,7 +1080,7 @@ mod dynamics_tests {
         let mass_frame = "mass";
         let mass = RigidBody::new(SpatialInertia::new(moment, cross_part, m, &mass_frame));
         let mass_to_base = Transform3D::identity(&mass_frame, &base_frame);
-        let motor_axis = vector![0., 0., 1.0];
+        let motor_axis = Vector3::z_axis();
 
         let bodies = vec![base, mass];
         let treejoints = vec![

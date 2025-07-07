@@ -48,7 +48,7 @@ mod hopper_control_tests {
         let ankle_frame = "ankle";
         let ankle = RigidBody::new_sphere(m_ankle, r_ankle, &ankle_frame);
         let ankle_to_foot = Transform3D::identity(&ankle_frame, &foot_frame);
-        let ankle_axis = vector![0., -1., 0.];
+        let ankle_axis = -Vector3::y_axis();
 
         let body_frame = "body";
         let body = RigidBody::new_sphere(m_body, r_body, &body_frame);

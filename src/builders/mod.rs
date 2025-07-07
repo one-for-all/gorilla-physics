@@ -1,4 +1,4 @@
-use na::{vector, Isometry3, Matrix3, Translation3, UnitQuaternion};
+use na::{vector, Isometry3, Matrix3, Translation3, UnitQuaternion, Vector3};
 
 use crate::{
     collision::mesh::Mesh,
@@ -95,7 +95,7 @@ pub fn build_so101(base_mesh: Mesh, shoulder_mesh: Mesh) -> MechanismState {
 
     let treejoints = vec![
         Joint::FixedJoint(FixedJoint::new(base_to_world)),
-        Joint::RevoluteJoint(RevoluteJoint::new(shoulder_to_base, vector![0., 0., 1.])), // TODO: joint axis should be of unit vector type.
+        Joint::RevoluteJoint(RevoluteJoint::new(shoulder_to_base, Vector3::z_axis())), // TODO: joint axis should be of unit vector type.
     ];
     let bodies = vec![base_body, shoulder_body];
     MechanismState::new(treejoints, bodies)

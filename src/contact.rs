@@ -419,9 +419,9 @@ mod contact_tests {
         let cross_part = vector![m * l, 0., 0.];
 
         let rod_to_world = Isometry3::identity();
-        let axis = vector![0., 1., 0.];
+        let axis = Vector3::y_axis();
 
-        let mut state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, &axis);
+        let mut state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, axis);
         state.add_contact_point(ContactPoint::new("rod", vector![l, 0., 0.]));
 
         state.add_halfspace(HalfSpace::new(Vector3::z_axis(), -5.0));
@@ -811,9 +811,9 @@ mod contact_tests {
 
         let hip_to_world = Transform3D::identity(hip_frame, WORLD_FRAME);
         let left_leg_to_hip = Transform3D::identity(left_leg_frame, hip_frame);
-        let left_leg_axis = vector![0., -1., 0.];
+        let left_leg_axis = -Vector3::y_axis();
         let right_leg_to_hip = Transform3D::identity(right_leg_frame, hip_frame);
-        let right_leg_axis = vector![0., -1., 0.];
+        let right_leg_axis = -Vector3::y_axis();
         let treejoints = vec![
             Joint::FloatingJoint(FloatingJoint::new(hip_to_world)),
             Joint::RevoluteJoint(RevoluteJoint::new(left_leg_to_hip, left_leg_axis)),
