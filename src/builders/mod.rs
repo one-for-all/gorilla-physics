@@ -246,7 +246,12 @@ pub fn build_so101(
 
 #[cfg(test)]
 mod so101_tests {
-    use crate::{collision::mesh::Mesh, simulate::step, util::read_file};
+    use crate::{
+        collision::mesh::Mesh,
+        control::{so101_control::SO101PositionController, Controller},
+        simulate::step,
+        util::read_file,
+    };
 
     use super::build_so101;
 
@@ -278,16 +283,21 @@ mod so101_tests {
         );
 
         // Act
-        let dt = 1.0 / 60.0;
-        for _s in 0..1 {
+        let final_time = 0.1;
+        let dt = 1.0 / (20.0 * 60.0);
+        let num_steps = (final_time / dt) as usize;
+        let mut controller = SO101PositionController {};
+        for _s in 0..num_steps {
+            let tau = controller.control(&mut state, None);
             let (_q, _v) = step(
                 &mut state,
                 dt,
-                &vec![],
+                &tau,
                 &crate::integrators::Integrator::VelocityStepping,
             );
         }
 
         // Assert
+        println!("final q: {:#?}", state.q);
     }
 }
