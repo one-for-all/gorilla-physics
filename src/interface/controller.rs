@@ -4,6 +4,7 @@ use crate::{
         gripper_control::GripperManualController,
         pusher_control::PusherController,
         quadruped_control::{QuadrupedStandingController, QuadrupedTrottingController},
+        so101_control::SO101PositionController,
         ControlInput, Controller,
     },
     joint::JointTorque,
@@ -83,6 +84,12 @@ pub fn createPusherController() -> InterfaceController {
 #[wasm_bindgen]
 pub fn createGripperManualController() -> InterfaceController {
     let inner: Box<dyn Controller> = Box::new(GripperManualController {});
+    InterfaceController { inner }
+}
+
+#[wasm_bindgen]
+pub fn createSO101PositionController() -> InterfaceController {
+    let inner: Box<dyn Controller> = Box::new(SO101PositionController {});
     InterfaceController { inner }
 }
 

@@ -50,7 +50,8 @@ import("gorilla-physics").then((gorilla) => {
   createSO101().then((state) => {
     state.addHalfSpace(normal, h_ground);
 
-    let controller = gorilla.createNullController();
+    // let controller = gorilla.createNullController();
+    let controller = gorilla.createSO101PositionController();
     let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
     let simulator = new Simulator(interfaceSimulator);
 

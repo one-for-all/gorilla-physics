@@ -11,6 +11,7 @@ pub mod hopper_control;
 pub mod lqr;
 pub mod pusher_control;
 pub mod quadruped_control;
+pub mod so101_control;
 pub mod swingup;
 
 pub struct ControlInput {

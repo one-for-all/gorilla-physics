@@ -111,7 +111,7 @@ impl ToJointPositionVec for Vec<Float> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum JointVelocity {
     Float(Float),           // Single float-valued joint speed value
     Spatial(SpatialVector), // 3D spatial velocity of floating joint
