@@ -586,7 +586,7 @@ pub fn dynamics_discrete(
                     .expect("Failed to solve Mx = J^T λ");
             v_next
         } else {
-            v_free.clone()
+            v_free
         }
     };
 
