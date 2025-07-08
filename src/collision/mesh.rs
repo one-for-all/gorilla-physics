@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use itertools::Itertools;
-use na::{vector, Isometry3, Matrix2, Matrix2x1, Point3, UnitQuaternion, UnitVector3, Vector3};
+use na::{vector, Isometry3, Matrix2, Matrix2x1, Point3, UnitVector3, Vector3};
 
 use crate::types::Float;
 
@@ -583,7 +583,6 @@ pub fn mesh_mesh_collision(
         }
     }
 
-    // Js
     contacts
 }
 
