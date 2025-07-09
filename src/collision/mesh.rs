@@ -11,6 +11,8 @@ pub struct Mesh {
     pub base_vertices: Vec<Vector3<Float>>, // vertex positions expressed in body frame
 
     pub vertices: Vec<Vector3<Float>>, // vertex positions expressed in world frame
+    vertices_outdated: bool, // whether the vertices positions are outdated with regard to body isometry.
+
     pub faces: Vec<[usize; 3]>,
     pub edges: Vec<([usize; 2], usize, usize)>, // (edge, face A, face B). edge is consistent with A direction, opposite with B direction.
 
@@ -86,6 +88,7 @@ impl Mesh {
         Mesh {
             base_vertices: vertices.clone(),
             vertices,
+            vertices_outdated: false,
             faces: boundary_facets,
             edges: vec![],
             base_isometry: Isometry3::identity(),
@@ -105,15 +108,21 @@ impl Mesh {
         self.vertices = self.base_vertices.clone();
     }
 
-    pub fn update_isometry(&mut self, iso: &Isometry3<Float>) {
-        let transform = iso;
-
+    pub fn update_vertex_positions(&mut self) {
+        if !self.vertices_outdated {
+            return;
+        }
         self.vertices = self
             .base_vertices
             .iter()
-            .map(|v| transform.transform_point(&Point3::from(*v)).coords)
+            .map(|v| self.body_isometry.transform_point(&Point3::from(*v)).coords)
             .collect::<Vec<Vector3<Float>>>();
+        self.vertices_outdated = false;
+    }
+
+    pub fn update_isometry(&mut self, iso: &Isometry3<Float>) {
         self.body_isometry = *iso;
+        self.vertices_outdated = true;
     }
 
     /// Build the mesh from an obj file content
@@ -205,6 +214,7 @@ impl Mesh {
         Mesh {
             base_vertices: vertices.clone(),
             vertices: vertices,
+            vertices_outdated: false,
             faces: faces,
             edges: edges,
             base_isometry: Isometry3::identity(),
@@ -499,8 +509,10 @@ pub fn mesh_mesh_collision(
 ) -> Vec<(Vector3<Float>, UnitVector3<Float>)> {
     let mut contacts: Vec<(Vector3<Float>, UnitVector3<Float>)> = vec![];
 
-    // Vertices from mesh w/ faces from other mesh
+    let vertices = &mesh.vertices;
     let other_vertices = &other_mesh.vertices;
+
+    // Vertices from mesh w/ faces from other mesh
     for vertex in mesh.vertices.iter() {
         for face in other_mesh.faces.iter() {
             let face = [
@@ -518,8 +530,7 @@ pub fn mesh_mesh_collision(
     }
 
     // Vertices from other mesh w/ face from mesh
-    let vertices = &mesh.vertices;
-    for vertex in other_mesh.vertices.iter() {
+    for vertex in other_vertices.iter() {
         for face in mesh.faces.iter() {
             let face = [vertices[face[0]], vertices[face[1]], vertices[face[2]]];
             if let Some((contact_point, contact_normal)) = vertex_face_collision(vertex, &face, tol)
@@ -784,6 +795,8 @@ mod mesh_tests {
         assert_vec_close!(tetra1_velocity.angular, Vector3::<Float>::zeros(), 1e-5);
         assert_vec_close!(tetra1_velocity.linear, Vector3::<Float>::zeros(), 1e-5);
 
+        state.update_collidable_mesh_vertex_positions();
+
         let contacts = mesh_mesh_collision(
             &state.bodies[0]
                 .collider
@@ -848,6 +861,7 @@ mod mesh_tests {
         let meshA = Mesh::new_from_obj(&buf);
         let mut meshB = meshA.clone();
         meshB.update_isometry(&Isometry3::translation(l / 2.0, -l / 2.0, l / 2.0));
+        meshB.update_vertex_positions();
 
         // Act
         let contacts = mesh_mesh_collision(&meshA, &meshB, 1e-2);
@@ -867,6 +881,7 @@ mod mesh_tests {
             vector![l / 2.0, -l / 2.0, l],
             Vector3::y_axis().scale(PI / 2.0),
         ));
+        meshB.update_vertex_positions();
 
         // Act
         let contacts = mesh_mesh_collision(&meshA, &meshB, 1e-3);

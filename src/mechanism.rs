@@ -321,6 +321,26 @@ impl MechanismState {
         }
         return false;
     }
+
+    /// Updates all the collision-enabled meshes' vertex positions with regard
+    /// to their body isometries.
+    /// This is done once, to avoid unnecessary repeated updates for every
+    /// collision detection event.
+    pub fn update_collidable_mesh_vertex_positions(&mut self) {
+        for body in self.bodies.iter_mut() {
+            if let Some(collider) = &mut body.collider {
+                if !collider.enabled {
+                    continue;
+                }
+                match &mut collider.geometry {
+                    CollisionGeometry::Mesh(mesh) => {
+                        mesh.update_vertex_positions();
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
 }
 
 /// Computes the motion space of each joint, expressed in world frame.

@@ -283,7 +283,7 @@ mod so101_tests {
         );
 
         // Act
-        let final_time = 0.1;
+        let final_time = 1.0;
         let dt = 1.0 / (20.0 * 60.0);
         let num_steps = (final_time / dt) as usize;
         let mut controller = SO101PositionController {};

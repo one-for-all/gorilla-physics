@@ -464,6 +464,8 @@ pub fn dynamics_discrete(
             }
         }
 
+        state.update_collidable_mesh_vertex_positions();
+
         // Handle contacts between body colliders and half-spaces
         for (bodyid, body) in izip!(state.treejointids.iter(), state.bodies.iter()) {
             if let Some(collider) = &body.collider {
