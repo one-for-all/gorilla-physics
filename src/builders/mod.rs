@@ -339,6 +339,7 @@ mod so101_tests {
     use crate::{
         collision::mesh::Mesh,
         control::{so101_control::SO101PositionController, Controller},
+        plot::plot,
         simulate::step,
         util::read_file,
     };
@@ -381,8 +382,9 @@ mod so101_tests {
         );
 
         // Act
-        let final_time = 1.0;
-        let dt = 1.0 / (50.0 * 60.0);
+        let mut data = vec![];
+        let final_time = 2.0;
+        let dt = 1.0 / (100.0 * 60.0);
         let num_steps = (final_time / dt) as usize;
         let mut controller = SO101PositionController {};
         for _s in 0..num_steps {
@@ -393,9 +395,12 @@ mod so101_tests {
                 &tau,
                 &crate::integrators::Integrator::VelocityStepping,
             );
+
+            data.push(*state.q[5].float());
         }
 
         // Assert
+        plot(&data, final_time, dt, num_steps, "so101");
         println!("final q: {:#?}", state.q);
     }
 }
