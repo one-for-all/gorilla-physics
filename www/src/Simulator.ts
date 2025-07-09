@@ -83,15 +83,15 @@ export class Simulator {
     );
   }
 
-  addMesh(body_id: number, name: string) {
+  addMesh(body_index: number, name: string) {
     const geometry = new THREE.BufferGeometry();
-    let base_vertices = this.simulator.base_vertices(body_id);
+    let base_vertices = this.simulator.base_vertices(body_index);
     geometry.setAttribute(
       "position",
       new THREE.BufferAttribute(base_vertices, 3)
     );
 
-    let facets = this.simulator.facets(body_id);
+    let facets = this.simulator.facets(body_index);
     geometry.setIndex(new THREE.BufferAttribute(facets, 1));
     geometry.computeVertexNormals();
 
@@ -107,9 +107,9 @@ export class Simulator {
     this.graphics.scene.add(mesh);
   }
 
-  updateMesh(body_id: number, name: string) {
+  updateMesh(body_index: number, name: string) {
     let mesh = this.meshes.get(name);
-    let iso = this.simulator.isometry(body_id);
+    let iso = this.simulator.isometry(body_index);
     mesh.position.set(iso[3], iso[4], iso[5]);
     mesh.rotation.set(iso[0], iso[1], iso[2], "ZYX"); // Note: rotation is performed along local coordinate axes, so we should do ZYX order to make it match XYZ order on global axes rotation.
   }

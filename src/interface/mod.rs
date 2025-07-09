@@ -119,26 +119,26 @@ impl InterfaceSimulator {
 
     /// Get the vertices of the collider mesh on a body
     #[wasm_bindgen]
-    pub fn vertices(&self, body_id: usize) -> js_sys::Float32Array {
-        self.state.vertices(body_id)
+    pub fn vertices(&self, body_index: usize) -> js_sys::Float32Array {
+        self.state.vertices(body_index)
     }
 
     /// Get the vertices of the collider mesh on a body
     #[wasm_bindgen]
-    pub fn base_vertices(&self, body_id: usize) -> js_sys::Float32Array {
-        self.state.base_vertices(body_id)
+    pub fn base_vertices(&self, body_index: usize) -> js_sys::Float32Array {
+        self.state.base_vertices(body_index)
     }
 
     /// Get the faces of the collider mesh on a body
     #[wasm_bindgen]
-    pub fn facets(&self, body_id: usize) -> Uint32Array {
-        self.state.facets(body_id)
+    pub fn facets(&self, body_index: usize) -> Uint32Array {
+        self.state.facets(body_index)
     }
 
     /// Get the isometry of the collider mesh on a body
     #[wasm_bindgen]
-    pub fn isometry(&self, body_id: usize) -> Float32Array {
-        self.state.isometry(body_id)
+    pub fn isometry(&self, body_index: usize) -> Float32Array {
+        self.state.isometry(body_index)
     }
 }
 
@@ -230,11 +230,11 @@ impl InterfaceMechanismState {
 
     /// Get the vertices of the collider mesh on a body
     #[wasm_bindgen]
-    pub fn vertices(&self, body_id: usize) -> Float32Array {
-        let vertices = &self.inner.bodies[body_id]
+    pub fn vertices(&self, body_index: usize) -> Float32Array {
+        let vertices = &self.inner.bodies[body_index]
             .collider
             .as_ref()
-            .expect(&format!("body {} should have mesh", body_id))
+            .expect(&format!("body {} should have mesh", body_index))
             .geometry
             .mesh()
             .vertices;
@@ -247,11 +247,11 @@ impl InterfaceMechanismState {
 
     /// Get the base vertices of the collider mesh on a body
     #[wasm_bindgen]
-    pub fn base_vertices(&self, body_id: usize) -> Float32Array {
-        let vertices = &self.inner.bodies[body_id]
+    pub fn base_vertices(&self, body_index: usize) -> Float32Array {
+        let vertices = &self.inner.bodies[body_index]
             .collider
             .as_ref()
-            .expect(&format!("body {} should have mesh", body_id))
+            .expect(&format!("body {} should have mesh", body_index))
             .geometry
             .mesh()
             .base_vertices;
@@ -264,11 +264,11 @@ impl InterfaceMechanismState {
 
     /// Get the vertices of the collider mesh on a body
     #[wasm_bindgen]
-    pub fn facets(&self, body_id: usize) -> Uint32Array {
-        let facets = &self.inner.bodies[body_id]
+    pub fn facets(&self, body_index: usize) -> Uint32Array {
+        let facets = &self.inner.bodies[body_index]
             .collider
             .as_ref()
-            .expect(&format!("body {} should have mesh", body_id))
+            .expect(&format!("body {} should have mesh", body_index))
             .geometry
             .mesh()
             .faces;
@@ -283,11 +283,11 @@ impl InterfaceMechanismState {
 
     /// Get the isometry of the collider mesh on a body
     #[wasm_bindgen]
-    pub fn isometry(&self, body_id: usize) -> Float32Array {
-        let iso = &self.inner.bodies[body_id]
+    pub fn isometry(&self, body_index: usize) -> Float32Array {
+        let iso = &self.inner.bodies[body_index]
             .collider
             .as_ref()
-            .expect(&format!("body {} should have mesh", body_id))
+            .expect(&format!("body {} should have mesh", body_index))
             .geometry
             .mesh()
             .body_isometry;
