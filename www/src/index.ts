@@ -60,7 +60,15 @@ import("gorilla-physics").then((gorilla) => {
     simulator.addMesh(2, "mesh2");
     simulator.addMesh(3, "mesh3");
     simulator.addMesh(4, "mesh4");
+    simulator.addMesh(5, "gripper");
     simulator.addPlane(normal, h_ground, 100);
+
+    // simulator.updateMesh(0, "mesh0");
+    // simulator.updateMesh(1, "mesh1");
+    // simulator.updateMesh(2, "mesh2");
+    // simulator.updateMesh(3, "mesh3");
+    // simulator.updateMesh(4, "mesh4");
+    // simulator.updateMesh(5, "gripper");
 
     // Important: Set initial camera position
     let cameraPosition = {

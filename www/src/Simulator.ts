@@ -697,6 +697,7 @@ export class Simulator {
     this.updateMesh(2, "mesh2");
     this.updateMesh(3, "mesh3");
     this.updateMesh(4, "mesh4");
+    this.updateMesh(5, "gripper");
 
     // let contact_positions = this.simulator.contact_positions();
     // this.updateQuadruped(poses, contact_positions);
