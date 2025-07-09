@@ -208,6 +208,39 @@ fn build_so101_gripper_body(mut mesh: Mesh, frame: &str) -> RigidBody {
     RigidBody::new_mesh(mesh, spatial_inertia, false)
 }
 
+fn build_so101_jaw_body(mut mesh: Mesh, frame: &str) -> RigidBody {
+    let m = 0.012;
+    let com = vector![-0.00157495, -0.0300244, 0.0192755];
+    let ixx = 6.61427e-06;
+    let ixy = -3.19807e-07;
+    let ixz = -5.90717e-09;
+    let iyy = 1.89032e-06;
+    let iyz = -1.09945e-07;
+    let izz = 5.28738e-06;
+
+    // inertia moment matrix about the center-of-mass
+    #[rustfmt::skip]
+    let moment_com = Matrix3::new(
+        ixx, ixy, ixz, 
+        ixy, iyy, iyz, 
+        ixz, iyz, izz
+    );
+
+    let moment =
+        moment_com + m * (com.norm_squared() * Matrix3::identity() - com * com.transpose());
+    let cross_part = m * com;
+    let spatial_inertia = SpatialInertia::new(moment, cross_part, m, frame);
+
+    // Update mesh initial pose relative to body frame
+    let iso = Isometry3::from_parts(
+        Translation3::new(-5.55112e-17, -5.55112e-17, 0.0189),
+        UnitQuaternion::from_euler_angles(9.53145e-17, 6.93889e-18, 1.24077e-24),
+    );
+    mesh.update_base_isometry(&iso);
+
+    RigidBody::new_mesh(mesh, spatial_inertia, false)
+}
+
 /// Build SO-Arm 101 from its URDF description
 /// Ref: https://github.com/TheRobotStudio/SO-ARM100/blob/main/Simulation/SO101/so101_new_calib.urdf
 pub fn build_so101(
@@ -217,6 +250,7 @@ pub fn build_so101(
     lower_arm_mesh: Mesh,
     wrist_mesh: Mesh,
     gripper_mesh: Mesh,
+    jaw_mesh: Mesh,
 ) -> MechanismState {
     let base_frame = "base";
     let base_body = build_so101_base_body(base_mesh, base_frame);
@@ -267,6 +301,15 @@ pub fn build_so101(
         &vec![1.5708, 0.0486795, 3.14159],
     );
 
+    let jaw_frame = "jaw";
+    let jaw_body = build_so101_jaw_body(jaw_mesh, jaw_frame);
+    let jaw_to_gripper = Transform3D::new_xyz_rpy(
+        jaw_frame,
+        gripper_frame,
+        &vec![0.0202, 0.0188, -0.0234],
+        &vec![1.5708, -5.24284e-08, -1.41553e-15],
+    );
+
     let treejoints = vec![
         Joint::FixedJoint(FixedJoint::new(base_to_world)),
         Joint::RevoluteJoint(RevoluteJoint::new(shoulder_to_base, Vector3::z_axis())),
@@ -277,6 +320,7 @@ pub fn build_so101(
         )),
         Joint::RevoluteJoint(RevoluteJoint::new(wrist_to_lower_arm, Vector3::z_axis())),
         Joint::RevoluteJoint(RevoluteJoint::new(gripper_to_wrist, Vector3::z_axis())),
+        Joint::RevoluteJoint(RevoluteJoint::new(jaw_to_gripper, Vector3::z_axis())),
     ];
     let bodies = vec![
         base_body,
@@ -285,6 +329,7 @@ pub fn build_so101(
         lower_arm_body,
         wrist_body,
         gripper_body,
+        jaw_body,
     ];
     MechanismState::new(treejoints, bodies)
 }
@@ -301,7 +346,7 @@ mod so101_tests {
     use super::build_so101;
 
     #[test]
-    #[ignore] // TODO: complete this test
+    // #[ignore] // TODO: complete this test
     fn so101() {
         // Arrange
         let base_buf = read_file("data/so101/base_so101_v2.obj");
@@ -322,6 +367,9 @@ mod so101_tests {
         let gripper_buf = read_file("data/so101/wrist_roll_follower_so101_v1.obj");
         let gripper_mesh = Mesh::new_from_obj(&gripper_buf);
 
+        let jaw_buf = read_file("data/so101/moving_jaw_so101_v1.obj");
+        let jaw_mesh = Mesh::new_from_obj(&jaw_buf);
+
         let mut state = build_so101(
             base_mesh,
             shoulder_mesh,
@@ -329,11 +377,12 @@ mod so101_tests {
             lower_arm_mesh,
             wrist_mesh,
             gripper_mesh,
+            jaw_mesh,
         );
 
         // Act
         let final_time = 1.0;
-        let dt = 1.0 / (20.0 * 60.0);
+        let dt = 1.0 / (50.0 * 60.0);
         let num_steps = (final_time / dt) as usize;
         let mut controller = SO101PositionController {};
         for _s in 0..num_steps {

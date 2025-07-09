@@ -153,6 +153,9 @@ pub async fn createSO101() -> InterfaceMechanismState {
     let gripper_buf = read_web_file("so101/wrist_roll_follower_so101_v1.obj").await;
     let gripper_mesh = Mesh::new_from_obj(&gripper_buf);
 
+    let jaw_buf = read_web_file("so101/moving_jaw_so101_v1.obj").await;
+    let jaw_mesh = Mesh::new_from_obj(&jaw_buf);
+
     let state = build_so101(
         base_mesh,
         shoulder_mesh,
@@ -160,6 +163,7 @@ pub async fn createSO101() -> InterfaceMechanismState {
         lower_arm_mesh,
         wrist_mesh,
         gripper_mesh,
+        jaw_mesh,
     );
 
     InterfaceMechanismState { inner: state }
