@@ -1,5 +1,6 @@
 use crate::contact::ContactPoint;
 use crate::control::ControlInput;
+use crate::flog;
 use crate::integrators::Integrator;
 use crate::joint::floating::FloatingJoint;
 use crate::joint::JointVelocity;
@@ -122,10 +123,22 @@ impl InterfaceSimulator {
         self.state.vertices(body_id)
     }
 
+    /// Get the vertices of the collider mesh on a body
+    #[wasm_bindgen]
+    pub fn base_vertices(&self, body_id: usize) -> js_sys::Float32Array {
+        self.state.base_vertices(body_id)
+    }
+
     /// Get the faces of the collider mesh on a body
     #[wasm_bindgen]
     pub fn facets(&self, body_id: usize) -> Uint32Array {
         self.state.facets(body_id)
+    }
+
+    /// Get the isometry of the collider mesh on a body
+    #[wasm_bindgen]
+    pub fn isometry(&self, body_id: usize) -> Float32Array {
+        self.state.isometry(body_id)
     }
 }
 
@@ -232,6 +245,23 @@ impl InterfaceMechanismState {
         Float32Array::from(q.as_slice().to_vec().as_slice())
     }
 
+    /// Get the base vertices of the collider mesh on a body
+    #[wasm_bindgen]
+    pub fn base_vertices(&self, body_id: usize) -> Float32Array {
+        let vertices = &self.inner.bodies[body_id]
+            .collider
+            .as_ref()
+            .expect(&format!("body {} should have mesh", body_id))
+            .geometry
+            .mesh()
+            .base_vertices;
+        let q = DVector::from_iterator(
+            vertices.len() * 3,
+            vertices.iter().flat_map(|v| v.iter().copied()),
+        );
+        Float32Array::from(q.as_slice().to_vec().as_slice())
+    }
+
     /// Get the vertices of the collider mesh on a body
     #[wasm_bindgen]
     pub fn facets(&self, body_id: usize) -> Uint32Array {
@@ -248,6 +278,34 @@ impl InterfaceMechanismState {
                 .flat_map(|f| [f[0] as u32, f[1] as u32, f[2] as u32])
                 .collect::<Vec<u32>>()
                 .as_slice(),
+        )
+    }
+
+    /// Get the isometry of the collider mesh on a body
+    #[wasm_bindgen]
+    pub fn isometry(&self, body_id: usize) -> Float32Array {
+        let iso = &self.inner.bodies[body_id]
+            .collider
+            .as_ref()
+            .expect(&format!("body {} should have mesh", body_id))
+            .geometry
+            .mesh()
+            .body_isometry;
+
+        let rotation = iso.rotation;
+        let translation = iso.translation.vector;
+        let euler = rotation.euler_angles(); // TODO: use a more stable representation? to avoid jumping effects.
+
+        Float32Array::from(
+            vec![
+                euler.0,
+                euler.1,
+                euler.2,
+                translation[0],
+                translation[1],
+                translation[2],
+            ]
+            .as_slice(),
         )
     }
 }

@@ -85,8 +85,11 @@ export class Simulator {
 
   addMesh(body_id: number, name: string) {
     const geometry = new THREE.BufferGeometry();
-    let vertices = this.simulator.vertices(body_id);
-    geometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
+    let base_vertices = this.simulator.base_vertices(body_id);
+    geometry.setAttribute(
+      "position",
+      new THREE.BufferAttribute(base_vertices, 3)
+    );
 
     let facets = this.simulator.facets(body_id);
     geometry.setIndex(new THREE.BufferAttribute(facets, 1));
@@ -106,11 +109,9 @@ export class Simulator {
 
   updateMesh(body_id: number, name: string) {
     let mesh = this.meshes.get(name);
-    let vertices = this.simulator.vertices(body_id);
-    mesh.geometry.setAttribute(
-      "position",
-      new THREE.BufferAttribute(vertices, 3)
-    );
+    let iso = this.simulator.isometry(body_id);
+    mesh.position.set(iso[3], iso[4], iso[5]);
+    mesh.rotation.set(iso[0], iso[1], iso[2], "ZYX"); // Note: rotation is performed along local coordinate axes, so we should do ZYX order to make it match XYZ order on global axes rotation.
   }
 
   addBox(name: string, color: number, w: number, d: number, h: number) {
