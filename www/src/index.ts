@@ -50,8 +50,8 @@ import("gorilla-physics").then((gorilla) => {
   createBalancingBot().then((state) => {
     state.addHalfSpace(normal, h_ground);
 
-    let controller = gorilla.createNullController();
-    // let controller = gorilla.createNavbotController();
+    // let controller = gorilla.createNullController();
+    let controller = gorilla.createBalancingBotController();
     let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
     let simulator = new Simulator(interfaceSimulator);
 
@@ -78,7 +78,7 @@ import("gorilla-physics").then((gorilla) => {
 
     // Important: Set initial camera position
     let cameraPosition = {
-      eye: { x: 0.0, y: -0.2, z: 0.2 },
+      eye: { x: -0.2, y: -0.0, z: 0.2 },
       target: { x: 0.0, y: 0, z: 0.0 },
     };
     simulator.graphics.lookAt(cameraPosition);

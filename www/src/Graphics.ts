@@ -33,7 +33,7 @@ export class Graphics {
     this.light = new THREE.PointLight(0xffffff, 1, 1000);
     this.scene.add(this.light);
 
-    const gridHelper = new THREE.GridHelper(50, 50, 0xff0000, 0x0000ff); // Red center line, blue grid lines
+    const gridHelper = new THREE.GridHelper(50, 500, 0xff0000, 0x0000ff); // Red center line, blue grid lines
     gridHelper.rotateOnAxis(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
     this.scene.add(gridHelper);
 

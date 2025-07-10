@@ -47,7 +47,8 @@ pub fn build_balancing_bot() -> MechanismState {
     let w_body = 0.06;
     let d_body = 0.05;
     let h_body = 0.025;
-    let mut body = RigidBody::new_cuboid(0.1, w_body, d_body, h_body, body_frame);
+    let m_body = 0.5;
+    let mut body = RigidBody::new_cuboid(m_body, w_body, d_body, h_body, body_frame);
     body.add_cuboid_contacts(w_body, d_body, h_body);
 
     let body_to_world = Transform3D::identity(body_frame, WORLD_FRAME);
