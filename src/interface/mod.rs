@@ -46,6 +46,7 @@ pub mod fem_deformable;
 pub mod hopper;
 pub mod mass_spring_deformable;
 pub mod mesh;
+pub mod navbot;
 pub mod pendulum;
 pub mod quadruped;
 pub mod rimless_wheel;

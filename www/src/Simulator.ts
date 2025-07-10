@@ -692,13 +692,13 @@ export class Simulator {
     // }
 
     // let poses = this.simulator.poses();
-    this.updateMesh(0, "mesh0");
-    this.updateMesh(1, "mesh1");
-    this.updateMesh(2, "mesh2");
-    this.updateMesh(3, "mesh3");
-    this.updateMesh(4, "mesh4");
-    this.updateMesh(5, "gripper");
-    this.updateMesh(6, "jaw");
+    // this.updateMesh(0, "mesh0");
+    // this.updateMesh(1, "mesh1");
+    // this.updateMesh(2, "mesh2");
+    // this.updateMesh(3, "mesh3");
+    // this.updateMesh(4, "mesh4");
+    // this.updateMesh(5, "gripper");
+    // this.updateMesh(6, "jaw");
 
     // let contact_positions = this.simulator.contact_positions();
     // this.updateQuadruped(poses, contact_positions);

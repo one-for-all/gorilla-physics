@@ -10,6 +10,8 @@ use crate::{
     WORLD_FRAME,
 };
 
+pub mod navbot;
+
 fn build_so101_base_body(mut mesh: Mesh, frame: &str) -> RigidBody {
     let m = 0.147;
     let com = vector![0.0137179, -5.19711e-05, 0.0334843];

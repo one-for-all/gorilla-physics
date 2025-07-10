@@ -1,4 +1,4 @@
-import { createSO101 } from "gorilla-physics";
+import { createNavbotMotor } from "gorilla-physics";
 import { Simulator } from "./Simulator";
 
 export const keysPressed: Record<string, boolean> = {};
@@ -47,7 +47,7 @@ import("gorilla-physics").then((gorilla) => {
   // simulator.addQuadruped();
   // simulator.addPlane(normal, h_ground, 100);
 
-  createSO101().then((state) => {
+  createNavbotMotor().then((state) => {
     state.addHalfSpace(normal, h_ground);
 
     // let controller = gorilla.createNullController();
@@ -56,15 +56,15 @@ import("gorilla-physics").then((gorilla) => {
     let simulator = new Simulator(interfaceSimulator);
 
     simulator.addMesh(0, "mesh0");
-    simulator.addMesh(1, "mesh1");
-    simulator.addMesh(2, "mesh2");
-    simulator.addMesh(3, "mesh3");
-    simulator.addMesh(4, "mesh4");
-    simulator.addMesh(5, "gripper");
-    simulator.addMesh(6, "jaw");
+    // simulator.addMesh(1, "mesh1");
+    // simulator.addMesh(2, "mesh2");
+    // simulator.addMesh(3, "mesh3");
+    // simulator.addMesh(4, "mesh4");
+    // simulator.addMesh(5, "gripper");
+    // simulator.addMesh(6, "jaw");
     simulator.addPlane(normal, h_ground, 100);
 
-    // simulator.updateMesh(0, "mesh0");
+    simulator.updateMesh(0, "mesh0");
     // simulator.updateMesh(1, "mesh1");
     // simulator.updateMesh(2, "mesh2");
     // simulator.updateMesh(3, "mesh3");
@@ -74,7 +74,7 @@ import("gorilla-physics").then((gorilla) => {
 
     // Important: Set initial camera position
     let cameraPosition = {
-      eye: { x: 0.0, y: -0.5, z: 0.5 },
+      eye: { x: 0.0, y: -0.2, z: 0.2 },
       target: { x: 0.0, y: 0, z: 0.0 },
     };
     simulator.graphics.lookAt(cameraPosition);
