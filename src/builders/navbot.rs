@@ -1,11 +1,11 @@
-use na::{vector, Matrix3, Vector, Vector3};
+use na::{vector, Matrix3};
 
 use crate::{
-    collision::mesh::Mesh,
+    collision::{mesh::Mesh, sphere::Sphere},
     inertia::SpatialInertia,
-    joint::{revolute::RevoluteJoint, Joint},
+    joint::{floating::FloatingJoint, Joint},
     mechanism::MechanismState,
-    rigid_body::RigidBody,
+    rigid_body::{Collider, RigidBody},
     spatial::transform::Transform3D,
     WORLD_FRAME,
 };
@@ -23,20 +23,18 @@ fn build_navbot_motor_body(mesh: Mesh, frame: &str) -> RigidBody {
     let cross_part = vector![0., 0., 0.];
     let spatial_inertia = SpatialInertia::new(moment, cross_part, m, frame);
 
-    RigidBody::new_mesh(mesh, spatial_inertia, false)
+    let collider = Collider::new_sphere(Sphere::new(r));
+
+    RigidBody::new_collider_and_visual(collider, mesh, spatial_inertia)
 }
 
 pub fn build_navbot_motor(mesh: Mesh) -> MechanismState {
     let frame = "motor";
     let body = build_navbot_motor_body(mesh, frame);
 
-    // let body_to_world = Transform3D::identity(frame, WORLD_FRAME);
-    let body_to_world = Transform3D::move_z(frame, WORLD_FRAME, 0.03);
+    let body_to_world = Transform3D::identity(frame, WORLD_FRAME);
 
-    let treejoints = vec![Joint::RevoluteJoint(RevoluteJoint::new(
-        body_to_world,
-        Vector3::y_axis(),
-    ))];
+    let treejoints = vec![Joint::FloatingJoint(FloatingJoint::new(body_to_world))];
     let bodies = vec![body];
     MechanismState::new(treejoints, bodies)
 }

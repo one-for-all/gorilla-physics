@@ -9,6 +9,7 @@ pub mod energy_control;
 pub mod gripper_control;
 pub mod hopper_control;
 pub mod lqr;
+pub mod navbot_conrol;
 pub mod pusher_control;
 pub mod quadruped_control;
 pub mod so101_control;

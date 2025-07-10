@@ -2,6 +2,7 @@ use crate::{
     control::{
         energy_control::{Hopper1DController, Hopper2DController},
         gripper_control::GripperManualController,
+        navbot_conrol::NavbotController,
         pusher_control::PusherController,
         quadruped_control::{QuadrupedStandingController, QuadrupedTrottingController},
         so101_control::SO101PositionController,
@@ -90,6 +91,12 @@ pub fn createGripperManualController() -> InterfaceController {
 #[wasm_bindgen]
 pub fn createSO101PositionController() -> InterfaceController {
     let inner: Box<dyn Controller> = Box::new(SO101PositionController {});
+    InterfaceController { inner }
+}
+
+#[wasm_bindgen]
+pub fn createNavbotController() -> InterfaceController {
+    let inner: Box<dyn Controller> = Box::new(NavbotController {});
     InterfaceController { inner }
 }
 
