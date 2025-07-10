@@ -84,7 +84,7 @@ impl InterfaceSimulator {
     pub fn step(&mut self, dt: Float, control_input: Vec<Float>) -> js_sys::Float32Array {
         let input = ControlInput::new(control_input);
 
-        let n_substep = 100;
+        let n_substep = 50;
         let mut q = vec![];
         for _ in 0..n_substep {
             let torque = self

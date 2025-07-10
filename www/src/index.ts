@@ -1,4 +1,4 @@
-import { createNavbotMotor } from "gorilla-physics";
+import { createBalancingBot } from "gorilla-physics";
 import { Simulator } from "./Simulator";
 
 export const keysPressed: Record<string, boolean> = {};
@@ -47,15 +47,19 @@ import("gorilla-physics").then((gorilla) => {
   // simulator.addQuadruped();
   // simulator.addPlane(normal, h_ground, 100);
 
-  createNavbotMotor().then((state) => {
+  createBalancingBot().then((state) => {
     state.addHalfSpace(normal, h_ground);
 
-    // let controller = gorilla.createNullController();
-    let controller = gorilla.createNavbotController();
+    let controller = gorilla.createNullController();
+    // let controller = gorilla.createNavbotController();
     let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
     let simulator = new Simulator(interfaceSimulator);
 
-    simulator.addMesh(0, "mesh0");
+    simulator.addCuboid("body", 0xff0000, 0.06, 0.05, 0.025);
+    simulator.addSphere("wheel_left", 0x00ff00, 0.02);
+    simulator.addSphere("wheel_right", 0x00ff00, 0.02);
+
+    // simulator.addMesh(0, "mesh0");
     // simulator.addMesh(1, "mesh1");
     // simulator.addMesh(2, "mesh2");
     // simulator.addMesh(3, "mesh3");
@@ -64,7 +68,7 @@ import("gorilla-physics").then((gorilla) => {
     // simulator.addMesh(6, "jaw");
     simulator.addPlane(normal, h_ground, 100);
 
-    simulator.updateMesh(0, "mesh0");
+    // simulator.updateMesh(0, "mesh0");
     // simulator.updateMesh(1, "mesh1");
     // simulator.updateMesh(2, "mesh2");
     // simulator.updateMesh(3, "mesh3");

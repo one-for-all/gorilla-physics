@@ -157,6 +157,42 @@ impl RigidBody {
         self.contact_points.push(contact_point);
     }
 
+    /// Add contact points on the 8 corners of a cuboid
+    pub fn add_cuboid_contacts(&mut self, w: Float, d: Float, h: Float) {
+        let frame = self.inertia.frame.clone();
+        let frame = frame.as_str();
+        self.add_contact_point(ContactPoint::new(
+            frame,
+            vector![-w / 2.0, d / 2.0, h / 2.0],
+        ));
+        self.add_contact_point(ContactPoint::new(frame, vector![w / 2.0, d / 2.0, h / 2.0]));
+        self.add_contact_point(ContactPoint::new(
+            frame,
+            vector![-w / 2.0, -d / 2.0, h / 2.0],
+        ));
+        self.add_contact_point(ContactPoint::new(
+            frame,
+            vector![w / 2.0, -d / 2.0, h / 2.0],
+        ));
+
+        self.add_contact_point(ContactPoint::new(
+            frame,
+            vector![-w / 2.0, d / 2.0, -h / 2.0],
+        ));
+        self.add_contact_point(ContactPoint::new(
+            frame,
+            vector![w / 2.0, d / 2.0, -h / 2.0],
+        ));
+        self.add_contact_point(ContactPoint::new(
+            frame,
+            vector![-w / 2.0, -d / 2.0, -h / 2.0],
+        ));
+        self.add_contact_point(ContactPoint::new(
+            frame,
+            vector![w / 2.0, -d / 2.0, -h / 2.0],
+        ));
+    }
+
     pub fn add_spring_contact(&mut self, spring_contact: &SpringContact) {
         if self.inertia.frame != spring_contact.frame {
             panic!(

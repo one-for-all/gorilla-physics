@@ -1,9 +1,12 @@
-use na::{vector, Matrix3};
+use std::iter::Rev;
+
+use na::{vector, Matrix3, Vector3};
 
 use crate::{
     collision::{mesh::Mesh, sphere::Sphere},
+    contact::ContactPoint,
     inertia::SpatialInertia,
-    joint::{floating::FloatingJoint, Joint},
+    joint::{floating::FloatingJoint, revolute::RevoluteJoint, Joint},
     mechanism::MechanismState,
     rigid_body::{Collider, RigidBody},
     spatial::transform::Transform3D,
@@ -36,5 +39,37 @@ pub fn build_navbot_motor(mesh: Mesh) -> MechanismState {
 
     let treejoints = vec![Joint::FloatingJoint(FloatingJoint::new(body_to_world))];
     let bodies = vec![body];
+    MechanismState::new(treejoints, bodies)
+}
+
+pub fn build_balancing_bot() -> MechanismState {
+    let body_frame = "body";
+    let w_body = 0.06;
+    let d_body = 0.05;
+    let h_body = 0.025;
+    let mut body = RigidBody::new_cuboid(0.1, w_body, d_body, h_body, body_frame);
+    body.add_cuboid_contacts(w_body, d_body, h_body);
+
+    let body_to_world = Transform3D::identity(body_frame, WORLD_FRAME);
+
+    let m_wheel = 0.05;
+    let r_wheel = 0.02;
+    let h_offset = -2.0 * h_body;
+    let wheel_left_frame = "wheel_left";
+    let wheel_left = RigidBody::new_sphere(m_wheel, r_wheel, wheel_left_frame);
+    let wheel_left_to_body =
+        Transform3D::move_xyz(wheel_left_frame, body_frame, -w_body / 2.0, 0., h_offset);
+
+    let wheel_right_frame = "wheel_right";
+    let wheel_right = RigidBody::new_sphere(m_wheel, r_wheel, wheel_right_frame);
+    let wheel_right_to_body =
+        Transform3D::move_xyz(wheel_right_frame, body_frame, w_body / 2.0, 0., h_offset);
+
+    let treejoints = vec![
+        Joint::FloatingJoint(FloatingJoint::new(body_to_world)),
+        Joint::RevoluteJoint(RevoluteJoint::new(wheel_left_to_body, Vector3::x_axis())),
+        Joint::RevoluteJoint(RevoluteJoint::new(wheel_right_to_body, Vector3::x_axis())),
+    ];
+    let bodies = vec![body, wheel_left, wheel_right];
     MechanismState::new(treejoints, bodies)
 }

@@ -114,9 +114,13 @@ export class Simulator {
     mesh.rotation.set(iso[0], iso[1], iso[2], "ZYX"); // Note: rotation is performed along local coordinate axes, so we should do ZYX order to make it match XYZ order on global axes rotation.
   }
 
-  addBox(name: string, color: number, w: number, d: number, h: number) {
+  addCuboid(name: string, color: number, w: number, d: number, h: number) {
     const geometry = new THREE.BoxGeometry(w, d, h);
-    const material = new THREE.MeshBasicMaterial({ color: color });
+    const material = new THREE.MeshPhongMaterial({
+      color: color,
+      side: THREE.DoubleSide, // Render both sides of faces
+      flatShading: true,
+    });
     const box = new THREE.Mesh(geometry, material);
     this.meshes.set(name, box);
     this.graphics.scene.add(box);
@@ -130,7 +134,11 @@ export class Simulator {
 
   addSphere(name: string, color: number, radius: number) {
     const geometry = new THREE.SphereGeometry(radius, 32, 32);
-    const material = new THREE.MeshBasicMaterial({ color: color });
+    const material = new THREE.MeshPhongMaterial({
+      color: color,
+      side: THREE.DoubleSide, // Render both sides of faces
+      flatShading: true,
+    });
     const sphere = new THREE.Mesh(geometry, material);
     this.meshes.set(name, sphere);
     this.graphics.scene.add(sphere);
@@ -153,12 +161,12 @@ export class Simulator {
     let pos = [poses[3], poses[4], poses[5]];
 
     let body = this.meshes.get(name);
-    body.rotation.set(euler[0], euler[1], euler[2]);
+    body.rotation.set(euler[0], euler[1], euler[2], "ZYX");
     body.position.set(pos[0], pos[1], pos[2]);
 
     let edges = this.edgesMeshes.get(name);
     if (edges) {
-      edges.rotation.set(euler[0], euler[1], euler[2]);
+      edges.rotation.set(euler[0], euler[1], euler[2], "ZYX");
       edges.position.set(pos[0], pos[1], pos[2]);
     }
   }
@@ -299,8 +307,8 @@ export class Simulator {
 
   addCompassGait() {
     this.addSphere("hip", 0xff0000, 0.3);
-    this.addBox("left leg", 0x00ff00, 0.1, 0.1, 2.0);
-    this.addBox("right leg", 0x00ff00, 0.1, 0.1, 2.0);
+    this.addCuboid("left leg", 0x00ff00, 0.1, 0.1, 2.0);
+    this.addCuboid("right leg", 0x00ff00, 0.1, 0.1, 2.0);
   }
 
   addAcuatedAnkleHopper() {
@@ -310,23 +318,23 @@ export class Simulator {
   }
 
   addAcuatedHipHopper() {
-    this.addBox("foot", 0xffffff, 0.2, 0.2, 0.2);
+    this.addCuboid("foot", 0xffffff, 0.2, 0.2, 0.2);
     this.addSphere("hip", 0x000000, 0.05);
-    this.addBox("body", 0x00ff00, 0.2, 0.2, 0.2);
+    this.addCuboid("body", 0x00ff00, 0.2, 0.2, 0.2);
   }
 
   addQuadruped() {
     let l_hip = 0.2;
     let l_knee = 0.2;
-    this.addBox("body", 0xffffff, 1.5, 0.5, 0.5);
-    this.addBox("fr_hip", 0xff0000, l_hip, l_hip, l_hip);
-    this.addBox("fr_knee", 0x00ff00, l_knee, l_knee, l_knee);
-    this.addBox("fl_hip", 0xff0000, l_hip, l_hip, l_hip);
-    this.addBox("fl_knee", 0x00ff00, l_knee, l_knee, l_knee);
-    this.addBox("br_hip", 0xff0000, l_hip, l_hip, l_hip);
-    this.addBox("br_knee", 0x00ff00, l_knee, l_knee, l_knee);
-    this.addBox("bl_hip", 0xff0000, l_hip, l_hip, l_hip);
-    this.addBox("bl_knee", 0x00ff00, l_knee, l_knee, l_knee);
+    this.addCuboid("body", 0xffffff, 1.5, 0.5, 0.5);
+    this.addCuboid("fr_hip", 0xff0000, l_hip, l_hip, l_hip);
+    this.addCuboid("fr_knee", 0x00ff00, l_knee, l_knee, l_knee);
+    this.addCuboid("fl_hip", 0xff0000, l_hip, l_hip, l_hip);
+    this.addCuboid("fl_knee", 0x00ff00, l_knee, l_knee, l_knee);
+    this.addCuboid("br_hip", 0xff0000, l_hip, l_hip, l_hip);
+    this.addCuboid("br_knee", 0x00ff00, l_knee, l_knee, l_knee);
+    this.addCuboid("bl_hip", 0xff0000, l_hip, l_hip, l_hip);
+    this.addCuboid("bl_knee", 0x00ff00, l_knee, l_knee, l_knee);
 
     let radius_foot = 0.1;
     for (let i = 0; i < 12; i++) {
@@ -339,16 +347,16 @@ export class Simulator {
   }
 
   addPusher() {
-    this.addBox("extension", 0xffffff, 0.5, 0.5, 0.5);
-    this.addBox("lift", 0xff0000, 0.2, 0.2, 1.75);
-    this.addBox("cube", 0x00ff00, 0.5, 0.5, 0.5);
+    this.addCuboid("extension", 0xffffff, 0.5, 0.5, 0.5);
+    this.addCuboid("lift", 0xff0000, 0.2, 0.2, 1.75);
+    this.addCuboid("cube", 0x00ff00, 0.5, 0.5, 0.5);
   }
 
   addGripper() {
-    this.addBox("lift", 0xff0000, 0.2, 0.2, 1.0);
-    this.addBox("gripper_left", 0x00ff00, 0.1, 0.4, 0.4);
-    this.addBox("gripper_right", 0x00ff00, 0.1, 0.4, 0.4);
-    this.addBox("cube", 0x0000ff, 0.5, 0.5, 0.5);
+    this.addCuboid("lift", 0xff0000, 0.2, 0.2, 1.0);
+    this.addCuboid("gripper_left", 0x00ff00, 0.1, 0.4, 0.4);
+    this.addCuboid("gripper_right", 0x00ff00, 0.1, 0.4, 0.4);
+    this.addCuboid("cube", 0x0000ff, 0.5, 0.5, 0.5);
   }
 
   add1DHopper(w_body: number, h_body: number, r_leg: number, r_foot: number) {
@@ -378,11 +386,11 @@ export class Simulator {
     r_piston: number,
     l_leg: number
   ) {
-    this.addBox("hopper_body", 0x00ff00, w_body, w_body, h_body);
+    this.addCuboid("hopper_body", 0x00ff00, w_body, w_body, h_body);
     this.addSphere("hopper_hip", 0xff0000, r_hip);
     this.addLine("hopper_body_hip_line", 0xff0000, 3);
     this.addSphere("hopper_piston", 0xffffff, r_piston);
-    this.addBox("hopper_leg", 0x0000ff, 0.1, 0.1, l_leg);
+    this.addCuboid("hopper_leg", 0x0000ff, 0.1, 0.1, l_leg);
   }
 
   updateRodPose(angle: number) {
@@ -635,6 +643,17 @@ export class Simulator {
     this.setPose("hopper_leg", legPose);
   }
 
+  updateBalancingBotPose(poses: Float32Array) {
+    let bodyPose = poses.subarray(0, 6);
+    this.setPose("body", bodyPose);
+
+    let wheelLeftPose = poses.subarray(6, 12);
+    this.setPose("wheel_left", wheelLeftPose);
+
+    let wheelRightPose = poses.subarray(12, 18);
+    this.setPose("wheel_right", wheelRightPose);
+  }
+
   async run(timestamp?: number) {
     this.graphics.render();
 
@@ -691,14 +710,16 @@ export class Simulator {
     //   this.time += dt;
     // }
 
-    // let poses = this.simulator.poses();
-    this.updateMesh(0, "mesh0");
+    // this.updateMesh(0, "mesh0");
     // this.updateMesh(1, "mesh1");
     // this.updateMesh(2, "mesh2");
     // this.updateMesh(3, "mesh3");
     // this.updateMesh(4, "mesh4");
     // this.updateMesh(5, "gripper");
     // this.updateMesh(6, "jaw");
+
+    let poses = this.simulator.poses();
+    this.updateBalancingBotPose(poses);
 
     // let contact_positions = this.simulator.contact_positions();
     // this.updateQuadruped(poses, contact_positions);
