@@ -129,14 +129,14 @@ impl InterfaceSimulator {
 
     /// Get the vertices of the collider mesh on a body
     #[wasm_bindgen]
-    pub fn base_vertices(&self, body_index: usize) -> js_sys::Float32Array {
-        self.state.base_vertices(body_index)
+    pub fn visual_base_vertices(&self, body_index: usize) -> js_sys::Float32Array {
+        self.state.visual_base_vertices(body_index)
     }
 
     /// Get the faces of the collider mesh on a body
     #[wasm_bindgen]
     pub fn facets(&self, body_index: usize) -> Uint32Array {
-        self.state.facets(body_index)
+        self.state.visual_facets(body_index)
     }
 
     /// Get the isometry of the collider mesh on a body
@@ -251,13 +251,11 @@ impl InterfaceMechanismState {
 
     /// Get the base vertices of the collider mesh on a body
     #[wasm_bindgen]
-    pub fn base_vertices(&self, body_index: usize) -> Float32Array {
+    pub fn visual_base_vertices(&self, body_index: usize) -> Float32Array {
         let vertices = &self.inner.bodies[body_index]
-            .collider
+            .visual
             .as_ref()
-            .expect(&format!("body {} should have mesh", body_index))
-            .geometry
-            .mesh()
+            .expect(&format!("body {} should have visual mesh", body_index))
             .base_vertices;
         let q = DVector::from_iterator(
             vertices.len() * 3,
@@ -266,15 +264,13 @@ impl InterfaceMechanismState {
         Float32Array::from(q.as_slice().to_vec().as_slice())
     }
 
-    /// Get the vertices of the collider mesh on a body
+    /// Get the vertices of the visual mesh on a body
     #[wasm_bindgen]
-    pub fn facets(&self, body_index: usize) -> Uint32Array {
+    pub fn visual_facets(&self, body_index: usize) -> Uint32Array {
         let facets = &self.inner.bodies[body_index]
-            .collider
+            .visual
             .as_ref()
             .expect(&format!("body {} should have mesh", body_index))
-            .geometry
-            .mesh()
             .faces;
         Uint32Array::from(
             facets
@@ -285,15 +281,13 @@ impl InterfaceMechanismState {
         )
     }
 
-    /// Get the isometry of the collider mesh on a body
+    /// Get the isometry of the visual mesh on a body
     #[wasm_bindgen]
     pub fn isometry(&self, body_index: usize) -> Float32Array {
         let iso = &self.inner.bodies[body_index]
-            .collider
+            .visual
             .as_ref()
-            .expect(&format!("body {} should have mesh", body_index))
-            .geometry
-            .mesh()
+            .expect(&format!("body {} should have visual mesh", body_index))
             .body_isometry;
 
         let rotation = iso.rotation;

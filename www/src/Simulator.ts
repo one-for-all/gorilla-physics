@@ -85,7 +85,7 @@ export class Simulator {
 
   addMesh(body_index: number, name: string) {
     const geometry = new THREE.BufferGeometry();
-    let base_vertices = this.simulator.base_vertices(body_index);
+    let base_vertices = this.simulator.visual_base_vertices(body_index);
     geometry.setAttribute(
       "position",
       new THREE.BufferAttribute(base_vertices, 3)

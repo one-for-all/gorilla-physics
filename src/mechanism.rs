@@ -123,7 +123,9 @@ impl MechanismState {
             halfspaces: vec![],
         };
 
-        state.update_collider_poses();
+        let bodies_to_root = compute_bodies_to_root(&state);
+        state.update_collider_poses(&bodies_to_root);
+        state.update_visual_poses(&bodies_to_root);
         state
     }
 
@@ -165,12 +167,13 @@ impl MechanismState {
             }
         }
 
-        self.update_collider_poses();
+        let bodies_to_root = compute_bodies_to_root(&self);
+        self.update_collider_poses(&bodies_to_root);
+        self.update_visual_poses(&bodies_to_root);
     }
 
     /// Updates the collider of each body to have the body's pose
-    pub fn update_collider_poses(&mut self) {
-        let bodies_to_root = compute_bodies_to_root(&self);
+    pub fn update_collider_poses(&mut self, bodies_to_root: &HashMap<usize, Transform3D>) {
         for (jointid, body) in izip!(self.treejointids.iter(), self.bodies.iter_mut()) {
             if let Some(collider) = body.collider.as_mut() {
                 let body_to_root = bodies_to_root.get(jointid).unwrap();
@@ -186,6 +189,17 @@ impl MechanismState {
                         sphere.isometry = isometry;
                     }
                 }
+            }
+        }
+    }
+
+    /// Updates the visual of each body to have the body's pose
+    pub fn update_visual_poses(&mut self, bodies_to_root: &HashMap<usize, Transform3D>) {
+        for (jointid, body) in izip!(self.treejointids.iter(), self.bodies.iter_mut()) {
+            if let Some(visual_mesh) = body.visual.as_mut() {
+                let body_to_root = bodies_to_root.get(jointid).unwrap();
+                let isometry = body_to_root.iso;
+                visual_mesh.update_isometry(&isometry);
             }
         }
     }

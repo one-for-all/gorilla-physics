@@ -28,7 +28,7 @@ impl Collider {
         }
     }
 
-    fn new_sphere(sphere: Sphere) -> Self {
+    pub fn new_sphere(sphere: Sphere) -> Self {
         Collider {
             geometry: CollisionGeometry::Sphere(sphere),
             enabled: true,
@@ -58,6 +58,7 @@ pub struct RigidBody {
     pub contact_points: Vec<ContactPoint>,
     pub spring_contacts: Vec<SpringContact>,
     pub collider: Option<Collider>,
+    pub visual: Option<Mesh>,
 }
 
 impl RigidBody {
@@ -67,10 +68,27 @@ impl RigidBody {
             contact_points: vec![],
             spring_contacts: vec![],
             collider: None,
+            visual: None,
+        }
+    }
+
+    /// Creates a new rigid body with the supplied collider and visual
+    pub fn new_collider_and_visual(
+        collider: Collider,
+        visual_mesh: Mesh,
+        spatial_inertia: SpatialInertia,
+    ) -> Self {
+        RigidBody {
+            inertia: spatial_inertia,
+            contact_points: vec![],
+            spring_contacts: vec![],
+            collider: Some(collider),
+            visual: Some(visual_mesh),
         }
     }
 
     pub fn new_mesh(mesh: Mesh, spatial_inertia: SpatialInertia, collision_enabled: bool) -> Self {
+        let visual_mesh = mesh.clone();
         let mut collider = Collider::new_mesh(mesh);
         collider.enabled = collision_enabled;
         RigidBody {
@@ -78,6 +96,7 @@ impl RigidBody {
             contact_points: vec![],
             spring_contacts: vec![],
             collider: Some(collider),
+            visual: Some(visual_mesh),
         }
     }
 
