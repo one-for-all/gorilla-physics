@@ -834,3 +834,16 @@ pub fn build_two_cubes(mesh: Mesh, l: Float) -> MechanismState {
 
     MechanismState::new(treejoints, bodies)
 }
+
+pub fn build_sphere(mass: Float, radius: Float) -> MechanismState {
+    let frame = "sphere";
+    let body = RigidBody::new_sphere(mass, radius, frame);
+    let bodies = vec![body];
+
+    let body_to_world = Transform3D::identity(frame, WORLD_FRAME);
+    let treejoints = vec![
+        Joint::FloatingJoint(FloatingJoint::new(body_to_world))
+    ];
+    
+    MechanismState::new(treejoints, bodies)
+}

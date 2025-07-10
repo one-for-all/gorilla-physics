@@ -1,8 +1,7 @@
 use na::{vector, Matrix3, Vector3};
 
 use crate::{
-    collision::cuboid::Cuboid,
-    collision::mesh::Mesh,
+    collision::{cuboid::Cuboid, mesh::Mesh, sphere::Sphere},
     contact::{ContactPoint, SpringContact},
     inertia::SpatialInertia,
     types::Float,
@@ -28,12 +27,20 @@ impl Collider {
             enabled: true,
         }
     }
+
+    fn new_sphere(sphere: Sphere) -> Self {
+        Collider {
+            geometry: CollisionGeometry::Sphere(sphere),
+            enabled: true,
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum CollisionGeometry {
     Mesh(Mesh),
     Cuboid(Cuboid),
+    Sphere(Sphere),
 }
 
 impl CollisionGeometry {
@@ -79,12 +86,15 @@ impl RigidBody {
         let moment = Matrix3::from_diagonal(&vector![moment_x, moment_x, moment_x]);
         let cross_part = Vector3::zeros();
 
-        RigidBody::new(SpatialInertia {
+        let mut body = RigidBody::new(SpatialInertia {
             frame: frame.to_string(),
             moment,
             cross_part,
             mass: m,
-        })
+        });
+        let collider = Collider::new_sphere(Sphere::new(r));
+        body.collider = Some(collider);
+        body
     }
 
     pub fn new_cube(m: Float, l: Float, frame: &str) -> RigidBody {

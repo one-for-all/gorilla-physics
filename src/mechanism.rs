@@ -182,6 +182,9 @@ impl MechanismState {
                     CollisionGeometry::Mesh(mesh) => {
                         mesh.update_isometry(&isometry);
                     }
+                    CollisionGeometry::Sphere(sphere) => {
+                        sphere.isometry = isometry;
+                    }
                 }
             }
         }

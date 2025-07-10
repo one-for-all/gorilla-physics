@@ -492,6 +492,22 @@ pub fn dynamics_discrete(
                             }
                         }
                     }
+                    CollisionGeometry::Sphere(sphere) => {
+                        for halfspace in &state.halfspaces {
+                            if let Some(contact_point) = sphere.contact_halfspace(halfspace) {
+                                let J = compose_contact_jacobian(
+                                    &state,
+                                    &halfspace.normal,
+                                    &contact_point,
+                                    *bodyid,
+                                    None,
+                                    v_free.len(),
+                                    &blocks,
+                                );
+                                Js.push(J);
+                            }
+                        }
+                    }
                     _ => {}
                 }
             }
@@ -558,6 +574,7 @@ pub fn dynamics_discrete(
                             }
                             _ => {}
                         },
+                        CollisionGeometry::Sphere(_) => {}
                     };
                 }
             }
