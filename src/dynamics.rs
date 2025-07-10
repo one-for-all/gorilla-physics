@@ -678,6 +678,8 @@ pub fn compose_contact_jacobian(
     let mut H = Matrix6xX::zeros(dof);
     let mut col_offset = 0;
     for jointid in state.treejointids.iter() {
+        // TODO: take care of fixed joints? since they do not have an entry in blocks.
+
         let n_cols = blocks[jointid - 1].ncols();
         if linked_bodyids.contains(jointid) {
             H.columns_mut(col_offset, n_cols)
