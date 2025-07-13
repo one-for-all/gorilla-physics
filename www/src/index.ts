@@ -1,4 +1,5 @@
-import { createBalancingBot } from "gorilla-physics";
+import { createFourBarLinkage } from "gorilla-physics";
+import { Matrix4 } from "three";
 import { Simulator } from "./Simulator";
 
 export const keysPressed: Record<string, boolean> = {};
@@ -47,17 +48,26 @@ import("gorilla-physics").then((gorilla) => {
   // simulator.addQuadruped();
   // simulator.addPlane(normal, h_ground, 100);
 
-  createBalancingBot().then((state) => {
+  createFourBarLinkage().then((state) => {
     state.addHalfSpace(normal, h_ground);
 
-    // let controller = gorilla.createNullController();
-    let controller = gorilla.createBalancingBotController();
+    let controller = gorilla.createNullController();
+    // let controller = gorilla.createBalancingBotController();
     let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
     let simulator = new Simulator(interfaceSimulator);
 
-    simulator.addCuboid("body", 0xff0000, 0.06, 0.05, 0.025);
-    simulator.addSphere("wheel_left", 0x00ff00, 0.02);
-    simulator.addSphere("wheel_right", 0x00ff00, 0.02);
+    let w = 0.1;
+    let l = 1.0;
+    let offset = new Matrix4().makeTranslation(0, 0, -l / 2.0);
+    simulator.addCuboid("bar1", 0xff0000, w, w, l, offset);
+    simulator.addCuboid("bar2", 0xff0000, w, w, l, offset);
+
+    let linkageOffset = new Matrix4().makeTranslation(l / 2.0, 0, 0);
+    simulator.addCuboid("bar3", 0x00ff00, l, w, w, linkageOffset);
+
+    // simulator.addCuboid("body", 0xff0000, 0.06, 0.05, 0.025);
+    // simulator.addSphere("wheel_left", 0x00ff00, 0.02);
+    // simulator.addSphere("wheel_right", 0x00ff00, 0.02);
 
     // simulator.addMesh(0, "mesh0");
     // simulator.addMesh(1, "mesh1");
@@ -66,7 +76,7 @@ import("gorilla-physics").then((gorilla) => {
     // simulator.addMesh(4, "mesh4");
     // simulator.addMesh(5, "gripper");
     // simulator.addMesh(6, "jaw");
-    simulator.addPlane(normal, h_ground, 100);
+    // simulator.addPlane(normal, h_ground, 100);
 
     // simulator.updateMesh(0, "mesh0");
     // simulator.updateMesh(1, "mesh1");
@@ -78,7 +88,7 @@ import("gorilla-physics").then((gorilla) => {
 
     // Important: Set initial camera position
     let cameraPosition = {
-      eye: { x: -0.2, y: -0.0, z: 0.2 },
+      eye: { x: -0.0, y: -5.0, z: 1.0 },
       target: { x: 0.0, y: 0, z: 0.0 },
     };
     simulator.graphics.lookAt(cameraPosition);

@@ -114,13 +114,21 @@ export class Simulator {
     mesh.rotation.set(iso[0], iso[1], iso[2], "ZYX"); // Note: rotation is performed along local coordinate axes, so we should do ZYX order to make it match XYZ order on global axes rotation.
   }
 
-  addCuboid(name: string, color: number, w: number, d: number, h: number) {
+  addCuboid(
+    name: string,
+    color: number,
+    w: number,
+    d: number,
+    h: number,
+    offset: THREE.Matrix4 = new THREE.Matrix4()
+  ) {
     const geometry = new THREE.BoxGeometry(w, d, h);
     const material = new THREE.MeshPhongMaterial({
       color: color,
       side: THREE.DoubleSide, // Render both sides of faces
       flatShading: true,
     });
+    geometry.applyMatrix4(offset);
     const box = new THREE.Mesh(geometry, material);
     this.meshes.set(name, box);
     this.graphics.scene.add(box);
@@ -654,6 +662,17 @@ export class Simulator {
     this.setPose("wheel_right", wheelRightPose);
   }
 
+  updateFourBarLinkagePose(poses: Float32Array) {
+    let bar1Pose = poses.subarray(0, 6);
+    this.setPose("bar1", bar1Pose);
+
+    let bar2Pose = poses.subarray(6, 12);
+    this.setPose("bar2", bar2Pose);
+
+    let bar3Pose = poses.subarray(12, 18);
+    this.setPose("bar3", bar3Pose);
+  }
+
   async run(timestamp?: number) {
     this.graphics.render();
 
@@ -719,7 +738,8 @@ export class Simulator {
     // this.updateMesh(6, "jaw");
 
     let poses = this.simulator.poses();
-    this.updateBalancingBotPose(poses);
+    this.updateFourBarLinkagePose(poses);
+    // this.updateBalancingBotPose(poses);
 
     // let contact_positions = this.simulator.contact_positions();
     // this.updateQuadruped(poses, contact_positions);

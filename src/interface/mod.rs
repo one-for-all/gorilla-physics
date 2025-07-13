@@ -1,6 +1,7 @@
 use crate::contact::ContactPoint;
 use crate::control::ControlInput;
 use crate::flog;
+use crate::helpers::build_four_bar_linkage;
 use crate::integrators::Integrator;
 use crate::joint::floating::FloatingJoint;
 use crate::joint::JointVelocity;
@@ -502,6 +503,13 @@ pub fn createCompassGait() -> InterfaceMechanismState {
 
     state.set_joint_q(2, JointPosition::Float(Float::to_radians(30.0)));
     state.set_joint_q(3, JointPosition::Float(Float::to_radians(-30.0)));
+
+    InterfaceMechanismState { inner: state }
+}
+
+#[wasm_bindgen]
+pub async fn createFourBarLinkage() -> InterfaceMechanismState {
+    let state = build_four_bar_linkage();
 
     InterfaceMechanismState { inner: state }
 }
