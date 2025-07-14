@@ -17,7 +17,7 @@ use crate::{
     },
     types::Float,
     util::{mul_inertia, se3_commutator, skew_symmetric},
-    GRAVITY, WORLD_FRAME,
+    GRAVITY,
 };
 use clarabel::{
     algebra::CscMatrix,
@@ -29,10 +29,13 @@ use clarabel::{
 use itertools::izip;
 use na::{
     dvector, vector, zero, DMatrix, DVector, Dyn, Matrix3, Matrix3x6, Matrix3xX, Matrix6,
-    Matrix6xX, UnitVector3, LU,
+    Matrix6xX, SymmetricEigen, UnitVector3, LU,
 };
 use nalgebra::Vector3;
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    process::exit,
+};
 
 use crate::{mechanism::MechanismState, spatial::spatial_acceleration::SpatialAcceleration};
 
@@ -260,7 +263,7 @@ pub fn dynamics_solve(
 
     let vdot = mass_matrix.clone().lu().solve(&(tau - c)).expect(&format!(
         r#"Failed to solve for vdot in M(q) vdot + c(q, v) = τ
-            where M = {}, 
+            where M = {},
                   c = {},
                   τ = {}
         "#,
@@ -493,6 +496,20 @@ pub fn dynamics_discrete(
                 row_offset += m.nrows();
             }
 
+            // Filter out rows with all zeros
+            let (nrows, ncols) = J.shape();
+            // Collect indices of non-zero rows
+            let non_zero_row_indices: Vec<_> = (0..nrows)
+                .filter(|&i| {
+                    // Check if any element in the row is non-zero
+                    (0..ncols).any(|j| J[(i, j)] != 0.0)
+                })
+                .collect();
+
+            let J = DMatrix::from_fn(non_zero_row_indices.len(), ncols, |i, j| {
+                J[(non_zero_row_indices[i], j)]
+            });
+
             let mass_matrix_lu = mass_matrix.clone().lu();
             let lambda = solve_joint_constraints(&J, &mass_matrix_lu, &v_free);
 
@@ -710,8 +727,12 @@ pub fn solve_joint_constraints(
     mass_matrix_lu: &LU<Float, Dyn, Dyn>,
     v_free: &DVector<Float>,
 ) -> DVector<Float> {
-    let G: DMatrix<Float> = J * mass_matrix_lu.try_inverse().unwrap() * J.transpose();
+    let mass_inv = mass_matrix_lu.try_inverse().unwrap();
+
+    // Note: there is chance that G is not exactly symmetric & positive-definite due to numerical error
+    let G: DMatrix<Float> = J * mass_inv * J.transpose();
     let g = J * v_free;
+
     let P = CscMatrix::from(G.row_iter());
     let q: Vec<Float> = Vec::from(g.as_slice());
     let settings: DefaultSettings<Float> = DefaultSettingsBuilder::default()
@@ -728,7 +749,14 @@ pub fn solve_joint_constraints(
     );
     solver.solve();
 
-    DVector::from(solver.solution.x)
+    let lambda = DVector::from(solver.solution.x);
+    if lambda.iter().any(|x| x.is_nan()) {
+        // Fall back to linear solver. Or maybe this should be the preferred solver?
+        let cholesky = G.cholesky().unwrap();
+        return -cholesky.solve(&g);
+    }
+
+    lambda
 }
 
 /// Given contact information, compute the contact Jacobian that transforms

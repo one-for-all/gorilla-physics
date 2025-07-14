@@ -3,7 +3,7 @@ use std::{
     io::{BufReader, Read},
 };
 
-use na::{DVector, Matrix3xX, Matrix4x3, Quaternion, UnitQuaternion};
+use na::{DMatrix, DVector, Matrix3xX, Matrix4x3, Quaternion, SymmetricEigen, UnitQuaternion};
 use nalgebra::{Matrix3, Vector3};
 use web_sys::{self};
 
@@ -63,8 +63,8 @@ pub fn quaternion_derivative(
 
     #[rustfmt::skip]
     let mat = Matrix4x3::new(
-        -x, -y, -z, 
-         w, -z,  y, 
+        -x, -y, -z,
+         w, -z,  y,
          z,  w, -x,
         -y,  x,  w,
     ) / 2.0;
@@ -77,10 +77,32 @@ pub fn quaternion_derivative(
 pub fn skew_symmetric(v: &Vector3<Float>) -> Matrix3<Float> {
     #[rustfmt::skip]
     return Matrix3::new(
-        0.0,    -v.z,   v.y, 
+        0.0,    -v.z,   v.y,
         v.z,    0.0,    -v.x,
         -v.y,   v.x,    0.0
     );
+}
+
+/// Project a matrix to be symmetric & positive semi-definite
+pub fn project_symmetric_psd(matrix: &DMatrix<Float>) -> DMatrix<Float> {
+    // Ensure the matrix is square
+    assert!(matrix.is_square(), "Matrix must be square");
+
+    // Symmetrize: M = (A + Aᵀ)/2
+    let symmetric_matrix = (matrix + matrix.transpose()) * 0.5;
+
+    // Eigen decomposition of the symmetric matrix
+    let eigen = SymmetricEigen::new(symmetric_matrix);
+    let eigenvalues = eigen.eigenvalues;
+    let eigenvectors = eigen.eigenvectors;
+
+    // Threshold eigenvalues: replace negatives with zero
+    let thresholded_eigenvalues: DVector<Float> =
+        eigenvalues.map(|e| if e < 0.0 { 0.0 } else { e });
+
+    // Reconstruct: M_psd = Q * diag(λ₊) * Qᵀ
+    let diag = DMatrix::from_diagonal(&thresholded_eigenvalues);
+    &eigenvectors * diag * eigenvectors.transpose()
 }
 
 // Helper function to log to the browser console

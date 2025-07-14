@@ -1,6 +1,6 @@
 use na::{Isometry3, Matrix3, MatrixXx6, UnitVector3, Vector3};
 
-use crate::{flog, types::Float};
+use crate::types::Float;
 
 /// Revolute joint that constrains two bodies to only have relative rotation
 /// about an axis at a position
@@ -67,15 +67,20 @@ impl ConstraintRevoluteJoint {
 #[cfg(test)]
 mod constraint_revolute_tests {
     use crate::{
-        assert_vec_close, helpers::build_four_bar_linkage, joint::ToFloatDVec, simulate::step,
+        assert_vec_close,
+        helpers::build_four_bar_linkage,
+        joint::{JointPosition, ToFloatDVec},
+        simulate::step,
+        types::Float,
+        PI,
     };
 
     use na::dvector;
 
     #[test]
-    fn test_four_bar_linkage() {
+    fn four_bar_linkage() {
         // Arrange
-        let mut state = build_four_bar_linkage();
+        let mut state = build_four_bar_linkage(1.0, 1.0);
 
         // Act
         let final_time = 1.0;
@@ -93,5 +98,38 @@ mod constraint_revolute_tests {
         // Assert
         let final_q = state.q;
         assert_vec_close!(final_q.to_float_dvec(), dvector![0., 0., 0.], 1e-7);
+    }
+
+    #[test]
+    fn four_bar_linkage_heavy() {
+        // Arrange
+        let mut state = build_four_bar_linkage(1.0, 10.0);
+        let angle = PI / 2.0;
+        let q = vec![
+            JointPosition::Float(-angle),
+            JointPosition::Float(-angle),
+            JointPosition::Float(angle),
+        ];
+        state.update_q(&q);
+
+        // Act
+        let final_time = 1.0;
+        let dt = 1.0 / 60.0;
+        let num_steps = (final_time / dt) as usize;
+        for s in 0..num_steps {
+            let (q, _v) = step(
+                &mut state,
+                dt,
+                &vec![],
+                &crate::integrators::Integrator::VelocityStepping,
+            );
+
+            // Assert
+            assert!(
+                !q.to_float_dvec().iter().any(|x| x.is_nan()),
+                "simulation exploded at time: {}s",
+                s as Float * dt
+            );
+        }
     }
 }

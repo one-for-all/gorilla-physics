@@ -41,10 +41,7 @@ pub fn build_pendulum(
         mass: mass.clone(),
     });
 
-    let treejoints = vec![Joint::RevoluteJoint(RevoluteJoint::new(
-        rod_to_world,
-        axis,
-    ))];
+    let treejoints = vec![Joint::RevoluteJoint(RevoluteJoint::new(rod_to_world, axis))];
     let bodies = vec![rod];
     let state = MechanismState::new(treejoints, bodies);
 
@@ -68,14 +65,8 @@ pub fn build_double_pendulum(
     let rod2_to_rod1 = Transform3D::new(rod2_frame, rod1_frame, &rod2_to_rod1);
 
     let treejoints = vec![
-        Joint::RevoluteJoint(RevoluteJoint::new(
-            rod1_to_world,
-            axis.clone(),
-        )),
-        Joint::RevoluteJoint(RevoluteJoint::new(
-            rod2_to_rod1,
-            axis.clone(),
-        )),
+        Joint::RevoluteJoint(RevoluteJoint::new(rod1_to_world, axis.clone())),
+        Joint::RevoluteJoint(RevoluteJoint::new(rod2_to_rod1, axis.clone())),
     ];
     let bodies = vec![
         RigidBody::new(SpatialInertia {
@@ -142,10 +133,7 @@ pub fn build_cart_pole(
 
     let treejoints = vec![
         Joint::PrismaticJoint(PrismaticJoint::new(cart_to_world, axis_cart)),
-        Joint::RevoluteJoint(RevoluteJoint::new(
-            pole_to_cart,
-            axis_pole,
-        )),
+        Joint::RevoluteJoint(RevoluteJoint::new(pole_to_cart, axis_pole)),
     ];
     let bodies = vec![
         RigidBody::new(SpatialInertia {
@@ -315,10 +303,7 @@ pub fn build_2d_hopper(
             init_iso: body_to_world.iso,
             transform: body_to_world,
         }),
-        Joint::RevoluteJoint(RevoluteJoint::new(
-            hip_to_body,
-            axis_hip,
-        )),
+        Joint::RevoluteJoint(RevoluteJoint::new(hip_to_body, axis_hip)),
         Joint::PrismaticJoint(PrismaticJoint::new(piston_to_hip, axis_piston)),
         Joint::PrismaticJoint(PrismaticJoint::new(leg_to_piston, axis_leg)),
     ];
@@ -725,8 +710,8 @@ fn build_tetrahedron_rigid_body(mesh: Mesh, l: Float, frame: &str) -> RigidBody 
 
     #[rustfmt::skip]
     let moment = Matrix3::new(
-        moment_diag, moment_off_diag, moment_off_diag, 
-        moment_off_diag, moment_diag, moment_off_diag, 
+        moment_diag, moment_off_diag, moment_off_diag,
+        moment_off_diag, moment_diag, moment_off_diag,
         moment_off_diag, moment_off_diag, moment_diag
     );
 
@@ -743,8 +728,8 @@ fn build_cube_rigid_body(mesh: Mesh, l: Float, frame: &str) -> RigidBody {
 
     #[rustfmt::skip]
     let moment = Matrix3::new(
-        moment_diag, moment_off_diag, moment_off_diag, 
-        moment_off_diag, moment_diag, moment_off_diag, 
+        moment_diag, moment_off_diag, moment_off_diag,
+        moment_off_diag, moment_diag, moment_off_diag,
         moment_off_diag, moment_off_diag, moment_diag
     );
 
@@ -843,17 +828,14 @@ pub fn build_sphere(mass: Float, radius: Float) -> MechanismState {
     let bodies = vec![body];
 
     let body_to_world = Transform3D::identity(frame, WORLD_FRAME);
-    let treejoints = vec![
-        Joint::FloatingJoint(FloatingJoint::new(body_to_world))
-    ];
-    
+    let treejoints = vec![Joint::FloatingJoint(FloatingJoint::new(body_to_world))];
+
     MechanismState::new(treejoints, bodies)
 }
 
 /// Two bars dangling straightdown, and one bar connecting these two bars. The
 /// world is considered the root bar.
-pub fn build_four_bar_linkage() -> MechanismState {
-    let m = 1.0;
+pub fn build_four_bar_linkage(m: Float, m_bar3: Float) -> MechanismState {
     let l = 1.0;
     let w = 0.1;
 
@@ -862,24 +844,24 @@ pub fn build_four_bar_linkage() -> MechanismState {
     let moment_y = m * (4. * l * l + w * w) / 12.0;
     let moment_z = m * w * w / 6.0;
     let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
-    let cross_part = vector![0.,0.,-m*l / 2.0];
+    let cross_part = vector![0., 0., -m * l / 2.0];
     let bar1 = RigidBody::new(SpatialInertia::new(moment, cross_part, m, bar1_frame));
-    let bar1_to_world = Transform3D::move_x(bar1_frame, WORLD_FRAME, 1.0);
+    let bar1_to_world = Transform3D::move_x(bar1_frame, WORLD_FRAME, 0.0);
 
     let bar2_frame = "bar2";
-    let bar2 =  RigidBody::new(SpatialInertia::new(moment, cross_part, m, bar2_frame));
-    let bar2_to_world = Transform3D::move_x(bar2_frame, WORLD_FRAME, l + 1.0);
+    let bar2 = RigidBody::new(SpatialInertia::new(moment, cross_part, m, bar2_frame));
+    let bar2_to_world = Transform3D::move_x(bar2_frame, WORLD_FRAME, l + 0.0);
 
     let bar3_frame = "bar3";
-    let moment_x =  m * w * w / 6.0;
-    let moment_y = m * (4. * l * l + w *w) / 12.0;
-    let moment_z = m * (4. * l * l + w *w) / 12.0;
+    let moment_x = m_bar3 * w * w / 6.0;
+    let moment_y = m_bar3 * (4. * l * l + w * w) / 12.0;
+    let moment_z = m_bar3 * (4. * l * l + w * w) / 12.0;
     let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
-    let cross_part = vector![m*l / 2.0,0.,0.];
-    let bar3 = RigidBody::new(SpatialInertia::new(moment, cross_part, m, bar3_frame));
+    let cross_part = vector![m_bar3 * l / 2.0, 0., 0.];
+    let bar3 = RigidBody::new(SpatialInertia::new(moment, cross_part, m_bar3, bar3_frame));
     let bar3_to_bar1 = Transform3D::move_xyz(bar3_frame, bar1_frame, 0., 0., -l);
 
-    let bodies = vec![bar1,bar2,bar3];
+    let bodies = vec![bar1, bar2, bar3];
     let treejoints = vec![
         Joint::RevoluteJoint(RevoluteJoint::new(bar1_to_world, Vector3::y_axis())),
         Joint::RevoluteJoint(RevoluteJoint::new(bar2_to_world, Vector3::y_axis())),
@@ -888,7 +870,13 @@ pub fn build_four_bar_linkage() -> MechanismState {
 
     let constraint_to_bar3 = Isometry3::translation(l, 0., 0.);
     let constraint_to_bar2 = Isometry3::translation(0., 0., -l);
-    let constraint_joints = vec![ConstraintRevoluteJoint::new(bar3_frame, constraint_to_bar3, bar2_frame, constraint_to_bar2, Vector3::y_axis())];
-    
+    let constraint_joints = vec![ConstraintRevoluteJoint::new(
+        bar3_frame,
+        constraint_to_bar3,
+        bar2_frame,
+        constraint_to_bar2,
+        Vector3::y_axis(),
+    )];
+
     MechanismState::new_with_constraint(treejoints, bodies, constraint_joints)
 }

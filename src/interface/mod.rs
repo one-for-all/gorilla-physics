@@ -85,7 +85,7 @@ impl InterfaceSimulator {
     pub fn step(&mut self, dt: Float, control_input: Vec<Float>) -> js_sys::Float32Array {
         let input = ControlInput::new(control_input);
 
-        let n_substep = 10;
+        let n_substep = 1;
         let mut q = vec![];
         for _ in 0..n_substep {
             let torque = self
@@ -509,9 +509,9 @@ pub fn createCompassGait() -> InterfaceMechanismState {
 
 #[wasm_bindgen]
 pub async fn createFourBarLinkage() -> InterfaceMechanismState {
-    let mut state = build_four_bar_linkage();
+    let mut state = build_four_bar_linkage(1.0, 10.0);
 
-    let angle = PI - 0.1;
+    let angle = PI / 2.0; // PI - 0.1;
     let q = vec![
         JointPosition::Float(-angle),
         JointPosition::Float(-angle),
