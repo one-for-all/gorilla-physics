@@ -10,6 +10,7 @@ import { Line2 } from "three/examples/jsm/lines/Line2";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
 import { keysPressed } from ".";
+import { Matrix4 } from "three";
 
 export class Simulator {
   simulator: InterfaceSimulator;
@@ -45,7 +46,7 @@ export class Simulator {
   }
 
   addDeformable(
-    deformable: InterfaceMassSpringDeformable | InterfaceFEMDeformable
+    deformable: InterfaceMassSpringDeformable | InterfaceFEMDeformable,
   ) {
     if (deformable instanceof InterfaceMassSpringDeformable) {
       this.massSpringDeformable = deformable;
@@ -79,7 +80,7 @@ export class Simulator {
     let vertices = this.femDeformable.vertices();
     bunny.geometry.setAttribute(
       "position",
-      new THREE.BufferAttribute(vertices, 3)
+      new THREE.BufferAttribute(vertices, 3),
     );
   }
 
@@ -88,7 +89,7 @@ export class Simulator {
     let base_vertices = this.simulator.visual_base_vertices(body_index);
     geometry.setAttribute(
       "position",
-      new THREE.BufferAttribute(base_vertices, 3)
+      new THREE.BufferAttribute(base_vertices, 3),
     );
 
     let facets = this.simulator.facets(body_index);
@@ -120,7 +121,7 @@ export class Simulator {
     w: number,
     d: number,
     h: number,
-    offset: THREE.Matrix4 = new THREE.Matrix4()
+    offset: THREE.Matrix4 = new THREE.Matrix4(),
   ) {
     const geometry = new THREE.BoxGeometry(w, d, h);
     const material = new THREE.MeshPhongMaterial({
@@ -392,13 +393,24 @@ export class Simulator {
     h_body: number,
     r_hip: number,
     r_piston: number,
-    l_leg: number
+    l_leg: number,
   ) {
     this.addCuboid("hopper_body", 0x00ff00, w_body, w_body, h_body);
     this.addSphere("hopper_hip", 0xff0000, r_hip);
     this.addLine("hopper_body_hip_line", 0xff0000, 3);
     this.addSphere("hopper_piston", 0xffffff, r_piston);
     this.addCuboid("hopper_leg", 0x0000ff, 0.1, 0.1, l_leg);
+  }
+
+  addFourBarLinkage() {
+    let w = 0.1;
+    let l = 1.0;
+    let offset = new Matrix4().makeTranslation(0, 0, -l / 2.0);
+    this.addCuboid("bar1", 0xff0000, w, w, l, offset);
+    this.addCuboid("bar2", 0xff0000, w, w, l, offset);
+
+    let linkageOffset = new Matrix4().makeTranslation(l / 2.0, 0, 0);
+    this.addCuboid("bar3", 0x00ff00, l, w, w, linkageOffset);
   }
 
   updateRodPose(angle: number) {
@@ -476,7 +488,7 @@ export class Simulator {
       foot.position.set(
         contact_positions[i],
         contact_positions[i + 1],
-        contact_positions[i + 2]
+        contact_positions[i + 2],
       );
     }
   }
@@ -556,7 +568,7 @@ export class Simulator {
       foot.position.set(
         contact_positions[i],
         contact_positions[i + 1],
-        contact_positions[i + 2]
+        contact_positions[i + 2],
       );
     }
   }
@@ -627,7 +639,7 @@ export class Simulator {
     this.setLineEndpoints(
       "hopper_body_hip_line",
       bodyPose.subarray(3, 6),
-      hipPose.subarray(3, 6)
+      hipPose.subarray(3, 6),
     );
 
     this.setPose("hopper_piston", poses.subarray(12, 18));

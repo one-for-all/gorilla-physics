@@ -56,14 +56,7 @@ import("gorilla-physics").then((gorilla) => {
     let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
     let simulator = new Simulator(interfaceSimulator);
 
-    let w = 0.1;
-    let l = 1.0;
-    let offset = new Matrix4().makeTranslation(0, 0, -l / 2.0);
-    simulator.addCuboid("bar1", 0xff0000, w, w, l, offset);
-    simulator.addCuboid("bar2", 0xff0000, w, w, l, offset);
-
-    let linkageOffset = new Matrix4().makeTranslation(l / 2.0, 0, 0);
-    simulator.addCuboid("bar3", 0x00ff00, l, w, w, linkageOffset);
+    simulator.addFourBarLinkage();
 
     // simulator.addCuboid("body", 0xff0000, 0.06, 0.05, 0.025);
     // simulator.addSphere("wheel_left", 0x00ff00, 0.02);
