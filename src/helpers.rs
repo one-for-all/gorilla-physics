@@ -2,6 +2,7 @@ use crate::collision::cuboid::Cuboid;
 use crate::collision::mesh::Mesh;
 use crate::contact::ContactPoint;
 use crate::contact::SpringContact;
+use crate::joint::constraint_revolute::ConstraintRevoluteJoint;
 use crate::joint::floating::FloatingJoint;
 use crate::joint::prismatic::JointSpring;
 use crate::PI;
@@ -863,11 +864,11 @@ pub fn build_four_bar_linkage() -> MechanismState {
     let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
     let cross_part = vector![0.,0.,-m*l / 2.0];
     let bar1 = RigidBody::new(SpatialInertia::new(moment, cross_part, m, bar1_frame));
-    let bar1_to_world = Transform3D::identity(bar1_frame, WORLD_FRAME);
+    let bar1_to_world = Transform3D::move_x(bar1_frame, WORLD_FRAME, 1.0);
 
     let bar2_frame = "bar2";
     let bar2 =  RigidBody::new(SpatialInertia::new(moment, cross_part, m, bar2_frame));
-    let bar2_to_world = Transform3D::move_x(bar2_frame, WORLD_FRAME, l);
+    let bar2_to_world = Transform3D::move_x(bar2_frame, WORLD_FRAME, l + 1.0);
 
     let bar3_frame = "bar3";
     let moment_x =  m * w * w / 6.0;
@@ -876,7 +877,7 @@ pub fn build_four_bar_linkage() -> MechanismState {
     let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
     let cross_part = vector![m*l / 2.0,0.,0.];
     let bar3 = RigidBody::new(SpatialInertia::new(moment, cross_part, m, bar3_frame));
-    let bar3_to_bar1 = Transform3D::move_z(bar3_frame, bar1_frame, -l);
+    let bar3_to_bar1 = Transform3D::move_xyz(bar3_frame, bar1_frame, 0., 0., -l);
 
     let bodies = vec![bar1,bar2,bar3];
     let treejoints = vec![
@@ -884,6 +885,10 @@ pub fn build_four_bar_linkage() -> MechanismState {
         Joint::RevoluteJoint(RevoluteJoint::new(bar2_to_world, Vector3::y_axis())),
         Joint::RevoluteJoint(RevoluteJoint::new(bar3_to_bar1, Vector3::y_axis())),
     ];
+
+    let constraint_to_bar3 = Isometry3::translation(l, 0., 0.);
+    let constraint_to_bar2 = Isometry3::translation(0., 0., -l);
+    let constraint_joints = vec![ConstraintRevoluteJoint::new(bar3_frame, constraint_to_bar3, bar2_frame, constraint_to_bar2, Vector3::y_axis())];
     
-    MechanismState::new(treejoints, bodies)
+    MechanismState::new_with_constraint(treejoints, bodies, constraint_joints)
 }

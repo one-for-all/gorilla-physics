@@ -9,12 +9,15 @@ use crate::{
     spatial::{
         spatial_vector::SpatialVector,
         transform::{compute_bodies_to_root, Transform3D},
-        twist::{compute_joint_twists, compute_twists_wrt_world, Twist},
+        twist::{
+            compute_joint_twists, compute_twist_transformation_matrix, compute_twists_wrt_world,
+            Twist,
+        },
         wrench::{compute_torques, Wrench},
     },
     types::Float,
     util::{mul_inertia, se3_commutator, skew_symmetric},
-    GRAVITY,
+    GRAVITY, WORLD_FRAME,
 };
 use clarabel::{
     algebra::CscMatrix,
@@ -25,8 +28,8 @@ use clarabel::{
 };
 use itertools::izip;
 use na::{
-    dvector, vector, zero, DMatrix, DVector, Matrix3, Matrix3x6, Matrix3xX, Matrix6, Matrix6xX,
-    UnitVector3,
+    dvector, vector, zero, DMatrix, DVector, Dyn, Matrix3, Matrix3x6, Matrix3xX, Matrix6,
+    Matrix6xX, UnitVector3, LU,
 };
 use nalgebra::Vector3;
 use std::collections::{HashMap, HashSet};
@@ -395,7 +398,7 @@ pub fn dynamics_discrete(
     let v_free = &v_current + v_update;
 
     // Construct the building blocks for Jacobian between generalized v and
-    // contact frame velocity
+    // world frame spatial velocity
     // Ref: Contact and Friction Simulation for Computer Graphics, 2022,
     //      Section 1.5 The Coulomb Friction Law
     let blocks: Vec<Matrix6xX<Float>> = izip!(state.treejointids.iter(), state.treejoints.iter())
@@ -437,6 +440,75 @@ pub fn dynamics_discrete(
         })
         .collect();
 
+    // Build up the Jacobians for the joint constraints
+    let mut Js: Vec<DMatrix<Float>> = vec![];
+    for constraint in state.constraints.iter() {
+        let frame1_linked_bodyids = state.linked_bodyids(&constraint.frame1);
+        let frame2_linked_bodyids = state.linked_bodyids(&constraint.frame2);
+
+        let frame1_only_linked_bodyids: HashSet<&usize> = frame1_linked_bodyids
+            .difference(&frame2_linked_bodyids)
+            .collect();
+        let frame2_only_linked_bodyids: HashSet<&usize> = frame2_linked_bodyids
+            .difference(&frame1_linked_bodyids)
+            .collect();
+
+        let mut J = DMatrix::zeros(6, v_free.len());
+        let mut col_offset = 0;
+        for (index, block) in blocks.iter().enumerate() {
+            // TODO(fixed_joint): take care of this in the presence of fixed joint
+            let n_cols = block.ncols();
+            let bodyid = index + 1;
+            if frame1_only_linked_bodyids.contains(&bodyid) {
+                J.columns_mut(col_offset, n_cols).copy_from(block);
+            } else if frame2_only_linked_bodyids.contains(&bodyid) {
+                J.columns_mut(col_offset, n_cols).copy_from(&(-block));
+            }
+            col_offset += n_cols;
+        }
+
+        let frame1_body_to_root = bodies_to_root
+            .iter()
+            .find(|x| x.1.from == constraint.frame1)
+            .unwrap()
+            .1;
+        let constraint_to_root = frame1_body_to_root.iso * constraint.to_frame1;
+        let root_to_constraint = constraint_to_root.inverse();
+        let T = compute_twist_transformation_matrix(&root_to_constraint);
+        let J = T * J;
+
+        let selection_matrix = constraint.constraint_matrix();
+        let J = selection_matrix * J;
+
+        Js.push(J);
+    }
+
+    let v_free = {
+        if Js.len() > 0 {
+            let n_constraints = Js.iter().map(|x| x.shape().0).sum();
+            let mut J = DMatrix::zeros(n_constraints, v_free.len());
+            let mut row_offset = 0;
+            for m in Js.iter() {
+                J.rows_mut(row_offset, m.nrows()).copy_from(m);
+                row_offset += m.nrows();
+            }
+
+            let mass_matrix_lu = mass_matrix.clone().lu();
+            let lambda = solve_joint_constraints(&J, &mass_matrix_lu, &v_free);
+
+            let y = &J.transpose() * lambda;
+            v_free
+                + mass_matrix_lu
+                    .solve(&(DVector::from_column_slice(y.as_slice())))
+                    .unwrap()
+        } else {
+            v_free
+        }
+    };
+
+    // TODO: important! test on a rotating body
+
+    // Collision handling
     let v_new = {
         // Vec of Jacobian rows, which will be assembled into the Jacobian
         let mut Js: Vec<Matrix3xX<Float>> = vec![];
@@ -631,6 +703,34 @@ pub fn dynamics_discrete(
         .collect()
 }
 
+/// Formulate the joint constraints as a quadratic programming problem, and
+/// return the solution.
+pub fn solve_joint_constraints(
+    J: &DMatrix<Float>,
+    mass_matrix_lu: &LU<Float, Dyn, Dyn>,
+    v_free: &DVector<Float>,
+) -> DVector<Float> {
+    let G: DMatrix<Float> = J * mass_matrix_lu.try_inverse().unwrap() * J.transpose();
+    let g = J * v_free;
+    let P = CscMatrix::from(G.row_iter());
+    let q: Vec<Float> = Vec::from(g.as_slice());
+    let settings: DefaultSettings<Float> = DefaultSettingsBuilder::default()
+        .verbose(false)
+        .build()
+        .unwrap();
+    let mut solver = DefaultSolver::new(
+        &P,
+        &q,
+        &CscMatrix::zeros((0, P.m)),
+        &vec![],
+        &vec![],
+        settings,
+    );
+    solver.solve();
+
+    DVector::from(solver.solution.x)
+}
+
 /// Given contact information, compute the contact Jacobian that transforms
 /// generalized velocity to contact frame velocity.
 /// Contact frame normal pointing towards body, and away from other body
@@ -678,7 +778,7 @@ pub fn compose_contact_jacobian(
     let mut H = Matrix6xX::zeros(dof);
     let mut col_offset = 0;
     for jointid in state.treejointids.iter() {
-        // TODO: take care of fixed joints? since they do not have an entry in blocks.
+        // TODO(fixed_joint): take care of fixed joints? since they do not have an entry in blocks.
 
         let n_cols = blocks[jointid - 1].ncols();
         if linked_bodyids.contains(jointid) {

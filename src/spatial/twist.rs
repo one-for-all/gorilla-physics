@@ -4,15 +4,16 @@ use std::{
 };
 
 use itertools::izip;
+use na::{Isometry3, Matrix6};
 use nalgebra::{zero, Vector3};
 
 use crate::{
     contact::ContactPoint,
     joint::{Joint, JointVelocity},
     mechanism::MechanismState,
-    spatial::spatial_acceleration::SpatialAcceleration,
-    spatial::transform::Transform3D,
+    spatial::{spatial_acceleration::SpatialAcceleration, transform::Transform3D},
     types::Float,
+    util::skew_symmetric,
 };
 
 /// A twist represents the relative angular and linear velocity between two bodies.
@@ -127,6 +128,22 @@ impl Twist {
         }
         self.linear + self.angular.cross(&contact_point.location)
     }
+}
+
+/// Given an isometry that transforms pose from frame A to B, compute the 6x6 matrix
+/// that transforms twist from frame A to B
+pub fn compute_twist_transformation_matrix(iso: &Isometry3<Float>) -> Matrix6<Float> {
+    let binding = iso.rotation.to_rotation_matrix();
+    let R = binding.matrix();
+    let r = iso.translation.vector;
+
+    let mut T = Matrix6::<Float>::zeros();
+    T.fixed_view_mut::<3, 3>(0, 0).copy_from(R);
+    T.fixed_view_mut::<3, 3>(3, 0)
+        .copy_from(&(skew_symmetric(&r) * R));
+    T.fixed_view_mut::<3, 3>(3, 3).copy_from(R);
+
+    T
 }
 
 impl<'a, 'b> Add<&'b Twist> for &'a Twist {

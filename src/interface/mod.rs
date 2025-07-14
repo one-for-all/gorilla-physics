@@ -509,7 +509,15 @@ pub fn createCompassGait() -> InterfaceMechanismState {
 
 #[wasm_bindgen]
 pub async fn createFourBarLinkage() -> InterfaceMechanismState {
-    let state = build_four_bar_linkage();
+    let mut state = build_four_bar_linkage();
+
+    let angle = PI - 0.1;
+    let q = vec![
+        JointPosition::Float(-angle),
+        JointPosition::Float(-angle),
+        JointPosition::Float(angle),
+    ];
+    state.update_q(&q);
 
     InterfaceMechanismState { inner: state }
 }

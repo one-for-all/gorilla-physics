@@ -8,6 +8,7 @@ use crate::energy::spring_elastic_energy;
 use crate::inertia::compute_inertias;
 use crate::inertia::kinetic_energy;
 use crate::inertia::SpatialInertia;
+use crate::joint::constraint_revolute::ConstraintRevoluteJoint;
 use crate::joint::Joint;
 use crate::joint::JointPosition;
 use crate::joint::JointVelocity;
@@ -42,6 +43,8 @@ pub struct MechanismState {
     pub q: Vec<JointPosition>, // joint configuration/position vector
     pub v: Vec<JointVelocity>, // joint velocity vector. Note: velocities are expressed in each body frame
     pub halfspaces: Vec<HalfSpace>,
+
+    pub constraints: Vec<ConstraintRevoluteJoint>,
 }
 
 impl MechanismState {
@@ -121,11 +124,22 @@ impl MechanismState {
             q,
             v,
             halfspaces: vec![],
+            constraints: vec![],
         };
 
         let bodies_to_root = compute_bodies_to_root(&state);
         state.update_collider_poses(&bodies_to_root);
         state.update_visual_poses(&bodies_to_root);
+        state
+    }
+
+    pub fn new_with_constraint(
+        treejoints: Vec<Joint>,
+        bodies: Vec<RigidBody>,
+        constraints: Vec<ConstraintRevoluteJoint>,
+    ) -> Self {
+        let mut state = Self::new(treejoints, bodies);
+        state.constraints = constraints;
         state
     }
 
@@ -357,6 +371,25 @@ impl MechanismState {
                 }
             }
         }
+    }
+
+    /// Find all the bodyids in the linkage from root to the body with `frame`
+    pub fn linked_bodyids(&self, frame: &str) -> HashSet<usize> {
+        let mut linked_bodyids = HashSet::new();
+        let mut currentid: usize = *izip!(self.treejointids.iter(), self.bodies.iter())
+            .find_map(|x| {
+                if x.1.inertia.frame == frame {
+                    return Some(x.0);
+                }
+                None
+            })
+            .unwrap();
+        while currentid != 0 {
+            linked_bodyids.insert(currentid);
+            currentid = self.parents[currentid - 1];
+        }
+
+        linked_bodyids
     }
 }
 

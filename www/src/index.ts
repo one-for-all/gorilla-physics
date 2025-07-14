@@ -86,6 +86,9 @@ import("gorilla-physics").then((gorilla) => {
     // simulator.updateMesh(5, "gripper");
     // simulator.updateMesh(6, "jaw");
 
+    let poses = simulator.simulator.poses();
+    simulator.updateFourBarLinkagePose(poses);
+
     // Important: Set initial camera position
     let cameraPosition = {
       eye: { x: -0.0, y: -5.0, z: 1.0 },
