@@ -86,7 +86,7 @@ mod constraint_revolute_tests {
         let final_time = 1.0;
         let dt = 1e-2;
         let num_steps = (final_time / dt) as usize;
-        for _ in 0..1 {
+        for _ in 0..num_steps {
             let (_q, _v) = step(
                 &mut state,
                 dt,
