@@ -86,6 +86,10 @@ path = "examples/socp.rs"
 name = "constraint_contact"
 path = "examples/constraint_contact.rs"
 
+[[bin]]
+name = "unconstrained_qp"
+path = "examples/unconstrained_qp.rs"
+
 [dependencies]
 cfg-if = "1"
 itertools = "0.13.0"
