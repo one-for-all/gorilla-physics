@@ -1,8 +1,7 @@
 use crate::joint::ToJointVelocityVec;
-use na::{vector, Isometry3, Matrix3, Matrix4, Vector3};
+use na::{vector, Isometry3, Matrix3, Vector3};
 use wasm_bindgen::prelude::*;
 
-use crate::spatial::transform::Matrix4Ext;
 use crate::{helpers::build_double_pendulum, joint::ToJointPositionVec, types::Float, PI};
 
 use super::InterfaceMechanismState;

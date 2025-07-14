@@ -119,10 +119,10 @@ mod control_tests {
     use crate::joint::ToJointPositionVec;
     use crate::joint::ToJointVelocityVec;
     use crate::{simulate::simulate, PI};
-    use na::Isometry;
+    
     use na::Isometry3;
     use na::Vector3;
-    use na::{vector, Matrix3, Matrix4};
+    use na::{vector, Matrix3};
 
     use super::*;
 

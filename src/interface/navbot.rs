@@ -6,7 +6,6 @@ use crate::{
     collision::mesh::Mesh,
     joint::JointPosition,
     spatial::pose::Pose,
-    PI,
 };
 
 use super::{util::read_web_file, InterfaceMechanismState};

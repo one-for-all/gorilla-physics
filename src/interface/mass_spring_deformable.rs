@@ -1,10 +1,6 @@
 use na::DVector;
-use wasm_bindgen::{prelude::wasm_bindgen, JsCast};
-use wasm_bindgen_futures::JsFuture;
-use web_sys::{
-    js_sys::{Float32Array, Uint32Array},
-    window, Response,
-};
+use wasm_bindgen::prelude::wasm_bindgen;
+use web_sys::js_sys::{Float32Array, Uint32Array};
 
 use crate::{
     collision::mesh::read_mesh, mass_spring_deformable::MassSpringDeformable, types::Float,

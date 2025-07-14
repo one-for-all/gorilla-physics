@@ -1,4 +1,4 @@
-use na::{vector, Isometry3, Matrix3, Matrix4, Vector3};
+use na::{vector, Isometry3, Matrix3, Vector3};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{contact::ContactPoint, helpers::build_pendulum, types::Float};

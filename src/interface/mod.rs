@@ -1,6 +1,5 @@
 use crate::contact::ContactPoint;
 use crate::control::ControlInput;
-use crate::flog;
 use crate::helpers::build_four_bar_linkage;
 use crate::integrators::Integrator;
 use crate::joint::floating::FloatingJoint;

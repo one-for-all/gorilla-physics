@@ -1,5 +1,4 @@
 use crate::joint::{JointTorque, ToFloatDVec, ToJointTorqueVec};
-use crate::spatial::transform::Matrix4Ext;
 use crate::PI;
 use crate::{mechanism::MechanismState, types::Float};
 use na::{DMatrix, Matrix1x4};
@@ -61,15 +60,14 @@ pub fn lqr_cart_pole(state: &MechanismState) -> Vec<JointTorque> {
 
 #[cfg(test)]
 mod lqr_tests {
-    use na::{dvector, vector, Isometry3, Matrix3, Matrix4, Vector3};
+    use na::{dvector, vector, Isometry3, Matrix3, Vector3};
 
     use crate::integrators::Integrator;
     use crate::joint::ToJointVelocityVec;
     use crate::{
         helpers::{build_cart_pole, build_double_pendulum},
-        joint::{JointPosition, ToFloatDVec, ToJointPositionVec},
+        joint::{ToFloatDVec, ToJointPositionVec},
         simulate::simulate,
-        spatial::transform::Transform3D,
         util::assert_dvec_close,
         PI,
     };

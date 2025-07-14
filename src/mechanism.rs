@@ -27,8 +27,6 @@ use crate::GRAVITY;
 use crate::WORLD_FRAME;
 use itertools::izip;
 use na::DMatrix;
-use na::Isometry3;
-use na::Matrix3;
 
 /// MechanismState stores the state information about the mechanism
 /// Joint i's child body is body i.
@@ -498,7 +496,7 @@ pub fn mass_matrix(
 #[cfg(test)]
 mod mechanism_tests {
 
-    use na::{vector, DVector, Matrix3, Vector3};
+    use na::{vector, DVector, Isometry3, Matrix3, Vector3};
 
     use crate::joint::{floating::FloatingJoint, revolute::RevoluteJoint};
 

@@ -383,7 +383,7 @@ mod contact_tests {
     use crate::integrators::Integrator;
     use crate::joint::revolute::RevoluteJoint;
     use crate::spatial::spatial_vector::SpatialVector;
-    use crate::spatial::transform::Matrix4Ext;
+    
     use crate::{
         assert_close,
         helpers::{build_SLIP, build_cube, build_rimless_wheel},
@@ -400,7 +400,7 @@ mod contact_tests {
         util::assert_close,
         GRAVITY,
     };
-    use na::{dvector, vector, zero, Isometry, Isometry3, Matrix3, Matrix4, UnitQuaternion};
+    use na::{dvector, vector, zero, Isometry3, Matrix3, UnitQuaternion};
 
     use crate::{helpers::build_pendulum, simulate::simulate, util::assert_dvec_close, PI};
 

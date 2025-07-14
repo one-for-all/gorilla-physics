@@ -210,7 +210,7 @@ impl Controller for Hopper2DController {
         };
 
         // TODO: Fix the hip angle during stance
-        let mut tau_hip = 0.0;
+        let tau_hip = 0.0;
 
         // TODO: Foot Placement for velocity and attitude control
         // Note: important. Compute body linear velocity in world frame

@@ -1,7 +1,7 @@
 use std::process::exit;
 
 use gorilla_physics::{
-    collision::mesh::{read_mesh, Mesh},
+    collision::mesh::Mesh,
     fem_deformable::read_fem_box,
     util::read_file,
 };

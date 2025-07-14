@@ -6,11 +6,10 @@ use gorilla_physics::mechanism::MechanismState;
 use gorilla_physics::plot::plot;
 use gorilla_physics::rigid_body::RigidBody;
 use gorilla_physics::simulate::step;
-use gorilla_physics::spatial::transform::Matrix4Ext;
 use gorilla_physics::spatial::transform::Transform3D;
 use gorilla_physics::WORLD_FRAME;
 use gorilla_physics::{spatial::spatial_vector::SpatialVector, types::Float};
-use nalgebra::{vector, zero, Isometry3, Matrix4, Vector3};
+use nalgebra::{vector, zero, Isometry3, Vector3};
 
 /// Simulate a spring connected by two spheres dropping to ground
 pub fn main() {

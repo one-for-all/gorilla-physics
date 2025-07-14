@@ -1,7 +1,7 @@
 use cuboid::Cuboid;
 use epa::epa;
 use gjk::gjk;
-use na::{Translation3, UnitVector3, Vector3};
+use na::{Translation3, Vector3};
 use polytope::Polytope;
 
 use crate::types::Float;

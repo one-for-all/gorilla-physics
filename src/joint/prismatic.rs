@@ -1,4 +1,4 @@
-use na::{zero, Isometry3, Matrix3, Matrix3xX, Matrix4, Transform3, Translation3, UnitQuaternion};
+use na::{zero, Isometry3, Matrix3xX, Translation3};
 use nalgebra::Vector3;
 
 use crate::{

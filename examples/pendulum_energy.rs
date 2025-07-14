@@ -3,7 +3,7 @@ use gorilla_physics::plot::plot;
 use gorilla_physics::{
     helpers::build_pendulum, mechanism::MechanismState, simulate::step, types::Float, GRAVITY,
 };
-use nalgebra::{dvector, vector, DVector, Isometry3, Matrix3, Matrix4, Vector3};
+use nalgebra::{dvector, vector, DVector, Isometry3, Matrix3, Vector3};
 
 fn potential_energy(state: &MechanismState, l: &Float) -> Float {
     let q = state.q[0].float();

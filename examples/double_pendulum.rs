@@ -1,6 +1,5 @@
 use gorilla_physics::joint::ToJointPositionVec;
 use gorilla_physics::joint::ToJointVelocityVec;
-use gorilla_physics::spatial::transform::Matrix4Ext;
 use gorilla_physics::{
     dynamics::bias_accelerations,
     helpers::build_double_pendulum,
@@ -10,7 +9,7 @@ use gorilla_physics::{
 };
 use nalgebra::Isometry3;
 use nalgebra::Vector3;
-use nalgebra::{vector, Matrix3, Matrix4};
+use nalgebra::{vector, Matrix3};
 
 /// Verify bias_acceleration function by looking at its result on a double-pendulum
 pub fn main() {

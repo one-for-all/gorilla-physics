@@ -60,13 +60,13 @@ mod energy_tests {
     use crate::joint::ToJointPositionVec;
     use crate::joint::ToJointTorqueVec;
     use crate::PI;
-    use na::Isometry;
+    
     use na::Isometry3;
     use na::Vector3;
-    use na::{dvector, vector, Matrix3, Matrix4};
+    use na::{dvector, vector, Matrix3};
 
     use crate::joint::ToJointVelocityVec;
-    use crate::spatial::transform::Matrix4Ext;
+    
     use crate::{
         energy::double_pendulum_energy,
         helpers::{build_cart_pole, build_double_pendulum},

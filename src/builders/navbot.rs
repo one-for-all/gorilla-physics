@@ -1,10 +1,8 @@
-use std::iter::Rev;
 
 use na::{vector, Matrix3, Vector3};
 
 use crate::{
     collision::{mesh::Mesh, sphere::Sphere},
-    contact::ContactPoint,
     inertia::SpatialInertia,
     joint::{floating::FloatingJoint, revolute::RevoluteJoint, Joint},
     mechanism::MechanismState,

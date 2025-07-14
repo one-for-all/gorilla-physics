@@ -1,4 +1,3 @@
-use gorilla_physics::spatial::transform::Matrix4Ext;
 use gorilla_physics::{
     contact::{ContactPoint, HalfSpace},
     control::Controller,
@@ -20,7 +19,7 @@ use gorilla_physics::{
     types::Float,
     util::assert_close,
 };
-use nalgebra::{vector, Isometry3, Matrix3, Matrix4, UnitQuaternion, Vector3};
+use nalgebra::{vector, Isometry3, Matrix3, UnitQuaternion, Vector3};
 
 /// Simulate two spheres connected by a spring, hitting ground at an angle.
 pub fn main() {

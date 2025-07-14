@@ -18,7 +18,6 @@ use crate::{
 use na::zero;
 use na::Isometry3;
 use na::Rotation3;
-use na::Transform;
 use na::UnitVector3;
 use na::{vector, Matrix3, Vector3};
 

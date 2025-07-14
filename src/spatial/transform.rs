@@ -1,7 +1,7 @@
 use std::{collections::HashMap, ops::Mul};
 
 use itertools::izip;
-use na::{Isometry, Isometry3, Translation3, UnitQuaternion, UnitVector3};
+use na::{Isometry3, Translation3, UnitQuaternion, UnitVector3};
 use nalgebra::{Matrix3, Matrix4, Vector3};
 
 use crate::{mechanism::MechanismState, types::Float};
@@ -225,7 +225,7 @@ pub fn compute_bodies_to_root(state: &MechanismState) -> HashMap<usize, Transfor
 #[cfg(test)]
 mod tests {
 
-    use na::vector;
+    
     use crate::{
         joint::{floating::FloatingJoint, revolute::RevoluteJoint, Joint}, rigid_body::RigidBody, WORLD_FRAME
     };

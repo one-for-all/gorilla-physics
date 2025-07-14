@@ -29,13 +29,10 @@ use clarabel::{
 use itertools::izip;
 use na::{
     dvector, vector, zero, DMatrix, DVector, Dyn, Matrix3, Matrix3x6, Matrix3xX, Matrix6,
-    Matrix6xX, SymmetricEigen, UnitVector3, LU,
+    Matrix6xX, UnitVector3, LU,
 };
 use nalgebra::Vector3;
-use std::{
-    collections::{HashMap, HashSet},
-    process::exit,
-};
+use std::collections::{HashMap, HashSet};
 
 use crate::{mechanism::MechanismState, spatial::spatial_acceleration::SpatialAcceleration};
 

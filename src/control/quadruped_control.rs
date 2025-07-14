@@ -1,11 +1,8 @@
 use na::{vector, ComplexField, Vector3, Vector4};
 
 use crate::{
-    joint::{JointPosition, JointTorque},
-    mechanism::MechanismState,
-    spatial::spatial_vector::SpatialVector,
-    types::Float,
-    PI,
+    joint::JointTorque, mechanism::MechanismState, spatial::spatial_vector::SpatialVector,
+    types::Float, PI,
 };
 
 use super::{ControlInput, Controller};
@@ -320,7 +317,7 @@ mod quadruped_control_tests {
 
     use crate::{
         assert_close, assert_vec_close, contact::HalfSpace, helpers::build_quadruped,
-        integrators::Integrator, simulate::step, spatial::pose::Pose,
+        integrators::Integrator, joint::JointPosition, simulate::step, spatial::pose::Pose,
     };
 
     use super::*;

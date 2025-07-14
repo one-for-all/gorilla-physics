@@ -1,6 +1,6 @@
 use na::{Isometry3, Vector3};
 
-use crate::{contact::HalfSpace, flog, types::Float};
+use crate::{contact::HalfSpace, types::Float};
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Sphere {

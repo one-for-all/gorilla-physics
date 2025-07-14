@@ -1,4 +1,3 @@
-use gorilla_physics::spatial::transform::Matrix4Ext;
 use gorilla_physics::{
     contact::{ContactPoint, HalfSpace},
     control::Controller,
@@ -19,7 +18,7 @@ use gorilla_physics::{
     types::Float,
     WORLD_FRAME,
 };
-use nalgebra::{vector, Isometry3, Matrix3, Matrix4, UnitQuaternion, Vector3};
+use nalgebra::{vector, Isometry3, Matrix3, UnitQuaternion, Vector3};
 
 /// Lossy Spring Loaded Inverted Pendulum (LSLIP)
 /// Ref: Nonlinear Model Predictive Control for Rough-Terrain Robot Hopping, 2012
@@ -122,7 +121,7 @@ pub fn main() {
     let mut data1: Vec<Float> = Vec::with_capacity(num_steps);
     let mut data2: Vec<Float> = Vec::with_capacity(num_steps);
     let mut data3: Vec<Float> = Vec::with_capacity(num_steps);
-    let mut v_z_prev = 0.0;
+    let v_z_prev = 0.0;
 
     for s in 0..num_steps {
         let torque = controller.control(&mut state, None);

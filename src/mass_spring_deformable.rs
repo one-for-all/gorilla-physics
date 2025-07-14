@@ -1,7 +1,3 @@
-use std::{
-    fs::File,
-    io::{BufReader, Read},
-};
 
 use itertools::izip;
 use na::{vector, DVector, Vector3};

@@ -1,4 +1,4 @@
-use na::{Isometry3, Matrix3, Matrix3xX, UnitQuaternion};
+use na::{Isometry3, Matrix3, Matrix3xX};
 
 use crate::spatial::{geometric_jacobian::GeometricJacobian, pose::Pose, transform::Transform3D};
 use crate::types::Float;

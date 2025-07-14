@@ -112,7 +112,7 @@ mod simulate_tests {
     };
 
     use super::*;
-    use na::{Isometry3, Matrix4, Vector3};
+    use na::{Isometry3, Vector3};
     use nalgebra::{vector, Matrix3};
 
     #[test]

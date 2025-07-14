@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    ops::{Add, Mul},
+    ops::Add,
 };
 
 use itertools::izip;

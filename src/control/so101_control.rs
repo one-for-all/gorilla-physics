@@ -1,7 +1,6 @@
 use itertools::izip;
 
 use crate::{
-    flog,
     joint::{JointPosition, JointTorque},
     mechanism::MechanismState,
 };
