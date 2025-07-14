@@ -44,6 +44,7 @@ pub mod cube;
 pub mod double_pendulum;
 pub mod fem_deformable;
 pub mod hopper;
+pub mod kinematic_loop;
 pub mod mass_spring_deformable;
 pub mod mesh;
 pub mod navbot;
@@ -502,21 +503,6 @@ pub fn createCompassGait() -> InterfaceMechanismState {
 
     state.set_joint_q(2, JointPosition::Float(Float::to_radians(30.0)));
     state.set_joint_q(3, JointPosition::Float(Float::to_radians(-30.0)));
-
-    InterfaceMechanismState { inner: state }
-}
-
-#[wasm_bindgen]
-pub async fn createFourBarLinkage() -> InterfaceMechanismState {
-    let mut state = build_four_bar_linkage(1.0, 10.0);
-
-    let angle = PI / 2.0; // PI - 0.1;
-    let q = vec![
-        JointPosition::Float(-angle),
-        JointPosition::Float(-angle),
-        JointPosition::Float(angle),
-    ];
-    state.update_q(&q);
 
     InterfaceMechanismState { inner: state }
 }
