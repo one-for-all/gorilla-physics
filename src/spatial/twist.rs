@@ -80,11 +80,6 @@ impl Twist {
             );
         }
 
-        let rot = transform.rot();
-        let trans = transform.trans();
-        let angular = rot.mul(self.angular);
-        let linear = rot.mul(self.linear) + trans.cross(&angular);
-
         let angular = transform.iso.rotation * self.angular;
         let linear =
             transform.iso.rotation * self.linear + transform.iso.translation.vector.cross(&angular);
