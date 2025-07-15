@@ -74,7 +74,7 @@ mod pusher_controller_tests {
         let num_steps = (final_time / dt) as usize;
         for _s in 0..num_steps {
             let torque = controller.control(&mut state, None);
-            let (q, v) = step(&mut state, dt, &torque, &Integrator::SemiImplicitEuler);
+            let (_q, _v) = step(&mut state, dt, &torque, &Integrator::SemiImplicitEuler);
         }
 
         // Assert

@@ -107,7 +107,7 @@ mod SLIP_control_tests {
         let num_steps = (final_time / dt) as usize;
         for _ in 0..num_steps {
             let torque = vec![];
-            let (q, v) = step(&mut state, dt, &torque, &Integrator::SemiImplicitEuler);
+            let (_q, _v) = step(&mut state, dt, &torque, &Integrator::SemiImplicitEuler);
 
             let rot = state.q[0].pose().rotation;
             let v_linear = rot * state.v[0].spatial().linear;
@@ -163,7 +163,7 @@ mod SLIP_control_tests {
         let mut v_x = vec![];
         for _ in 0..num_steps {
             let torque = vec![];
-            let (q, v) = step(&mut state, dt, &torque, &Integrator::SemiImplicitEuler);
+            let (_q, _v) = step(&mut state, dt, &torque, &Integrator::SemiImplicitEuler);
 
             let rot = state.q[0].pose().rotation;
             let v_linear = rot * state.v[0].spatial().linear;
@@ -204,7 +204,7 @@ impl ALSLIPController {
     }
 
     /// TODO: control to velocity/position
-    pub fn control(&mut self, state: &mut MechanismState) -> Vec<JointTorque> {
+    pub fn control(&mut self, _state: &mut MechanismState) -> Vec<JointTorque> {
         let mut tau = vec![JointTorque::Spatial(SpatialVector::zero())]; // first floating joint unactuated
         tau.push(JointTorque::Float(0.0));
         tau.push(JointTorque::Float(0.0));

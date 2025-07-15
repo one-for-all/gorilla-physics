@@ -72,7 +72,6 @@ mod constraint_revolute_tests {
             build_four_bar_linkage, build_four_bar_linkage_with_base,
         },
         joint::{JointPosition, JointVelocity, ToFloatDVec},
-        plot::plot,
         simulate::step,
         types::Float,
         PI,

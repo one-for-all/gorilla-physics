@@ -143,7 +143,7 @@ pub fn main() {
 
         let rot = q[0].pose().rotation;
         let v_linear = rot * v[0].spatial().linear;
-        let v_angular = rot * v[0].spatial().angular;
+        let _v_angular = rot * v[0].spatial().angular;
         let v_z = v_linear.z;
 
         let pose_body = &state.poses()[0];
@@ -176,8 +176,8 @@ pub fn main() {
             println!("===============\napex");
         }
 
-        let x_body = pose_body.translation.x;
-        let x_leg = pose_leg.translation.x;
+        let _x_body = pose_body.translation.x;
+        let _x_leg = pose_leg.translation.x;
         if v_z_prev < 0.0 && v_z >= 0.0 {
             // Bottom
             println!("\n===================\nbottom");
@@ -199,7 +199,7 @@ pub fn main() {
         v_z_prev = v_z;
         prev_z_leg = z_leg;
 
-        let energy = state.kinetic_energy() + state.gravitational_energy();
+        let _energy = state.kinetic_energy() + state.gravitational_energy();
 
         // let body_rotation = q[0].pose().rotation.angle();
         // if body_rotation != 0.0 {

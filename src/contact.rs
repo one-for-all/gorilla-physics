@@ -383,7 +383,7 @@ mod contact_tests {
     use crate::integrators::Integrator;
     use crate::joint::revolute::RevoluteJoint;
     use crate::spatial::spatial_vector::SpatialVector;
-    
+
     use crate::{
         assert_close,
         helpers::{build_SLIP, build_cube, build_rimless_wheel},
@@ -746,7 +746,7 @@ mod contact_tests {
         // Act
         let final_time = 20.0;
         let dt = 1.0 / 600.0;
-        let (qs, vs) = simulate(
+        let (_qs, vs) = simulate(
             &mut state,
             final_time,
             dt,
@@ -992,7 +992,7 @@ mod contact_tests {
         // Act
         let final_time = 4.0;
         let dt = 1e-3;
-        let (q, v) = simulate(
+        let (_q, _v) = simulate(
             &mut state,
             final_time,
             dt,

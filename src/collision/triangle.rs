@@ -101,18 +101,18 @@ pub fn triangle_triangle_collision_detection(
     // if a_v0_d.signum() == a_v2_d.signum() {
     let p0 = D.dot(&a[0]);
     let p1 = D.dot(&a[1]);
-    let t1 = p0 + (p1 - p0) * a_v0_d / (a_v0_d - a_v1_d);
+    let _t1 = p0 + (p1 - p0) * a_v0_d / (a_v0_d - a_v1_d);
 
     let p2 = D.dot(&a[2]);
-    let t2 = p2 + (p1 - p2) * a_v2_d / (a_v2_d - a_v1_d);
+    let _t2 = p2 + (p1 - p2) * a_v2_d / (a_v2_d - a_v1_d);
     // }
 
     let p0 = D.dot(&b[0]);
     let p2 = D.dot(&b[2]);
-    let t3 = p0 + (p2 - p0) * b_v0_d / (b_v0_d - b_v2_d);
+    let _t3 = p0 + (p2 - p0) * b_v0_d / (b_v0_d - b_v2_d);
 
     let p1 = D.dot(&b[1]);
-    let t4 = p2 + (p1 - p2) * b_v2_d / (b_v2_d - b_v1_d);
+    let _t4 = p2 + (p1 - p2) * b_v2_d / (b_v2_d - b_v1_d);
 
     true
 }

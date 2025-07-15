@@ -21,13 +21,13 @@ pub fn main() {
 
     let degree = 45.0;
     let angle: Float = Float::to_radians(degree);
-    let f_n = 3.0; // Hz, natural frequency of vertical motion in stance
-                   // TODO: do the following to set k_spring.
-                   // It is surprisingly difficult to find a set of parameters
-                   // to make the SLIP go into periodic motion.
-                   // let k_spring = 1.0 * (2.0 * PI * f_n).powi(2) * m;
-                   // because w_n = sqrt(k/m); f_n = w_n/2pi;
-                   // Ref: A Planar Hopping Robot with One Actuator, Sato & Buehler
+    let _f_n = 3.0; // Hz, natural frequency of vertical motion in stance
+                    // TODO: do the following to set k_spring.
+                    // It is surprisingly difficult to find a set of parameters
+                    // to make the SLIP go into periodic motion.
+                    // let k_spring = 1.0 * (2.0 * PI * f_n).powi(2) * m;
+                    // because w_n = sqrt(k/m); f_n = w_n/2pi;
+                    // Ref: A Planar Hopping Robot with One Actuator, Sato & Buehler
     let k_spring = 500.0;
 
     let mut state = build_SLIP(m, r, l_rest, angle, k_spring);
@@ -57,7 +57,7 @@ pub fn main() {
     let mut data3: Vec<Float> = Vec::with_capacity(num_steps);
     let mut v_z_prev = 0.0;
 
-    for s in 0..num_steps {
+    for _s in 0..num_steps {
         let torque = controller.control(&mut state, None);
         let (q, v) = step(
             &mut state,

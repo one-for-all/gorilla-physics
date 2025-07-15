@@ -12,6 +12,8 @@ fn potential_energy(state: &MechanismState, l: &Float) -> Float {
     let h = 0.5 * l * -q.sin();
     m * GRAVITY * h
 }
+
+#[allow(non_snake_case)]
 /// Plot the kinetic and potential energy of a pendulum system during swing
 pub fn main() {
     let m = 5.0; // Mass of rod

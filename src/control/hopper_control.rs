@@ -113,7 +113,7 @@ mod hopper_control_tests {
                 torque[2] = JointTorque::Float(tau_spring);
             }
 
-            let (q, v) = step(&mut state, dt, &torque, &Integrator::SemiImplicitEuler);
+            let (q, _v) = step(&mut state, dt, &torque, &Integrator::SemiImplicitEuler);
 
             let bodies_to_root = compute_bodies_to_root(&state);
             let joint_twists = compute_joint_twists(&state);
@@ -223,7 +223,7 @@ mod hopper_control_tests {
             let torque_hip = 2000.0 * (leg_angle - target_leg_angle) + 200.0 * leg_angular_v;
             torque[2] = JointTorque::Float(torque_hip);
 
-            let (q, v) = step(&mut state, dt, &torque, &Integrator::SemiImplicitEuler);
+            let (_q, _v) = step(&mut state, dt, &torque, &Integrator::SemiImplicitEuler);
 
             let bodies_to_root = compute_bodies_to_root(&state);
             let joint_twists = compute_joint_twists(&state);
@@ -379,7 +379,7 @@ mod hopper_control_tests {
 
             torque[2] = JointTorque::Float(torque_hip);
 
-            let (q, v) = step(&mut state, dt, &torque, &Integrator::SemiImplicitEuler);
+            let (_q, _v) = step(&mut state, dt, &torque, &Integrator::SemiImplicitEuler);
 
             let bodies_to_root = compute_bodies_to_root(&state);
             let joint_twists = compute_joint_twists(&state);

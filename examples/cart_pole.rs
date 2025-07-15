@@ -12,6 +12,7 @@ use nalgebra::{dvector, vector, DVector, Matrix3, Vector3};
 
 use gorilla_physics::types::Float;
 
+#[allow(non_snake_case)]
 /// Run simulation of a cart pole
 ///
 ///              z
@@ -84,7 +85,7 @@ pub fn main() {
     let index = 1;
     let qs = qs.iter().map(|x| x[index]).collect::<Vec<Float>>();
     let vs = vs.iter().map(|x| x[index]).collect::<Vec<Float>>();
-    let taus = taus.iter().map(|x| x[0]).collect::<Vec<Float>>();
+    let _taus = taus.iter().map(|x| x[0]).collect::<Vec<Float>>();
 
     plot2(&qs, &vs, final_time, dt, num_steps);
 }

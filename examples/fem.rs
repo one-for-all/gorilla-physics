@@ -1,10 +1,4 @@
-use std::process::exit;
-
-use gorilla_physics::{
-    collision::mesh::Mesh,
-    fem_deformable::read_fem_box,
-    util::read_file,
-};
+use gorilla_physics::{collision::mesh::Mesh, fem_deformable::read_fem_box, util::read_file};
 use nalgebra::DVector;
 
 /// Read a bunny as a mass-spring model, and simulate it falling under gravity
@@ -20,12 +14,10 @@ async fn main() {
 
     println!("rigid num faces: {}", rigid.faces.len());
 
-    exit(0);
-
     let tau = DVector::zeros(deformable.n_vertices * 3);
     let final_time = 1.0;
     let dt = 1.0 / 60.0; // 1.0 / 600.0;
-    let num_steps = (final_time / dt) as usize;
+    let _num_steps = (final_time / dt) as usize;
 
     // let mut data = vec![];
     for _ in 0..30 {

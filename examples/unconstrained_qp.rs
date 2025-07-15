@@ -2,6 +2,7 @@ use clarabel::solver::{DefaultSettingsBuilder, DefaultSolver, IPSolver};
 use clarabel::{algebra::*, solver::SupportedConeT};
 use nalgebra::Matrix2;
 
+#[allow(non_snake_case)]
 fn main() {
     #[rustfmt::skip]
     let P = Matrix2::new(
@@ -25,7 +26,7 @@ fn main() {
     // The default values were tuned for f64 case.
     // Default settings: https://clarabel.org/stable/api_settings/
     // Issue comment: https://github.com/oxfordcontrol/Clarabel.jl/issues/105#issuecomment-1344322700
-    let tol: f32 = 1e-8;
+    let _tol: f32 = 1e-8;
     let settings = DefaultSettingsBuilder::default()
         .verbose(true)
         // .tol_gap_abs(tol.sqrt())

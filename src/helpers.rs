@@ -2,7 +2,6 @@ use crate::collision::cuboid::Cuboid;
 use crate::collision::mesh::Mesh;
 use crate::contact::ContactPoint;
 use crate::contact::SpringContact;
-use crate::joint::constraint_revolute::ConstraintRevoluteJoint;
 use crate::joint::floating::FloatingJoint;
 use crate::joint::prismatic::JointSpring;
 use crate::PI;
@@ -15,7 +14,6 @@ use crate::{
     spatial::transform::Transform3D,
     types::Float,
 };
-use na::base;
 use na::zero;
 use na::Isometry3;
 use na::Rotation3;

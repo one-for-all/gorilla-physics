@@ -507,6 +507,7 @@ pub fn createCompassGait() -> InterfaceMechanismState {
     InterfaceMechanismState { inner: state }
 }
 
+#[allow(dead_code)]
 fn to_js_float_array(from: &Vec<Vector3<Float>>) -> js_sys::Float32Array {
     let from: Vec<f32> = from.iter().flat_map(|v| [v.x, v.y, v.z]).collect();
     js_sys::Float32Array::from(from.as_slice())

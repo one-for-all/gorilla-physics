@@ -121,18 +121,18 @@ pub fn main() {
     let mut data1: Vec<Float> = Vec::with_capacity(num_steps);
     let mut data2: Vec<Float> = Vec::with_capacity(num_steps);
     let mut data3: Vec<Float> = Vec::with_capacity(num_steps);
-    let v_z_prev = 0.0;
+    let _v_z_prev = 0.0;
 
-    for s in 0..num_steps {
+    for _s in 0..num_steps {
         let torque = controller.control(&mut state, None);
-        let (q, v) = step(
+        let (_q, _v) = step(
             &mut state,
             dt,
             &torque,
             &gorilla_physics::integrators::Integrator::SemiImplicitEuler,
         );
 
-        let pose_body = &state.poses()[0]; // q[0].pose();
+        let _pose_body = &state.poses()[0]; // q[0].pose();
         let pose_leg = &state.poses()[1];
 
         data1.push(pose_leg.translation.x);

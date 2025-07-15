@@ -73,7 +73,6 @@ impl Controller for Hopper1DController {
         // PID leg length control
         let kp = 2000.0; // try to approximate ideal length control
         let kd = 100.0;
-        let ki = 100.0;
 
         let p_term = kp * (self.leg_length_setpoint - q1);
         let d_term = kd * (0.0 - v1);
@@ -151,12 +150,12 @@ impl Controller for Hopper2DController {
         let q = state.q.clone();
         let v = state.v.clone();
 
-        let q_body = q[0].pose();
-        let q_hip = q[1].float();
+        let _q_body = q[0].pose();
+        let _q_hip = q[1].float();
         let q_piston = q[2].float();
         let q_leg = q[3].float();
-        let v_body = v[0].spatial();
-        let v_hip = v[1].float();
+        let _v_body = v[0].spatial();
+        let _v_hip = v[1].float();
         let v_piston = v[2].float();
         let v_leg = v[3].float();
 

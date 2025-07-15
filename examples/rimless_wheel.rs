@@ -42,9 +42,9 @@ pub fn main() {
     let num_steps = (final_time / dt) as usize;
 
     let mut data: Vec<Float> = Vec::with_capacity(num_steps);
-    for s in 0..num_steps {
+    for _s in 0..num_steps {
         let torque = vec![];
-        let (q, v) = step(
+        let (_q, v) = step(
             &mut state,
             dt,
             &torque,

@@ -42,7 +42,7 @@ pub fn main() {
         let (q, v) = step(&mut state, dt, &torque, &Integrator::VelocityStepping);
 
         let r = q[0].pose().translation;
-        let angle = q[0].pose().rotation.angle();
+        let _angle = q[0].pose().rotation.angle();
         data1.push(r.x);
         data2.push(r.z);
         let v_box = v[0].spatial();

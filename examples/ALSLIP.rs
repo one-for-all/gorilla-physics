@@ -153,10 +153,10 @@ pub fn main() {
     let mut data6: Vec<Float> = Vec::with_capacity(num_steps);
     let mut v_z_prev = 0.0;
 
-    let v_x_integral = 0.0;
-    let prev_d_v_z = 0.0;
+    let _v_x_integral = 0.0;
+    let _prev_d_v_z = 0.0;
     let mut prev_z_leg = 0.0;
-    for s in 0..num_steps {
+    for _s in 0..num_steps {
         let torque = controller.control(&mut state);
         let (q, v) = step(
             &mut state,
@@ -167,11 +167,11 @@ pub fn main() {
 
         let rot = q[0].pose().rotation;
         let v_linear = rot * v[0].spatial().linear;
-        let v_angular = rot * v[0].spatial().angular;
+        let _v_angular = rot * v[0].spatial().angular;
         let v_z = v_linear.z;
-        let v_x = v_linear.x;
-        let q_x = q[0].pose().translation.x;
-        let q_z = q[0].pose().translation.z;
+        let _v_x = v_linear.x;
+        let _q_x = q[0].pose().translation.x;
+        let _q_z = q[0].pose().translation.z;
 
         let bodies_to_root = compute_bodies_to_root(&state);
         let joint_twists = compute_joint_twists(&state);
@@ -191,7 +191,7 @@ pub fn main() {
             println!("===============\napex");
             let revolute_jointid = 2;
             let angle = state.q[revolute_jointid - 1].float();
-            let degree = Float::to_degrees(*angle);
+            let _degree = Float::to_degrees(*angle);
             // println!("current degree: {}", degree);
 
             state.set_joint_q(revolute_jointid, JointPosition::Float(touch_down_angle));
@@ -236,8 +236,8 @@ pub fn main() {
             // state.bodies[0].spring_contacts[0].l_rest = l_rest;
         }
 
-        let x_body = pose_body.translation.x;
-        let x_leg = pose_leg.translation.x;
+        let _x_body = pose_body.translation.x;
+        let _x_leg = pose_leg.translation.x;
         // if v_z_prev < 0.0 && v_z >= 0.0 {
         if v_z_prev < 0.0 && v_z >= 0.0 {
             // Bottom
@@ -262,7 +262,7 @@ pub fn main() {
 
         let revolute_jointid = 2;
         let angle = state.q[revolute_jointid - 1].float();
-        let degree = Float::to_degrees(*angle);
+        let _degree = Float::to_degrees(*angle);
         // println!("current degree: {}", degree);
 
         v_z_prev = v_z;
@@ -270,7 +270,7 @@ pub fn main() {
 
         // let energy = state.kinetic_energy() + state.gravitational_energy();
 
-        let body_rotation = q[0].pose().rotation.angle();
+        let _body_rotation = q[0].pose().rotation.angle();
         // if body_rotation != 0.0 {
         //     println!("body rotation: {}", body_rotation);
         //     panic!("body rotation is not zero: {}", body_rotation);

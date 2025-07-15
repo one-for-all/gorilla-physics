@@ -379,7 +379,7 @@ pub fn edge_edge_collision(
     let x12_dot_x34 = x12.dot(&x34);
     #[rustfmt::skip]
     let A = Matrix2::new(
-        x12.norm_squared(), -x12_dot_x34, 
+        x12.norm_squared(), -x12_dot_x34,
         -x12_dot_x34, x34.norm_squared()
     );
     let b = Matrix2x1::new(x12.dot(&x13), -x34.dot(&x13));
@@ -699,7 +699,7 @@ mod mesh_tests {
         let num_steps = (final_time / dt) as usize;
         for _s in 0..num_steps {
             let torque = vec![];
-            let (q, v) = step(&mut state, dt, &torque, &Integrator::VelocityStepping);
+            let (_q, _v) = step(&mut state, dt, &torque, &Integrator::VelocityStepping);
         }
 
         // Assert

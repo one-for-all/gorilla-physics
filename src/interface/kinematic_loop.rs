@@ -1,4 +1,4 @@
-use na::{vector, Vector};
+use na::vector;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{

@@ -18,7 +18,6 @@ use crate::{
 };
 
 use super::InterfaceMechanismState;
-use crate::spatial::transform::Matrix4Ext;
 use na::{zero, Isometry3, UnitQuaternion, Vector3};
 use nalgebra::{vector, Matrix3};
 use wasm_bindgen::prelude::*;

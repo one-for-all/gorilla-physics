@@ -31,7 +31,7 @@ pub fn main() {
     let dt = 0.02;
     let num_steps = (final_time / dt) as usize;
 
-    let (qs, vs) = simulate(
+    let (qs, _vs) = simulate(
         &mut state,
         final_time,
         dt,
