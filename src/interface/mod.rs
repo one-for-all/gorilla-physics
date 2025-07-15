@@ -1,6 +1,5 @@
 use crate::contact::ContactPoint;
 use crate::control::ControlInput;
-use crate::helpers::build_four_bar_linkage;
 use crate::integrators::Integrator;
 use crate::joint::floating::FloatingJoint;
 use crate::joint::JointVelocity;
@@ -78,6 +77,7 @@ impl InterfaceSimulator {
         state: InterfaceMechanismState,
         controller: InterfaceController,
     ) -> InterfaceSimulator {
+        console_error_panic_hook::set_once(); // Make panic messages show up in console
         InterfaceSimulator { state, controller }
     }
 
