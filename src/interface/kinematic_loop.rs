@@ -1,7 +1,7 @@
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{
-    helpers::{build_four_bar_linkage, build_four_bar_linkage_with_base},
+    builders::kinematic_loop_builder::{build_four_bar_linkage, build_four_bar_linkage_with_base},
     interface::InterfaceMechanismState,
     joint::{JointPosition, JointVelocity},
     PI,

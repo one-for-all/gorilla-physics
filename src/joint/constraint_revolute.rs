@@ -68,7 +68,9 @@ impl ConstraintRevoluteJoint {
 mod constraint_revolute_tests {
     use crate::{
         assert_vec_close,
-        helpers::{build_four_bar_linkage, build_four_bar_linkage_with_base},
+        builders::kinematic_loop_builder::{
+            build_four_bar_linkage, build_four_bar_linkage_with_base,
+        },
         joint::{JointPosition, JointVelocity, ToFloatDVec},
         plot::plot,
         simulate::step,

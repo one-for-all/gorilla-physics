@@ -10,6 +10,7 @@ use crate::{
     WORLD_FRAME,
 };
 
+pub mod kinematic_loop_builder;
 pub mod navbot;
 
 fn build_so101_base_body(mut mesh: Mesh, frame: &str) -> RigidBody {
@@ -25,8 +26,8 @@ fn build_so101_base_body(mut mesh: Mesh, frame: &str) -> RigidBody {
     // inertia moment matrix about the center-of-mass
     #[rustfmt::skip]
     let moment_com = Matrix3::new(
-        ixx, ixy, ixz, 
-        ixy, iyy, iyz, 
+        ixx, ixy, ixz,
+        ixy, iyy, iyz,
         ixz, iyz, izz
     );
 
@@ -58,8 +59,8 @@ fn build_so101_shoulder_body(mut mesh: Mesh, frame: &str) -> RigidBody {
     // inertia moment matrix about the center-of-mass
     #[rustfmt::skip]
     let moment_com = Matrix3::new(
-        ixx, ixy, ixz, 
-        ixy, iyy, iyz, 
+        ixx, ixy, ixz,
+        ixy, iyy, iyz,
         ixz, iyz, izz
     );
 
@@ -91,8 +92,8 @@ fn build_so101_upper_arm_body(mut mesh: Mesh, frame: &str) -> RigidBody {
     // inertia moment matrix about the center-of-mass
     #[rustfmt::skip]
     let moment_com = Matrix3::new(
-        ixx, ixy, ixz, 
-        ixy, iyy, iyz, 
+        ixx, ixy, ixz,
+        ixy, iyy, iyz,
         ixz, iyz, izz
     );
 
@@ -124,8 +125,8 @@ fn build_so101_lower_arm_body(mut mesh: Mesh, frame: &str) -> RigidBody {
     // inertia moment matrix about the center-of-mass
     #[rustfmt::skip]
     let moment_com = Matrix3::new(
-        ixx, ixy, ixz, 
-        ixy, iyy, iyz, 
+        ixx, ixy, ixz,
+        ixy, iyy, iyz,
         ixz, iyz, izz
     );
 
@@ -157,8 +158,8 @@ fn build_so101_wrist_body(mut mesh: Mesh, frame: &str) -> RigidBody {
     // inertia moment matrix about the center-of-mass
     #[rustfmt::skip]
     let moment_com = Matrix3::new(
-        ixx, ixy, ixz, 
-        ixy, iyy, iyz, 
+        ixx, ixy, ixz,
+        ixy, iyy, iyz,
         ixz, iyz, izz
     );
 
@@ -190,8 +191,8 @@ fn build_so101_gripper_body(mut mesh: Mesh, frame: &str) -> RigidBody {
     // inertia moment matrix about the center-of-mass
     #[rustfmt::skip]
     let moment_com = Matrix3::new(
-        ixx, ixy, ixz, 
-        ixy, iyy, iyz, 
+        ixx, ixy, ixz,
+        ixy, iyy, iyz,
         ixz, iyz, izz
     );
 
@@ -223,8 +224,8 @@ fn build_so101_jaw_body(mut mesh: Mesh, frame: &str) -> RigidBody {
     // inertia moment matrix about the center-of-mass
     #[rustfmt::skip]
     let moment_com = Matrix3::new(
-        ixx, ixy, ixz, 
-        ixy, iyy, iyz, 
+        ixx, ixy, ixz,
+        ixy, iyy, iyz,
         ixz, iyz, izz
     );
 
