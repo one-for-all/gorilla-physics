@@ -413,6 +413,20 @@ export class Simulator {
     this.addCuboid("bar3", 0x00ff00, l, w, w, linkageOffset);
   }
 
+  addFourBarLinkageWithBase() {
+    let w = 0.1;
+    let l = 1.0;
+
+    this.addCuboid("base", 0x0000ff, l, w, w);
+
+    let offset = new Matrix4().makeTranslation(0, 0, -l / 2.0);
+    this.addCuboid("bar1", 0xff0000, w, w, l, offset);
+    this.addCuboid("bar2", 0xff0000, w, w, l, offset);
+
+    let linkageOffset = new Matrix4().makeTranslation(l / 2.0, 0, 0);
+    this.addCuboid("bar3", 0x00ff00, l, w, w, linkageOffset);
+  }
+
   updateRodPose(angle: number) {
     // Update rod center-of-shape position
     this.rod.position.x = (this.length / 2) * Math.sin(angle);
@@ -674,7 +688,7 @@ export class Simulator {
     this.setPose("wheel_right", wheelRightPose);
   }
 
-  updateFourBarLinkagePose(poses: Float32Array) {
+  updateFourBarLinkage(poses: Float32Array) {
     let bar1Pose = poses.subarray(0, 6);
     this.setPose("bar1", bar1Pose);
 
@@ -682,6 +696,24 @@ export class Simulator {
     this.setPose("bar2", bar2Pose);
 
     let bar3Pose = poses.subarray(12, 18);
+    this.setPose("bar3", bar3Pose);
+  }
+
+  updateFourBarLinkageWithBase(poses: Float32Array) {
+    let i = 0;
+    let basePose = poses.subarray(i, i + 6);
+    this.setPose("base", basePose);
+
+    i += 6;
+    let bar1Pose = poses.subarray(i, i + 6);
+    this.setPose("bar1", bar1Pose);
+
+    i += 6;
+    let bar2Pose = poses.subarray(i, i + 6);
+    this.setPose("bar2", bar2Pose);
+
+    i += 6;
+    let bar3Pose = poses.subarray(i, i + 6);
     this.setPose("bar3", bar3Pose);
   }
 
@@ -750,7 +782,7 @@ export class Simulator {
     // this.updateMesh(6, "jaw");
 
     let poses = this.simulator.poses();
-    this.updateFourBarLinkagePose(poses);
+    this.updateFourBarLinkageWithBase(poses);
     // this.updateBalancingBotPose(poses);
 
     // let contact_positions = this.simulator.contact_positions();

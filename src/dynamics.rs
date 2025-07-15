@@ -724,7 +724,9 @@ pub fn solve_joint_constraints(
     mass_matrix_lu: &LU<Float, Dyn, Dyn>,
     v_free: &DVector<Float>,
 ) -> DVector<Float> {
-    let mass_inv = mass_matrix_lu.try_inverse().unwrap();
+    let mass_inv = mass_matrix_lu
+        .try_inverse()
+        .expect("mass matrix not invertible");
 
     // Note: there is chance that G is not exactly symmetric & positive-definite due to numerical error
     let G: DMatrix<Float> = J * mass_inv * J.transpose();
@@ -749,7 +751,11 @@ pub fn solve_joint_constraints(
     let lambda = DVector::from(solver.solution.x);
     if lambda.iter().any(|x| x.is_nan()) {
         // Fall back to linear solver. Or maybe this should be the preferred solver?
-        let cholesky = G.cholesky().unwrap();
+        // let G = project_symmetric_psd(&G);
+        let cholesky = G
+            .clone()
+            .cholesky()
+            .expect(&format!("G not positive definite: {}", G));
         return -cholesky.solve(&g);
     }
 

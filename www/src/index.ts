@@ -1,5 +1,7 @@
-import { createFourBarLinkage } from "gorilla-physics";
-import { Matrix4 } from "three";
+import {
+  createFourBarLinkage,
+  createFourBarLinkageWithBase,
+} from "gorilla-physics";
 import { Simulator } from "./Simulator";
 
 export const keysPressed: Record<string, boolean> = {};
@@ -48,7 +50,7 @@ import("gorilla-physics").then((gorilla) => {
   // simulator.addQuadruped();
   // simulator.addPlane(normal, h_ground, 100);
 
-  createFourBarLinkage().then((state) => {
+  createFourBarLinkageWithBase().then((state) => {
     state.addHalfSpace(normal, h_ground);
 
     let controller = gorilla.createNullController();
@@ -56,7 +58,7 @@ import("gorilla-physics").then((gorilla) => {
     let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
     let simulator = new Simulator(interfaceSimulator);
 
-    simulator.addFourBarLinkage();
+    simulator.addFourBarLinkageWithBase();
 
     // simulator.addCuboid("body", 0xff0000, 0.06, 0.05, 0.025);
     // simulator.addSphere("wheel_left", 0x00ff00, 0.02);
@@ -80,7 +82,7 @@ import("gorilla-physics").then((gorilla) => {
     // simulator.updateMesh(6, "jaw");
 
     let poses = simulator.simulator.poses();
-    simulator.updateFourBarLinkagePose(poses);
+    simulator.updateFourBarLinkage(poses);
 
     // Important: Set initial camera position
     let cameraPosition = {

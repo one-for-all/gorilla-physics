@@ -68,8 +68,9 @@ impl ConstraintRevoluteJoint {
 mod constraint_revolute_tests {
     use crate::{
         assert_vec_close,
-        helpers::build_four_bar_linkage,
-        joint::{JointPosition, ToFloatDVec},
+        helpers::{build_four_bar_linkage, build_four_bar_linkage_with_base},
+        joint::{JointPosition, JointVelocity, ToFloatDVec},
+        plot::plot,
         simulate::step,
         types::Float,
         PI,
@@ -131,5 +132,46 @@ mod constraint_revolute_tests {
                 s as Float * dt
             );
         }
+    }
+
+    #[test]
+    fn four_bar_linkage_with_base() {
+        // Arrange
+        let mut state = build_four_bar_linkage_with_base(1.0, 1.0);
+        let angle = PI / 4.0;
+        let q = vec![
+            JointPosition::Float(0.),
+            JointPosition::Float(-angle),
+            JointPosition::Float(-angle),
+            JointPosition::Float(angle),
+        ];
+        state.update_q(&q);
+        state.set_joint_v(1, JointVelocity::Float(0.1));
+
+        // Act
+        let mut data = vec![];
+        let final_time = 2.0;
+        let dt = 1.0 / 60.0;
+        let num_steps = (final_time / dt) as usize;
+        for s in 0..num_steps {
+            println!("step: {}", s);
+            let (q, _v) = step(
+                &mut state,
+                dt,
+                &vec![],
+                &crate::integrators::Integrator::VelocityStepping,
+            );
+
+            // Assert
+            assert!(
+                !q.to_float_dvec().iter().any(|x| x.is_nan()),
+                "simulation exploded at time: {}s",
+                s as Float * dt
+            );
+
+            data.push(*q[1].float());
+        }
+
+        plot(&data, final_time, dt, num_steps, "4bar with base");
     }
 }
