@@ -127,3 +127,90 @@ pub fn build_four_bar_linkage_with_base(m: Float, m_bar3: Float) -> MechanismSta
 
     MechanismState::new_with_constraint(treejoints, bodies, constraint_joints)
 }
+
+pub fn build_mock_navbot(m: Float) -> MechanismState {
+    let l = 1.0;
+    let w = 0.1;
+
+    let base_frame = "base";
+    let moment_x = m * w * w / 6.0;
+    let moment_y = m * (4. * l * l + w * w) / 12.0;
+    let moment_z = m * (4. * l * l + w * w) / 12.0;
+    let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
+    let cross_part = vector![0., 0., 0.];
+    let base = RigidBody::new(SpatialInertia::new(moment, cross_part, m, base_frame));
+    let base_to_world = Transform3D::move_x(base_frame, WORLD_FRAME, 0.);
+
+    let right_leg_frame = "right_leg";
+    let moment_x = m * (4. * l * l + w * w) / 12.0;
+    let moment_y = m * (4. * l * l + w * w) / 12.0;
+    let moment_z = m * w * w / 6.0;
+    let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
+    let cross_part = vector![0., 0., -m * l / 2.0];
+    let right_leg = RigidBody::new(SpatialInertia::new(moment, cross_part, m, right_leg_frame));
+    let right_leg_to_base =
+        Transform3D::move_xyz(right_leg_frame, base_frame, l / 2.0, -l / 2.0, 0.);
+
+    let right_link_frame = "right_link";
+    let right_link = RigidBody::new(SpatialInertia::new(moment, cross_part, m, right_link_frame));
+    let right_link_to_base =
+        Transform3D::move_xyz(right_link_frame, base_frame, l / 2.0, l / 2.0, 0.);
+
+    let left_leg_frame = "left_leg";
+    let left_leg = RigidBody::new(SpatialInertia::new(moment, cross_part, m, left_leg_frame));
+    let left_leg_to_base =
+        Transform3D::move_xyz(left_leg_frame, base_frame, -l / 2.0, -l / 2.0, 0.);
+
+    let left_link_frame = "left_link";
+    let left_link = RigidBody::new(SpatialInertia::new(moment, cross_part, m, left_link_frame));
+    let left_link_to_base =
+        Transform3D::move_xyz(left_link_frame, base_frame, -l / 2.0, l / 2.0, 0.);
+
+    let right_foot_frame = "right_foot";
+    let moment_x = m * (4. * l * l + w * w) / 12.0;
+    let moment_y = m * w * w / 6.0;
+    let moment_z = m * (4. * l * l + w * w) / 12.0;
+    let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
+    let cross_part = vector![0., m * l / 2.0, 0.];
+    let right_foot = RigidBody::new(SpatialInertia::new(moment, cross_part, m, right_foot_frame));
+    let right_foot_to_right_leg =
+        Transform3D::move_xyz(right_foot_frame, right_leg_frame, 0., 0., -l);
+
+    let left_foot_frame = "left_foot";
+    let left_foot = RigidBody::new(SpatialInertia::new(moment, cross_part, m, left_foot_frame));
+    let left_foot_to_left_leg = Transform3D::move_xyz(left_foot_frame, left_leg_frame, 0., 0., -l);
+
+    let bodies = vec![
+        base, right_leg, right_link, left_leg, left_link, right_foot, left_foot,
+    ];
+    let treejoints = vec![
+        Joint::RevoluteJoint(RevoluteJoint::new(base_to_world, Vector3::z_axis())),
+        Joint::RevoluteJoint(RevoluteJoint::new(right_leg_to_base, Vector3::x_axis())),
+        Joint::RevoluteJoint(RevoluteJoint::new(right_link_to_base, Vector3::x_axis())),
+        Joint::RevoluteJoint(RevoluteJoint::new(left_leg_to_base, Vector3::x_axis())),
+        Joint::RevoluteJoint(RevoluteJoint::new(left_link_to_base, Vector3::x_axis())),
+        Joint::RevoluteJoint(RevoluteJoint::new(
+            right_foot_to_right_leg,
+            Vector3::x_axis(),
+        )),
+        Joint::RevoluteJoint(RevoluteJoint::new(left_foot_to_left_leg, Vector3::x_axis())),
+    ];
+
+    let right_foot_to_right_link = ConstraintRevoluteJoint::new(
+        right_foot_frame,
+        Isometry3::translation(0., l, 0.),
+        right_link_frame,
+        Isometry3::translation(0., 0., -l),
+        Vector3::x_axis(),
+    );
+    let left_foot_to_left_link = ConstraintRevoluteJoint::new(
+        left_foot_frame,
+        Isometry3::translation(0., l, 0.),
+        left_link_frame,
+        Isometry3::translation(0., 0., -l),
+        Vector3::x_axis(),
+    );
+    let constraints = vec![right_foot_to_right_link, left_foot_to_left_link];
+
+    MechanismState::new_with_constraint(treejoints, bodies, constraints)
+}

@@ -427,6 +427,24 @@ export class Simulator {
     this.addCuboid("bar3", 0x00ff00, l, w, w, linkageOffset);
   }
 
+  addMockNavbot() {
+    let w = 0.1;
+    let l = 1.0;
+
+    this.addCuboid("base", 0x0000ff, l, w, w);
+
+    let offset = new Matrix4().makeTranslation(0, 0, -l / 2.0);
+    this.addCuboid("right_leg", 0xff0000, w, w, l, offset);
+    this.addCuboid("right_link", 0xff0000, w, w, l, offset);
+
+    this.addCuboid("left_leg", 0xff0000, w, w, l, offset);
+    this.addCuboid("left_link", 0xff0000, w, w, l, offset);
+
+    let linkageOffset = new Matrix4().makeTranslation(0, l / 2.0, 0);
+    this.addCuboid("right_foot", 0x00ff00, w, l, w, linkageOffset);
+    this.addCuboid("left_foot", 0x00ff00, w, l, w, linkageOffset);
+  }
+
   updateRodPose(angle: number) {
     // Update rod center-of-shape position
     this.rod.position.x = (this.length / 2) * Math.sin(angle);
@@ -717,6 +735,36 @@ export class Simulator {
     this.setPose("bar3", bar3Pose);
   }
 
+  updateMockNavbot(poses: Float32Array) {
+    let i = 0;
+    let basePose = poses.subarray(i, i + 6);
+    this.setPose("base", basePose);
+
+    i += 6;
+    let right_leg_pose = poses.subarray(i, i + 6);
+    this.setPose("right_leg", right_leg_pose);
+
+    i += 6;
+    let right_link_pose = poses.subarray(i, i + 6);
+    this.setPose("right_link", right_link_pose);
+
+    i += 6;
+    let left_leg_pose = poses.subarray(i, i + 6);
+    this.setPose("left_leg", left_leg_pose);
+
+    i += 6;
+    let left_link_pose = poses.subarray(i, i + 6);
+    this.setPose("left_link", left_link_pose);
+
+    i += 6;
+    let right_foot_pose = poses.subarray(i, i + 6);
+    this.setPose("right_foot", right_foot_pose);
+
+    i += 6;
+    let left_foot_pose = poses.subarray(i, i + 6);
+    this.setPose("left_foot", left_foot_pose);
+  }
+
   async run(timestamp?: number) {
     this.graphics.render();
 
@@ -782,8 +830,9 @@ export class Simulator {
     // this.updateMesh(6, "jaw");
 
     let poses = this.simulator.poses();
+    this.updateMockNavbot(poses);
     // this.updateFourBarLinkage(poses);
-    this.updateFourBarLinkageWithBase(poses);
+    // this.updateFourBarLinkageWithBase(poses);
     // this.updateBalancingBotPose(poses);
 
     // let contact_positions = this.simulator.contact_positions();

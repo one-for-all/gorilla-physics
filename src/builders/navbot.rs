@@ -1,4 +1,3 @@
-
 use na::{vector, Matrix3, Vector3};
 
 use crate::{
