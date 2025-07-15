@@ -8,6 +8,7 @@ pub mod SLIP_control;
 pub mod energy_control;
 pub mod gripper_control;
 pub mod hopper_control;
+pub mod kinematic_loop;
 pub mod lqr;
 pub mod navbot_conrol;
 pub mod pusher_control;
@@ -119,7 +120,7 @@ mod control_tests {
     use crate::joint::ToJointPositionVec;
     use crate::joint::ToJointVelocityVec;
     use crate::{simulate::simulate, PI};
-    
+
     use na::Isometry3;
     use na::Vector3;
     use na::{vector, Matrix3};

@@ -2,6 +2,7 @@ use crate::{
     control::{
         energy_control::{Hopper1DController, Hopper2DController},
         gripper_control::GripperManualController,
+        kinematic_loop::{FourBarLinkageController, FourBarLinkageWithBaseController},
         navbot_conrol::{BalancingBotController, NavbotController},
         pusher_control::PusherController,
         quadruped_control::{QuadrupedStandingController, QuadrupedTrottingController},
@@ -103,6 +104,18 @@ pub fn createNavbotController() -> InterfaceController {
 #[wasm_bindgen]
 pub fn createBalancingBotController() -> InterfaceController {
     let inner: Box<dyn Controller> = Box::new(BalancingBotController {});
+    InterfaceController { inner }
+}
+
+#[wasm_bindgen]
+pub fn createFourBarLinkageController() -> InterfaceController {
+    let inner: Box<dyn Controller> = Box::new(FourBarLinkageController {});
+    InterfaceController { inner }
+}
+
+#[wasm_bindgen]
+pub fn createFourBarLinkageWithBaseController() -> InterfaceController {
+    let inner: Box<dyn Controller> = Box::new(FourBarLinkageWithBaseController {});
     InterfaceController { inner }
 }
 

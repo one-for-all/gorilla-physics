@@ -839,6 +839,8 @@ pub fn build_four_bar_linkage(m: Float, m_bar3: Float) -> MechanismState {
     let l = 1.0;
     let w = 0.1;
 
+    let angle = 0.; // -PI / 4.0;
+
     let bar1_frame = "bar1";
     let moment_x = m * (4. * l * l + w * w) / 12.0;
     let moment_y = m * (4. * l * l + w * w) / 12.0;
@@ -850,7 +852,7 @@ pub fn build_four_bar_linkage(m: Float, m_bar3: Float) -> MechanismState {
     let bar1_to_world = Transform3D::new(
         bar1_frame,
         WORLD_FRAME,
-        &Isometry3::rotation(Vector3::z_axis().scale(-PI / 4.0)),
+        &Isometry3::rotation(Vector3::z_axis().scale(angle)),
     );
 
     let bar2_frame = "bar2";
@@ -859,8 +861,7 @@ pub fn build_four_bar_linkage(m: Float, m_bar3: Float) -> MechanismState {
     let bar2_to_world = Transform3D::new(
         bar2_frame,
         WORLD_FRAME,
-        &(Isometry3::rotation(Vector3::z_axis().scale(-PI / 4.0))
-            * Isometry3::translation(l, 0., 0.)),
+        &(Isometry3::rotation(Vector3::z_axis().scale(angle)) * Isometry3::translation(l, 0., 0.)),
     );
 
     let bar3_frame = "bar3";
@@ -888,6 +889,7 @@ pub fn build_four_bar_linkage(m: Float, m_bar3: Float) -> MechanismState {
         constraint_to_bar2,
         Vector3::y_axis(),
     )];
+    // let constraint_joints = vec![];
 
     MechanismState::new_with_constraint(treejoints, bodies, constraint_joints)
 }

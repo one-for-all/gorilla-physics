@@ -11,7 +11,7 @@ use crate::{
 pub async fn createFourBarLinkage() -> InterfaceMechanismState {
     let mut state = build_four_bar_linkage(1.0, 1.0);
 
-    let angle = PI / 4.0; // PI - 0.1;
+    let angle = 0.; // PI / 4.0; // PI - 0.1;
     let q = vec![
         JointPosition::Float(-angle),
         JointPosition::Float(-angle),
@@ -26,7 +26,7 @@ pub async fn createFourBarLinkage() -> InterfaceMechanismState {
 pub async fn createFourBarLinkageWithBase() -> InterfaceMechanismState {
     let mut state = build_four_bar_linkage_with_base(1.0, 1.0);
 
-    let angle = PI / 4.0; // PI - 0.1;
+    let angle = 0.; // PI / 4.0; // PI - 0.1;
     let q = vec![
         JointPosition::Float(-PI / 4.0),
         JointPosition::Float(-angle),
