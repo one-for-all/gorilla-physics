@@ -846,11 +846,22 @@ pub fn build_four_bar_linkage(m: Float, m_bar3: Float) -> MechanismState {
     let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
     let cross_part = vector![0., 0., -m * l / 2.0];
     let bar1 = RigidBody::new(SpatialInertia::new(moment, cross_part, m, bar1_frame));
-    let bar1_to_world = Transform3D::move_x(bar1_frame, WORLD_FRAME, 0.0);
+    // let bar1_to_world = Transform3D::move_x(bar1_frame, WORLD_FRAME, 0.0);
+    let bar1_to_world = Transform3D::new(
+        bar1_frame,
+        WORLD_FRAME,
+        &Isometry3::rotation(Vector3::z_axis().scale(-PI / 4.0)),
+    );
 
     let bar2_frame = "bar2";
     let bar2 = RigidBody::new(SpatialInertia::new(moment, cross_part, m, bar2_frame));
-    let bar2_to_world = Transform3D::move_x(bar2_frame, WORLD_FRAME, l + 0.0);
+    // let bar2_to_world = Transform3D::move_x(bar2_frame, WORLD_FRAME, l + 0.0);
+    let bar2_to_world = Transform3D::new(
+        bar2_frame,
+        WORLD_FRAME,
+        &(Isometry3::rotation(Vector3::z_axis().scale(-PI / 4.0))
+            * Isometry3::translation(l, 0., 0.)),
+    );
 
     let bar3_frame = "bar3";
     let moment_x = m_bar3 * w * w / 6.0;

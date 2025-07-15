@@ -79,13 +79,13 @@ mod constraint_revolute_tests {
     use na::dvector;
 
     #[test]
-    fn four_bar_linkage() {
+    fn four_bar_linkage_light() {
         // Arrange
         let mut state = build_four_bar_linkage(1.0, 1.0);
 
         // Act
         let final_time = 1.0;
-        let dt = 1e-2;
+        let dt = 1.0 / 60.0;
         let num_steps = (final_time / dt) as usize;
         for _ in 0..num_steps {
             let (_q, _v) = step(
@@ -146,15 +146,13 @@ mod constraint_revolute_tests {
             JointPosition::Float(angle),
         ];
         state.update_q(&q);
-        state.set_joint_v(1, JointVelocity::Float(0.1));
+        state.set_joint_v(1, JointVelocity::Float(0.2));
 
         // Act
-        let mut data = vec![];
         let final_time = 2.0;
         let dt = 1.0 / 60.0;
         let num_steps = (final_time / dt) as usize;
         for s in 0..num_steps {
-            println!("step: {}", s);
             let (q, _v) = step(
                 &mut state,
                 dt,
@@ -168,10 +166,6 @@ mod constraint_revolute_tests {
                 "simulation exploded at time: {}s",
                 s as Float * dt
             );
-
-            data.push(*q[1].float());
         }
-
-        plot(&data, final_time, dt, num_steps, "4bar with base");
     }
 }

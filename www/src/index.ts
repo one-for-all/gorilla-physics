@@ -58,6 +58,7 @@ import("gorilla-physics").then((gorilla) => {
     let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
     let simulator = new Simulator(interfaceSimulator);
 
+    // simulator.addFourBarLinkage();
     simulator.addFourBarLinkageWithBase();
 
     // simulator.addCuboid("body", 0xff0000, 0.06, 0.05, 0.025);
@@ -86,7 +87,7 @@ import("gorilla-physics").then((gorilla) => {
 
     // Important: Set initial camera position
     let cameraPosition = {
-      eye: { x: -0.0, y: -5.0, z: 1.0 },
+      eye: { x: -0.0, y: -0.0, z: 5.0 },
       target: { x: 0.0, y: 0, z: 0.0 },
     };
     simulator.graphics.lookAt(cameraPosition);
