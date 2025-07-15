@@ -67,17 +67,18 @@ impl ConstraintRevoluteJoint {
 #[cfg(test)]
 mod constraint_revolute_tests {
     use crate::{
-        assert_vec_close,
+        assert_close, assert_vec_close,
         builders::kinematic_loop_builder::{
             build_four_bar_linkage, build_four_bar_linkage_with_base,
         },
+        contact::HalfSpace,
         joint::{JointPosition, JointVelocity, ToFloatDVec},
         simulate::step,
         types::Float,
         PI,
     };
 
-    use na::dvector;
+    use na::{dvector, Vector3};
 
     #[test]
     fn four_bar_linkage_light() {
@@ -168,5 +169,39 @@ mod constraint_revolute_tests {
                 s as Float * dt
             );
         }
+    }
+
+    #[test]
+    fn four_bar_linkage_hit_ground() {
+        // Arrange
+        let mut state = build_four_bar_linkage(1.0, 1.0);
+
+        let h_ground = -0.9;
+        state.add_halfspace(HalfSpace::new(Vector3::z_axis(), -0.9));
+
+        let angle = PI / 3.0;
+        let q = vec![
+            JointPosition::Float(-angle),
+            JointPosition::Float(-angle),
+            JointPosition::Float(angle),
+        ];
+        state.update_q(&q);
+
+        // Act
+        let final_time = 2.0;
+        let dt = 1.0 / 60.0;
+        let num_steps = (final_time / dt) as usize;
+        for _ in 0..num_steps {
+            let (_q, _v) = step(
+                &mut state,
+                dt,
+                &vec![],
+                &crate::integrators::Integrator::VelocityStepping,
+            );
+        }
+
+        // Assert
+        let bar3_pose = state.poses()[2];
+        assert_close!(bar3_pose.translation.z, h_ground, 1e-3);
     }
 }

@@ -1,6 +1,7 @@
 use na::{vector, Isometry3, Matrix3, Vector3};
 
 use crate::{
+    contact::ContactPoint,
     inertia::SpatialInertia,
     joint::{
         constraint_revolute::ConstraintRevoluteJoint, floating::FloatingJoint,
@@ -50,8 +51,9 @@ pub fn build_four_bar_linkage(m: Float, m_bar3: Float) -> MechanismState {
     let moment_z = m_bar3 * (4. * l * l + w * w) / 12.0;
     let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
     let cross_part = vector![m_bar3 * l / 2.0, 0., 0.];
-    let bar3 = RigidBody::new(SpatialInertia::new(moment, cross_part, m_bar3, bar3_frame));
+    let mut bar3 = RigidBody::new(SpatialInertia::new(moment, cross_part, m_bar3, bar3_frame));
     let bar3_to_bar1 = Transform3D::move_xyz(bar3_frame, bar1_frame, 0., 0., -l);
+    bar3.add_contact_point(ContactPoint::new(bar3_frame, vector![0., 0., 0.]));
 
     let bodies = vec![bar1, bar2, bar3];
     let treejoints = vec![

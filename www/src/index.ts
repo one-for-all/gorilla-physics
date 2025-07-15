@@ -20,7 +20,7 @@ import("gorilla-physics").then((gorilla) => {
 
   let angle: number = (0.0 * Math.PI) / 180.0;
   let normal = new Float32Array([Math.sin(angle), 0.0, Math.cos(angle)]);
-  let h_ground = 0.0;
+  let h_ground = -0.9;
   let alpha = 1.0;
   let mu = 1.0;
 
@@ -51,7 +51,7 @@ import("gorilla-physics").then((gorilla) => {
   // simulator.addQuadruped();
   // simulator.addPlane(normal, h_ground, 100);
 
-  createMockNavbot().then((state) => {
+  createFourBarLinkage().then((state) => {
     state.addHalfSpace(normal, h_ground);
 
     let controller = gorilla.createNullController();
@@ -61,9 +61,9 @@ import("gorilla-physics").then((gorilla) => {
     let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
     let simulator = new Simulator(interfaceSimulator);
 
-    // simulator.addFourBarLinkage();
+    simulator.addFourBarLinkage();
     // simulator.addFourBarLinkageWithBase();
-    simulator.addMockNavbot();
+    //  simulator.addMockNavbot();
 
     // simulator.addCuboid("body", 0xff0000, 0.06, 0.05, 0.025);
     // simulator.addSphere("wheel_left", 0x00ff00, 0.02);
@@ -76,7 +76,8 @@ import("gorilla-physics").then((gorilla) => {
     // simulator.addMesh(4, "mesh4");
     // simulator.addMesh(5, "gripper");
     // simulator.addMesh(6, "jaw");
-    // simulator.addPlane(normal, h_ground, 100);
+
+    simulator.addPlane(normal, h_ground, 100);
 
     // simulator.updateMesh(0, "mesh0");
     // simulator.updateMesh(1, "mesh1");

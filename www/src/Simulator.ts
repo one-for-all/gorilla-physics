@@ -830,8 +830,8 @@ export class Simulator {
     // this.updateMesh(6, "jaw");
 
     let poses = this.simulator.poses();
-    this.updateMockNavbot(poses);
-    // this.updateFourBarLinkage(poses);
+    // this.updateMockNavbot(poses);
+    this.updateFourBarLinkage(poses);
     // this.updateFourBarLinkageWithBase(poses);
     // this.updateBalancingBotPose(poses);
 
