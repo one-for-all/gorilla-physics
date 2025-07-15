@@ -21,8 +21,16 @@ fn main() {
     // No cones
     let cones: Vec<SupportedConeT<f32>> = vec![];
 
+    // Changing parameters to sqrt of default values can make it work.
+    // The default values were tuned for f64 case.
+    // Default settings: https://clarabel.org/stable/api_settings/
+    // Issue comment: https://github.com/oxfordcontrol/Clarabel.jl/issues/105#issuecomment-1344322700
+    let tol: f32 = 1e-8;
     let settings = DefaultSettingsBuilder::default()
         .verbose(true)
+        // .tol_gap_abs(tol.sqrt())
+        // .tol_gap_rel(tol.sqrt())
+        // .tol_feas(tol.sqrt())
         .build()
         .unwrap();
 
