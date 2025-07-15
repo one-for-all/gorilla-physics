@@ -2,7 +2,10 @@ use na::{vector, Isometry3, Matrix3, Vector3};
 
 use crate::{
     inertia::SpatialInertia,
-    joint::{constraint_revolute::ConstraintRevoluteJoint, revolute::RevoluteJoint, Joint},
+    joint::{
+        constraint_revolute::ConstraintRevoluteJoint, floating::FloatingJoint,
+        revolute::RevoluteJoint, Joint,
+    },
     mechanism::MechanismState,
     rigid_body::RigidBody,
     spatial::transform::Transform3D,
@@ -184,7 +187,8 @@ pub fn build_mock_navbot(m: Float) -> MechanismState {
         base, right_leg, right_link, left_leg, left_link, right_foot, left_foot,
     ];
     let treejoints = vec![
-        Joint::RevoluteJoint(RevoluteJoint::new(base_to_world, Vector3::z_axis())),
+        // Joint::RevoluteJoint(RevoluteJoint::new(base_to_world, Vector3::z_axis())),
+        Joint::FloatingJoint(FloatingJoint::new(base_to_world)),
         Joint::RevoluteJoint(RevoluteJoint::new(right_leg_to_base, Vector3::x_axis())),
         Joint::RevoluteJoint(RevoluteJoint::new(right_link_to_base, Vector3::x_axis())),
         Joint::RevoluteJoint(RevoluteJoint::new(left_leg_to_base, Vector3::x_axis())),

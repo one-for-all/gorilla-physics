@@ -1,3 +1,4 @@
+use na::{vector, Vector};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{
@@ -6,6 +7,7 @@ use crate::{
     },
     interface::InterfaceMechanismState,
     joint::{JointPosition, JointVelocity},
+    spatial::{pose::Pose, spatial_vector::SpatialVector},
     PI,
 };
 
@@ -48,7 +50,7 @@ pub async fn createMockNavbot() -> InterfaceMechanismState {
 
     let angle = PI / 4.0; // PI / 4.0; // PI - 0.1;
     let q = vec![
-        JointPosition::Float(0.),
+        JointPosition::Pose(Pose::identity()),
         JointPosition::Float(-angle),
         JointPosition::Float(-angle),
         JointPosition::Float(angle),
@@ -58,6 +60,13 @@ pub async fn createMockNavbot() -> InterfaceMechanismState {
     ];
     state.update_q(&q);
 
+    state.set_joint_v(
+        1,
+        JointVelocity::Spatial(SpatialVector {
+            angular: vector![0., 0., 0.1],
+            linear: vector![0., 0., 0.],
+        }),
+    );
     // state.set_joint_v(1, JointVelocity::Float(0.2));
 
     InterfaceMechanismState { inner: state }
