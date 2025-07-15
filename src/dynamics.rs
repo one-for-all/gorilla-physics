@@ -493,13 +493,17 @@ pub fn dynamics_discrete(
                 row_offset += m.nrows();
             }
 
-            // Filter out rows with all zeros
+            // Filter out rows with all near-zeros
             let (nrows, ncols) = J.shape();
             // Collect indices of non-zero rows
             let non_zero_row_indices: Vec<_> = (0..nrows)
                 .filter(|&i| {
-                    // Check if any element in the row is non-zero
-                    (0..ncols).any(|j| J[(i, j)] != 0.0)
+                    // Check if any element in the row is not near-zero
+                    // Checking near-zero rather than precisely zero,
+                    // because rows with only very small values might
+                    // turn G = J * mass_inv * J^T into not positive definite.
+                    // TODO: better way than this?
+                    (0..ncols).any(|j| J[(i, j)].abs() > 1e-6)
                 })
                 .collect();
 
