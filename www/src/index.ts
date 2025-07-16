@@ -20,7 +20,7 @@ import("gorilla-physics").then((gorilla) => {
 
   let angle: number = (0.0 * Math.PI) / 180.0;
   let normal = new Float32Array([Math.sin(angle), 0.0, Math.cos(angle)]);
-  let h_ground = -0.9;
+  let h_ground = -0.5;
   let alpha = 1.0;
   let mu = 1.0;
 

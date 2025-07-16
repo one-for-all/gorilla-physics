@@ -172,20 +172,20 @@ mod constraint_revolute_tests {
     }
 
     #[test]
-    fn four_bar_linkage_hit_ground() {
+    fn four_bar_linkage_touch_ground() {
         // Arrange
         let mut state = build_four_bar_linkage(1.0, 1.0);
 
-        let h_ground = -0.9;
+        let h_ground = -0.5; // make linkage just touch the ground
         state.add_halfspace(HalfSpace::new(Vector3::z_axis(), -0.9));
 
         let angle = PI / 3.0;
-        let q = vec![
+        let q_init = vec![
             JointPosition::Float(-angle),
             JointPosition::Float(-angle),
             JointPosition::Float(angle),
         ];
-        state.update_q(&q);
+        state.update_q(&q_init);
 
         // Act
         let final_time = 2.0;
@@ -203,5 +203,8 @@ mod constraint_revolute_tests {
         // Assert
         let bar3_pose = state.poses()[2];
         assert_close!(bar3_pose.translation.z, h_ground, 1e-3);
+
+        let q = state.q.to_float_dvec();
+        assert_vec_close!(q, q_init.to_float_dvec(), 1e-3);
     }
 }
