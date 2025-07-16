@@ -63,16 +63,8 @@ pub async fn createMockNavbot() -> InterfaceMechanismState {
     state.set_joint_v(
         1,
         JointVelocity::Spatial(SpatialVector {
-            angular: vector![0., 0., 0.1],
-            linear: vector![0., 0., 0.],
-        }),
-    );
-
-    state.set_joint_v(
-        1,
-        JointVelocity::Spatial(SpatialVector {
-            angular: vector![0., 0., 0.5],
-            linear: vector![0., 0., 2.],
+            angular: vector![2.0, 0., 0.0],
+            linear: vector![0., 0., 5.],
         }),
     );
 
