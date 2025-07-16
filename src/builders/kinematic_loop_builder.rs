@@ -143,7 +143,7 @@ pub fn build_mock_navbot(m: Float) -> MechanismState {
     let moment_z = m * (4. * l * l + w * w) / 12.0;
     let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
     let cross_part = vector![0., 0., 0.];
-    let base = RigidBody::new(SpatialInertia::new(moment, cross_part, m, base_frame));
+    let mut base = RigidBody::new(SpatialInertia::new(moment, cross_part, m, base_frame));
     let base_to_world = Transform3D::move_x(base_frame, WORLD_FRAME, 0.);
 
     let right_leg_frame = "right_leg";
@@ -177,13 +177,20 @@ pub fn build_mock_navbot(m: Float) -> MechanismState {
     let moment_z = m * (4. * l * l + w * w) / 12.0;
     let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
     let cross_part = vector![0., m * l / 2.0, 0.];
-    let right_foot = RigidBody::new(SpatialInertia::new(moment, cross_part, m, right_foot_frame));
+    let mut right_foot =
+        RigidBody::new(SpatialInertia::new(moment, cross_part, m, right_foot_frame));
     let right_foot_to_right_leg =
         Transform3D::move_xyz(right_foot_frame, right_leg_frame, 0., 0., -l);
 
     let left_foot_frame = "left_foot";
-    let left_foot = RigidBody::new(SpatialInertia::new(moment, cross_part, m, left_foot_frame));
+    let mut left_foot = RigidBody::new(SpatialInertia::new(moment, cross_part, m, left_foot_frame));
     let left_foot_to_left_leg = Transform3D::move_xyz(left_foot_frame, left_leg_frame, 0., 0., -l);
+
+    base.add_contact_point(ContactPoint::new(base_frame, vector![0., 0., 0.]));
+    right_foot.add_contact_point(ContactPoint::new(right_foot_frame, vector![0., 0., 0.]));
+    right_foot.add_contact_point(ContactPoint::new(right_foot_frame, vector![0., l, 0.]));
+    left_foot.add_contact_point(ContactPoint::new(left_foot_frame, vector![0., 0., 0.]));
+    left_foot.add_contact_point(ContactPoint::new(left_foot_frame, vector![0., l, 0.]));
 
     let bodies = vec![
         base, right_leg, right_link, left_leg, left_link, right_foot, left_foot,

@@ -21,7 +21,7 @@ import("gorilla-physics").then((gorilla) => {
 
   let angle: number = (0.0 * Math.PI) / 180.0;
   let normal = new FloatArray([Math.sin(angle), 0.0, Math.cos(angle)]);
-  let h_ground = -0.9;
+  let h_ground = -1.0;
   let alpha = 1.0;
   let mu = 1.0;
 
@@ -52,7 +52,7 @@ import("gorilla-physics").then((gorilla) => {
   // simulator.addQuadruped();
   // simulator.addPlane(normal, h_ground, 100);
 
-  createFourBarLinkage().then((state) => {
+  createMockNavbot().then((state) => {
     state.addHalfSpace(normal as Float64Array, h_ground);
 
     let controller = gorilla.createNullController();
@@ -62,9 +62,9 @@ import("gorilla-physics").then((gorilla) => {
     let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
     let simulator = new Simulator(interfaceSimulator);
 
-    simulator.addFourBarLinkage();
+    // simulator.addFourBarLinkage();
     // simulator.addFourBarLinkageWithBase();
-    //  simulator.addMockNavbot();
+    simulator.addMockNavbot();
 
     // simulator.addCuboid("body", 0xff0000, 0.06, 0.05, 0.025);
     // simulator.addSphere("wheel_left", 0x00ff00, 0.02);
