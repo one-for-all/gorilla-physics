@@ -491,11 +491,12 @@ pub fn dynamics_discrete(
                 // because rows with only very small values might
                 // turn G = J * mass_inv * J^T into not positive definite.
                 // TODO: better way than this?
-                (0..ncols).any(|j| J[(i, j)].abs() > 1e-6)
+                // (0..ncols).any(|j| J[(i, j)].abs() > 1e-6)
+                (0..ncols).any(|j| J[(i, j)].abs() != 0.0)
             })
             .collect();
 
-        assert!(non_zero_row_indices.len() > 0);
+        assert!(non_zero_row_indices.len() > 0, "unfiltered J: {}", J);
         let J = DMatrix::from_fn(non_zero_row_indices.len(), ncols, |i, j| {
             J[(non_zero_row_indices[i], j)]
         });
@@ -700,22 +701,27 @@ pub fn dynamics_discrete(
                 .unwrap();
             let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
             solver.solve();
-            let mut lambda = DVector::from(solver.solution.x);
+            let lambda = DVector::from(solver.solution.x);
+            // Note: with f64 for Clarabel, this might not be needed.
+            // if lambda.iter().any(|x| x.is_nan()) {
+            //     if contact_Js.len() == 0 {
+            //         let cholesky = G
+            //             .clone()
+            //             .cholesky()
+            //             .expect(&format!("G not positive definite: {}", G));
+            //         lambda = -cholesky.solve(&g);
+            //     } else {
+            //         panic!("lambda contains NaN: {:?}", lambda);
+            //     }
+            // }
             if lambda.iter().any(|x| x.is_nan()) {
-                if contact_Js.len() == 0 {
-                    let cholesky = G
-                        .clone()
-                        .cholesky()
-                        .expect(&format!("G not positive definite: {}", G));
-                    lambda = -cholesky.solve(&g);
-                } else {
-                    panic!("lambda contains NaN: {:?}", lambda);
-                }
+                panic!("lambda contains NaN: {:?}", lambda);
             }
 
+            let impulse = J.transpose() * lambda;
             let v_next: DVector<Float> = v_free
                 + mass_matrix_lu
-                    .solve(&(J.transpose() * lambda))
+                    .solve(&impulse)
                     .expect("Failed to solve Mx = J^T λ");
             v_next
         }

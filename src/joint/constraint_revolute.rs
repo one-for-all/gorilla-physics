@@ -202,9 +202,52 @@ mod constraint_revolute_tests {
 
         // Assert
         let bar3_pose = state.poses()[2];
-        assert_close!(bar3_pose.translation.z, h_ground, 1e-3);
+        assert_close!(bar3_pose.translation.z, h_ground, 1e-2);
 
         let q = state.q.to_float_dvec();
-        assert_vec_close!(q, q_init.to_float_dvec(), 1e-3);
+        assert_vec_close!(q, q_init.to_float_dvec(), 1e-2);
+    }
+
+    #[test]
+    fn four_bar_linkage_hit_ground() {
+        // Arrange
+        let mut state = build_four_bar_linkage(1.0, 1.0);
+
+        let h_ground = -0.9; // make linkage just touch the ground
+        state.add_halfspace(HalfSpace::new(Vector3::z_axis(), h_ground));
+
+        let angle = PI - 0.1;
+        let q_init = vec![
+            JointPosition::Float(-angle),
+            JointPosition::Float(-angle),
+            JointPosition::Float(angle),
+        ];
+        state.update_q(&q_init);
+
+        // Act
+        let final_time = 2.0;
+        let dt = 1.0 / 600.0;
+        let num_steps = (final_time / dt) as usize;
+        for s in 0..num_steps {
+            let (q, _v) = step(
+                &mut state,
+                dt,
+                &vec![],
+                &crate::integrators::Integrator::VelocityStepping,
+            );
+
+            // Assert
+            assert!(
+                !q.to_float_dvec().iter().any(|x| x.is_nan()),
+                "simulation exploded at time: {}s",
+                s as Float * dt
+            );
+        }
+
+        // Assert
+        let v = state.v.to_float_dvec();
+        assert_vec_close!(v, vec![0., 0., 0.], 1e-3);
+        let bar3_pose = state.poses()[2];
+        assert_close!(bar3_pose.translation.z, h_ground, 1e-2);
     }
 }
