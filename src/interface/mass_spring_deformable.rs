@@ -3,7 +3,9 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use web_sys::js_sys::{Float32Array, Uint32Array};
 
 use crate::{
-    collision::mesh::read_mesh, mass_spring_deformable::MassSpringDeformable, types::Float,
+    collision::mesh::read_mesh,
+    mass_spring_deformable::MassSpringDeformable,
+    types::{Float, FloatArray},
 };
 
 use super::{to_js_uint_array, util::read_web_file};
@@ -16,8 +18,8 @@ pub struct InterfaceMassSpringDeformable {
 #[wasm_bindgen]
 impl InterfaceMassSpringDeformable {
     // Return vertices as flattened
-    pub fn vertices(&self) -> Float32Array {
-        Float32Array::from(self.inner.q.as_slice().to_vec().as_slice())
+    pub fn vertices(&self) -> FloatArray {
+        FloatArray::from(self.inner.q.as_slice().to_vec().as_slice())
     }
 
     // Return edges as flattened

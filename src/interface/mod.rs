@@ -8,6 +8,7 @@ use crate::joint::ToJointVelocityVec;
 use crate::spatial::pose::Pose;
 use crate::spatial::spatial_vector::SpatialVector;
 use crate::spatial::transform::compute_bodies_to_root;
+use crate::types::FloatArray;
 use crate::WORLD_FRAME;
 use controller::InterfaceController;
 use itertools::izip;
@@ -82,7 +83,7 @@ impl InterfaceSimulator {
     }
 
     #[wasm_bindgen]
-    pub fn step(&mut self, dt: Float, control_input: Vec<Float>) -> js_sys::Float32Array {
+    pub fn step(&mut self, dt: Float, control_input: Vec<Float>) -> FloatArray {
         let input = ControlInput::new(control_input);
 
         let n_substep = 10;
@@ -104,7 +105,7 @@ impl InterfaceSimulator {
         // Convert to a format that Javascript can take
         // TODO: make it into a reusable function
         let q = q.to_float_dvec();
-        let q_js = js_sys::Float32Array::new_with_length(q.len() as u32);
+        let q_js = FloatArray::new_with_length(q.len() as u32);
         for (i, q) in q.iter().enumerate() {
             q_js.set_index(i as u32, *q);
         }
@@ -113,24 +114,24 @@ impl InterfaceSimulator {
     }
 
     #[wasm_bindgen]
-    pub fn poses(&self) -> js_sys::Float32Array {
+    pub fn poses(&self) -> FloatArray {
         self.state.poses()
     }
 
     #[wasm_bindgen]
-    pub fn contact_positions(&self) -> js_sys::Float32Array {
+    pub fn contact_positions(&self) -> FloatArray {
         self.state.contact_positions()
     }
 
     /// Get the vertices of the collider mesh on a body
     #[wasm_bindgen]
-    pub fn vertices(&self, body_index: usize) -> js_sys::Float32Array {
+    pub fn vertices(&self, body_index: usize) -> FloatArray {
         self.state.vertices(body_index)
     }
 
     /// Get the vertices of the collider mesh on a body
     #[wasm_bindgen]
-    pub fn visual_base_vertices(&self, body_index: usize) -> js_sys::Float32Array {
+    pub fn visual_base_vertices(&self, body_index: usize) -> FloatArray {
         self.state.visual_base_vertices(body_index)
     }
 
@@ -142,7 +143,7 @@ impl InterfaceSimulator {
 
     /// Get the isometry of the collider mesh on a body
     #[wasm_bindgen]
-    pub fn isometry(&self, body_index: usize) -> Float32Array {
+    pub fn isometry(&self, body_index: usize) -> FloatArray {
         self.state.isometry(body_index)
     }
 }
@@ -156,7 +157,7 @@ pub struct InterfaceMechanismState {
 #[wasm_bindgen]
 impl InterfaceMechanismState {
     /// Get the poses of each body in the system
-    pub fn poses(&self) -> js_sys::Float32Array {
+    pub fn poses(&self) -> FloatArray {
         let njoints = self.inner.treejointids.len();
 
         // TODO: use cached bodies_to_root
@@ -174,7 +175,7 @@ impl InterfaceMechanismState {
         }
 
         // TODO: extract below into a function
-        let q_js = js_sys::Float32Array::new_with_length(6 * njoints as u32);
+        let q_js = FloatArray::new_with_length(6 * njoints as u32);
         for (i, q) in poses.iter().enumerate() {
             q_js.set_index(i as u32, *q);
         }
@@ -182,7 +183,7 @@ impl InterfaceMechanismState {
     }
 
     /// Get the positions of each contact point in the system
-    pub fn contact_positions(&self) -> js_sys::Float32Array {
+    pub fn contact_positions(&self) -> FloatArray {
         let bodies_to_root = compute_bodies_to_root(&self.inner);
 
         let mut positions = vec![];
@@ -200,7 +201,7 @@ impl InterfaceMechanismState {
             }
         }
 
-        let q_js = js_sys::Float32Array::new_with_length(positions.len() as u32);
+        let q_js = FloatArray::new_with_length(positions.len() as u32);
         for (i, q) in positions.iter().enumerate() {
             q_js.set_index(i as u32, *q);
         }
@@ -235,7 +236,7 @@ impl InterfaceMechanismState {
 
     /// Get the vertices of the collider mesh on a body
     #[wasm_bindgen]
-    pub fn vertices(&self, body_index: usize) -> Float32Array {
+    pub fn vertices(&self, body_index: usize) -> FloatArray {
         let vertices = &self.inner.bodies[body_index]
             .collider
             .as_ref()
@@ -247,12 +248,12 @@ impl InterfaceMechanismState {
             vertices.len() * 3,
             vertices.iter().flat_map(|v| v.iter().copied()),
         );
-        Float32Array::from(q.as_slice().to_vec().as_slice())
+        FloatArray::from(q.as_slice().to_vec().as_slice())
     }
 
     /// Get the base vertices of the collider mesh on a body
     #[wasm_bindgen]
-    pub fn visual_base_vertices(&self, body_index: usize) -> Float32Array {
+    pub fn visual_base_vertices(&self, body_index: usize) -> FloatArray {
         let vertices = &self.inner.bodies[body_index]
             .visual
             .as_ref()
@@ -262,7 +263,7 @@ impl InterfaceMechanismState {
             vertices.len() * 3,
             vertices.iter().flat_map(|v| v.iter().copied()),
         );
-        Float32Array::from(q.as_slice().to_vec().as_slice())
+        FloatArray::from(q.as_slice().to_vec().as_slice())
     }
 
     /// Get the vertices of the visual mesh on a body
@@ -284,7 +285,7 @@ impl InterfaceMechanismState {
 
     /// Get the isometry of the visual mesh on a body
     #[wasm_bindgen]
-    pub fn isometry(&self, body_index: usize) -> Float32Array {
+    pub fn isometry(&self, body_index: usize) -> FloatArray {
         let iso = &self.inner.bodies[body_index]
             .visual
             .as_ref()
@@ -295,7 +296,7 @@ impl InterfaceMechanismState {
         let translation = iso.translation.vector;
         let euler = rotation.euler_angles(); // TODO: use a more stable representation? to avoid jumping effects.
 
-        Float32Array::from(
+        FloatArray::from(
             vec![
                 euler.0,
                 euler.1,
@@ -508,9 +509,9 @@ pub fn createCompassGait() -> InterfaceMechanismState {
 }
 
 #[allow(dead_code)]
-fn to_js_float_array(from: &Vec<Vector3<Float>>) -> js_sys::Float32Array {
-    let from: Vec<f32> = from.iter().flat_map(|v| [v.x, v.y, v.z]).collect();
-    js_sys::Float32Array::from(from.as_slice())
+fn to_js_float_array(from: &Vec<Vector3<Float>>) -> FloatArray {
+    let from: Vec<Float> = from.iter().flat_map(|v| [v.x, v.y, v.z]).collect();
+    FloatArray::from(from.as_slice())
 }
 
 fn to_js_uint_array(from: &Vec<Vec<usize>>) -> js_sys::Uint32Array {

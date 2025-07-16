@@ -4,6 +4,7 @@ import {
   createMockNavbot,
 } from "gorilla-physics";
 import { Simulator } from "./Simulator";
+import { FloatArray } from "./type";
 
 export const keysPressed: Record<string, boolean> = {};
 
@@ -19,7 +20,7 @@ import("gorilla-physics").then((gorilla) => {
   let default_z = 0.8;
 
   let angle: number = (0.0 * Math.PI) / 180.0;
-  let normal = new Float32Array([Math.sin(angle), 0.0, Math.cos(angle)]);
+  let normal = new FloatArray([Math.sin(angle), 0.0, Math.cos(angle)]);
   let h_ground = -0.9;
   let alpha = 1.0;
   let mu = 1.0;
@@ -52,7 +53,7 @@ import("gorilla-physics").then((gorilla) => {
   // simulator.addPlane(normal, h_ground, 100);
 
   createFourBarLinkage().then((state) => {
-    state.addHalfSpace(normal, h_ground);
+    state.addHalfSpace(normal as Float64Array, h_ground);
 
     let controller = gorilla.createNullController();
     // let controller = gorilla.createBalancingBotController();

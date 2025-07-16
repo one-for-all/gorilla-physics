@@ -11,6 +11,7 @@ import { LineGeometry } from "three/examples/jsm/lines/LineGeometry";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
 import { keysPressed } from ".";
 import { Matrix4 } from "three";
+import { FloatArray, FloatArrayType } from "./type";
 
 export class Simulator {
   simulator: InterfaceSimulator;
@@ -165,7 +166,7 @@ export class Simulator {
     this.graphics.scene.add(line);
   }
 
-  setPose(name: string, poses: Float32Array) {
+  setPose(name: string, poses: FloatArrayType) {
     let euler = [poses[0], poses[1], poses[2]];
     let pos = [poses[3], poses[4], poses[5]];
 
@@ -251,7 +252,7 @@ export class Simulator {
     this.graphics.scene.add(rod);
   }
 
-  addPlane(normalArray: Float32Array, distance: number, size: number) {
+  addPlane(normalArray: FloatArrayType, distance: number, size: number) {
     const normal = new THREE.Vector3().fromArray(normalArray);
     const position = normal.clone().multiplyScalar(distance);
 
@@ -706,7 +707,7 @@ export class Simulator {
     this.setPose("wheel_right", wheelRightPose);
   }
 
-  updateFourBarLinkage(poses: Float32Array) {
+  updateFourBarLinkage(poses: FloatArrayType) {
     let bar1Pose = poses.subarray(0, 6);
     this.setPose("bar1", bar1Pose);
 
@@ -717,7 +718,7 @@ export class Simulator {
     this.setPose("bar3", bar3Pose);
   }
 
-  updateFourBarLinkageWithBase(poses: Float32Array) {
+  updateFourBarLinkageWithBase(poses: FloatArrayType) {
     let i = 0;
     let basePose = poses.subarray(i, i + 6);
     this.setPose("base", basePose);
@@ -735,7 +736,7 @@ export class Simulator {
     this.setPose("bar3", bar3Pose);
   }
 
-  updateMockNavbot(poses: Float32Array) {
+  updateMockNavbot(poses: FloatArrayType) {
     let i = 0;
     let basePose = poses.subarray(i, i + 6);
     this.setPose("base", basePose);
@@ -771,7 +772,7 @@ export class Simulator {
     // TODO: measure and use the actual time elapsed
     const dt = 1 / this.fps;
 
-    let control_input = new Float32Array(2);
+    let control_input = new FloatArray(2);
 
     let rotation_speed = 1.0;
     if (keysPressed["a"]) {
@@ -803,7 +804,7 @@ export class Simulator {
 
     // TODO: Currently some steps might take longer because of more computation.
     // This results in inconsistent frame refresh rate. Make it consistent.
-    let qs = this.simulator.step(dt, control_input);
+    let qs = this.simulator.step(dt, control_input as Float64Array);
     // console.log("time: %ss", this.time);
     this.time += dt;
 

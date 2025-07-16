@@ -3,7 +3,10 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use web_sys::js_sys::{Float32Array, Uint32Array};
 
 use crate::{
-    collision::mesh::read_mesh, contact::HalfSpace, fem_deformable::FEMDeformable, types::Float,
+    collision::mesh::read_mesh,
+    contact::HalfSpace,
+    fem_deformable::FEMDeformable,
+    types::{Float, FloatArray},
 };
 
 use super::util::read_web_file;
@@ -16,8 +19,8 @@ pub struct InterfaceFEMDeformable {
 #[wasm_bindgen]
 impl InterfaceFEMDeformable {
     // Return vertices as flattened
-    pub fn vertices(&self) -> Float32Array {
-        Float32Array::from(self.inner.q.as_slice().to_vec().as_slice())
+    pub fn vertices(&self) -> FloatArray {
+        FloatArray::from(self.inner.q.as_slice().to_vec().as_slice())
     }
 
     // Return facets as flattened

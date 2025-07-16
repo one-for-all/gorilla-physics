@@ -54,8 +54,8 @@ pub async fn async_initialize_gpu() -> (Device, Queue) {
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable, Debug)]
 pub struct Matrix3x3 {
-    pub cols: [[f32; 4]; 3], // Column-major for WGSL, each column has 4 values to account for wgsl padding
-}
+    pub cols: [[Float; 4]; 3], // Column-major for WGSL, each column has 4 values to account for wgsl padding
+} // TODO/Note: the type Float needs to correspond to wgsl type
 
 /// Set up the pipeline for computing dH
 pub fn setup_compute_dH_pipeline(
