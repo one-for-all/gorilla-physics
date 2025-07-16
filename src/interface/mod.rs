@@ -21,7 +21,6 @@ use na::Vector3;
 use na::{vector, Matrix3};
 use wasm_bindgen::prelude::*;
 use web_sys::js_sys;
-use web_sys::js_sys::Float32Array;
 use web_sys::js_sys::Uint32Array;
 
 use crate::{

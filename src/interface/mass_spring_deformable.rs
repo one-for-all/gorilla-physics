@@ -1,6 +1,6 @@
 use na::DVector;
 use wasm_bindgen::prelude::wasm_bindgen;
-use web_sys::js_sys::{Float32Array, Uint32Array};
+use web_sys::js_sys::Uint32Array;
 
 use crate::{
     collision::mesh::read_mesh,

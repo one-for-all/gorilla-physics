@@ -48,7 +48,7 @@ pub async fn createFourBarLinkageWithBase() -> InterfaceMechanismState {
 pub async fn createMockNavbot() -> InterfaceMechanismState {
     let mut state = build_mock_navbot(1.0);
 
-    let angle = PI / 3.0; // PI / 4.0; // PI - 0.1;
+    let angle = 0.; // PI / 3.0; // PI / 4.0; // PI - 0.1;
     let q = vec![
         JointPosition::Pose(Pose::identity()),
         JointPosition::Float(-angle),
@@ -63,8 +63,8 @@ pub async fn createMockNavbot() -> InterfaceMechanismState {
     state.set_joint_v(
         1,
         JointVelocity::Spatial(SpatialVector {
-            angular: vector![2.0, 0., 0.0],
-            linear: vector![0., 0., 5.],
+            angular: vector![0., 0., 1.],
+            linear: vector![0., 0., 2.],
         }),
     );
 
