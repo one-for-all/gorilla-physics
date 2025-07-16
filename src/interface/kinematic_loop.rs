@@ -13,9 +13,9 @@ use crate::{
 
 #[wasm_bindgen]
 pub async fn createFourBarLinkage() -> InterfaceMechanismState {
-    let mut state = build_four_bar_linkage(1.0, 1.0);
+    let mut state = build_four_bar_linkage(1.0, 10.0);
 
-    let angle = PI / 3.0; // PI - 0.1;
+    let angle = PI / 2.0; // PI - 0.1; //
     let q = vec![
         JointPosition::Float(-angle),
         JointPosition::Float(-angle),

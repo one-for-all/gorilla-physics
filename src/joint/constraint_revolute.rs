@@ -177,7 +177,7 @@ mod constraint_revolute_tests {
         let mut state = build_four_bar_linkage(1.0, 1.0);
 
         let h_ground = -0.5; // make linkage just touch the ground
-        state.add_halfspace(HalfSpace::new(Vector3::z_axis(), -0.9));
+        state.add_halfspace(HalfSpace::new(Vector3::z_axis(), h_ground));
 
         let angle = PI / 3.0;
         let q_init = vec![
