@@ -1,4 +1,4 @@
-use na::{vector, Matrix3, Vector3};
+use na::{vector, Isometry3, Matrix3, Transform, Translation3, UnitQuaternion, Vector3};
 
 use crate::{
     collision::{mesh::Mesh, sphere::Sphere},
@@ -69,5 +69,68 @@ pub fn build_balancing_bot() -> MechanismState {
         Joint::RevoluteJoint(RevoluteJoint::new(wheel_right_to_body, Vector3::x_axis())),
     ];
     let bodies = vec![body, wheel_left, wheel_right];
+    MechanismState::new(treejoints, bodies)
+}
+
+pub struct NavbotMeshes {
+    pub esp32pcb: Option<Mesh>,
+    pub top_plate: Option<Mesh>,
+}
+
+impl NavbotMeshes {
+    pub fn new() -> Self {
+        NavbotMeshes {
+            esp32pcb: None,
+            top_plate: None,
+        }
+    }
+}
+
+fn build_navbot_base(meshes: &mut NavbotMeshes, frame: &str) -> RigidBody {
+    let w = 0.064;
+    let h = 0.028;
+    let d = 0.054;
+    let m = 0.1;
+    let moment_x = m * (h * h + d * d) / 3.0;
+    let moment_y = m * (4. * h * h + w * w) / 12.0;
+    let moment_z = m * (4. * d * d + w * w) / 12.0;
+    let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
+    let cross_part = vector![0., -h / 2.0, d / 2.0];
+
+    let mut body = RigidBody::new(SpatialInertia::new(moment, cross_part, m, frame));
+
+    let mut mesh = meshes.esp32pcb.take().expect("Navbot has no esp32pcb mesh");
+    let iso = Isometry3::from_parts(
+        Translation3::new(0.000112254, 0.0303721, -0.00163541),
+        UnitQuaternion::from_euler_angles(1.5708, -1.74345e-08, 1.5708),
+    );
+    mesh.update_base_isometry(&iso);
+    body.add_visual_mesh(mesh);
+
+    let mut mesh = meshes
+        .top_plate
+        .take()
+        .expect("Navbot has no top plate mesh");
+    let iso = Isometry3::from_parts(
+        Translation3::new(0.000112254, 0.0481221, 0.00957459),
+        UnitQuaternion::from_euler_angles(-1.5708, -1.23575e-09, 9.92151e-09),
+    );
+    mesh.update_base_isometry(&iso);
+    body.add_visual_mesh(mesh);
+
+    body
+}
+
+pub fn build_navbot(mut meshes: NavbotMeshes) -> MechanismState {
+    let base_frame = "base";
+    let base = build_navbot_base(&mut meshes, base_frame);
+    let base_to_world = Transform3D::identity(base_frame, WORLD_FRAME);
+
+    let bodies = vec![base];
+    let treejoints = vec![Joint::RevoluteJoint(RevoluteJoint::new(
+        base_to_world,
+        Vector3::z_axis(),
+    ))];
+
     MechanismState::new(treejoints, bodies)
 }

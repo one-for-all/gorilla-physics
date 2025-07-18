@@ -58,7 +58,7 @@ pub struct RigidBody {
     pub contact_points: Vec<ContactPoint>,
     pub spring_contacts: Vec<SpringContact>,
     pub collider: Option<Collider>,
-    pub visual: Option<Mesh>,
+    pub visual: Vec<Mesh>,
 }
 
 impl RigidBody {
@@ -68,8 +68,12 @@ impl RigidBody {
             contact_points: vec![],
             spring_contacts: vec![],
             collider: None,
-            visual: None,
+            visual: vec![],
         }
+    }
+
+    pub fn add_visual_mesh(&mut self, mesh: Mesh) {
+        self.visual.push(mesh);
     }
 
     /// Creates a new rigid body with the supplied collider and visual
@@ -83,7 +87,7 @@ impl RigidBody {
             contact_points: vec![],
             spring_contacts: vec![],
             collider: Some(collider),
-            visual: Some(visual_mesh),
+            visual: vec![visual_mesh],
         }
     }
 
@@ -96,7 +100,7 @@ impl RigidBody {
             contact_points: vec![],
             spring_contacts: vec![],
             collider: Some(collider),
-            visual: Some(visual_mesh),
+            visual: vec![visual_mesh],
         }
     }
 

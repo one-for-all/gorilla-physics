@@ -2,9 +2,9 @@ use na::{vector, UnitQuaternion};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{
-    builders::navbot::{build_balancing_bot, build_navbot_motor},
+    builders::navbot::{build_balancing_bot, build_navbot, build_navbot_motor, NavbotMeshes},
     collision::mesh::Mesh,
-    joint::JointPosition,
+    joint::{JointPosition, JointVelocity},
     spatial::pose::Pose,
 };
 
@@ -22,6 +22,27 @@ pub async fn createNavbotMotor() -> InterfaceMechanismState {
         translation: vector![0., 0., 0.01385],
     })];
     state.update_q(&q_init);
+
+    InterfaceMechanismState { inner: state }
+}
+
+#[wasm_bindgen]
+pub async fn createNavbot() -> InterfaceMechanismState {
+    let mut navbot_meshes = NavbotMeshes::new();
+    let buf = read_web_file("navbot/esp32pcb.obj").await;
+    let mesh = Mesh::new_from_obj(&buf);
+    navbot_meshes.esp32pcb = Some(mesh);
+
+    let buf = read_web_file("navbot/top_plate.obj").await;
+    let mesh = Mesh::new_from_obj(&buf);
+    navbot_meshes.top_plate = Some(mesh);
+
+    let mut state = build_navbot(navbot_meshes);
+
+    // let q_init = vec![JointPosition::Float(0.)];
+    // state.update_q(&q_init);
+    //
+    state.set_joint_v(1, JointVelocity::Float(0.1));
 
     InterfaceMechanismState { inner: state }
 }

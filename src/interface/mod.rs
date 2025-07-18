@@ -21,6 +21,7 @@ use na::Vector3;
 use na::{vector, Matrix3};
 use wasm_bindgen::prelude::*;
 use web_sys::js_sys;
+use web_sys::js_sys::Float32Array;
 use web_sys::js_sys::Uint32Array;
 
 use crate::{
@@ -130,13 +131,13 @@ impl InterfaceSimulator {
 
     /// Get the vertices of the collider mesh on a body
     #[wasm_bindgen]
-    pub fn visual_base_vertices(&self, body_index: usize) -> FloatArray {
+    pub fn visual_base_vertices(&self, body_index: usize) -> Vec<Float32Array> {
         self.state.visual_base_vertices(body_index)
     }
 
     /// Get the faces of the collider mesh on a body
     #[wasm_bindgen]
-    pub fn facets(&self, body_index: usize) -> Uint32Array {
+    pub fn facets(&self, body_index: usize) -> Vec<Uint32Array> {
         self.state.visual_facets(body_index)
     }
 
@@ -252,42 +253,47 @@ impl InterfaceMechanismState {
 
     /// Get the base vertices of the collider mesh on a body
     #[wasm_bindgen]
-    pub fn visual_base_vertices(&self, body_index: usize) -> FloatArray {
-        let vertices = &self.inner.bodies[body_index]
+    pub fn visual_base_vertices(&self, body_index: usize) -> Vec<Float32Array> {
+        self.inner.bodies[body_index]
             .visual
-            .as_ref()
-            .expect(&format!("body {} should have visual mesh", body_index))
-            .base_vertices;
-        let q = DVector::from_iterator(
-            vertices.len() * 3,
-            vertices.iter().flat_map(|v| v.iter().copied()),
-        );
-        FloatArray::from(q.as_slice().to_vec().as_slice())
+            .iter()
+            .map(|mesh| {
+                let vertices = &mesh.vertices;
+                let q: DVector<f32> = DVector::from_iterator(
+                    vertices.len() * 3,
+                    vertices.iter().flat_map(|v| v.iter().map(|&x| x as f32)),
+                );
+                Float32Array::from(q.as_slice().to_vec().as_slice())
+            })
+            .collect()
     }
 
     /// Get the vertices of the visual mesh on a body
     #[wasm_bindgen]
-    pub fn visual_facets(&self, body_index: usize) -> Uint32Array {
-        let facets = &self.inner.bodies[body_index]
+    pub fn visual_facets(&self, body_index: usize) -> Vec<Uint32Array> {
+        self.inner.bodies[body_index]
             .visual
-            .as_ref()
-            .expect(&format!("body {} should have mesh", body_index))
-            .faces;
-        Uint32Array::from(
-            facets
-                .iter()
-                .flat_map(|f| [f[0] as u32, f[1] as u32, f[2] as u32])
-                .collect::<Vec<u32>>()
-                .as_slice(),
-        )
+            .iter()
+            .map(|mesh| {
+                let facets = &mesh.faces;
+                Uint32Array::from(
+                    facets
+                        .iter()
+                        .flat_map(|f| [f[0] as u32, f[1] as u32, f[2] as u32])
+                        .collect::<Vec<u32>>()
+                        .as_slice(),
+                )
+            })
+            .collect()
     }
 
-    /// Get the isometry of the visual mesh on a body
+    /// Get the isometry of the visual mesh on a body, which is also the isometry of the body itself
+    /// TODO: take the isometry from body directly instead
     #[wasm_bindgen]
     pub fn isometry(&self, body_index: usize) -> FloatArray {
         let iso = &self.inner.bodies[body_index]
             .visual
-            .as_ref()
+            .get(0)
             .expect(&format!("body {} should have visual mesh", body_index))
             .body_isometry;
 

@@ -2,6 +2,7 @@ import {
   createFourBarLinkage,
   createFourBarLinkageWithBase,
   createMockNavbot,
+  createNavbot,
 } from "gorilla-physics";
 import { Simulator } from "./Simulator";
 import { FloatArray } from "./type";
@@ -52,7 +53,7 @@ import("gorilla-physics").then((gorilla) => {
   // simulator.addQuadruped();
   // simulator.addPlane(normal, h_ground, 100);
 
-  createMockNavbot().then((state) => {
+  createNavbot().then((state) => {
     state.addHalfSpace(normal as Float64Array, h_ground);
 
     let controller = gorilla.createNullController();
@@ -64,7 +65,8 @@ import("gorilla-physics").then((gorilla) => {
 
     // simulator.addFourBarLinkage();
     // simulator.addFourBarLinkageWithBase();
-    simulator.addMockNavbot();
+    // simulator.addMockNavbot();
+    simulator.addNavbot();
 
     // simulator.addCuboid("body", 0xff0000, 0.06, 0.05, 0.025);
     // simulator.addSphere("wheel_left", 0x00ff00, 0.02);
@@ -93,7 +95,7 @@ import("gorilla-physics").then((gorilla) => {
 
     // Important: Set initial camera position
     let cameraPosition = {
-      eye: { x: 0.0, y: -5.0, z: 2.0 },
+      eye: { x: 0.0, y: -0.5, z: 0.2 },
       target: { x: 0.0, y: 0, z: 0.0 },
     };
     simulator.graphics.lookAt(cameraPosition);

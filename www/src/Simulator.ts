@@ -26,6 +26,7 @@ export class Simulator {
   bob: THREE.Mesh;
   cart: THREE.Mesh;
   meshes: Map<string, THREE.Mesh>;
+  meshSet: Map<string, Array<THREE.Mesh>>;
   edgesMeshes: Map<string, THREE.LineSegments>;
   lines: Map<string, Line2>;
 
@@ -40,6 +41,7 @@ export class Simulator {
 
     this.graphics = new Graphics();
     this.meshes = new Map();
+    this.meshSet = new Map();
     this.edgesMeshes = new Map();
     this.lines = new Map();
     this.fps = 60;
@@ -85,35 +87,43 @@ export class Simulator {
     );
   }
 
-  addMesh(body_index: number, name: string) {
-    const geometry = new THREE.BufferGeometry();
-    let base_vertices = this.simulator.visual_base_vertices(body_index);
-    geometry.setAttribute(
-      "position",
-      new THREE.BufferAttribute(base_vertices, 3),
-    );
+  addMeshSet(body_index: number, name: string) {
+    let base_vertices_array = this.simulator.visual_base_vertices(body_index);
+    let facets_array = this.simulator.facets(body_index);
+    let mesh_set: Array<THREE.Mesh> = [];
+    for (let i = 0; i < base_vertices_array.length; i++) {
+      let base_vertices = base_vertices_array[i];
 
-    let facets = this.simulator.facets(body_index);
-    geometry.setIndex(new THREE.BufferAttribute(facets, 1));
-    geometry.computeVertexNormals();
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute(
+        "position",
+        new THREE.BufferAttribute(base_vertices, 3),
+      );
 
-    const material = new THREE.MeshPhongMaterial({
-      color: 0x2194ce,
-      side: THREE.DoubleSide, // Render both sides of faces
-      flatShading: true,
-    });
-    const mesh = new THREE.Mesh(geometry, material);
+      let facets = facets_array[i];
+      geometry.setIndex(new THREE.BufferAttribute(facets, 1));
+      geometry.computeVertexNormals();
 
-    mesh.frustumCulled = false; // prevent mesh disappearing
-    this.meshes.set(name, mesh);
-    this.graphics.scene.add(mesh);
+      const material = new THREE.MeshPhongMaterial({
+        color: 0x2194ce,
+        side: THREE.DoubleSide, // Render both sides of faces
+        flatShading: true,
+      });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.frustumCulled = false; // prevent mesh disappearing
+      mesh_set.push(mesh);
+      this.graphics.scene.add(mesh);
+    }
+    this.meshSet.set(name, mesh_set);
   }
 
-  updateMesh(body_index: number, name: string) {
-    let mesh = this.meshes.get(name);
+  updateMeshSet(body_index: number, name: string) {
+    let mesh_set = this.meshSet.get(name);
     let iso = this.simulator.isometry(body_index);
-    mesh.position.set(iso[3], iso[4], iso[5]);
-    mesh.rotation.set(iso[0], iso[1], iso[2], "ZYX"); // Note: rotation is performed along local coordinate axes, so we should do ZYX order to make it match XYZ order on global axes rotation.
+    for (let mesh of mesh_set) {
+      mesh.position.set(iso[3], iso[4], iso[5]);
+      mesh.rotation.set(iso[0], iso[1], iso[2], "ZYX"); // Note: rotation is performed along local coordinate axes, so we should do ZYX order to make it match XYZ order on global axes rotation.
+    }
   }
 
   addCuboid(
@@ -444,6 +454,14 @@ export class Simulator {
     let linkageOffset = new Matrix4().makeTranslation(0, l / 2.0, 0);
     this.addCuboid("right_foot", 0x00ff00, w, l, w, linkageOffset);
     this.addCuboid("left_foot", 0x00ff00, w, l, w, linkageOffset);
+  }
+
+  addNavbot() {
+    this.addMeshSet(0, "base");
+  }
+
+  updateNavbot() {
+    this.updateMeshSet(0, "base");
   }
 
   updateRodPose(angle: number) {
@@ -830,8 +848,10 @@ export class Simulator {
     // this.updateMesh(5, "gripper");
     // this.updateMesh(6, "jaw");
 
+    this.updateNavbot();
+
     let poses = this.simulator.poses();
-    this.updateMockNavbot(poses);
+    // this.updateMockNavbot(poses);
     // this.updateFourBarLinkage(poses);
     // this.updateFourBarLinkageWithBase(poses);
     // this.updateBalancingBotPose(poses);

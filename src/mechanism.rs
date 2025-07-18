@@ -208,9 +208,11 @@ impl MechanismState {
     /// Updates the visual of each body to have the body's pose
     pub fn update_visual_poses(&mut self, bodies_to_root: &HashMap<usize, Transform3D>) {
         for (jointid, body) in izip!(self.treejointids.iter(), self.bodies.iter_mut()) {
-            if let Some(visual_mesh) = body.visual.as_mut() {
-                let body_to_root = bodies_to_root.get(jointid).unwrap();
-                let isometry = body_to_root.iso;
+            let body_to_root = bodies_to_root.get(jointid).unwrap();
+            let isometry = body_to_root.iso;
+            // TODO: update only once as a whole, since they all share the same
+            // isometry. Or just keep the isometry on the body instead.
+            for visual_mesh in body.visual.iter_mut() {
                 visual_mesh.update_isometry(&isometry);
             }
         }
