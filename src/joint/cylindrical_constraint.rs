@@ -99,3 +99,41 @@ impl CylindricalConstraintJoint {
         matrix
     }
 }
+
+#[cfg(test)]
+mod cylindrical_constraint_tests {
+    use std::num;
+
+    use crate::{
+        builders::navbot::{build_navbot, NavbotMeshes},
+        plot::plot,
+        simulate::step,
+    };
+
+    #[test]
+    fn navbot() {
+        // Arrange
+        let navbot_meshes = NavbotMeshes::new();
+        let mut state = build_navbot(navbot_meshes);
+
+        // Act
+        let mut data = vec![];
+        let final_time = 1.0;
+        let dt = 1e-2;
+        let num_steps = (final_time / dt) as usize;
+        for _s in 0..num_steps {
+            let (_q, _v) = step(
+                &mut state,
+                dt,
+                &vec![],
+                &crate::integrators::Integrator::VelocityStepping,
+            );
+
+            data.push(*_q[1].float());
+        }
+
+        // Assert
+        println!("final: {}", data[data.len() - 1]);
+        // plot(&data, final_time, dt, num_steps, "navbot");
+    }
+}

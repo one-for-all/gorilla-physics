@@ -4,6 +4,7 @@ use crate::{
     collision::{mesh::Mesh, sphere::Sphere},
     inertia::SpatialInertia,
     joint::{
+        constraint_revolute::RevoluteConstraintJoint,
         cylindrical_constraint::{Constraint, CylindricalConstraintJoint},
         floating::FloatingJoint,
         revolute::RevoluteJoint,
@@ -352,7 +353,7 @@ pub fn build_navbot(mut meshes: NavbotMeshes) -> MechanismState {
     ];
 
     // TODO: make this a cylindrical constraint to avoid over-constraining
-    let link_left_to_foot_left = CylindricalConstraintJoint::new(
+    let link_left_to_foot_left = RevoluteConstraintJoint::new(
         link_left_frame,
         Isometry3::from_parts(
             Translation3::new(-3.46945e-18, -0.052086, 0.),
@@ -366,7 +367,7 @@ pub fn build_navbot(mut meshes: NavbotMeshes) -> MechanismState {
         Vector3::z_axis(),
     );
 
-    let constraints = vec![Constraint::Cylindrical(link_left_to_foot_left)];
+    let constraints = vec![Constraint::Revolute(link_left_to_foot_left)];
 
     MechanismState::new_with_constraint(treejoints, bodies, constraints)
 }

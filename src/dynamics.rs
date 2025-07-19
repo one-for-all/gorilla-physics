@@ -2,6 +2,7 @@ use crate::{
     collision::{mesh::mesh_mesh_collision, CollisionDetector},
     contact::contact_dynamics,
     control::energy_control::spring_force,
+    flog,
     inertia::compute_inertias,
     joint::{Joint, JointAcceleration, JointTorque, JointVelocity, ToFloatDVec},
     mechanism::mass_matrix,
@@ -490,8 +491,8 @@ pub fn dynamics_discrete(
                 // because rows with only very small values might
                 // turn G = J * mass_inv * J^T into not positive definite.
                 // TODO: better way than this?
-                // (0..ncols).any(|j| J[(i, j)].abs() > 1e-6)
-                (0..ncols).any(|j| J[(i, j)].abs() != 0.0)
+                (0..ncols).any(|j| J[(i, j)].abs() > 1e-4)
+                // (0..ncols).any(|j| J[(i, j)].abs() != 0.0)
             })
             .collect();
 
@@ -655,6 +656,7 @@ pub fn dynamics_discrete(
                 rows.extend(constraint_J.row_iter().map(|r| r.into_owned()));
             }
             let J = DMatrix::from_rows(&rows);
+            flog!("J: {}", J);
 
             // Formulate the second-order cone programming problem and solve it
             // Ref: Contact Models in Robotics: a Comparative Analysis, 2024,
@@ -718,6 +720,7 @@ pub fn dynamics_discrete(
             }
 
             let impulse = J.transpose() * lambda;
+            flog!("impulse: {}", impulse);
             let v_next: DVector<Float> = v_free
                 + mass_matrix_lu
                     .solve(&impulse)
