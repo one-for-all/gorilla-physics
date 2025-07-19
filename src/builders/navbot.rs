@@ -1,10 +1,9 @@
-use na::{vector, Isometry3, Matrix3, Rotation3, Transform, Translation3, UnitQuaternion, Vector3};
+use na::{vector, Isometry3, Matrix3, Translation3, UnitQuaternion, Vector3};
 
 use crate::{
     collision::{mesh::Mesh, sphere::Sphere},
     inertia::SpatialInertia,
     joint::{
-        constraint_revolute::RevoluteConstraintJoint,
         cylindrical_constraint::{Constraint, CylindricalConstraintJoint},
         floating::FloatingJoint,
         revolute::RevoluteJoint,
@@ -129,46 +128,41 @@ fn build_navbot_base(meshes: &mut NavbotMeshes, frame: &str) -> RigidBody {
 
     let mut body = RigidBody::new(SpatialInertia::new(moment, cross_part, m, frame));
 
-    let mut mesh = meshes.esp32pcb.take().expect("Navbot has no esp32pcb mesh");
-    let iso = Isometry3::from_parts(
-        Translation3::new(0.000112254, 0.0303721, -0.00163541),
-        UnitQuaternion::from_euler_angles(1.5708, -1.74345e-08, 1.5708),
-    );
-    mesh.update_base_isometry(&iso);
-    body.add_visual_mesh(mesh);
+    if let Some(mut mesh) = meshes.esp32pcb.take() {
+        let iso = Isometry3::from_parts(
+            Translation3::new(0.000112254, 0.0303721, -0.00163541),
+            UnitQuaternion::from_euler_angles(1.5708, -1.74345e-08, 1.5708),
+        );
+        mesh.update_base_isometry(&iso);
+        body.add_visual_mesh(mesh);
+    }
 
-    let mut mesh = meshes
-        .top_plate
-        .take()
-        .expect("Navbot has no top plate mesh");
-    let iso = Isometry3::from_parts(
-        Translation3::new(0.000112254, 0.0481221, 0.00957459),
-        UnitQuaternion::from_euler_angles(-1.5708, -1.23575e-09, 9.92151e-09),
-    );
-    mesh.update_base_isometry(&iso);
-    body.add_visual_mesh(mesh);
+    if let Some(mut mesh) = meshes.top_plate.take() {
+        let iso = Isometry3::from_parts(
+            Translation3::new(0.000112254, 0.0481221, 0.00957459),
+            UnitQuaternion::from_euler_angles(-1.5708, -1.23575e-09, 9.92151e-09),
+        );
+        mesh.update_base_isometry(&iso);
+        body.add_visual_mesh(mesh);
+    }
 
-    let mut mesh = meshes
-        .side_plate_left
-        .take()
-        .expect("Navbot has no side plate left mesh");
-    let iso = Isometry3::from_parts(
-        Translation3::new(-0.0318877, 0.0253721, -0.0176354),
-        UnitQuaternion::from_euler_angles(1.5708, 1.5708, 0.),
-    );
-    mesh.update_base_isometry(&iso);
-    body.add_visual_mesh(mesh);
+    if let Some(mut mesh) = meshes.side_plate_left.take() {
+        let iso = Isometry3::from_parts(
+            Translation3::new(-0.0318877, 0.0253721, -0.0176354),
+            UnitQuaternion::from_euler_angles(1.5708, 1.5708, 0.),
+        );
+        mesh.update_base_isometry(&iso);
+        body.add_visual_mesh(mesh);
+    }
 
-    let mut mesh = meshes
-        .side_plate_right
-        .take()
-        .expect("Navbot has no side plate right mesh");
-    let iso = Isometry3::from_parts(
-        Translation3::new(0.0321123, 0.0253721, -0.0176354),
-        UnitQuaternion::from_euler_angles(-1.5708, 1.5708, 0.),
-    );
-    mesh.update_base_isometry(&iso);
-    body.add_visual_mesh(mesh);
+    if let Some(mut mesh) = meshes.side_plate_right.take() {
+        let iso = Isometry3::from_parts(
+            Translation3::new(0.0321123, 0.0253721, -0.0176354),
+            UnitQuaternion::from_euler_angles(-1.5708, 1.5708, 0.),
+        );
+        mesh.update_base_isometry(&iso);
+        body.add_visual_mesh(mesh);
+    }
 
     body
 }
@@ -197,27 +191,23 @@ fn build_navbot_leg_left(meshes: &mut NavbotMeshes, frame: &str) -> RigidBody {
     let spatial_inertia = SpatialInertia::new(moment, cross_part, m, frame);
     let mut body = RigidBody::new(spatial_inertia);
 
-    let mut mesh = meshes
-        .leg_inner_left
-        .take()
-        .expect("Navbot has no leg inner left mesh");
-    let iso = Isometry3::from_parts(
-        Translation3::new(-3.46945e-18, 4.33681e-19, -0.004),
-        UnitQuaternion::from_euler_angles(-1.5708, -1.43064e-25, -1.50654e-17),
-    );
-    mesh.update_base_isometry(&iso);
-    body.add_visual_mesh(mesh);
+    if let Some(mut mesh) = meshes.leg_inner_left.take() {
+        let iso = Isometry3::from_parts(
+            Translation3::new(-3.46945e-18, 4.33681e-19, -0.004),
+            UnitQuaternion::from_euler_angles(-1.5708, -1.43064e-25, -1.50654e-17),
+        );
+        mesh.update_base_isometry(&iso);
+        body.add_visual_mesh(mesh);
+    }
 
-    let mut mesh = meshes
-        .leg_outer_left
-        .take()
-        .expect("Navbot has no leg outer left mesh");
-    let iso = Isometry3::from_parts(
-        Translation3::new(-6.93889e-18, 4.33681e-18, -0.0105),
-        UnitQuaternion::from_euler_angles(-1.5708, -1.66533e-16, -2.66594e-16),
-    );
-    mesh.update_base_isometry(&iso);
-    body.add_visual_mesh(mesh);
+    if let Some(mut mesh) = meshes.leg_outer_left.take() {
+        let iso = Isometry3::from_parts(
+            Translation3::new(-6.93889e-18, 4.33681e-18, -0.0105),
+            UnitQuaternion::from_euler_angles(-1.5708, -1.66533e-16, -2.66594e-16),
+        );
+        mesh.update_base_isometry(&iso);
+        body.add_visual_mesh(mesh);
+    }
 
     body
 }
@@ -246,49 +236,41 @@ fn build_navbot_foot_left(meshes: &mut NavbotMeshes, frame: &str) -> RigidBody {
     let spatial_inertia = SpatialInertia::new(moment, cross_part, m, frame);
     let mut body = RigidBody::new(spatial_inertia);
 
-    let mut mesh = meshes
-        .foot_pin_left
-        .take()
-        .expect("Navbot has no foot pin left mesh");
-    let iso = Isometry3::from_parts(
-        Translation3::new(-1.38778e-17, -1.73472e-18, 0.004),
-        UnitQuaternion::from_euler_angles(-1.5708, 2.76905e-16, -0.701537),
-    );
-    mesh.update_base_isometry(&iso);
-    body.add_visual_mesh(mesh);
+    if let Some(mut mesh) = meshes.foot_pin_left.take() {
+        let iso = Isometry3::from_parts(
+            Translation3::new(-1.38778e-17, -1.73472e-18, 0.004),
+            UnitQuaternion::from_euler_angles(-1.5708, 2.76905e-16, -0.701537),
+        );
+        mesh.update_base_isometry(&iso);
+        body.add_visual_mesh(mesh);
+    }
 
-    let mut mesh = meshes
-        .foot_motor_left
-        .take()
-        .expect("Navbot has no foot motor left mesh");
-    let iso = Isometry3::from_parts(
-        Translation3::new(0.0392041, 0.0310329, 0.003525),
-        UnitQuaternion::from_euler_angles(-1.5708, 2.20279e-16, -0.116852),
-    );
-    mesh.update_base_isometry(&iso);
-    body.add_visual_mesh(mesh);
+    if let Some(mut mesh) = meshes.foot_motor_left.take() {
+        let iso = Isometry3::from_parts(
+            Translation3::new(0.0392041, 0.0310329, 0.003525),
+            UnitQuaternion::from_euler_angles(-1.5708, 2.20279e-16, -0.116852),
+        );
+        mesh.update_base_isometry(&iso);
+        body.add_visual_mesh(mesh);
+    }
 
-    let mut mesh = meshes
-        .foot_encoder_left
-        .take()
-        .expect("Navbot has no foot encoder left mesh");
-    let iso = Isometry3::from_parts(
-        Translation3::new(0.039213, 0.0310399, 0.013),
-        UnitQuaternion::from_euler_angles(1.5708, 1.87067e-16, -0.90225),
-    );
-    mesh.update_base_isometry(&iso);
-    body.add_visual_mesh(mesh);
+    if let Some(mut mesh) = meshes.foot_encoder_left.take() {
+        let iso = Isometry3::from_parts(
+            Translation3::new(0.039213, 0.0310399, 0.013),
+            UnitQuaternion::from_euler_angles(1.5708, 1.87067e-16, -0.90225),
+        );
+        mesh.update_base_isometry(&iso);
+        body.add_visual_mesh(mesh);
+    }
 
-    let mut mesh = meshes
-        .foot_plate_left
-        .take()
-        .expect("Navbot has no foot plate left mesh");
-    let iso = Isometry3::from_parts(
-        Translation3::new(0.0680493, 0.027659, 0.01675),
-        UnitQuaternion::from_euler_angles(-1.5708, 1.65883e-16, -0.701537),
-    );
-    mesh.update_base_isometry(&iso);
-    body.add_visual_mesh(mesh);
+    if let Some(mut mesh) = meshes.foot_plate_left.take() {
+        let iso = Isometry3::from_parts(
+            Translation3::new(0.0680493, 0.027659, 0.01675),
+            UnitQuaternion::from_euler_angles(-1.5708, 1.65883e-16, -0.701537),
+        );
+        mesh.update_base_isometry(&iso);
+        body.add_visual_mesh(mesh);
+    }
 
     body
 }
@@ -317,16 +299,14 @@ fn build_navbot_link_left(meshes: &mut NavbotMeshes, frame: &str) -> RigidBody {
     let spatial_inertia = SpatialInertia::new(moment, cross_part, m, frame);
     let mut body = RigidBody::new(spatial_inertia);
 
-    let mut mesh = meshes
-        .link_plate_left
-        .take()
-        .expect("Navbot has no link plate left mesh");
-    let iso = Isometry3::from_parts(
-        Translation3::new(-3.46945e-18, -0.052086, -0.002),
-        UnitQuaternion::from_euler_angles(1.5708, 5.69618e-25, 5.25003e-19),
-    );
-    mesh.update_base_isometry(&iso);
-    body.add_visual_mesh(mesh);
+    if let Some(mut mesh) = meshes.link_plate_left.take() {
+        let iso = Isometry3::from_parts(
+            Translation3::new(-3.46945e-18, -0.052086, -0.002),
+            UnitQuaternion::from_euler_angles(1.5708, 5.69618e-25, 5.25003e-19),
+        );
+        mesh.update_base_isometry(&iso);
+        body.add_visual_mesh(mesh);
+    }
 
     body
 }
@@ -385,6 +365,7 @@ pub fn build_navbot(mut meshes: NavbotMeshes) -> MechanismState {
         ),
         Vector3::z_axis(),
     );
+
     let constraints = vec![Constraint::Cylindrical(link_left_to_foot_left)];
 
     MechanismState::new_with_constraint(treejoints, bodies, constraints)
