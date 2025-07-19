@@ -354,25 +354,25 @@ mod so101_tests {
     fn so101() {
         // Arrange
         let base_buf = read_file("data/so101/base_so101_v2.obj");
-        let base_mesh = Mesh::new_from_obj(&base_buf);
+        let base_mesh = Mesh::new_from_obj(&base_buf, false);
 
         let shoulder_buf = read_file("data/so101/rotation_pitch_so101_v1.obj");
-        let shoulder_mesh = Mesh::new_from_obj(&shoulder_buf);
+        let shoulder_mesh = Mesh::new_from_obj(&shoulder_buf, false);
 
         let upper_arm_buf = read_file("data/so101/upper_arm_so101_v1.obj");
-        let upper_arm_mesh = Mesh::new_from_obj(&upper_arm_buf);
+        let upper_arm_mesh = Mesh::new_from_obj(&upper_arm_buf, false);
 
         let lower_arm_buf = read_file("data/so101/under_arm_so101_v1.obj");
-        let lower_arm_mesh = Mesh::new_from_obj(&lower_arm_buf);
+        let lower_arm_mesh = Mesh::new_from_obj(&lower_arm_buf, false);
 
         let wrist_buf = read_file("data/so101/wrist_roll_pitch_so101_v2.obj");
-        let wrist_mesh = Mesh::new_from_obj(&wrist_buf);
+        let wrist_mesh = Mesh::new_from_obj(&wrist_buf, false);
 
         let gripper_buf = read_file("data/so101/wrist_roll_follower_so101_v1.obj");
-        let gripper_mesh = Mesh::new_from_obj(&gripper_buf);
+        let gripper_mesh = Mesh::new_from_obj(&gripper_buf, false);
 
         let jaw_buf = read_file("data/so101/moving_jaw_so101_v1.obj");
-        let jaw_mesh = Mesh::new_from_obj(&jaw_buf);
+        let jaw_mesh = Mesh::new_from_obj(&jaw_buf, false);
 
         let mut state = build_so101(
             base_mesh,

@@ -16,7 +16,7 @@ use super::{util::read_web_file, InterfaceMechanismState};
 #[wasm_bindgen]
 pub async fn createNavbotMotor() -> InterfaceMechanismState {
     let buf = read_web_file("navbot/quanum_gimbal_motor_2208_base.obj").await;
-    let mesh = Mesh::new_from_obj(&buf);
+    let mesh = Mesh::new_from_obj(&buf, false);
 
     let mut state = build_navbot_motor(mesh);
 
@@ -53,7 +53,7 @@ pub async fn createNavbot() -> InterfaceMechanismState {
     let fetches = file_paths.iter().map(|path| read_web_file(path));
     let buffers: Vec<String> = join_all(fetches).await;
     for (i, buf) in buffers.iter().enumerate() {
-        let mesh = Some(Mesh::new_from_obj(buf));
+        let mesh = Some(Mesh::new_from_obj(buf, false));
         match i {
             0 => navbot_meshes.esp32pcb = mesh,
             1 => navbot_meshes.top_plate = mesh,

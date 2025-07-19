@@ -19,7 +19,7 @@ use super::{util::read_web_file, InterfaceMechanismState};
 pub async fn createRigidTetrahedron() -> InterfaceMechanismState {
     let buf = read_web_file("tetrahedron.obj").await;
 
-    let mesh = Mesh::new_from_obj(&buf);
+    let mesh = Mesh::new_from_obj(&buf, true);
 
     let l = 1.0;
     let mut state = build_tetrahedron(mesh, l);
@@ -42,7 +42,7 @@ pub async fn createRigidTetrahedron() -> InterfaceMechanismState {
 #[wasm_bindgen]
 pub async fn createTwoRigidTetrahedron() -> InterfaceMechanismState {
     let buf = read_web_file("tetrahedron.obj").await;
-    let mesh = Mesh::new_from_obj(&buf);
+    let mesh = Mesh::new_from_obj(&buf, true);
 
     let l = 1.0;
     let mut state = build_two_tetrahedron(mesh, l);
@@ -112,7 +112,7 @@ pub async fn createTwoRigidMeshBoxes() -> InterfaceMechanismState {
 #[wasm_bindgen]
 pub async fn createTwoRigidCubes() -> InterfaceMechanismState {
     let buf = read_web_file("cube.obj").await;
-    let mesh = Mesh::new_from_obj(&buf);
+    let mesh = Mesh::new_from_obj(&buf, true);
 
     let l = 1.0;
     let mut state = build_two_cubes(mesh, l);
@@ -136,25 +136,25 @@ pub async fn createTwoRigidCubes() -> InterfaceMechanismState {
 #[wasm_bindgen]
 pub async fn createSO101() -> InterfaceMechanismState {
     let base_buf = read_web_file("so101/base_so101_v2.obj").await;
-    let base_mesh = Mesh::new_from_obj(&base_buf);
+    let base_mesh = Mesh::new_from_obj(&base_buf, true);
 
     let shoulder_buf = read_web_file("so101/rotation_pitch_so101_v1.obj").await;
-    let shoulder_mesh = Mesh::new_from_obj(&shoulder_buf);
+    let shoulder_mesh = Mesh::new_from_obj(&shoulder_buf, false);
 
     let upper_arm_buf = read_web_file("so101/upper_arm_so101_v1.obj").await;
-    let upper_arm_mesh = Mesh::new_from_obj(&upper_arm_buf);
+    let upper_arm_mesh = Mesh::new_from_obj(&upper_arm_buf, false);
 
     let lower_arm_buf = read_web_file("so101/under_arm_so101_v1.obj").await;
-    let lower_arm_mesh = Mesh::new_from_obj(&lower_arm_buf);
+    let lower_arm_mesh = Mesh::new_from_obj(&lower_arm_buf, false);
 
     let wrist_buf = read_web_file("so101/wrist_roll_pitch_so101_v2.obj").await;
-    let wrist_mesh = Mesh::new_from_obj(&wrist_buf);
+    let wrist_mesh = Mesh::new_from_obj(&wrist_buf, false);
 
     let gripper_buf = read_web_file("so101/wrist_roll_follower_so101_v1.obj").await;
-    let gripper_mesh = Mesh::new_from_obj(&gripper_buf);
+    let gripper_mesh = Mesh::new_from_obj(&gripper_buf, false);
 
     let jaw_buf = read_web_file("so101/moving_jaw_so101_v1.obj").await;
-    let jaw_mesh = Mesh::new_from_obj(&jaw_buf);
+    let jaw_mesh = Mesh::new_from_obj(&jaw_buf, false);
 
     let state = build_so101(
         base_mesh,

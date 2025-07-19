@@ -102,18 +102,53 @@ impl CylindricalConstraintJoint {
 
 #[cfg(test)]
 mod cylindrical_constraint_tests {
-    use std::num;
 
     use crate::{
         builders::navbot::{build_navbot, NavbotMeshes},
-        plot::plot,
+        collision::mesh::Mesh,
         simulate::step,
+        util::read_file,
     };
 
     #[test]
     fn navbot() {
         // Arrange
-        let navbot_meshes = NavbotMeshes::new();
+        let mut navbot_meshes = NavbotMeshes::new();
+        let file_paths = vec![
+            "navbot/esp32pcb.obj",
+            "navbot/top_plate.obj",
+            "navbot/side_plate_left.obj",
+            "navbot/side_plate_right.obj",
+            "navbot/leg_inner_left.obj",
+            "navbot/leg_outer_left.obj",
+            "navbot/pin.obj",
+            "navbot/foot_motor_left.obj",
+            "navbot/encoder.obj",
+            "navbot/foot_plate_left.obj",
+            "navbot/link_plate_left.obj",
+        ];
+        let buffers: Vec<String> = file_paths
+            .iter()
+            .map(|&path| read_file(&("data/".to_string() + path)))
+            .collect();
+        for (i, buf) in buffers.iter().enumerate() {
+            let mesh = Some(Mesh::new_from_obj(buf, false));
+            match i {
+                0 => navbot_meshes.esp32pcb = mesh,
+                1 => navbot_meshes.top_plate = mesh,
+                2 => navbot_meshes.side_plate_left = mesh,
+                3 => navbot_meshes.side_plate_right = mesh,
+                4 => navbot_meshes.leg_inner_left = mesh,
+                5 => navbot_meshes.leg_outer_left = mesh,
+                6 => navbot_meshes.foot_pin_left = mesh,
+                7 => navbot_meshes.foot_motor_left = mesh,
+                8 => navbot_meshes.foot_encoder_left = mesh,
+                9 => navbot_meshes.foot_plate_left = mesh,
+                10 => navbot_meshes.link_plate_left = mesh,
+                _ => {}
+            }
+        }
+
         let mut state = build_navbot(navbot_meshes);
 
         // Act

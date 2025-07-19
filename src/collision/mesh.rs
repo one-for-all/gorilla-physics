@@ -126,72 +126,85 @@ impl Mesh {
     }
 
     /// Build the mesh from an obj file content
-    pub fn new_from_obj(content: &str) -> Self {
+    pub fn new_from_obj(content: &str, compute_edges: bool) -> Self {
         let mut vertices = vec![];
         let mut faces = vec![];
         // Intermediate representation for edges. key is edge, value is (face A, face B).
         let mut edges_map: HashMap<(usize, usize), (usize, usize)> = HashMap::new();
         for line in content.lines() {
-            let parts: Vec<&str> = line.split_whitespace().collect();
-            if parts.len() < 1 {
-                continue;
-            }
-            match parts[0] {
-                "v" => {
-                    let x: Float = parts[1].parse().unwrap();
-                    let y: Float = parts[2].parse().unwrap();
-                    let z: Float = parts[3].parse().unwrap();
-                    vertices.push(vector![x, y, z]);
-                }
-                "f" => {
-                    // TODO: Each element in face line in obj file could be of
-                    // format x/y/z where x is vertex index, y is material
-                    // index, and z is vertex normal index. Handle it.
-                    let i: usize = parts[1]
-                        .split("/")
-                        .next()
-                        .unwrap()
-                        .parse::<usize>()
-                        .unwrap()
-                        - 1;
-                    let j: usize = parts[2]
-                        .split("/")
-                        .next()
-                        .unwrap()
-                        .parse::<usize>()
-                        .unwrap()
-                        - 1;
-                    let k: usize = parts[3]
-                        .split("/")
-                        .next()
-                        .unwrap()
-                        .parse::<usize>()
-                        .unwrap()
-                        - 1;
-                    faces.push([i, j, k]);
+            let mut parts = line.split_whitespace();
+            if let Some(heading) = parts.next() {
+                match heading {
+                    "v" => {
+                        let x: Float = parts.next().unwrap().parse().unwrap();
+                        let y: Float = parts.next().unwrap().parse().unwrap();
+                        let z: Float = parts.next().unwrap().parse().unwrap();
+                        vertices.push(vector![x, y, z]);
+                    }
+                    "f" => {
+                        // TODO: Each element in face line in obj file could be of
+                        // format x/y/z where x is vertex index, y is material
+                        // index, and z is vertex normal index. Handle it.
+                        let i: usize = parts
+                            .next()
+                            .unwrap()
+                            .split("/")
+                            .next()
+                            .unwrap()
+                            .parse::<usize>()
+                            .unwrap()
+                            - 1;
+                        let j: usize = parts
+                            .next()
+                            .unwrap()
+                            .split("/")
+                            .next()
+                            .unwrap()
+                            .parse::<usize>()
+                            .unwrap()
+                            - 1;
+                        let k: usize = parts
+                            .next()
+                            .unwrap()
+                            .split("/")
+                            .next()
+                            .unwrap()
+                            .parse::<usize>()
+                            .unwrap()
+                            - 1;
+                        faces.push([i, j, k]);
 
-                    // Add edges as well
-                    let face_index = faces.len() - 1;
-                    let e1 = [i, j];
-                    let e2 = [j, k];
-                    let e3 = [k, i];
-                    for e_candidate in [e1, e2, e3].iter() {
-                        if let Some(e) = edges_map.get_mut(&(e_candidate[0], e_candidate[1])) {
-                            panic!(
+                        if compute_edges {
+                            // Add edges as well
+                            let face_index = faces.len() - 1;
+                            let e1 = [i, j];
+                            let e2 = [j, k];
+                            let e3 = [k, i];
+                            for e_candidate in [e1, e2, e3].iter() {
+                                if let Some(e) =
+                                    edges_map.get_mut(&(e_candidate[0], e_candidate[1]))
+                                {
+                                    panic!(
                                 "edge cannot be shared by two faces in its same direction: {:?}",
                                 e
                             );
+                                }
+                                if let Some(e) =
+                                    edges_map.get_mut(&(e_candidate[1], e_candidate[0]))
+                                {
+                                    e.1 = face_index;
+                                    continue;
+                                }
+                                // Set face A and face B both to face_index. This face B is placeholder.
+                                edges_map.insert(
+                                    (e_candidate[0], e_candidate[1]),
+                                    (face_index, face_index),
+                                );
+                            }
                         }
-                        if let Some(e) = edges_map.get_mut(&(e_candidate[1], e_candidate[0])) {
-                            e.1 = face_index;
-                            continue;
-                        }
-                        // Set face A and face B both to face_index. This face B is placeholder.
-                        edges_map
-                            .insert((e_candidate[0], e_candidate[1]), (face_index, face_index));
                     }
+                    _ => {}
                 }
-                _ => {}
             }
         }
 
@@ -710,7 +723,7 @@ mod mesh_tests {
         // Arrange
         let file_path = "data/tetrahedron.obj";
         let buf = read_file(file_path);
-        let mesh = Mesh::new_from_obj(&buf);
+        let mesh = Mesh::new_from_obj(&buf, true);
 
         let l = 1.0; // mesh edge length
         let mut state = build_tetrahedron(mesh, l);
@@ -755,7 +768,7 @@ mod mesh_tests {
         // Arrange
         let file_path = "data/tetrahedron.obj";
         let buf = read_file(file_path);
-        let mesh = Mesh::new_from_obj(&buf);
+        let mesh = Mesh::new_from_obj(&buf, true);
 
         let l = 1.0; // mesh edge length
         let mut state = build_two_tetrahedron(mesh, l);
@@ -822,7 +835,7 @@ mod mesh_tests {
         let file_path = "data/tetrahedron.obj";
         let buf = read_file(file_path);
 
-        let meshA = Mesh::new_from_obj(&buf);
+        let meshA = Mesh::new_from_obj(&buf, true);
         let mut meshB = meshA.clone();
         meshB.update_isometry(&Isometry3::translation(0., 0., l));
 
@@ -840,7 +853,7 @@ mod mesh_tests {
         let file_path = "data/tetrahedron.obj";
         let buf = read_file(file_path);
 
-        let meshA = Mesh::new_from_obj(&buf);
+        let meshA = Mesh::new_from_obj(&buf, true);
         let mut meshB = meshA.clone();
         meshB.update_isometry(&Isometry3::translation(l / 2.0, 0., l / 2.0));
 
@@ -858,7 +871,7 @@ mod mesh_tests {
         let file_path = "data/tetrahedron.obj";
         let buf = read_file(file_path);
 
-        let meshA = Mesh::new_from_obj(&buf);
+        let meshA = Mesh::new_from_obj(&buf, true);
         let mut meshB = meshA.clone();
         meshB.update_isometry(&Isometry3::translation(l / 2.0, -l / 2.0, l / 2.0));
         meshB.update_vertex_positions();
@@ -875,7 +888,7 @@ mod mesh_tests {
         // Arrange
         let l = 1.0;
         let buf = read_file("data/tetrahedron.obj");
-        let meshA = Mesh::new_from_obj(&buf);
+        let meshA = Mesh::new_from_obj(&buf, true);
         let mut meshB = meshA.clone();
         meshB.update_isometry(&Isometry3::new(
             vector![l / 2.0, -l / 2.0, l],
@@ -896,7 +909,7 @@ mod mesh_tests {
         // Arrange
         let file_path = "data/cube.obj";
         let buf = read_file(file_path);
-        let mesh = Mesh::new_from_obj(&buf);
+        let mesh = Mesh::new_from_obj(&buf, true);
 
         let l = 1.0; // mesh edge length
         let mut state = build_two_cubes(mesh, l);
