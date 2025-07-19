@@ -4,7 +4,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use crate::{
     builders::navbot::{build_balancing_bot, build_navbot, build_navbot_motor, NavbotMeshes},
     collision::mesh::Mesh,
-    joint::{JointPosition, JointVelocity},
+    joint::JointPosition,
     spatial::pose::Pose,
 };
 
@@ -37,12 +37,50 @@ pub async fn createNavbot() -> InterfaceMechanismState {
     let mesh = Mesh::new_from_obj(&buf);
     navbot_meshes.top_plate = Some(mesh);
 
-    let mut state = build_navbot(navbot_meshes);
+    let buf = read_web_file("navbot/side_plate_left.obj").await;
+    let mesh = Mesh::new_from_obj(&buf);
+    navbot_meshes.side_plate_left = Some(mesh);
+
+    let buf = read_web_file("navbot/side_plate_right.obj").await;
+    let mesh = Mesh::new_from_obj(&buf);
+    navbot_meshes.side_plate_right = Some(mesh);
+
+    // Leg left
+    let buf = read_web_file("navbot/leg_inner_left.obj").await;
+    let mesh = Mesh::new_from_obj(&buf);
+    navbot_meshes.leg_inner_left = Some(mesh);
+
+    let buf = read_web_file("navbot/leg_outer_left.obj").await;
+    let mesh = Mesh::new_from_obj(&buf);
+    navbot_meshes.leg_outer_left = Some(mesh);
+
+    // Foot left
+    let pin_buf = read_web_file("navbot/pin.obj").await;
+    let pin_mesh = Mesh::new_from_obj(&pin_buf);
+    navbot_meshes.foot_pin_left = Some(pin_mesh);
+
+    let buf = read_web_file("navbot/foot_motor_left.obj").await;
+    let mesh = Mesh::new_from_obj(&buf);
+    navbot_meshes.foot_motor_left = Some(mesh);
+
+    let encoder_buf = read_web_file("navbot/encoder.obj").await;
+    let encoder_mesh = Mesh::new_from_obj(&encoder_buf);
+    navbot_meshes.foot_encoder_left = Some(encoder_mesh);
+
+    let buf = read_web_file("navbot/foot_plate_left.obj").await;
+    let mesh = Mesh::new_from_obj(&buf);
+    navbot_meshes.foot_plate_left = Some(mesh);
+
+    let buf = read_web_file("navbot/link_plate_left.obj").await;
+    let mesh = Mesh::new_from_obj(&buf);
+    navbot_meshes.link_plate_left = Some(mesh);
+
+    let state = build_navbot(navbot_meshes);
 
     // let q_init = vec![JointPosition::Float(0.)];
     // state.update_q(&q_init);
     //
-    state.set_joint_v(1, JointVelocity::Float(0.1));
+    // state.set_joint_v(1, JointVelocity::Float(0.1));
 
     InterfaceMechanismState { inner: state }
 }

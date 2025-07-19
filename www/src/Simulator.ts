@@ -87,7 +87,11 @@ export class Simulator {
     );
   }
 
-  addMeshSet(body_index: number, name: string) {
+  addMeshSet(
+    body_index: number,
+    name: string,
+    color: THREE.ColorRepresentation = 0xffffff,
+  ) {
     let base_vertices_array = this.simulator.visual_base_vertices(body_index);
     let facets_array = this.simulator.facets(body_index);
     let mesh_set: Array<THREE.Mesh> = [];
@@ -105,7 +109,7 @@ export class Simulator {
       geometry.computeVertexNormals();
 
       const material = new THREE.MeshPhongMaterial({
-        color: 0x2194ce,
+        color: color,
         side: THREE.DoubleSide, // Render both sides of faces
         flatShading: true,
       });
@@ -457,11 +461,17 @@ export class Simulator {
   }
 
   addNavbot() {
-    this.addMeshSet(0, "base");
+    this.addMeshSet(0, "base", 0xff0000);
+    this.addMeshSet(1, "leg_left", 0x00ff00);
+    this.addMeshSet(2, "foot_left", 0x00ff00);
+    this.addMeshSet(3, "link_left", 0x0000ff);
   }
 
   updateNavbot() {
     this.updateMeshSet(0, "base");
+    this.updateMeshSet(1, "leg_left");
+    this.updateMeshSet(2, "foot_left");
+    this.updateMeshSet(3, "link_left");
   }
 
   updateRodPose(angle: number) {

@@ -56,7 +56,8 @@ import("gorilla-physics").then((gorilla) => {
   createNavbot().then((state) => {
     state.addHalfSpace(normal as Float64Array, h_ground);
 
-    let controller = gorilla.createNullController();
+    // let controller = gorilla.createNullController();
+    let controller = gorilla.createNavbotController();
     // let controller = gorilla.createBalancingBotController();
     // let controller = gorilla.createFourBarLinkageController();
     // let controller = gorilla.createFourBarLinkageWithBaseController();
@@ -67,6 +68,7 @@ import("gorilla-physics").then((gorilla) => {
     // simulator.addFourBarLinkageWithBase();
     // simulator.addMockNavbot();
     simulator.addNavbot();
+    simulator.updateNavbot();
 
     // simulator.addCuboid("body", 0xff0000, 0.06, 0.05, 0.025);
     // simulator.addSphere("wheel_left", 0x00ff00, 0.02);
