@@ -14,14 +14,14 @@ pub struct Collider {
 }
 
 impl Collider {
-    fn new_mesh(mesh: Mesh) -> Self {
+    pub fn new_mesh(mesh: Mesh) -> Self {
         Collider {
             geometry: CollisionGeometry::Mesh(mesh),
             enabled: true,
         }
     }
 
-    fn new_cuboid(cuboid: Cuboid) -> Self {
+    pub fn new_cuboid(cuboid: Cuboid) -> Self {
         Collider {
             geometry: CollisionGeometry::Cuboid(cuboid),
             enabled: true,
@@ -147,8 +147,12 @@ impl RigidBody {
         })
     }
 
-    pub fn add_collider(&mut self, collision_geometry: Cuboid) {
-        self.collider = Some(Collider::new_cuboid(collision_geometry));
+    pub fn add_cuboid_collider(&mut self, cuboid: Cuboid) {
+        self.collider = Some(Collider::new_cuboid(cuboid));
+    }
+
+    pub fn add_sphere_collider(&mut self, sphere: Sphere) {
+        self.collider = Some(Collider::new_sphere(sphere));
     }
 
     pub fn add_contact_point(&mut self, contact_point: ContactPoint) {

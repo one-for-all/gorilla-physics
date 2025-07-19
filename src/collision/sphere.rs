@@ -1,9 +1,10 @@
-use na::{Isometry3, Vector3};
+use na::{zero, Isometry3, Vector3};
 
 use crate::{contact::HalfSpace, types::Float};
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Sphere {
+    pub base_translation: Vector3<Float>, // base translation from rigid body to sphere collider
     pub isometry: Isometry3<Float>,
 
     pub radius: Float,
@@ -12,6 +13,7 @@ pub struct Sphere {
 impl Sphere {
     pub fn new(radius: Float) -> Self {
         Sphere {
+            base_translation: zero(),
             isometry: Isometry3::identity(),
             radius,
         }
@@ -19,7 +21,8 @@ impl Sphere {
 
     /// Returns contact point if in contact
     pub fn contact_halfspace(&self, halfspace: &HalfSpace) -> Option<Vector3<Float>> {
-        let center = &self.isometry.translation.vector;
+        let center =
+            &self.isometry.translation.vector + self.isometry.rotation * self.base_translation;
         let distance = (center - halfspace.point).dot(&halfspace.normal);
         if distance <= self.radius {
             return Some(center - distance * *halfspace.normal);

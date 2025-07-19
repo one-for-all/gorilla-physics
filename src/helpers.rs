@@ -4,6 +4,7 @@ use crate::contact::ContactPoint;
 use crate::contact::SpringContact;
 use crate::joint::floating::FloatingJoint;
 use crate::joint::prismatic::JointSpring;
+use crate::rigid_body::Collider;
 use crate::PI;
 use crate::WORLD_FRAME;
 use crate::{
@@ -583,7 +584,7 @@ pub fn build_pusher() -> MechanismState {
     let h_pusher = 1.75;
     let mut pusher_link =
         RigidBody::new_cuboid(m_pusher, w_pusher, d_pusher, h_pusher, &pusher_frame);
-    pusher_link.add_collider(Cuboid::new_at_center(w_pusher, d_pusher, h_pusher));
+    pusher_link.add_cuboid_collider(Cuboid::new_at_center(w_pusher, d_pusher, h_pusher));
     let pusher_to_base = Transform3D::move_xyz(
         &pusher_frame,
         &base_frame,
@@ -596,7 +597,7 @@ pub fn build_pusher() -> MechanismState {
     let l_cube = 0.5;
     let m_cube = 0.1;
     let mut cube = RigidBody::new_cube(m_cube, l_cube, &cube_frame);
-    cube.add_collider(Cuboid::new_cube_at_center(l_cube));
+    cube.add_cuboid_collider(Cuboid::new_cube_at_center(l_cube));
     let cube_to_world = Transform3D::move_xyz(
         &cube_frame,
         WORLD_FRAME,
@@ -640,7 +641,7 @@ pub fn build_gripper() -> MechanismState {
         h_gripper,
         &gripper_left_frame,
     );
-    gripper_left.add_collider(Cuboid::new_at_center(w_gripper, d_gripper, h_gripper));
+    gripper_left.add_cuboid_collider(Cuboid::new_at_center(w_gripper, d_gripper, h_gripper));
     let gripper_left_to_lift = Transform3D::move_xyz(
         &gripper_left_frame,
         &lift_frame,
@@ -657,7 +658,7 @@ pub fn build_gripper() -> MechanismState {
         h_gripper,
         &gripper_right_frame,
     );
-    gripper_right.add_collider(Cuboid::new_at_center(w_gripper, d_gripper, h_gripper));
+    gripper_right.add_cuboid_collider(Cuboid::new_at_center(w_gripper, d_gripper, h_gripper));
     let gripper_right_to_lift = Transform3D::move_xyz(
         &gripper_right_frame,
         &lift_frame,
@@ -669,7 +670,7 @@ pub fn build_gripper() -> MechanismState {
     let cube_frame = "cube";
     let l_cube = 0.5;
     let mut cube = RigidBody::new_cube(0.1, l_cube, &cube_frame);
-    cube.add_collider(Cuboid::new_cube_at_center(l_cube));
+    cube.add_cuboid_collider(Cuboid::new_cube_at_center(l_cube));
     let cube_to_world = Transform3D::move_xyz(&cube_frame, WORLD_FRAME, 0.0, 0., l_cube / 2.0);
 
     let bodies = vec![lift, gripper_left, gripper_right, cube];

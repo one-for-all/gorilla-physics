@@ -253,6 +253,10 @@ fn build_navbot_foot_left(meshes: &mut NavbotMeshes, frame: &str) -> RigidBody {
         );
         mesh.update_base_isometry(&iso);
         body.add_visual_mesh(mesh);
+
+        let mut sphere_collider = Sphere::new(0.02);
+        sphere_collider.base_translation = vector![0.0392041, 0.0310329, 0.003525];
+        body.add_sphere_collider(sphere_collider);
     }
 
     if let Some(mut mesh) = meshes.foot_encoder_left.take() {
@@ -347,6 +351,7 @@ pub fn build_navbot(mut meshes: NavbotMeshes) -> MechanismState {
     let bodies = vec![base, leg_left, foot_left, link_left];
     let treejoints = vec![
         Joint::RevoluteJoint(RevoluteJoint::new(base_to_world, Vector3::z_axis())),
+        // Joint::FloatingJoint(FloatingJoint::new(base_to_world)),
         Joint::RevoluteJoint(RevoluteJoint::new(leg_left_to_base, Vector3::z_axis())),
         Joint::RevoluteJoint(RevoluteJoint::new(foot_left_to_leg_left, Vector3::z_axis())),
         Joint::RevoluteJoint(RevoluteJoint::new(link_left_to_base, Vector3::z_axis())),

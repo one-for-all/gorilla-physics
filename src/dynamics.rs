@@ -656,7 +656,6 @@ pub fn dynamics_discrete(
                 rows.extend(constraint_J.row_iter().map(|r| r.into_owned()));
             }
             let J = DMatrix::from_rows(&rows);
-            flog!("J: {}", J);
 
             // Formulate the second-order cone programming problem and solve it
             // Ref: Contact Models in Robotics: a Comparative Analysis, 2024,
@@ -720,7 +719,6 @@ pub fn dynamics_discrete(
             }
 
             let impulse = J.transpose() * lambda;
-            flog!("impulse: {}", impulse);
             let v_next: DVector<Float> = v_free
                 + mass_matrix_lu
                     .solve(&impulse)
