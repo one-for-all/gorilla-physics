@@ -443,8 +443,8 @@ pub fn dynamics_discrete(
     // Build up the Jacobians for the joint constraints
     let mut constraint_Js: Vec<DMatrix<Float>> = vec![];
     for constraint in state.constraints.iter() {
-        let frame1_linked_bodyids = state.linked_bodyids(&constraint.frame1);
-        let frame2_linked_bodyids = state.linked_bodyids(&constraint.frame2);
+        let frame1_linked_bodyids = state.linked_bodyids(constraint.frame1());
+        let frame2_linked_bodyids = state.linked_bodyids(constraint.frame2());
 
         let frame1_only_linked_bodyids: HashSet<&usize> = frame1_linked_bodyids
             .difference(&frame2_linked_bodyids)
@@ -469,10 +469,10 @@ pub fn dynamics_discrete(
 
         let frame1_body_to_root = bodies_to_root
             .iter()
-            .find(|x| x.1.from == constraint.frame1)
+            .find(|x| x.1.from == constraint.frame1())
             .unwrap()
             .1;
-        let constraint_to_root = frame1_body_to_root.iso * constraint.to_frame1;
+        let constraint_to_root = frame1_body_to_root.iso * constraint.to_frame1();
         let root_to_constraint = constraint_to_root.inverse();
         let T = compute_twist_transformation_matrix(&root_to_constraint);
         let J = T * J;

@@ -4,8 +4,11 @@ use crate::{
     contact::ContactPoint,
     inertia::SpatialInertia,
     joint::{
-        constraint_revolute::RevoluteConstraintJoint, floating::FloatingJoint,
-        revolute::RevoluteJoint, Joint,
+        constraint_revolute::RevoluteConstraintJoint,
+        cylindrical_constraint::{Constraint, CylindricalConstraintJoint},
+        floating::FloatingJoint,
+        revolute::RevoluteJoint,
+        Joint,
     },
     mechanism::MechanismState,
     rigid_body::RigidBody,
@@ -64,13 +67,13 @@ pub fn build_four_bar_linkage(m: Float, m_bar3: Float) -> MechanismState {
 
     let constraint_to_bar3 = Isometry3::translation(l, 0., 0.);
     let constraint_to_bar2 = Isometry3::translation(0., 0., -l);
-    let constraint_joints = vec![RevoluteConstraintJoint::new(
+    let constraint_joints = vec![Constraint::Cylindrical(CylindricalConstraintJoint::new(
         bar3_frame,
         constraint_to_bar3,
         bar2_frame,
         constraint_to_bar2,
         Vector3::y_axis(),
-    )];
+    ))];
     // let constraint_joints = vec![];
 
     MechanismState::new_with_constraint(treejoints, bodies, constraint_joints)
@@ -122,13 +125,13 @@ pub fn build_four_bar_linkage_with_base(m: Float, m_bar3: Float) -> MechanismSta
 
     let constraint_to_bar3 = Isometry3::translation(l, 0., 0.);
     let constraint_to_bar2 = Isometry3::translation(0., 0., -l);
-    let constraint_joints = vec![RevoluteConstraintJoint::new(
+    let constraint_joints = vec![Constraint::Revolute(RevoluteConstraintJoint::new(
         bar3_frame,
         constraint_to_bar3,
         bar2_frame,
         constraint_to_bar2,
         Vector3::y_axis(),
-    )];
+    ))];
 
     MechanismState::new_with_constraint(treejoints, bodies, constraint_joints)
 }
@@ -223,7 +226,10 @@ pub fn build_mock_navbot(m: Float) -> MechanismState {
         Isometry3::translation(0., 0., -l),
         Vector3::x_axis(),
     );
-    let constraints = vec![right_foot_to_right_link, left_foot_to_left_link];
+    let constraints = vec![
+        Constraint::Revolute(right_foot_to_right_link),
+        Constraint::Revolute(left_foot_to_left_link),
+    ];
 
     MechanismState::new_with_constraint(treejoints, bodies, constraints)
 }

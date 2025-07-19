@@ -58,9 +58,9 @@ import("gorilla-physics").then((gorilla) => {
   createNavbot().then((state) => {
     state.addHalfSpace(normal as Float64Array, h_ground);
 
-    let controller = gorilla.createNullController();
+    // let controller = gorilla.createNullController();
     // let controller = gorilla.createPusherController();
-    // let controller = gorilla.createNavbotController();
+    let controller = gorilla.createNavbotController();
     // let controller = gorilla.createBalancingBotController();
     // let controller = gorilla.createFourBarLinkageController();
     // let controller = gorilla.createFourBarLinkageWithBaseController();
@@ -70,8 +70,8 @@ import("gorilla-physics").then((gorilla) => {
     // simulator.addFourBarLinkage();
     // simulator.addFourBarLinkageWithBase();
     // simulator.addMockNavbot();
-
     // simulator.addPusher();
+    //
     simulator.addNavbot();
     simulator.updateNavbot();
 
@@ -102,7 +102,7 @@ import("gorilla-physics").then((gorilla) => {
 
     // Important: Set initial camera position
     let cameraPosition = {
-      eye: { x: 0.0, y: -0.5, z: 0.2 },
+      eye: { x: -0.5, y: 0.0, z: 0.2 },
       target: { x: 0.0, y: 0, z: 0.0 },
     };
     simulator.graphics.lookAt(cameraPosition);
