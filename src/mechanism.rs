@@ -8,7 +8,7 @@ use crate::energy::spring_elastic_energy;
 use crate::inertia::compute_inertias;
 use crate::inertia::kinetic_energy;
 use crate::inertia::SpatialInertia;
-use crate::joint::constraint_revolute::ConstraintRevoluteJoint;
+use crate::joint::constraint_revolute::RevoluteConstraintJoint;
 use crate::joint::Joint;
 use crate::joint::JointPosition;
 use crate::joint::JointVelocity;
@@ -42,7 +42,7 @@ pub struct MechanismState {
     pub v: Vec<JointVelocity>, // joint velocity vector. Note: velocities are expressed in each body frame
     pub halfspaces: Vec<HalfSpace>,
 
-    pub constraints: Vec<ConstraintRevoluteJoint>,
+    pub constraints: Vec<RevoluteConstraintJoint>,
 }
 
 impl MechanismState {
@@ -134,7 +134,7 @@ impl MechanismState {
     pub fn new_with_constraint(
         treejoints: Vec<Joint>,
         bodies: Vec<RigidBody>,
-        constraints: Vec<ConstraintRevoluteJoint>,
+        constraints: Vec<RevoluteConstraintJoint>,
     ) -> Self {
         let mut state = Self::new(treejoints, bodies);
         state.constraints = constraints;

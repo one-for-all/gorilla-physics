@@ -4,7 +4,7 @@ use crate::{
     contact::ContactPoint,
     inertia::SpatialInertia,
     joint::{
-        constraint_revolute::ConstraintRevoluteJoint, floating::FloatingJoint,
+        constraint_revolute::RevoluteConstraintJoint, floating::FloatingJoint,
         revolute::RevoluteJoint, Joint,
     },
     mechanism::MechanismState,
@@ -64,7 +64,7 @@ pub fn build_four_bar_linkage(m: Float, m_bar3: Float) -> MechanismState {
 
     let constraint_to_bar3 = Isometry3::translation(l, 0., 0.);
     let constraint_to_bar2 = Isometry3::translation(0., 0., -l);
-    let constraint_joints = vec![ConstraintRevoluteJoint::new(
+    let constraint_joints = vec![RevoluteConstraintJoint::new(
         bar3_frame,
         constraint_to_bar3,
         bar2_frame,
@@ -122,7 +122,7 @@ pub fn build_four_bar_linkage_with_base(m: Float, m_bar3: Float) -> MechanismSta
 
     let constraint_to_bar3 = Isometry3::translation(l, 0., 0.);
     let constraint_to_bar2 = Isometry3::translation(0., 0., -l);
-    let constraint_joints = vec![ConstraintRevoluteJoint::new(
+    let constraint_joints = vec![RevoluteConstraintJoint::new(
         bar3_frame,
         constraint_to_bar3,
         bar2_frame,
@@ -209,14 +209,14 @@ pub fn build_mock_navbot(m: Float) -> MechanismState {
         Joint::RevoluteJoint(RevoluteJoint::new(left_foot_to_left_leg, Vector3::x_axis())),
     ];
 
-    let right_foot_to_right_link = ConstraintRevoluteJoint::new(
+    let right_foot_to_right_link = RevoluteConstraintJoint::new(
         right_foot_frame,
         Isometry3::translation(0., l, 0.),
         right_link_frame,
         Isometry3::translation(0., 0., -l),
         Vector3::x_axis(),
     );
-    let left_foot_to_left_link = ConstraintRevoluteJoint::new(
+    let left_foot_to_left_link = RevoluteConstraintJoint::new(
         left_foot_frame,
         Isometry3::translation(0., l, 0.),
         left_link_frame,

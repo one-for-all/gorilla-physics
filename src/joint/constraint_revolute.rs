@@ -6,7 +6,7 @@ use crate::types::Float;
 /// about an axis at a position
 /// Note, there are two implicit frames inside the joint. One after frame 1, and
 /// one after frame 2. They are not necessarily coincident.
-pub struct ConstraintRevoluteJoint {
+pub struct RevoluteConstraintJoint {
     pub axis: UnitVector3<Float>, // axis expressed in the frame after frame 1
 
     pub frame1: String,
@@ -16,7 +16,7 @@ pub struct ConstraintRevoluteJoint {
     pub to_frame2: Isometry3<Float>,
 }
 
-impl ConstraintRevoluteJoint {
+impl RevoluteConstraintJoint {
     pub fn new(
         frame1: &str,
         to_frame1: Isometry3<Float>,
