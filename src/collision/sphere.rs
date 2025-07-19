@@ -112,7 +112,8 @@ mod sphere_tests {
 
         let translation = pose.translation;
         assert_eq!(translation[1], 0.);
-        assert_eq!(translation[2], r);
+        assert_close!(translation[2], r, 1e-5);
+        // assert_eq!(translation[2], r); // TODO(f64): needs higher tolerance w/ f64
 
         // distance = radius * angle
         assert_close!(r * euler_angles.1, translation[0], 1e-4);

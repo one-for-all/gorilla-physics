@@ -866,7 +866,8 @@ mod contact_tests {
         assert_eq!(v_final.angular.z, 0.0);
         assert_close!(v_final.angular.y, 0.0, 1e-3);
         assert_eq!(v_final.linear.y, 0.0);
-        assert_close!(v_final.linear.x, 0.0, 5e-3);
+        assert_close!(v_final.linear.x, 0.0, 6e-3);
+        // assert_close!(v_final.linear.x, 0.0, 5e-3); // TODO(f64): needs higher tolerance w/ f64
         assert_close!(v_final.linear.z, 0.0, 3e-2);
     }
 

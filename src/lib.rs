@@ -36,7 +36,7 @@ pub mod helpers;
 
 pub const GRAVITY: Float = 9.81;
 
-pub const PI: Float = std::f64::consts::PI; // std::f32::consts::PI;
+pub const PI: Float = std::f64::consts::PI; // std::f32::consts::PI; //
 pub const TWO_PI: Float = 2.0 * PI;
 
 pub const WORLD_FRAME: &str = "world";

@@ -306,7 +306,7 @@ mod integrators_tests {
             box_pose.translation.x > 3.0,
             "x: {}",
             box_pose.translation.x
-        );
+        ); // TODO(mu): needs friction mu to be < 1.0
         assert_close!(box_pose.translation.y, 0.0, 0.2);
         assert_close!(box_pose.translation.z, 0.25, 1e-2);
     }

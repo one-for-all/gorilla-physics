@@ -634,7 +634,7 @@ export class Simulator {
     }
   }
 
-  updatePusher(poses: Float32Array) {
+  updatePusher(poses: FloatArrayType) {
     let i = 0;
     let extensionPose = poses.subarray(i, i + 6);
     this.setPose("extension", extensionPose);
@@ -861,6 +861,7 @@ export class Simulator {
     this.updateNavbot();
 
     let poses = this.simulator.poses();
+    // this.updatePusher(poses);
     // this.updateMockNavbot(poses);
     // this.updateFourBarLinkage(poses);
     // this.updateFourBarLinkageWithBase(poses);

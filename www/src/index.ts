@@ -3,6 +3,7 @@ import {
   createFourBarLinkageWithBase,
   createMockNavbot,
   createNavbot,
+  createPusher,
 } from "gorilla-physics";
 import { Simulator } from "./Simulator";
 import { FloatArray } from "./type";
@@ -23,6 +24,7 @@ import("gorilla-physics").then((gorilla) => {
   let angle: number = (0.0 * Math.PI) / 180.0;
   let normal = new FloatArray([Math.sin(angle), 0.0, Math.cos(angle)]);
   let h_ground = -1.0;
+  // let h_ground = 0.0;
   let alpha = 1.0;
   let mu = 1.0;
 
@@ -56,8 +58,9 @@ import("gorilla-physics").then((gorilla) => {
   createNavbot().then((state) => {
     state.addHalfSpace(normal as Float64Array, h_ground);
 
-    // let controller = gorilla.createNullController();
-    let controller = gorilla.createNavbotController();
+    let controller = gorilla.createNullController();
+    // let controller = gorilla.createPusherController();
+    // let controller = gorilla.createNavbotController();
     // let controller = gorilla.createBalancingBotController();
     // let controller = gorilla.createFourBarLinkageController();
     // let controller = gorilla.createFourBarLinkageWithBaseController();
@@ -67,6 +70,8 @@ import("gorilla-physics").then((gorilla) => {
     // simulator.addFourBarLinkage();
     // simulator.addFourBarLinkageWithBase();
     // simulator.addMockNavbot();
+
+    // simulator.addPusher();
     simulator.addNavbot();
     simulator.updateNavbot();
 

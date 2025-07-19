@@ -594,7 +594,8 @@ pub fn build_pusher() -> MechanismState {
 
     let cube_frame = "cube";
     let l_cube = 0.5;
-    let mut cube = RigidBody::new_cube(0.1, l_cube, &cube_frame);
+    let m_cube = 0.1;
+    let mut cube = RigidBody::new_cube(m_cube, l_cube, &cube_frame);
     cube.add_collider(Cuboid::new_cube_at_center(l_cube));
     let cube_to_world = Transform3D::move_xyz(
         &cube_frame,

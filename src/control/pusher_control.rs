@@ -1,5 +1,5 @@
 use crate::{
-    joint::JointTorque, mechanism::MechanismState, spatial::spatial_vector::SpatialVector,
+    flog, joint::JointTorque, mechanism::MechanismState, spatial::spatial_vector::SpatialVector,
 };
 
 use super::{ControlInput, Controller};

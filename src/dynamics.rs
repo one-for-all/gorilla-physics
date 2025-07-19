@@ -676,7 +676,7 @@ pub fn dynamics_discrete(
 
             let n_contacts = contact_Js.len();
             let mut A_triplets: Vec<(usize, usize, Float)> = vec![];
-            let mu = 1.0; // TODO: special handling for zero friction
+            let mu = 0.95; // TODO: special handling for zero friction
             for i in 0..n_contacts {
                 let index = i * 3;
                 A_triplets.push((index, index, -mu));
