@@ -3,7 +3,7 @@ use crate::{
         energy_control::{Hopper1DController, Hopper2DController},
         gripper_control::GripperManualController,
         kinematic_loop::{FourBarLinkageController, FourBarLinkageWithBaseController},
-        navbot_conrol::{BalancingBotController, NavbotController},
+        navbot_control::{BalancingBotController, NavbotController},
         pusher_control::PusherController,
         quadruped_control::{QuadrupedStandingController, QuadrupedTrottingController},
         so101_control::SO101PositionController,

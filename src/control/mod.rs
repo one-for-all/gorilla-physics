@@ -10,7 +10,7 @@ pub mod gripper_control;
 pub mod hopper_control;
 pub mod kinematic_loop;
 pub mod lqr;
-pub mod navbot_conrol;
+pub mod navbot_control;
 pub mod pusher_control;
 pub mod quadruped_control;
 pub mod so101_control;

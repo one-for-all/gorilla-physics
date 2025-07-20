@@ -463,7 +463,7 @@ export class Simulator {
   addNavbot() {
     this.addMeshSet(0, "base", 0xff0000);
     this.addMeshSet(1, "leg_left", 0x00ff00);
-    this.addMeshSet(2, "foot_left", 0x00ff00);
+    this.addMeshSet(2, "foot_left", 0x00ffff);
     this.addMeshSet(3, "link_left", 0x0000ff);
   }
 

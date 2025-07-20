@@ -29,7 +29,7 @@ impl Controller for NavbotController {
         // })]
         //
 
-        return vec![];
+        // return vec![];
 
         vec![
             JointTorque::Float(0.),
