@@ -11,7 +11,7 @@ use crate::{
 };
 
 pub mod kinematic_loop_builder;
-pub mod navbot;
+pub mod navbot_builder;
 
 fn build_so101_base_body(mut mesh: Mesh, frame: &str) -> RigidBody {
     let m = 0.147;

@@ -4,7 +4,9 @@ use wasm_bindgen::prelude::*;
 use web_sys::window;
 
 use crate::{
-    builders::navbot::{build_balancing_bot, build_navbot, build_navbot_motor, NavbotMeshes},
+    builders::navbot_builder::{
+        build_balancing_bot, build_navbot, build_navbot_motor, NavbotMeshes,
+    },
     collision::mesh::Mesh,
     flog,
     joint::JointPosition,

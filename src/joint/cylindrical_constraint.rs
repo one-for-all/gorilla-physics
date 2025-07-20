@@ -104,7 +104,7 @@ impl CylindricalConstraintJoint {
 mod cylindrical_constraint_tests {
 
     use crate::{
-        builders::navbot::{build_navbot, NavbotMeshes},
+        builders::navbot_builder::{build_navbot, NavbotMeshes},
         collision::mesh::Mesh,
         simulate::step,
         util::read_file,
