@@ -465,6 +465,11 @@ export class Simulator {
     this.addMeshSet(1, "leg_left", 0x00ff00);
     this.addMeshSet(2, "foot_left", 0x00ffff);
     this.addMeshSet(3, "link_left", 0x0000ff);
+    this.addMeshSet(4, "wheel_left", 0x666666);
+    this.addMeshSet(5, "leg_right", 0x00ff00);
+    this.addMeshSet(6, "foot_right", 0x00ffff);
+    this.addMeshSet(7, "link_right", 0x0000ff);
+    this.addMeshSet(8, "wheel_right", 0x666666);
   }
 
   updateNavbot() {
@@ -472,6 +477,11 @@ export class Simulator {
     this.updateMeshSet(1, "leg_left");
     this.updateMeshSet(2, "foot_left");
     this.updateMeshSet(3, "link_left");
+    this.updateMeshSet(4, "wheel_left");
+    this.updateMeshSet(5, "leg_right");
+    this.updateMeshSet(6, "foot_right");
+    this.updateMeshSet(7, "link_right");
+    this.updateMeshSet(8, "wheel_right");
   }
 
   updateRodPose(angle: number) {

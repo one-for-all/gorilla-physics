@@ -2,6 +2,7 @@ use na::{vector, Isometry3, Matrix3, Translation3, UnitQuaternion, Vector3};
 
 use crate::{
     collision::{mesh::Mesh, sphere::Sphere},
+    flog,
     inertia::SpatialInertia,
     joint::{
         constraint_revolute::RevoluteConstraintJoint,
@@ -79,87 +80,61 @@ pub fn build_balancing_bot() -> MechanismState {
 }
 
 pub struct NavbotMeshes {
-    pub esp32pcb: Option<Mesh>,
-    pub top_plate: Option<Mesh>,
-    pub side_plate_left: Option<Mesh>,
-    pub side_plate_right: Option<Mesh>,
-
-    pub leg_inner_left: Option<Mesh>,
-    pub leg_outer_left: Option<Mesh>,
-
-    pub foot_pin_left: Option<Mesh>,
-    pub foot_motor_left: Option<Mesh>,
-    pub foot_encoder_left: Option<Mesh>,
-    pub foot_plate_left: Option<Mesh>,
-
-    pub link_plate_left: Option<Mesh>,
+    pub base: Option<Mesh>,
+    pub leg_left: Option<Mesh>,
+    pub foot_left: Option<Mesh>,
+    pub link_left: Option<Mesh>,
+    pub wheel_left: Option<Mesh>,
+    pub leg_right: Option<Mesh>,
+    pub foot_right: Option<Mesh>,
+    pub link_right: Option<Mesh>,
+    pub wheel_right: Option<Mesh>,
 }
 
 impl NavbotMeshes {
     pub fn new() -> Self {
         NavbotMeshes {
-            esp32pcb: None,
-            top_plate: None,
-            side_plate_left: None,
-            side_plate_right: None,
-
-            leg_inner_left: None,
-            leg_outer_left: None,
-
-            foot_pin_left: None,
-            foot_motor_left: None,
-            foot_encoder_left: None,
-            foot_plate_left: None,
-
-            link_plate_left: None,
+            base: None,
+            leg_left: None,
+            foot_left: None,
+            link_left: None,
+            wheel_left: None,
+            leg_right: None,
+            foot_right: None,
+            link_right: None,
+            wheel_right: None,
         }
     }
 }
 
 fn build_navbot_base(meshes: &mut NavbotMeshes, frame: &str) -> RigidBody {
-    let w = 0.064;
-    let h = 0.028;
-    let d = 0.054;
-    let m = 0.1;
-    let moment_x = m * (h * h + d * d) / 3.0;
-    let moment_y = m * (4. * h * h + w * w) / 12.0;
-    let moment_z = m * (4. * d * d + w * w) / 12.0;
-    let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
-    let cross_part = vector![0., -h / 2.0, d / 2.0];
+    let m = 0.0414438;
+    let com = vector![0.000111698, 0.0256898, -0.00962915];
+    let ixx = 2.00397e-05;
+    let ixy = 1.88378e-10;
+    let ixz = 4.17829e-10;
+    let iyy = 2.61065e-05;
+    let iyz = -2.16605e-06;
+    let izz = 3.3757e-05;
 
-    let mut body = RigidBody::new(SpatialInertia::new(moment, cross_part, m, frame));
+    // inertia moment matrix about the center-of-mass
+    #[rustfmt::skip]
+    let moment_com = Matrix3::new(
+        ixx, ixy, ixz,
+        ixy, iyy, iyz,
+        ixz, iyz, izz
+    );
 
-    if let Some(mut mesh) = meshes.esp32pcb.take() {
+    let moment =
+        moment_com + m * (com.norm_squared() * Matrix3::identity() - com * com.transpose());
+    let cross_part = m * com;
+    let spatial_inertia = SpatialInertia::new(moment, cross_part, m, frame);
+    let mut body = RigidBody::new(spatial_inertia);
+
+    if let Some(mut mesh) = meshes.base.take() {
         let iso = Isometry3::from_parts(
-            Translation3::new(0.000112254, 0.0303721, -0.00163541),
-            UnitQuaternion::from_euler_angles(1.5708, -1.74345e-08, 1.5708),
-        );
-        mesh.update_base_isometry(&iso);
-        body.add_visual_mesh(mesh);
-    }
-
-    if let Some(mut mesh) = meshes.top_plate.take() {
-        let iso = Isometry3::from_parts(
-            Translation3::new(0.000112254, 0.0481221, 0.00957459),
-            UnitQuaternion::from_euler_angles(-1.5708, -1.23575e-09, 9.92151e-09),
-        );
-        mesh.update_base_isometry(&iso);
-        body.add_visual_mesh(mesh);
-    }
-
-    if let Some(mut mesh) = meshes.side_plate_left.take() {
-        let iso = Isometry3::from_parts(
-            Translation3::new(-0.0318877, 0.0253721, -0.0176354),
-            UnitQuaternion::from_euler_angles(1.5708, 1.5708, 0.),
-        );
-        mesh.update_base_isometry(&iso);
-        body.add_visual_mesh(mesh);
-    }
-
-    if let Some(mut mesh) = meshes.side_plate_right.take() {
-        let iso = Isometry3::from_parts(
-            Translation3::new(0.0321123, 0.0253721, -0.0176354),
-            UnitQuaternion::from_euler_angles(-1.5708, 1.5708, 0.),
+            Translation3::new(0.000111698, 0.0256898, -0.00962915),
+            UnitQuaternion::from_euler_angles(0., 0., 0.),
         );
         mesh.update_base_isometry(&iso);
         body.add_visual_mesh(mesh);
@@ -192,19 +167,10 @@ fn build_navbot_leg_left(meshes: &mut NavbotMeshes, frame: &str) -> RigidBody {
     let spatial_inertia = SpatialInertia::new(moment, cross_part, m, frame);
     let mut body = RigidBody::new(spatial_inertia);
 
-    if let Some(mut mesh) = meshes.leg_inner_left.take() {
+    if let Some(mut mesh) = meshes.leg_left.take() {
         let iso = Isometry3::from_parts(
-            Translation3::new(-3.46945e-18, 4.33681e-19, -0.004),
-            UnitQuaternion::from_euler_angles(-1.5708, -1.43064e-25, -1.50654e-17),
-        );
-        mesh.update_base_isometry(&iso);
-        body.add_visual_mesh(mesh);
-    }
-
-    if let Some(mut mesh) = meshes.leg_outer_left.take() {
-        let iso = Isometry3::from_parts(
-            Translation3::new(-6.93889e-18, 4.33681e-18, -0.0105),
-            UnitQuaternion::from_euler_angles(-1.5708, -1.66533e-16, -2.66594e-16),
+            Translation3::new(-0.0134676, -0.000849763, -0.0089392),
+            UnitQuaternion::from_euler_angles(1.87857, -1.5708, 0.),
         );
         mesh.update_base_isometry(&iso);
         body.add_visual_mesh(mesh);
@@ -215,12 +181,12 @@ fn build_navbot_leg_left(meshes: &mut NavbotMeshes, frame: &str) -> RigidBody {
 
 fn build_navbot_foot_left(meshes: &mut NavbotMeshes, frame: &str) -> RigidBody {
     let m = 0.0379925;
-    let com = vector![0.0351141, 0.0277485, -0.000900737];
-    let ixx = 4.76231e-06;
-    let ixy = -3.17037e-06;
-    let ixz = -1.41079e-07;
-    let iyy = 6.22648e-06;
-    let iyz = -1.19066e-07;
+    let com = vector![0.03509, 0.027779, -0.000900737];
+    let ixx = 4.76781e-06;
+    let ixy = -3.17164e-06;
+    let ixz = -1.40975e-07;
+    let iyy = 6.22098e-06;
+    let iyz = -1.19188e-07;
     let izz = 9.12834e-06;
 
     // inertia moment matrix about the center-of-mass
@@ -237,41 +203,10 @@ fn build_navbot_foot_left(meshes: &mut NavbotMeshes, frame: &str) -> RigidBody {
     let spatial_inertia = SpatialInertia::new(moment, cross_part, m, frame);
     let mut body = RigidBody::new(spatial_inertia);
 
-    if let Some(mut mesh) = meshes.foot_pin_left.take() {
+    if let Some(mut mesh) = meshes.foot_left.take() {
         let iso = Isometry3::from_parts(
-            Translation3::new(-1.38778e-17, -1.73472e-18, 0.004),
-            UnitQuaternion::from_euler_angles(-1.5708, 2.76905e-16, -0.701537),
-        );
-        mesh.update_base_isometry(&iso);
-        body.add_visual_mesh(mesh);
-    }
-
-    if let Some(mut mesh) = meshes.foot_motor_left.take() {
-        let iso = Isometry3::from_parts(
-            Translation3::new(0.0392041, 0.0310329, 0.003525),
-            UnitQuaternion::from_euler_angles(-1.5708, 2.20279e-16, -0.116852),
-        );
-        mesh.update_base_isometry(&iso);
-        body.add_visual_mesh(mesh);
-
-        let mut sphere_collider = Sphere::new(0.02);
-        sphere_collider.base_translation = vector![0.0392041, 0.0310329, 0.003525];
-        body.add_sphere_collider(sphere_collider);
-    }
-
-    if let Some(mut mesh) = meshes.foot_encoder_left.take() {
-        let iso = Isometry3::from_parts(
-            Translation3::new(0.039213, 0.0310399, 0.013),
-            UnitQuaternion::from_euler_angles(1.5708, 1.87067e-16, -0.90225),
-        );
-        mesh.update_base_isometry(&iso);
-        body.add_visual_mesh(mesh);
-    }
-
-    if let Some(mut mesh) = meshes.foot_plate_left.take() {
-        let iso = Isometry3::from_parts(
-            Translation3::new(0.0680493, 0.027659, 0.01675),
-            UnitQuaternion::from_euler_angles(-1.5708, 1.65883e-16, -0.701537),
+            Translation3::new(0.03509, 0.027779, -0.000900737),
+            UnitQuaternion::from_euler_angles(1.87857, -1.5708, 0.),
         );
         mesh.update_base_isometry(&iso);
         body.add_visual_mesh(mesh);
@@ -281,14 +216,14 @@ fn build_navbot_foot_left(meshes: &mut NavbotMeshes, frame: &str) -> RigidBody {
 }
 
 fn build_navbot_link_left(meshes: &mut NavbotMeshes, frame: &str) -> RigidBody {
-    let m = 0.00130815;
-    let com = vector![0.00234762, -0.0243892, -0.001];
-    let ixx = 4.47598e-07;
-    let ixy = 1.03315e-08;
-    let ixz = -9.14854e-31;
-    let iyy = 1.13491e-08;
-    let iyz = 2.41596e-31;
-    let izz = 4.58075e-07;
+    let m = 0.00242268;
+    let com = vector![0.00126762, -0.02515, -0.00146631];
+    let ixx = 1.21113e-06;
+    let ixy = 7.99494e-09;
+    let ixz = -1.43206e-09;
+    let iyy = 2.07936e-08;
+    let iyz = -1.00885e-09;
+    let izz = 1.22447e-06;
 
     // inertia moment matrix about the center-of-mass
     #[rustfmt::skip]
@@ -304,14 +239,202 @@ fn build_navbot_link_left(meshes: &mut NavbotMeshes, frame: &str) -> RigidBody {
     let spatial_inertia = SpatialInertia::new(moment, cross_part, m, frame);
     let mut body = RigidBody::new(spatial_inertia);
 
-    if let Some(mut mesh) = meshes.link_plate_left.take() {
+    if let Some(mut mesh) = meshes.link_left.take() {
         let iso = Isometry3::from_parts(
-            Translation3::new(-3.46945e-18, -0.052086, -0.002),
-            UnitQuaternion::from_euler_angles(1.5708, 5.69618e-25, 5.25003e-19),
+            Translation3::new(0.00126762, -0.02515, -0.00146631),
+            UnitQuaternion::from_euler_angles(-2.51439, -1.5708, 0.),
         );
         mesh.update_base_isometry(&iso);
         body.add_visual_mesh(mesh);
     }
+
+    body
+}
+
+fn build_navbot_wheel_left(meshes: &mut NavbotMeshes, frame: &str) -> RigidBody {
+    let m = 0.0155748;
+    let com = vector![4.83102e-08, -1.61747e-09, -0.00780743];
+    let ixx = 1.75465e-06;
+    let ixy = -3.92314e-13;
+    let ixz = 3.65986e-12;
+    let iyy = 1.75464e-06;
+    let iyz = -1.18704e-13;
+    let izz = 2.81671e-06;
+
+    // inertia moment matrix about the center-of-mass
+    #[rustfmt::skip]
+    let moment_com = Matrix3::new(
+        ixx, ixy, ixz,
+        ixy, iyy, iyz,
+        ixz, iyz, izz
+    );
+
+    let moment =
+        moment_com + m * (com.norm_squared() * Matrix3::identity() - com * com.transpose());
+    let cross_part = m * com;
+    let spatial_inertia = SpatialInertia::new(moment, cross_part, m, frame);
+    let mut body = RigidBody::new(spatial_inertia);
+
+    if let Some(mut mesh) = meshes.wheel_left.take() {
+        let iso = Isometry3::from_parts(
+            Translation3::new(4.83102e-08, -1.61747e-09, -0.00780743),
+            UnitQuaternion::from_euler_angles(0.992489, -1.5708, 0.),
+        );
+        mesh.update_base_isometry(&iso);
+        body.add_visual_mesh(mesh);
+    }
+
+    let mut sphere = Sphere::new(0.02);
+    sphere.base_translation = com;
+    body.add_sphere_collider(sphere);
+
+    body
+}
+
+fn build_navbot_leg_right(meshes: &mut NavbotMeshes, frame: &str) -> RigidBody {
+    let m = 0.00775582;
+    let com = vector![-0.0134676, 0.000849731, -0.0089392];
+    let ixx = 4.45176e-07;
+    let ixy = 2.74979e-08;
+    let ixz = 2.09678e-08;
+    let iyy = 2.67121e-06;
+    let iyz = -4.57706e-09;
+    let izz = 2.81453e-06;
+
+    // inertia moment matrix about the center-of-mass
+    #[rustfmt::skip]
+    let moment_com = Matrix3::new(
+        ixx, ixy, ixz,
+        ixy, iyy, iyz,
+        ixz, iyz, izz
+    );
+
+    let moment =
+        moment_com + m * (com.norm_squared() * Matrix3::identity() - com * com.transpose());
+    let cross_part = m * com;
+    let spatial_inertia = SpatialInertia::new(moment, cross_part, m, frame);
+    let mut body = RigidBody::new(spatial_inertia);
+
+    if let Some(mut mesh) = meshes.leg_right.take() {
+        let iso = Isometry3::from_parts(
+            Translation3::new(-0.0134676, 0.000849731, -0.0089392),
+            UnitQuaternion::from_euler_angles(-1.26301, 1.5708, 0.),
+        );
+        mesh.update_base_isometry(&iso);
+        body.add_visual_mesh(mesh);
+    }
+
+    body
+}
+
+fn build_navbot_foot_right(meshes: &mut NavbotMeshes, frame: &str) -> RigidBody {
+    let m = 0.0379925;
+    let com = vector![0.00891353, -0.043858, -0.000900737];
+    let ixx = 8.49931e-06;
+    let ixy = 1.24815e-06;
+    let ixz = -3.10263e-08;
+    let iyy = 2.48948e-06;
+    let iyz = 1.81978e-07;
+    let izz = 9.12834e-06;
+
+    // inertia moment matrix about the center-of-mass
+    #[rustfmt::skip]
+    let moment_com = Matrix3::new(
+        ixx, ixy, ixz,
+        ixy, iyy, iyz,
+        ixz, iyz, izz
+    );
+
+    let moment =
+        moment_com + m * (com.norm_squared() * Matrix3::identity() - com * com.transpose());
+    let cross_part = m * com;
+    let spatial_inertia = SpatialInertia::new(moment, cross_part, m, frame);
+    let mut body = RigidBody::new(spatial_inertia);
+
+    if let Some(mut mesh) = meshes.foot_right.take() {
+        let iso = Isometry3::from_parts(
+            Translation3::new(0.00891353, -0.043858, -0.000900737),
+            UnitQuaternion::from_euler_angles(-0.562376, 1.5708, 0.),
+        );
+        mesh.update_base_isometry(&iso);
+        body.add_visual_mesh(mesh);
+    }
+
+    body
+}
+
+fn build_navbot_link_right(meshes: &mut NavbotMeshes, frame: &str) -> RigidBody {
+    let m = 0.00242268;
+    let com = vector![0.00126762, 0.02515, -0.00146631];
+    let ixx = 1.21113e-06;
+    let ixy = 7.99494e-09;
+    let ixz = -1.43206e-09;
+    let iyy = 2.07936e-08;
+    let iyz = -1.00885e-09;
+    let izz = 1.22447e-06;
+
+    // inertia moment matrix about the center-of-mass
+    #[rustfmt::skip]
+    let moment_com = Matrix3::new(
+        ixx, ixy, ixz,
+        ixy, iyy, iyz,
+        ixz, iyz, izz
+    );
+
+    let moment =
+        moment_com + m * (com.norm_squared() * Matrix3::identity() - com * com.transpose());
+    let cross_part = m * com;
+    let spatial_inertia = SpatialInertia::new(moment, cross_part, m, frame);
+    let mut body = RigidBody::new(spatial_inertia);
+
+    if let Some(mut mesh) = meshes.link_right.take() {
+        let iso = Isometry3::from_parts(
+            Translation3::new(0.00126762, 0.02515, -0.00146631),
+            UnitQuaternion::from_euler_angles(0.627216, 1.5708, 0.),
+        );
+        mesh.update_base_isometry(&iso);
+        body.add_visual_mesh(mesh);
+    }
+
+    body
+}
+
+fn build_navbot_wheel_right(meshes: &mut NavbotMeshes, frame: &str) -> RigidBody {
+    let m = 0.0155748;
+    let com = vector![-1.61747e-09, -4.83102e-08, -0.00780743];
+    let ixx = 1.75464e-06;
+    let ixy = 3.92314e-13;
+    let ixz = -1.18704e-13;
+    let iyy = 1.75465e-06;
+    let iyz = -3.65986e-12;
+    let izz = 2.81671e-06;
+
+    // inertia moment matrix about the center-of-mass
+    #[rustfmt::skip]
+    let moment_com = Matrix3::new(
+        ixx, ixy, ixz,
+        ixy, iyy, iyz,
+        ixz, iyz, izz
+    );
+
+    let moment =
+        moment_com + m * (com.norm_squared() * Matrix3::identity() - com * com.transpose());
+    let cross_part = m * com;
+    let spatial_inertia = SpatialInertia::new(moment, cross_part, m, frame);
+    let mut body = RigidBody::new(spatial_inertia);
+
+    if let Some(mut mesh) = meshes.wheel_right.take() {
+        let iso = Isometry3::from_parts(
+            Translation3::new(-1.61747e-09, -4.83102e-08, -0.00780743),
+            UnitQuaternion::from_euler_angles(-2.40559, 1.5708, 0.),
+        );
+        mesh.update_base_isometry(&iso);
+        body.add_visual_mesh(mesh);
+    }
+
+    let mut sphere = Sphere::new(0.02);
+    sphere.base_translation = com;
+    body.add_sphere_collider(sphere);
 
     body
 }
@@ -327,7 +450,7 @@ pub fn build_navbot(mut meshes: NavbotMeshes) -> MechanismState {
         leg_left_frame,
         base_frame,
         &vec![-0.0299877, 0.0274141, -0.0126354],
-        &vec![-1.5708, -0.3074, -1.5708],
+        &vec![-1.5708, -0.307769, -1.5708],
     );
 
     let foot_left_frame = "foot_left";
@@ -336,7 +459,7 @@ pub fn build_navbot(mut meshes: NavbotMeshes) -> MechanismState {
         foot_left_frame,
         leg_left_frame,
         &vec![-0.052, 0.003, -0.0065],
-        &vec![-1.98635e-26, -1.43064e-25, -1.50654e-17],
+        &vec![4.51632e-25, 1.59286e-24, 3.23144e-17],
     );
 
     let link_left_frame = "link_left";
@@ -344,35 +467,119 @@ pub fn build_navbot(mut meshes: NavbotMeshes) -> MechanismState {
     let link_left_to_base = Transform3D::new_xyz_rpy(
         link_left_frame,
         base_frame,
-        &vec![-0.0405877, 0.0451087, 0.00357876],
-        &vec![1.5708, -0.943886, 1.5708],
+        &vec![-0.0406877, 0.0451087, 0.00357876],
+        &vec![1.5708, -0.943592, 1.5708],
     );
 
-    let bodies = vec![base, leg_left, foot_left, link_left];
+    let wheel_left_frame = "wheel_left";
+    let wheel_left = build_navbot_wheel_left(&mut meshes, wheel_left_frame);
+    let wheel_left_to_foot_left = Transform3D::new_xyz_rpy(
+        wheel_left_frame,
+        foot_left_frame,
+        &vec![0.0391772, 0.0310668, -0.00035],
+        &vec![8.25667e-17, -3.43754e-16, 0.886077],
+    );
+
+    let leg_right_frame = "leg_right";
+    let leg_right = build_navbot_leg_right(&mut meshes, leg_right_frame);
+    let leg_right_to_base = Transform3D::new_xyz_rpy(
+        leg_right_frame,
+        base_frame,
+        &vec![0.0302123, 0.0274141, -0.0126354],
+        &vec![1.5708, -0.307784, -1.5708],
+    );
+
+    let foot_right_frame = "foot_right";
+    let foot_right = build_navbot_foot_right(&mut meshes, foot_right_frame);
+    let foot_right_to_leg_right = Transform3D::new_xyz_rpy(
+        foot_right_frame,
+        leg_right_frame,
+        &vec![-0.052, -0.003, -0.0065],
+        &vec![-3.24841e-15, -1.09622e-15, 0.700637],
+    );
+
+    let link_right_frame = "link_right";
+    let link_right = build_navbot_link_right(&mut meshes, link_right_frame);
+    let link_right_to_base = Transform3D::new_xyz_rpy(
+        link_right_frame,
+        base_frame,
+        &vec![0.0409123, 0.0451087, 0.00357876],
+        &vec![-1.5708, -0.943581, 1.5708],
+    );
+
+    let wheel_right_frame = "wheel_right";
+    let wheel_right = build_navbot_wheel_right(&mut meshes, wheel_right_frame);
+    let wheel_right_to_foot_right = Transform3D::new_xyz_rpy(
+        wheel_right_frame,
+        foot_right_frame,
+        &vec![0.00991772, -0.0490065, -0.00035],
+        &vec![-4.01485e-15, 1.79841e-15, -1.84321],
+    );
+
+    let bodies = vec![
+        base,
+        leg_left,
+        foot_left,
+        link_left,
+        wheel_left,
+        leg_right,
+        foot_right,
+        link_right,
+        wheel_right,
+    ];
     let treejoints = vec![
         Joint::RevoluteJoint(RevoluteJoint::new(base_to_world, Vector3::z_axis())),
         // Joint::FloatingJoint(FloatingJoint::new(base_to_world)),
         Joint::RevoluteJoint(RevoluteJoint::new(leg_left_to_base, Vector3::z_axis())),
         Joint::RevoluteJoint(RevoluteJoint::new(foot_left_to_leg_left, Vector3::z_axis())),
         Joint::RevoluteJoint(RevoluteJoint::new(link_left_to_base, Vector3::z_axis())),
+        Joint::RevoluteJoint(RevoluteJoint::new(
+            wheel_left_to_foot_left,
+            Vector3::z_axis(),
+        )),
+        Joint::RevoluteJoint(RevoluteJoint::new(leg_right_to_base, Vector3::z_axis())),
+        Joint::RevoluteJoint(RevoluteJoint::new(
+            foot_right_to_leg_right,
+            Vector3::z_axis(),
+        )),
+        Joint::RevoluteJoint(RevoluteJoint::new(link_right_to_base, Vector3::z_axis())),
+        Joint::RevoluteJoint(RevoluteJoint::new(
+            wheel_right_to_foot_right,
+            Vector3::z_axis(),
+        )),
     ];
 
-    // TODO: make this a cylindrical constraint to avoid over-constraining
     let link_left_to_foot_left = RevoluteConstraintJoint::new(
         link_left_frame,
         Isometry3::from_parts(
-            Translation3::new(-3.46945e-18, -0.052086, 0.),
-            UnitQuaternion::from_euler_angles(-1.97267e-25, 5.69618e-25, 5.25003e-19),
+            Translation3::new(6.93889e-18, -0.052086, 0.),
+            UnitQuaternion::from_euler_angles(-1.44955e-25, 4.35151e-25, -4.26445e-18),
         ),
         foot_left_frame,
         Isometry3::from_parts(
-            Translation3::new(-0.00940899, -0.00744789, -0.0042),
-            UnitQuaternion::from_euler_angles(4.56749e-16, 1.65883e-16, -0.701537),
+            Translation3::new(-0.00940253, -0.00745604, -0.0042),
+            UnitQuaternion::from_euler_angles(2.02194e-16, -1.32857e-16, -0.700671),
+        ),
+        Vector3::z_axis(),
+    );
+    let link_right_to_foot_right = RevoluteConstraintJoint::new(
+        link_right_frame,
+        Isometry3::from_parts(
+            Translation3::new(3.46945e-18, 0.052086, 0.),
+            UnitQuaternion::from_euler_angles(1.77223e-24, -1.82722e-25, -2.02994e-17),
+        ),
+        foot_right_frame,
+        Isometry3::from_parts(
+            Translation3::new(-0.00238025, 0.0117616, -0.0042),
+            UnitQuaternion::from_euler_angles(-5.82594e-25, 4.12715e-26, 6.18256e-17),
         ),
         Vector3::z_axis(),
     );
 
-    let constraints = vec![Constraint::Revolute(link_left_to_foot_left)];
+    let constraints = vec![
+        Constraint::Revolute(link_left_to_foot_left),
+        Constraint::Revolute(link_right_to_foot_right),
+    ];
 
     MechanismState::new_with_constraint(treejoints, bodies, constraints)
 }
