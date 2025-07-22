@@ -108,7 +108,7 @@ impl NavbotMeshes {
 }
 
 fn build_navbot_base(meshes: &mut NavbotMeshes, frame: &str) -> RigidBody {
-    let m = 0.0414438;
+    let m = 0.1414438; // artificially added 0.1 mass
     let com = vector![0.000111698, 0.0256898, -0.00962915];
     let ixx = 2.00397e-05;
     let ixy = 1.88378e-10;
@@ -528,8 +528,8 @@ pub fn build_navbot(mut meshes: NavbotMeshes) -> MechanismState {
         wheel_right,
     ];
     let treejoints = vec![
-        Joint::RevoluteJoint(RevoluteJoint::new(base_to_world, Vector3::z_axis())),
-        // Joint::FloatingJoint(FloatingJoint::new(base_to_world)),
+        // Joint::RevoluteJoint(RevoluteJoint::new(base_to_world, Vector3::z_axis())),
+        Joint::FloatingJoint(FloatingJoint::new(base_to_world)),
         Joint::RevoluteJoint(RevoluteJoint::new(leg_left_to_base, Vector3::z_axis())),
         Joint::RevoluteJoint(RevoluteJoint::new(foot_left_to_leg_left, Vector3::z_axis())),
         Joint::RevoluteJoint(RevoluteJoint::new(link_left_to_base, Vector3::z_axis())),
