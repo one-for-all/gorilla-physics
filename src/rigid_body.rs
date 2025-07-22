@@ -50,6 +50,13 @@ impl CollisionGeometry {
             _ => panic!("Collider is not a Mesh"),
         }
     }
+
+    pub fn sphere(&self) -> &Sphere {
+        match self {
+            CollisionGeometry::Sphere(sphere) => sphere,
+            _ => panic!("Collider is not a sphere"),
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Debug)]

@@ -86,10 +86,13 @@ impl InterfaceSimulator {
     pub fn step(&mut self, dt: Float, control_input: Vec<Float>) -> FloatArray {
         let input = ControlInput::new(control_input);
 
-        let n_substep = 20;
+        let n_substep = 10;
         let mut q = vec![];
         for _ in 0..n_substep {
-            let torque = self.controller.inner.control(&mut (self.state).inner, None);
+            let torque = self
+                .controller
+                .inner
+                .control(&mut (self.state).inner, Some(&input));
             let (_q, _v) = step(
                 &mut (self.state).inner,
                 dt / (n_substep as Float),
@@ -142,6 +145,11 @@ impl InterfaceSimulator {
     #[wasm_bindgen]
     pub fn isometry(&self, body_index: usize) -> FloatArray {
         self.state.isometry(body_index)
+    }
+
+    #[wasm_bindgen]
+    pub fn sphere_center(&self, body_index: usize) -> FloatArray {
+        self.state.sphere_center(body_index)
     }
 }
 
@@ -282,6 +290,18 @@ impl InterfaceMechanismState {
                 )
             })
             .collect()
+    }
+
+    #[wasm_bindgen]
+    pub fn sphere_center(&self, body_index: usize) -> FloatArray {
+        let center = self.inner.bodies[body_index]
+            .collider
+            .as_ref()
+            .unwrap()
+            .geometry
+            .sphere()
+            .center();
+        FloatArray::from(center.as_slice().to_vec().as_slice())
     }
 
     /// Get the isometry of the visual mesh on a body, which is also the isometry of the body itself

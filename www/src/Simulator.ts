@@ -162,6 +162,8 @@ export class Simulator {
       color: color,
       side: THREE.DoubleSide, // Render both sides of faces
       flatShading: true,
+      opacity: 0.5,
+      transparent: true,
     });
     const sphere = new THREE.Mesh(geometry, material);
     this.meshes.set(name, sphere);
@@ -869,6 +871,21 @@ export class Simulator {
     // this.updateMesh(6, "jaw");
 
     this.updateNavbot();
+    let wheel_left = this.meshes.get("wheel_left");
+    let wheel_left_center = this.simulator.sphere_center(4);
+    wheel_left.position.set(
+      wheel_left_center[0],
+      wheel_left_center[1],
+      wheel_left_center[2],
+    );
+
+    let wheel_right = this.meshes.get("wheel_right");
+    let wheel_right_center = this.simulator.sphere_center(8);
+    wheel_right.position.set(
+      wheel_right_center[0],
+      wheel_right_center[1],
+      wheel_right_center[2],
+    );
 
     let poses = this.simulator.poses();
     // this.updatePusher(poses);

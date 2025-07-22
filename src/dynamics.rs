@@ -876,7 +876,7 @@ pub fn solve_cone_complementarity(P: &CscMatrix<Float>, g: &DVector<Float>) -> D
     let n_constraints = P.m / 3;
 
     let mut A_triplets: Vec<(usize, usize, Float)> = vec![];
-    let mu = 1.0; // TODO: special handling for zero friction
+    let mu = 0.95; // TODO: special handling for zero friction
     for i in 0..n_constraints {
         let index = i * 3;
         A_triplets.push((index, index, -mu));

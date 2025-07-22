@@ -19,10 +19,13 @@ impl Sphere {
         }
     }
 
+    pub fn center(&self) -> Vector3<Float> {
+        &self.isometry.translation.vector + &self.isometry.rotation * self.base_translation
+    }
+
     /// Returns contact point if in contact
     pub fn contact_halfspace(&self, halfspace: &HalfSpace) -> Option<Vector3<Float>> {
-        let center =
-            &self.isometry.translation.vector + self.isometry.rotation * self.base_translation;
+        let center = self.center();
         let distance = (center - halfspace.point).dot(&halfspace.normal);
         if distance <= self.radius {
             return Some(center - distance * *halfspace.normal);
