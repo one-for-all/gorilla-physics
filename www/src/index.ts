@@ -60,7 +60,7 @@ import("gorilla-physics").then((gorilla) => {
 
     // let controller = gorilla.createNullController();
     // let controller = gorilla.createPusherController();
-    let controller = gorilla.createNavbotController();
+    let controller = gorilla.createNavbotController(1.0 / 600.0);
     // let controller = gorilla.createBalancingBotController();
     // let controller = gorilla.createFourBarLinkageController();
     // let controller = gorilla.createFourBarLinkageWithBaseController();

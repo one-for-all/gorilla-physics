@@ -96,8 +96,8 @@ pub fn createSO101PositionController() -> InterfaceController {
 }
 
 #[wasm_bindgen]
-pub fn createNavbotController() -> InterfaceController {
-    let inner: Box<dyn Controller> = Box::new(NavbotController {});
+pub fn createNavbotController(dt: Float) -> InterfaceController {
+    let inner: Box<dyn Controller> = Box::new(NavbotController::new(dt));
     InterfaceController { inner }
 }
 
