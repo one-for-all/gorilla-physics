@@ -1,5 +1,5 @@
 use futures::future::join_all;
-use na::{vector, UnitQuaternion};
+use na::{vector, zero, UnitQuaternion};
 use wasm_bindgen::prelude::*;
 use web_sys::window;
 
@@ -9,8 +9,8 @@ use crate::{
     },
     collision::mesh::Mesh,
     flog,
-    joint::JointPosition,
-    spatial::pose::Pose,
+    joint::{JointPosition, JointVelocity},
+    spatial::{pose::Pose, spatial_vector::SpatialVector},
 };
 
 use super::{util::read_web_file, InterfaceMechanismState};
@@ -71,12 +71,26 @@ pub async fn createNavbot() -> InterfaceMechanismState {
     let end = performance.now();
     flog!("loading mesh took {:.3} s", (end - start) / 1000.); // currently takes ~2 seconds
 
-    let state = build_navbot(navbot_meshes);
+    let mut state = build_navbot(navbot_meshes);
 
     // let q_init = vec![JointPosition::Float(0.)];
     // state.update_q(&q_init);
     //
     // state.set_joint_v(1, JointVelocity::Float(0.1));
+    state.set_joint_q(
+        1,
+        JointPosition::Pose(Pose {
+            rotation: UnitQuaternion::from_euler_angles(0., 0., 0.),
+            translation: vector![0., 0., 0.],
+        }),
+    );
+    state.set_joint_v(
+        1,
+        JointVelocity::Spatial(SpatialVector {
+            linear: zero(),
+            angular: vector![0., 0., 0.],
+        }),
+    );
 
     InterfaceMechanismState { inner: state }
 }

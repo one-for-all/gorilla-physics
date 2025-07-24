@@ -812,7 +812,7 @@ export class Simulator {
     // TODO: measure and use the actual time elapsed
     const dt = 1 / this.fps;
 
-    let control_input = new FloatArray(2);
+    let control_input = new FloatArray(3);
 
     let rotation_speed = 1.0;
     if (keysPressed["a"]) {
@@ -821,11 +821,15 @@ export class Simulator {
       control_input[0] = -rotation_speed;
     }
 
-    let linear_speed = 2.0;
+    let joyy = 100.0;
     if (keysPressed["w"]) {
-      control_input[1] = linear_speed;
+      control_input[1] = joyy;
     } else if (keysPressed["s"]) {
-      control_input[1] = -linear_speed;
+      control_input[1] = -joyy;
+    }
+
+    if (keysPressed[" "]) {
+      control_input[2] = 1.0;
     }
 
     // // drop the arm
