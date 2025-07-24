@@ -829,7 +829,9 @@ export class Simulator {
     }
 
     if (keysPressed[" "]) {
-      control_input[2] = 1.0;
+      control_input[2] = 1.0; // jump
+    } else {
+      control_input[2] = 0.0; // stop
     }
 
     // // drop the arm
