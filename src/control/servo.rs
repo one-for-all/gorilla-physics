@@ -41,11 +41,10 @@ impl ServoMotor {
     pub fn compute(&mut self) -> Float {
         let ctrl = self.target;
         let error = ctrl - self.pos;
-        let error_dot = error / self.dt - self.vel;
+        let error_dot = error - self.vel;
         // let error_dot = 0. - self.vel;
 
         // let integral = self.integral + error * self.dt;
-        // self.integral = integral; // TODO: need to ensure that compute() gets called exactly once per loop
 
         self.P * error + self.D * error_dot + self.I * self.integral
     }

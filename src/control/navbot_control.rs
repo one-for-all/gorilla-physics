@@ -164,7 +164,7 @@ impl Controller for NavbotController {
             .sphere()
             .contact_halfspace(&state.halfspaces[0])
             .is_none()
-            && state.bodies[8]
+            || state.bodies[8]
                 .collider
                 .as_ref()
                 .unwrap()
@@ -284,9 +284,7 @@ impl Controller for NavbotController {
         if self.jump_flag == 0 {
             // Stabilize the leg angle
 
-            let leg_position_add = self
-                .pi_roll_angle
-                .compute(self.lpf_roll.compute(roll_angle));
+            let leg_position_add = self.pi_roll_angle.compute(roll_angle);
             let leg_position_add = 0.01 * leg_position_add;
 
             let q_target = 0.0;
@@ -322,6 +320,8 @@ impl Controller for NavbotController {
         //flog!("right: {}", tau_right);
         tau_left = tau_left.clamp(-max_leg_torque, max_leg_torque);
         tau_right = tau_right.clamp(-max_leg_torque, max_leg_torque);
+
+        // Big TODO: model softness of the wheel rubber
 
         vec![
             // JointTorque::Float(0.),
