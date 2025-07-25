@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Gorilla Physics</title>
+    <style>
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+        width: 100%;
+        display: flex;
+        position: relative;
+      }
+      #threejs {
+        height: 100vh;
+        flex: 1;
+      }
+
+      /* WASD Overlay Styles */
+      .wasd-overlay {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .wasd-row {
+        display: flex;
+        margin-bottom: 5px;
+      }
+      .wasd-key {
+        width: 50px;
+        height: 50px;
+        background-color: rgba(255, 255, 255, 0.2);
+        border: 2px solid rgba(255, 255, 255, 0.5);
+        border-radius: 8px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 0 5px;
+        color: white;
+        font-family: Arial, sans-serif;
+        font-weight: bold;
+        font-size: 20px;
+        cursor: pointer;
+        user-select: none;
+        touch-action: manipulation;
+        transition: all 0.1s ease;
+      }
+      .wasd-key:hover {
+        background-color: rgba(255, 255, 255, 0.3);
+      }
+      .wasd-key.active {
+        background-color: rgba(255, 255, 255, 0.4);
+        transform: scale(0.95);
+        box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+      }
+
+      /* Space Key Overlay Styles */
+      .space-overlay {
+        position: absolute;
+        bottom: 20px;
+        left: 220px; /* adjust this value as needed to position beside WASD */
+        z-index: 100;
+        display: flex;
+        align-items: center;
+      }
+
+      .space-key {
+        width: 120px;
+        height: 50px;
+        background-color: rgba(255, 255, 255, 0.2);
+        border: 2px solid rgba(255, 255, 255, 0.5);
+        border-radius: 8px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 5px 5px;
+        color: white;
+        font-family: Arial, sans-serif;
+        font-weight: bold;
+        font-size: 20px;
+        cursor: pointer;
+        user-select: none;
+        touch-action: manipulation;
+        transition: all 0.1s ease;
+      }
+
+      .space-key:hover {
+        background-color: rgba(255, 255, 255, 0.3);
+      }
+
+      .space-key.active {
+        background-color: rgba(255, 255, 255, 0.4);
+        transform: scale(0.95);
+        box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+      }
+
+      /* Mobile portrait orientation styles */
+      @media (max-width: 768px) and (orientation: portrait) {
+        .wasd-overlay {
+          bottom: 30px;
+        }
+
+        .wasd-key {
+          margin: 0 8px;
+          font-size: 25px;
+        }
+
+        .space-overlay {
+          bottom: 30px;
+          left: 230px;
+        }
+
+        .space-key {
+          width: 140px;
+          font-size: 25px;
+        }
+      }
+
+      /* Mobile landscape orientation */
+      @media (max-width: 768px) and (orientation: landscape) {
+        .wasd-key {
+          width: 60px;
+          height: 60px;
+          font-size: 24px;
+        }
+        .space-overlay {
+          left: 240px;
+        }
+        .space-key {
+          width: 150px;
+          height: 60px;
+          font-size: 24px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="threejs"></div>
+    <!-- WASD Overlay -->
+    <div class="wasd-overlay">
+      <div class="wasd-row">
+        <div class="wasd-key" id="key-w">W</div>
+      </div>
+      <div class="wasd-row">
+        <div class="wasd-key" id="key-a">A</div>
+        <div class="wasd-key" id="key-s">S</div>
+        <div class="wasd-key" id="key-d">D</div>
+      </div>
+    </div>
+    <div class="space-overlay">
+      <div class="space-key" id="key-space">SPACE</div>
+    </div>
+    <script src="index.js"></script>
+    <script>
+      // Create and dispatch keyboard events
+      function simulateKeyEvent(key, type) {
+        let eventKey = key;
+        let eventCode = `Key${key.toUpperCase()}`;
+        if (key === "space") {
+            eventKey = " ";
+            eventCode = "Space";
+        }
+        const event = new KeyboardEvent(type, {
+          key: eventKey,
+          code: eventCode,
+          bubbles: true,
+          cancelable: true,
+          composed: true,
+        });
+        document.dispatchEvent(event);
+      }
+
+      // Add mouse/touch event handlers for each key
+      ["w", "a", "s", "d", "space"].forEach((key) => {
+        const element = document.getElementById(`key-${key}`);
+
+        // Mouse events
+        element.addEventListener("mousedown", () => {
+          element.classList.add("active");
+          simulateKeyEvent(key, "keydown");
+        });
+
+        element.addEventListener("mouseup", () => {
+          element.classList.remove("active");
+          simulateKeyEvent(key, "keyup");
+        });
+
+        element.addEventListener("mouseleave", () => {
+          if (element.classList.contains("active")) {
+            element.classList.remove("active");
+            simulateKeyEvent(key, "keyup");
+          }
+        });
+
+        // Touch events
+        element.addEventListener("touchstart", (e) => {
+          e.preventDefault();
+          element.classList.add("active");
+          simulateKeyEvent(key, "keydown");
+        });
+
+        element.addEventListener("touchend", (e) => {
+          e.preventDefault();
+          element.classList.remove("active");
+          simulateKeyEvent(key, "keyup");
+        });
+      });
+
+      // Add key press highlighting
+      document.addEventListener("keydown", (e) => {
+        let key = e.key.toLowerCase();
+        if (key === " ") {
+            key = "space";
+        }
+        if (key === "w" || key === "a" || key === "s" || key === "d" || key === "space") {
+          document.getElementById(`key-${key}`).classList.add("active");
+        }
+      });
+
+      document.addEventListener("keyup", (e) => {
+        let key = e.key.toLowerCase();
+        if (key === " ") {
+            key = "space";
+        }
+        if (key === "w" || key === "a" || key === "s" || key === "d" || key === "space") {
+          document.getElementById(`key-${key}`).classList.remove("active");
+        }
+      });
+    </script>
+  </body>
+</html>
