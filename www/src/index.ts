@@ -75,9 +75,9 @@ import("gorilla-physics").then((gorilla) => {
     simulator.updateNavbot();
 
     // simulator.addCuboid("body", 0xff0000, 0.06, 0.05, 0.025);
-    let wheel_radius = 0.037 / 2.0;
-    simulator.addSphere("wheel_left", 0x00ff00, wheel_radius);
-    simulator.addSphere("wheel_right", 0x00ff00, wheel_radius);
+    // let wheel_radius = 0.037 / 2.0;
+    // simulator.addSphere("wheel_left", 0x00ff00, wheel_radius);
+    // simulator.addSphere("wheel_right", 0x00ff00, wheel_radius);
 
     // simulator.addMesh(0, "mesh0");
     // simulator.addMesh(1, "mesh1");

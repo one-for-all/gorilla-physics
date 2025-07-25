@@ -882,20 +882,24 @@ export class Simulator {
 
     this.updateNavbot();
     let wheel_left = this.meshes.get("wheel_left");
-    let wheel_left_center = this.simulator.sphere_center(4);
-    wheel_left.position.set(
-      wheel_left_center[0],
-      wheel_left_center[1],
-      wheel_left_center[2],
-    );
+    if (wheel_left != undefined) {
+      let wheel_left_center = this.simulator.sphere_center(4);
+      wheel_left.position.set(
+        wheel_left_center[0],
+        wheel_left_center[1],
+        wheel_left_center[2],
+      );
+    }
 
     let wheel_right = this.meshes.get("wheel_right");
-    let wheel_right_center = this.simulator.sphere_center(8);
-    wheel_right.position.set(
-      wheel_right_center[0],
-      wheel_right_center[1],
-      wheel_right_center[2],
-    );
+    if (wheel_right != undefined) {
+      let wheel_right_center = this.simulator.sphere_center(8);
+      wheel_right.position.set(
+        wheel_right_center[0],
+        wheel_right_center[1],
+        wheel_right_center[2],
+      );
+    }
 
     let poses = this.simulator.poses();
     // this.updatePusher(poses);
