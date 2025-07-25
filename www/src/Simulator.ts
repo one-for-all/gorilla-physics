@@ -814,11 +814,13 @@ export class Simulator {
 
     let control_input = new FloatArray(3);
 
-    let rotation_speed = 1.0;
+    let joyx = 100.0;
     if (keysPressed["a"]) {
-      control_input[0] = rotation_speed;
+      control_input[0] = -joyx;
     } else if (keysPressed["d"]) {
-      control_input[0] = -rotation_speed;
+      control_input[0] = joyx;
+    } else {
+      control_input[0] = 0.0;
     }
 
     let joyy = 100.0;
@@ -826,6 +828,8 @@ export class Simulator {
       control_input[1] = joyy;
     } else if (keysPressed["s"]) {
       control_input[1] = -joyy;
+    } else {
+      control_input[1] = 0.0;
     }
 
     if (keysPressed[" "]) {

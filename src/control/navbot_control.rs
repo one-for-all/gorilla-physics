@@ -80,28 +80,33 @@ pub struct NavbotController {
     pi_distance: PIModule,
     pi_speed: PIModule,
 
+    pi_yaw_angle: PIModule,
     pi_yaw_gyro: PIModule,
-    pi_roll_angle: PIModule,
-    lpf_roll: LowPassFilter,
 
     pi_lqr_u: PIModule,
-
     pi_zeropoint: PIModule,
-    lpf_zeropoint: LowPassFilter,
+
+    pi_roll_angle: PIModule,
 
     servo_left: ServoMotor,
     servo_right: ServoMotor,
 
     lpf_joyy: LowPassFilter,
+    lpf_zeropoint: LowPassFilter,
+    lpf_roll: LowPassFilter,
 
     angle_zeropoint: Float,
     distance_zeropoint: Float,
+    yaw_zeropoint: Float,
+    yaw_angle_last: Float,
+    yaw_angle_total: Float,
 
     jump_flag: usize,
     move_stop_flag: bool,
 
-    joyy_last: Float,
     dir_last: Float,
+    joyx_last: Float,
+    joyy_last: Float,
 }
 
 const SERVO_KD: Float = 0.3;
@@ -117,6 +122,7 @@ impl NavbotController {
             pi_distance: PIModule::new(0.5, 0., 8., dt),
             pi_speed: PIModule::new(0.7, 0., 8., dt),
 
+            pi_yaw_angle: PIModule::new(1.0, 0., 8., dt),
             pi_yaw_gyro: PIModule::new(0.04, 0., 8., dt),
             pi_lqr_u: PIModule::new(1., 15., 8., dt),
             pi_zeropoint: PIModule::new(0.002, 0., 4., dt),
@@ -132,12 +138,16 @@ impl NavbotController {
 
             angle_zeropoint: ANGLE_ZEROPOINT, // 1.60, // -2.25,
             distance_zeropoint: 0.,
+            yaw_zeropoint: INFINITY,
+            yaw_angle_last: 0.,
+            yaw_angle_total: 0.,
 
             jump_flag: 0,
             move_stop_flag: false,
 
-            joyy_last: 0.,
             dir_last: 0.,
+            joyx_last: 0.,
+            joyy_last: 0.,
         }
     }
 }
@@ -148,15 +158,16 @@ impl Controller for NavbotController {
         state: &mut MechanismState,
         input: Option<&ControlInput>,
     ) -> Vec<JointTorque> {
+        let mut joyx = 0.;
         let mut joyy = 0.;
         let mut dir = 0.;
         if let Some(input) = input {
             let input = &input.floats;
+            joyx = input[0];
             joyy = input[1];
             dir = input[2];
         }
 
-        // TODO: maybe should be (or) to indicate in-air if either wheel not touching
         let in_air = state.bodies[4]
             .collider
             .as_ref()
@@ -194,12 +205,12 @@ impl Controller for NavbotController {
         let angle_control = self.pi_angle.compute(lqr_angle - self.angle_zeropoint);
         let gyro_control = self.pi_gyro.compute(lqr_gyro);
 
-        // TODO: motion details
+        // motion details
         if joyy != 0.0 {
             self.distance_zeropoint = lqr_distance;
             self.pi_lqr_u.error_prev = 0.0;
         }
-        if self.joyy_last != 0.0 && joyy == 0.0 {
+        if (self.joyx_last != 0.0 && joyx == 0.) || (self.joyy_last != 0.0 && joyy == 0.0) {
             // stop when joy value turns zero
             self.move_stop_flag = true;
         }
@@ -230,7 +241,12 @@ impl Controller for NavbotController {
             lqr_u = angle_control + gyro_control + distance_control + speed_control;
         }
 
-        if lqr_u.abs() < 5. && joyy == 0.0 && distance_control.abs() < 4.0 && self.jump_flag == 0 {
+        if lqr_u.abs() < 5.
+            && joyy == 0.0
+            && joyx == 0.0
+            && distance_control.abs() < 4.0
+            && self.jump_flag == 0
+        {
             lqr_u = self.pi_lqr_u.compute(lqr_u);
             self.angle_zeropoint -= self
                 .pi_zeropoint
@@ -245,6 +261,7 @@ impl Controller for NavbotController {
         let q_right = state.q[5].float();
         let v_right = state.v[5].float();
 
+        // update servo state
         self.servo_left.update(*q_left, *v_left);
         self.servo_right.update(*q_right, *v_right);
 
@@ -301,9 +318,36 @@ impl Controller for NavbotController {
         tau_right = self.servo_right.compute();
 
         // yaw control
+        let yaw_angle = body_pose.rotation.euler_angles().2 * rad2degree;
+        let yaw_angle_1;
+        let yaw_angle_2;
+        let yaw_addup_angle;
+        if yaw_angle > self.yaw_angle_last {
+            yaw_angle_1 = yaw_angle - self.yaw_angle_last;
+            yaw_angle_2 = yaw_angle - self.yaw_angle_last - 2. * PI;
+        } else {
+            yaw_angle_1 = yaw_angle - self.yaw_angle_last;
+            yaw_angle_2 = yaw_angle - self.yaw_angle_last + 2. * PI;
+        }
+
+        if yaw_angle_1.abs() > yaw_angle_2.abs() {
+            yaw_addup_angle = yaw_angle_2;
+        } else {
+            yaw_addup_angle = yaw_angle_1;
+        }
+        self.yaw_angle_total += yaw_addup_angle;
+        self.yaw_angle_last = yaw_angle;
+        if self.yaw_zeropoint.is_infinite() || joyx != 0.0 {
+            self.yaw_zeropoint = self.yaw_angle_total;
+        }
+        let yaw_angle_control = self.yaw_angle_total + 0.02 * joyx;
+        let yaw_angle_control = self
+            .pi_yaw_angle
+            .compute(yaw_angle_control - self.yaw_zeropoint);
+
         let yaw_gyro = body_vel.angular.z * rad2degree;
-        let yaw_gyro = self.pi_yaw_gyro.compute(yaw_gyro);
-        let yaw_output = yaw_gyro;
+        let yaw_gyro_control = self.pi_yaw_gyro.compute(yaw_gyro);
+        let yaw_output = yaw_angle_control + yaw_gyro_control;
 
         // rough wheel motor voltage to torque ration
         let voltage_to_torque = 0.0049; // https://item.taobao.com/item.htm?_u=k2st8hc2dcef&id=556445606114
@@ -311,6 +355,7 @@ impl Controller for NavbotController {
         let right_wheel_tau = -(lqr_u + yaw_output) / 2.0 * voltage_to_torque;
 
         // record motion input
+        self.joyx_last = joyx;
         self.joyy_last = joyy;
         self.dir_last = dir;
 
