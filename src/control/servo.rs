@@ -3,7 +3,7 @@ use crate::types::Float;
 pub struct ServoMotor {
     P: Float,
     I: Float,
-    D: Float,
+    pub D: Float,
     dt: Float, // motor control frequency
 
     target: Float,

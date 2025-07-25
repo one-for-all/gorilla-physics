@@ -108,15 +108,17 @@ impl NavbotMeshes {
 }
 
 fn build_navbot_base(meshes: &mut NavbotMeshes, frame: &str) -> RigidBody {
-    let m = 0.1414438; // artificially added 0.1 mass
-                       // let com = vector![0.000111698, 0.0256898, -0.00962915];
-    let com = vector![0.000111698, 0.0274141, -0.0126354]; // align with leg joint
-    let ixx = 2.00397e-05;
-    let ixy = 1.88378e-10;
-    let ixz = 4.17829e-10;
-    let iyy = 2.61065e-05;
-    let iyz = -2.16605e-06;
-    let izz = 3.3757e-05;
+    let m = 0.139444;
+    // let com = vector![0.000112099, 0.0323741, -0.0131977]; // com from onshape
+    let com = vector![0.000112099, 0.0274141, -0.0131977]; // align with leg joint
+
+    // let com = vector![0.000111698, 0.0226898, -0.00962915]; // make balance angle to be around -2.25
+    let ixx = 4.69114e-05;
+    let ixy = 4.31285e-12;
+    let ixz = 5.70403e-10;
+    let iyy = 5.91667e-05;
+    let iyz = 1.50774e-06;
+    let izz = 8.63546e-05;
 
     // inertia moment matrix about the center-of-mass
     #[rustfmt::skip]
@@ -285,7 +287,7 @@ fn build_navbot_wheel_left(meshes: &mut NavbotMeshes, frame: &str) -> RigidBody 
         body.add_visual_mesh(mesh);
     }
 
-    let mut sphere = Sphere::new(0.02);
+    let mut sphere = Sphere::new(0.037 / 2.0);
     sphere.base_translation = com;
     body.add_sphere_collider(sphere);
 
@@ -433,7 +435,7 @@ fn build_navbot_wheel_right(meshes: &mut NavbotMeshes, frame: &str) -> RigidBody
         body.add_visual_mesh(mesh);
     }
 
-    let mut sphere = Sphere::new(0.02);
+    let mut sphere = Sphere::new(0.037 / 2.0);
     sphere.base_translation = com;
     body.add_sphere_collider(sphere);
 

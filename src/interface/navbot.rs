@@ -11,6 +11,7 @@ use crate::{
     flog,
     joint::{JointPosition, JointVelocity},
     spatial::{pose::Pose, spatial_vector::SpatialVector},
+    types::Float,
 };
 
 use super::{util::read_web_file, InterfaceMechanismState};

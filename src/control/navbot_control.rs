@@ -59,8 +59,8 @@ impl PIModule {
 
     pub fn compute(&mut self, error: Float) -> Float {
         let proportional = self.P * error;
-        let integral = self.integral_prev + self.I * self.dt * 0.5 * (self.error_prev + error);
-        // TODO: limit the integral
+        let mut integral = self.integral_prev + self.I * self.dt * 0.5 * (self.error_prev + error);
+        integral = integral.clamp(-self.limit, self.limit);
 
         self.integral_prev = integral;
         self.error_prev = error;
@@ -89,8 +89,6 @@ pub struct NavbotController {
     pi_zeropoint: PIModule,
     lpf_zeropoint: LowPassFilter,
 
-    // pi_leg_left_q: PIModule,
-    // pi_leg_right_q: PIModule,
     servo_left: ServoMotor,
     servo_right: ServoMotor,
 
@@ -106,6 +104,11 @@ pub struct NavbotController {
     dir_last: Float,
 }
 
+const SERVO_KD: Float = 0.3;
+const REST_SERVO_ANGLE: Float = 0.05;
+const CONTRACT_SERVO_ANGLE: Float = -0.00;
+const ANGLE_ZEROPOINT: Float = 3.4; // 3.3; // 4.3
+
 impl NavbotController {
     pub fn new(dt: Float) -> Self {
         NavbotController {
@@ -120,16 +123,14 @@ impl NavbotController {
 
             pi_roll_angle: PIModule::new(8., 0., 450., dt),
 
-            // pi_leg_left_q: PIModule::new(1., 10., 8., dt),
-            // pi_leg_right_q: PIModule::new(1., 10., 8., dt),
-            servo_left: ServoMotor::new(1., 10., 0.1, dt),
-            servo_right: ServoMotor::new(1., 10., 0.1, dt),
+            servo_left: ServoMotor::new(6., 10., SERVO_KD, dt),
+            servo_right: ServoMotor::new(6., 10., SERVO_KD, dt),
 
             lpf_joyy: LowPassFilter::new(0.2, dt),
             lpf_zeropoint: LowPassFilter::new(0.1, dt),
             lpf_roll: LowPassFilter::new(0.3, dt),
 
-            angle_zeropoint: 4.3, // 1.60, // -2.25,
+            angle_zeropoint: ANGLE_ZEROPOINT, // 1.60, // -2.25,
             distance_zeropoint: 0.,
 
             jump_flag: 0,
@@ -221,7 +222,7 @@ impl Controller for NavbotController {
             .compute(lqr_speed - 0.1 * self.lpf_joyy.compute(joyy));
 
         let mut lqr_u;
-        if in_air {
+        if in_air || self.jump_flag != 0 {
             self.distance_zeropoint = lqr_distance;
             lqr_u = angle_control + gyro_control;
             self.pi_lqr_u.error_prev = 0.0;
@@ -248,10 +249,12 @@ impl Controller for NavbotController {
         self.servo_right.update(*q_right, *v_right);
 
         // Jump
-        let mut tau_left = 0.0;
-        let mut tau_right = 0.0;
+        let mut tau_left;
+        let mut tau_right;
         if self.dir_last == 1.0 && dir == 0.0 && self.jump_flag == 0 {
             self.jump_flag = 1;
+            self.servo_left.D = 0.01;
+            self.servo_right.D = 0.01;
             self.servo_left.set(-0.2);
             self.servo_right.set(0.2);
         }
@@ -259,15 +262,11 @@ impl Controller for NavbotController {
             self.jump_flag += 1;
             // tau_left = -0.15;
             // tau_right = 0.15;
-            if self.jump_flag > 50 {
-                // Stabilize the leg angle
-                // let kd = 0.2;
-                // let q_target = 0.0;
-                // tau_left = self.pi_leg_left_q.compute(-q_target - q_left) + kd * (0. - v_left);
-                // tau_right = self.pi_leg_right_q.compute(q_target - q_right) + kd * (0. - v_right);
-
-                self.servo_left.set(0.0);
-                self.servo_right.set(0.0);
+            if self.jump_flag > 30 {
+                self.servo_left.D = 0.3;
+                self.servo_right.D = 0.3;
+                self.servo_left.set(-CONTRACT_SERVO_ANGLE);
+                self.servo_right.set(CONTRACT_SERVO_ANGLE);
             }
             if self.jump_flag > 400 {
                 self.jump_flag = 0;
@@ -276,9 +275,11 @@ impl Controller for NavbotController {
 
         let roll_angle = body_pose.rotation.euler_angles().1 * rad2degree;
         flog!("roll: {}", roll_angle);
+        flog!("distance: {}", lqr_distance - self.distance_zeropoint);
         flog!("lqr angle: {}", lqr_angle);
         flog!("angle zeropoint: {}", self.angle_zeropoint);
-        flog!("distance: {}", lqr_distance - self.distance_zeropoint);
+        flog!("angle control: {}", angle_control);
+        flog!("distance control: {}", distance_control);
         flog!("=====");
 
         if self.jump_flag == 0 {
@@ -287,13 +288,11 @@ impl Controller for NavbotController {
             let leg_position_add = self.pi_roll_angle.compute(roll_angle);
             let leg_position_add = 0.01 * leg_position_add;
 
-            let q_target = 0.0;
+            let q_target = REST_SERVO_ANGLE;
             let q_left_target = -(q_target - leg_position_add);
             let q_right_target = q_target + leg_position_add;
-
-            // tau_left = self.pi_leg_left_q.compute(q_left_target - q_left) + kd * (0. - v_left);
-            // tau_right = self.pi_leg_right_q.compute(q_right_target - q_right) + kd * (0. - v_right);
-
+            self.servo_left.D = SERVO_KD;
+            self.servo_right.D = SERVO_KD;
             self.servo_left.set(q_left_target);
             self.servo_right.set(q_right_target);
         }
@@ -321,7 +320,7 @@ impl Controller for NavbotController {
         tau_left = tau_left.clamp(-max_leg_torque, max_leg_torque);
         tau_right = tau_right.clamp(-max_leg_torque, max_leg_torque);
 
-        // Big TODO: model softness of the wheel rubber
+        // (TODO): model softness of the wheel rubber?
 
         vec![
             // JointTorque::Float(0.),
