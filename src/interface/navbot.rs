@@ -82,7 +82,7 @@ pub async fn createNavbot() -> InterfaceMechanismState {
         1,
         JointPosition::Pose(Pose {
             rotation: UnitQuaternion::from_euler_angles(0., 0., 0.),
-            translation: vector![0., 0., 0.],
+            translation: vector![0., 0., 0.075],
         }),
     );
     state.set_joint_v(

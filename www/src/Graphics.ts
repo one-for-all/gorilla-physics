@@ -16,7 +16,7 @@ export class Graphics {
       45,
       view_div.width / view_div.height,
       0.1,
-      10000
+      10000,
     );
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(view_div.width, view_div.height);
@@ -33,7 +33,7 @@ export class Graphics {
     this.light = new THREE.PointLight(0xffffff, 1, 1000);
     this.scene.add(this.light);
 
-    const gridHelper = new THREE.GridHelper(50, 500, 0xff0000, 0x0000ff); // Red center line, blue grid lines
+    const gridHelper = new THREE.GridHelper(10, 100, 0xff0000, 0x0000ff); // Red center line, blue grid lines
     gridHelper.rotateOnAxis(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
     this.scene.add(gridHelper);
 
@@ -65,7 +65,7 @@ export class Graphics {
     this.light.position.set(
       this.camera.position.x,
       this.camera.position.y,
-      this.camera.position.z
+      this.camera.position.z,
     );
 
     this.renderer.render(this.scene, this.camera);
