@@ -675,6 +675,7 @@ pub fn dynamics_discrete(
             let g = &J * &v_free;
             let q: Vec<Float> = Vec::from(g.as_slice());
 
+            // model contact impulse friction restriction
             let n_contacts = contact_Js.len();
             let mut A_triplets: Vec<(usize, usize, Float)> = vec![];
             let mu = 0.95; // TODO: special handling for zero friction
@@ -685,8 +686,8 @@ pub fn dynamics_discrete(
                 A_triplets.push((index + 2, index + 2, -1.0));
             }
             let A = CscMatrix::new_from_triplets(
-                n_contacts * 3,
-                g.len(),
+                n_contacts * 3, // num of constraints
+                g.len(),        // num of degrees of lambda
                 A_triplets.iter().map(|x| x.0).collect(),
                 A_triplets.iter().map(|x| x.1).collect(),
                 A_triplets.iter().map(|x| x.2).collect(),
