@@ -51,6 +51,8 @@ import("gorilla-physics").then((gorilla) => {
     // simulator.addSphere("wheel_right", 0x00ff00, wheel_radius);
     // simulator.addPlane(normal, h_ground, 10);
 
+    simulator.addFluid2D(state);
+
     // simulator.addFourBarLinkage();
     // simulator.addFourBarLinkageWithBase();
     // simulator.addMockNavbot();
@@ -77,7 +79,7 @@ import("gorilla-physics").then((gorilla) => {
 
     // Important: Set initial camera position
     let cameraPosition = {
-      eye: { x: -0.5, y: 0.0, z: 0.2 },
+      eye: { x: 0, y: -1.0, z: 0.2 },
       target: { x: 0.0, y: 0, z: 0.0 },
     };
     simulator.graphics.lookAt(cameraPosition);

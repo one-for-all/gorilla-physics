@@ -1,5 +1,6 @@
 import {
   InterfaceFEMDeformable,
+  InterfaceFluid2D,
   InterfaceMassSpringDeformable,
   InterfaceSimulator,
 } from "gorilla-physics";
@@ -18,6 +19,7 @@ export class Simulator {
 
   massSpringDeformable: InterfaceMassSpringDeformable;
   femDeformable: InterfaceFEMDeformable;
+  fluid2D: InterfaceFluid2D;
 
   graphics: Graphics;
   length: number;
@@ -38,6 +40,7 @@ export class Simulator {
 
     this.massSpringDeformable = null;
     this.femDeformable = null;
+    this.fluid2D = null;
 
     this.graphics = new Graphics();
     this.meshes = new Map();
@@ -46,6 +49,39 @@ export class Simulator {
     this.lines = new Map();
     this.fps = 60;
     this.time = 0.0;
+  }
+
+  addFluid2D(fluid2D: InterfaceFluid2D) {
+    this.fluid2D = fluid2D;
+
+    let radius = 5e-3;
+    const geometry = new THREE.SphereGeometry(radius, 8, 8);
+    const material = new THREE.MeshPhysicalMaterial({
+      color: 0x3366ff,
+      roughness: 0,
+      transmission: 1.0,
+      ior: 1.33, // index of refraction for water
+      transparent: true,
+      opacity: 0.7,
+    });
+
+    let particles = fluid2D.particles();
+    let count = particles.length / 2;
+    const fluid2DMesh = new THREE.InstancedMesh(geometry, material, count);
+    fluid2DMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.graphics.scene.add(fluid2DMesh);
+
+    const dummy = new THREE.Object3D();
+    for (let i = 0; i < particles.length; i += 2) {
+      let x = particles[i];
+      let y = 0.0;
+      let z = particles[i + 1];
+      dummy.position.set(x, y, z);
+      dummy.updateMatrix();
+      fluid2DMesh.setMatrixAt(i / 2, dummy.matrix);
+    }
+
+    fluid2DMesh.instanceMatrix.needsUpdate = true;
   }
 
   addDeformable(
