@@ -4,6 +4,7 @@ import {
   createMockNavbot,
   createNavbot,
   createPusher,
+  createFluid2D,
 } from "gorilla-physics";
 import { Simulator } from "./Simulator";
 import { FloatArray } from "./type";
@@ -27,57 +28,33 @@ import("gorilla-physics").then((gorilla) => {
   let alpha = 1.0;
   let mu = 1.0;
 
-  let dt = 1.0 / (60.0 * 50.0);
-
-  let l_cube = 1.0;
-  // let state = gorilla.createGripper();
-  // let state = gorilla.createPusher();
-  // let state = gorilla.createCube(l_cube);
-  // let delta_z = 0.8;
-  // let state = gorilla.createQuadruped(1.0, delta_z);
-  // state.addHalfSpace(normal, h_ground);
-
-  // let controller = gorilla.createNullController();
-  // let controller = gorilla.createPusherController();
-  // let controller = gorilla.createQuadrupedTrottingController(dt, 0.0, -delta_z);
-  // let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
-
-  // let simulator = new Simulator(interfaceSimulator);
-  // let simulator = new Simulator(null);
-
   // createFEMBox().then((box) => {
   //   simulator.addDeformable(box);
   // });
 
-  // simulator.addPusher();
-  // simulator.addCube(l_cube);
-  // simulator.addQuadruped();
-  // simulator.addPlane(normal, h_ground, 100);
-
-  createNavbot().then((state) => {
-    state.addHalfSpace(normal as Float64Array, h_ground);
+  createFluid2D().then((state) => {
+    // state.addHalfSpace(normal as Float64Array, h_ground);
 
     // let controller = gorilla.createNullController();
     // let controller = gorilla.createPusherController();
-    let controller = gorilla.createNavbotController(1.0 / 600.0);
     // let controller = gorilla.createBalancingBotController();
     // let controller = gorilla.createFourBarLinkageController();
     // let controller = gorilla.createFourBarLinkageWithBaseController();
-    let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
-    let simulator = new Simulator(interfaceSimulator);
+
+    // let controller = gorilla.createNavbotController(1.0 / 600.0);
+    // let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
+    let simulator = new Simulator(null);
+    // simulator.addNavbot();
+    // simulator.updateNavbot();
+    // let wheel_radius = 0.037 / 2.0;
+    // simulator.addSphere("wheel_left", 0x00ff00, wheel_radius);
+    // simulator.addSphere("wheel_right", 0x00ff00, wheel_radius);
+    // simulator.addPlane(normal, h_ground, 10);
 
     // simulator.addFourBarLinkage();
     // simulator.addFourBarLinkageWithBase();
     // simulator.addMockNavbot();
     // simulator.addPusher();
-    //
-    simulator.addNavbot();
-    simulator.updateNavbot();
-
-    // simulator.addCuboid("body", 0xff0000, 0.06, 0.05, 0.025);
-    let wheel_radius = 0.037 / 2.0;
-    simulator.addSphere("wheel_left", 0x00ff00, wheel_radius);
-    simulator.addSphere("wheel_right", 0x00ff00, wheel_radius);
 
     // simulator.addMesh(0, "mesh0");
     // simulator.addMesh(1, "mesh1");
@@ -86,8 +63,6 @@ import("gorilla-physics").then((gorilla) => {
     // simulator.addMesh(4, "mesh4");
     // simulator.addMesh(5, "gripper");
     // simulator.addMesh(6, "jaw");
-
-    simulator.addPlane(normal, h_ground, 10);
 
     // simulator.updateMesh(0, "mesh0");
     // simulator.updateMesh(1, "mesh1");

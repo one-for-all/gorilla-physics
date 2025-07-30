@@ -854,7 +854,7 @@ export class Simulator {
 
     // TODO: Currently some steps might take longer because of more computation.
     // This results in inconsistent frame refresh rate. Make it consistent.
-    let qs = this.simulator.step(dt, control_input as Float64Array);
+    // let qs = this.simulator.step(dt, control_input as Float64Array);
     // console.log("time: %ss", this.time);
     this.time += dt;
 
@@ -880,24 +880,24 @@ export class Simulator {
     // this.updateMesh(5, "gripper");
     // this.updateMesh(6, "jaw");
 
-    this.updateNavbot();
-    let wheel_left = this.meshes.get("wheel_left");
-    let wheel_left_center = this.simulator.sphere_center(4);
-    wheel_left.position.set(
-      wheel_left_center[0],
-      wheel_left_center[1],
-      wheel_left_center[2],
-    );
+    // this.updateNavbot();
+    // let wheel_left = this.meshes.get("wheel_left");
+    // let wheel_left_center = this.simulator.sphere_center(4);
+    // wheel_left.position.set(
+    //   wheel_left_center[0],
+    //   wheel_left_center[1],
+    //   wheel_left_center[2],
+    // );
 
-    let wheel_right = this.meshes.get("wheel_right");
-    let wheel_right_center = this.simulator.sphere_center(8);
-    wheel_right.position.set(
-      wheel_right_center[0],
-      wheel_right_center[1],
-      wheel_right_center[2],
-    );
+    // let wheel_right = this.meshes.get("wheel_right");
+    // let wheel_right_center = this.simulator.sphere_center(8);
+    // wheel_right.position.set(
+    //   wheel_right_center[0],
+    //   wheel_right_center[1],
+    //   wheel_right_center[2],
+    // );
+    // let poses = this.simulator.poses();
 
-    let poses = this.simulator.poses();
     // this.updatePusher(poses);
     // this.updateMockNavbot(poses);
     // this.updateFourBarLinkage(poses);
