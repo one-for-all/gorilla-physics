@@ -680,4 +680,6 @@ mod fluid2D_tests {
             state.step(dt);
         }
     }
+
+    // TODO: add meaningful tests for Fluid2D
 }
