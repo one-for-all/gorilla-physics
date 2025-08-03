@@ -743,6 +743,7 @@ dependencies = [
  "plotters",
  "pollster",
  "rand",
+ "rand_chacha",
  "tokio",
  "wasm-bindgen",
  "wasm-bindgen-futures",

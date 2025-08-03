@@ -104,11 +104,20 @@ bytemuck = "1.22.0"
 flume = "0.11.1"
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
-web-sys = { version = "0.3", features = ['console', "Window", "Response", "Request", "Document", "Element", "Performance", "TextDecoder"] }
+web-sys = { version = "0.3", features = [
+    'console',
+    "Window",
+    "Response",
+    "Request",
+    "Document",
+    "Element",
+    "Performance",
+    "TextDecoder",
+] }
 console_error_panic_hook = "0.1"
 futures = "0.3"
 rand = "0.9.0"
-getrandom = {version = "0.3", features = ["wasm_js"]}
+rand_chacha = "0.9" # for seedable deterministic randomness
 # faer = "0.20"
 # faer-ext = "0.4"
 # rayon = "1.10.0"
@@ -119,13 +128,12 @@ getrandom = {version = "0.3", features = ["wasm_js"]}
 tokio = { version = "1.45.0", features = ["full"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-wgpu = { version = "25.0.0", features = ["webgl"]}
+wgpu = { version = "25.0.0", features = ["webgl"] }
+getrandom = { version = "0.3", features = ["wasm_js"] }
 
 
 [dev-dependencies]
 
-[build]
-# rustflags = ["-Awarnings"]
 
 [profile.release]
 strip = true

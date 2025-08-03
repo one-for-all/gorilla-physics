@@ -21,6 +21,8 @@ export class Simulator {
   femDeformable: InterfaceFEMDeformable;
   fluid2D: InterfaceFluid2D;
 
+  fluid2DMesh: THREE.InstancedMesh;
+
   graphics: Graphics;
   length: number;
   rod: THREE.Mesh;
@@ -41,6 +43,7 @@ export class Simulator {
     this.massSpringDeformable = null;
     this.femDeformable = null;
     this.fluid2D = null;
+    this.fluid2DMesh = null;
 
     this.graphics = new Graphics();
     this.meshes = new Map();
@@ -69,6 +72,7 @@ export class Simulator {
     let count = particles.length / 2;
     const fluid2DMesh = new THREE.InstancedMesh(geometry, material, count);
     fluid2DMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.fluid2DMesh = fluid2DMesh;
     this.graphics.scene.add(fluid2DMesh);
 
     const dummy = new THREE.Object3D();
@@ -82,6 +86,20 @@ export class Simulator {
     }
 
     fluid2DMesh.instanceMatrix.needsUpdate = true;
+  }
+
+  updateFluid2D() {
+    let particles = this.fluid2D.particles();
+    const dummy = new THREE.Object3D();
+    for (let i = 0; i < particles.length; i += 2) {
+      let x = particles[i];
+      let y = 0.0;
+      let z = particles[i + 1];
+      dummy.position.set(x, y, z);
+      dummy.updateMatrix();
+      this.fluid2DMesh.setMatrixAt(i / 2, dummy.matrix);
+    }
+    this.fluid2DMesh.instanceMatrix.needsUpdate = true;
   }
 
   addDeformable(
@@ -893,6 +911,12 @@ export class Simulator {
     // let qs = this.simulator.step(dt, control_input as Float64Array);
     // console.log("time: %ss", this.time);
     this.time += dt;
+
+    let n_substep = 4;
+    for (let i = 0; i < n_substep; i++) {
+      this.fluid2D.step(dt / n_substep);
+    }
+    this.updateFluid2D();
 
     // if (this.femDeformable) {
     //   // drag the body towards right

@@ -23,6 +23,10 @@ impl InterfaceFluid2D {
                 .as_slice(),
         )
     }
+
+    pub fn step(&mut self, dt: Float) {
+        self.inner.step(dt);
+    }
 }
 
 #[wasm_bindgen]
