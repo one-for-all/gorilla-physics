@@ -8,6 +8,8 @@ import {
 } from "gorilla-physics";
 import { Simulator } from "./Simulator";
 import { FloatArray } from "./type";
+import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader";
+import { Color, EquirectangularReflectionMapping } from "three";
 
 export const keysPressed: Record<string, boolean> = {};
 
@@ -32,8 +34,8 @@ import("gorilla-physics").then((gorilla) => {
   //   simulator.addDeformable(box);
   // });
 
-  createFluid2D().then((state) => {
-    // state.addHalfSpace(normal as Float64Array, h_ground);
+  createNavbot().then((state) => {
+    state.addHalfSpace(normal as Float64Array, h_ground);
 
     // let controller = gorilla.createNullController();
     // let controller = gorilla.createPusherController();
@@ -41,17 +43,25 @@ import("gorilla-physics").then((gorilla) => {
     // let controller = gorilla.createFourBarLinkageController();
     // let controller = gorilla.createFourBarLinkageWithBaseController();
 
-    // let controller = gorilla.createNavbotController(1.0 / 600.0);
-    // let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
-    let simulator = new Simulator(null);
-    // simulator.addNavbot();
-    // simulator.updateNavbot();
+    let controller = gorilla.createNavbotController(1.0 / 600.0);
+    let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
+    let simulator = new Simulator(interfaceSimulator);
+    simulator.addNavbot();
+    simulator.updateNavbot();
+
+    let rgbeLoader = new RGBELoader();
+    rgbeLoader.load("studio_small_08_1k.hdr", (hdrTexture) => {
+      hdrTexture.mapping = EquirectangularReflectionMapping;
+      simulator.graphics.scene.environment = hdrTexture;
+      // simulator.graphics.scene.background = hdrTexture;
+    });
+
     // let wheel_radius = 0.037 / 2.0;
     // simulator.addSphere("wheel_left", 0x00ff00, wheel_radius);
     // simulator.addSphere("wheel_right", 0x00ff00, wheel_radius);
-    // simulator.addPlane(normal, h_ground, 10);
+    simulator.addPlane(normal, h_ground, 10);
 
-    simulator.addFluid2D(state);
+    // simulator.addFluid2D(state);
 
     // simulator.addFourBarLinkage();
     // simulator.addFourBarLinkageWithBase();
@@ -79,7 +89,7 @@ import("gorilla-physics").then((gorilla) => {
 
     // Important: Set initial camera position
     let cameraPosition = {
-      eye: { x: 0, y: -0.5, z: 0.1 },
+      eye: { x: -0.5, y: 0, z: 0.2 },
       target: { x: 0.0, y: 0, z: 0.0 },
     };
     simulator.graphics.lookAt(cameraPosition);

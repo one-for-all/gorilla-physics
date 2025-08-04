@@ -175,6 +175,35 @@ export class Simulator {
     this.meshSet.set(name, mesh_set);
   }
 
+  addMeshSetWithMaterial(
+    body_index: number,
+    name: string,
+    material: THREE.Material,
+  ) {
+    let base_vertices_array = this.simulator.visual_base_vertices(body_index);
+    let facets_array = this.simulator.facets(body_index);
+    let mesh_set: Array<THREE.Mesh> = [];
+    for (let i = 0; i < base_vertices_array.length; i++) {
+      let base_vertices = base_vertices_array[i];
+
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute(
+        "position",
+        new THREE.BufferAttribute(base_vertices, 3),
+      );
+
+      let facets = facets_array[i];
+      geometry.setIndex(new THREE.BufferAttribute(facets, 1));
+      geometry.computeVertexNormals();
+
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.frustumCulled = false; // prevent mesh disappearing
+      mesh_set.push(mesh);
+      this.graphics.scene.add(mesh);
+    }
+    this.meshSet.set(name, mesh_set);
+  }
+
   updateMeshSet(body_index: number, name: string) {
     let mesh_set = this.meshSet.get(name);
     let iso = this.simulator.isometry(body_index);
@@ -517,15 +546,49 @@ export class Simulator {
   }
 
   addNavbot() {
-    this.addMeshSet(0, "base", 0xff0000);
-    this.addMeshSet(1, "leg_left", 0x00ff00);
-    this.addMeshSet(2, "foot_left", 0x00ffff);
-    this.addMeshSet(3, "link_left", 0x0000ff);
-    this.addMeshSet(4, "wheel_left", 0x666666);
-    this.addMeshSet(5, "leg_right", 0x00ff00);
-    this.addMeshSet(6, "foot_right", 0x00ffff);
-    this.addMeshSet(7, "link_right", 0x0000ff);
-    this.addMeshSet(8, "wheel_right", 0x666666);
+    let frontPlateMaterial = new THREE.MeshStandardMaterial({
+      color: 0xbebebe,
+      roughness: 0.3,
+      metalness: 1.0,
+      flatShading: true,
+    });
+    this.addMeshSetWithMaterial(0, "base", frontPlateMaterial);
+
+    // SLS 3D printed
+    let legFootMaterial = new THREE.MeshStandardMaterial({
+      color: 0x2a2a2a,
+      roughness: 0.9, // very rough surface
+      metalness: 0.0, // no metallic reflection
+      flatShading: true,
+    });
+    this.addMeshSetWithMaterial(1, "leg_left", legFootMaterial);
+    this.addMeshSetWithMaterial(2, "foot_left", legFootMaterial);
+
+    // Panel-cutted Carbon Fiber
+    let linkMaterial = new THREE.MeshStandardMaterial({
+      color: 0x262626,
+      roughness: 0.3,
+      metalness: 0.4,
+      flatShading: true,
+    });
+
+    this.addMeshSetWithMaterial(3, "link_left", linkMaterial);
+
+    // Rubber black
+    let wheelMaterial = new THREE.MeshStandardMaterial({
+      color: 0x080808,
+      roughness: 0.9,
+      metalness: 0.0,
+      flatShading: true,
+    });
+
+    this.addMeshSetWithMaterial(4, "wheel_left", wheelMaterial);
+
+    this.addMeshSetWithMaterial(5, "leg_right", legFootMaterial);
+    this.addMeshSetWithMaterial(6, "foot_right", legFootMaterial);
+
+    this.addMeshSetWithMaterial(7, "link_right", linkMaterial);
+    this.addMeshSetWithMaterial(8, "wheel_right", wheelMaterial);
   }
 
   updateNavbot() {
@@ -908,15 +971,15 @@ export class Simulator {
 
     // TODO: Currently some steps might take longer because of more computation.
     // This results in inconsistent frame refresh rate. Make it consistent.
-    // let qs = this.simulator.step(dt, control_input as Float64Array);
+    let qs = this.simulator.step(dt, control_input as Float64Array);
     // console.log("time: %ss", this.time);
     this.time += dt;
 
-    let n_substep = 4;
-    for (let i = 0; i < n_substep; i++) {
-      this.fluid2D.step(dt / n_substep);
-    }
-    this.updateFluid2D();
+    // let n_substep = 4;
+    // for (let i = 0; i < n_substep; i++) {
+    //   this.fluid2D.step(dt / n_substep);
+    // }
+    // this.updateFluid2D();
 
     // if (this.femDeformable) {
     //   // drag the body towards right
@@ -940,7 +1003,7 @@ export class Simulator {
     // this.updateMesh(5, "gripper");
     // this.updateMesh(6, "jaw");
 
-    // this.updateNavbot();
+    this.updateNavbot();
     // let wheel_left = this.meshes.get("wheel_left");
     // let wheel_left_center = this.simulator.sphere_center(4);
     // wheel_left.position.set(

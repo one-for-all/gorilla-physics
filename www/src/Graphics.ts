@@ -29,6 +29,7 @@ export class Graphics {
     document.getElementById("threejs").appendChild(this.renderer.domElement);
 
     let ambientLight = new THREE.AmbientLight(0x606060);
+    // let ambientLight = new THREE.AmbientLight(0xffffff);
     this.scene.add(ambientLight);
     this.light = new THREE.PointLight(0xffffff, 1, 1000);
     this.scene.add(this.light);
@@ -62,6 +63,7 @@ export class Graphics {
     // Note: setting light position every time camera position changes is
     // rather expensive as renderer needs to re-render the scene.
     // Consider putting 4 fixed light around the model.
+
     this.light.position.set(
       this.camera.position.x,
       this.camera.position.y,
