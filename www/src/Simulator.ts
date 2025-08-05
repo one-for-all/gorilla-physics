@@ -181,6 +181,7 @@ export class Simulator {
     material: THREE.Material,
   ) {
     let base_vertices_array = this.simulator.visual_base_vertices(body_index);
+
     let facets_array = this.simulator.facets(body_index);
     let mesh_set: Array<THREE.Mesh> = [];
     for (let i = 0; i < base_vertices_array.length; i++) {
@@ -546,49 +547,77 @@ export class Simulator {
   }
 
   addNavbot() {
+    // Panel-cutted Carbon Fiber
+    let carbonFiberMaterial = new THREE.MeshStandardMaterial({
+      color: 0x262626,
+      roughness: 0.3,
+      metalness: 0.4,
+      flatShading: true,
+    });
+    this.addMeshSetWithMaterial(0, "base", carbonFiberMaterial);
     let frontPlateMaterial = new THREE.MeshStandardMaterial({
       color: 0xbebebe,
       roughness: 0.3,
       metalness: 1.0,
       flatShading: true,
     });
-    this.addMeshSetWithMaterial(0, "base", frontPlateMaterial);
+    this.meshSet.get("base")[1].material = frontPlateMaterial;
+
+    let aluminumMaterial = new THREE.MeshStandardMaterial({
+      color: 0xd9d9d9, // light gray, similar to aluminum
+      metalness: 1.0, // full metalness
+      roughness: 0.3, // somewhat shiny but not mirror-like
+    });
+    this.meshSet.get("base")[3].material = aluminumMaterial;
+    this.meshSet.get("base")[4].material = aluminumMaterial;
 
     // SLS 3D printed
-    let legFootMaterial = new THREE.MeshStandardMaterial({
+    let nylonSLSMaterial = new THREE.MeshStandardMaterial({
       color: 0x2a2a2a,
       roughness: 0.9, // very rough surface
       metalness: 0.0, // no metallic reflection
       flatShading: true,
     });
-    this.addMeshSetWithMaterial(1, "leg_left", legFootMaterial);
-    this.addMeshSetWithMaterial(2, "foot_left", legFootMaterial);
+    this.meshSet.get("base")[7].material = nylonSLSMaterial;
+    this.meshSet.get("base")[8].material = nylonSLSMaterial;
 
-    // Panel-cutted Carbon Fiber
-    let linkMaterial = new THREE.MeshStandardMaterial({
-      color: 0x262626,
-      roughness: 0.3,
-      metalness: 0.4,
+    this.meshSet.get("base")[9].material = aluminumMaterial;
+    this.meshSet.get("base")[10].material = aluminumMaterial;
+
+    this.addMeshSetWithMaterial(1, "leg_left", nylonSLSMaterial);
+    this.addMeshSetWithMaterial(2, "foot_left", nylonSLSMaterial);
+
+    // stainless steel
+    let stainlessSteelMaterial = new THREE.MeshStandardMaterial({
+      color: 0xb0b0b0, // light gray with a slight blue tint works well
+      metalness: 1.0, // full metal
+      roughness: 0.2, // a bit smoother than aluminum
       flatShading: true,
     });
-
-    this.addMeshSetWithMaterial(3, "link_left", linkMaterial);
+    this.addMeshSetWithMaterial(3, "link_left", carbonFiberMaterial);
+    this.meshSet.get("link_left")[1].material = stainlessSteelMaterial;
+    this.meshSet.get("link_left")[2].material = stainlessSteelMaterial;
 
     // Rubber black
-    let wheelMaterial = new THREE.MeshStandardMaterial({
+    let rubberMaterial = new THREE.MeshStandardMaterial({
       color: 0x080808,
       roughness: 0.9,
       metalness: 0.0,
       flatShading: true,
     });
 
-    this.addMeshSetWithMaterial(4, "wheel_left", wheelMaterial);
+    this.addMeshSetWithMaterial(4, "wheel_left", nylonSLSMaterial);
+    this.meshSet.get("wheel_left")[1].material = rubberMaterial;
 
-    this.addMeshSetWithMaterial(5, "leg_right", legFootMaterial);
-    this.addMeshSetWithMaterial(6, "foot_right", legFootMaterial);
+    this.addMeshSetWithMaterial(5, "leg_right", nylonSLSMaterial);
+    this.addMeshSetWithMaterial(6, "foot_right", nylonSLSMaterial);
 
-    this.addMeshSetWithMaterial(7, "link_right", linkMaterial);
-    this.addMeshSetWithMaterial(8, "wheel_right", wheelMaterial);
+    this.addMeshSetWithMaterial(7, "link_right", carbonFiberMaterial);
+    this.meshSet.get("link_right")[1].material = stainlessSteelMaterial;
+    this.meshSet.get("link_right")[2].material = stainlessSteelMaterial;
+
+    this.addMeshSetWithMaterial(8, "wheel_right", nylonSLSMaterial);
+    this.meshSet.get("wheel_right")[1].material = rubberMaterial;
   }
 
   updateNavbot() {

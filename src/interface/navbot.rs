@@ -40,15 +40,33 @@ pub async fn createNavbot() -> InterfaceMechanismState {
     let mut navbot_meshes = NavbotMeshes::new();
 
     let file_paths = vec![
-        "navbot/merged/base_visual.obj",
+        // "navbot/merged/base_visual.obj",
+        "navbot/base.obj",
         "navbot/merged/leg_left_visual.obj",
         "navbot/merged/foot_left_visual.obj",
-        "navbot/merged/link_visual.obj",
-        "navbot/merged/wheel_motor_visual.obj",
+        // "navbot/merged/link_visual.obj",
+        "navbot/link.obj",
+        // "navbot/merged/wheel_motor_visual.obj",
+        "navbot/wheel_motor.obj",
         "navbot/merged/leg_right_visual.obj",
         "navbot/merged/foot_right_visual.obj",
-        "navbot/merged/link_2_visual.obj",
-        "navbot/merged/wheel_motor_2_visual.obj",
+        // "navbot/merged/link_2_visual.obj",
+        // "navbot/merged/wheel_motor_2_visual.obj",
+        // detailed base parts
+        "navbot/front_plate.obj",
+        "navbot/servo_driver_plate.obj",
+        "navbot/aluminium_rod_2mm_10mm.obj",
+        "navbot/side_plate_left.obj",
+        "navbot/side_plate_right.obj",
+        "navbot/torsion_spring_case_left.obj",
+        "navbot/torsion_spring_case_right.obj",
+        "navbot/aluminium_rod_2mm_35mm.obj",
+        "navbot/bottom_plate.obj",
+        "navbot/battery.obj",
+        // detailed wheel parts
+        "navbot/wheel_rubber.obj",
+        // detailed link parts
+        "navbot/link_screw.obj",
     ];
 
     let fetches = file_paths.iter().map(|path| read_web_file(path));
@@ -59,12 +77,44 @@ pub async fn createNavbot() -> InterfaceMechanismState {
             0 => navbot_meshes.base = mesh,
             1 => navbot_meshes.leg_left = mesh,
             2 => navbot_meshes.foot_left = mesh,
-            3 => navbot_meshes.link_left = mesh,
-            4 => navbot_meshes.wheel_left = mesh,
+            3 => {
+                navbot_meshes.link_left = mesh.clone();
+                navbot_meshes.link_right = mesh;
+            }
+            4 => {
+                navbot_meshes.wheel_left = mesh.clone();
+                navbot_meshes.wheel_right = mesh;
+            }
             5 => navbot_meshes.leg_right = mesh,
             6 => navbot_meshes.foot_right = mesh,
-            7 => navbot_meshes.link_right = mesh,
-            8 => navbot_meshes.wheel_right = mesh,
+
+            // detailed parts
+            7 => navbot_meshes.front_plate = mesh,
+            8 => navbot_meshes.servo_driver_plate = mesh,
+            9 => {
+                navbot_meshes.aluminium_rod_10mm_left = mesh.clone();
+                navbot_meshes.aluminium_rod_10mm_right = mesh;
+            }
+            10 => navbot_meshes.side_plate_left = mesh,
+            11 => navbot_meshes.side_plate_right = mesh,
+            12 => navbot_meshes.torsion_spring_case_left = mesh,
+            13 => navbot_meshes.torsion_spring_case_right = mesh,
+            14 => {
+                navbot_meshes.aluminium_rod_35mm_left = mesh.clone();
+                navbot_meshes.aluminium_rod_35mm_right = mesh;
+            }
+            15 => navbot_meshes.bottom_plate = mesh,
+            16 => navbot_meshes.battery = mesh,
+            17 => {
+                navbot_meshes.wheel_rubber_left = mesh.clone();
+                navbot_meshes.wheel_rubber_right = mesh;
+            }
+            18 => {
+                navbot_meshes.link_screw_left_top = mesh.clone();
+                navbot_meshes.link_screw_left_bottom = mesh.clone();
+                navbot_meshes.link_screw_right_top = mesh.clone();
+                navbot_meshes.link_screw_right_bottom = mesh;
+            }
             _ => {}
         }
     }
