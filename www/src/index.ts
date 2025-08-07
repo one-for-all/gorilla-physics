@@ -5,6 +5,7 @@ import {
   createNavbot,
   createPusher,
   createFluid2D,
+  createSphere,
 } from "gorilla-physics";
 import { Simulator } from "./Simulator";
 import { FloatArray } from "./type";
@@ -34,20 +35,22 @@ import("gorilla-physics").then((gorilla) => {
   //   simulator.addDeformable(box);
   // });
 
-  createNavbot().then((state) => {
+  let radius = 0.1;
+  createSphere(1.0, radius).then((state) => {
     state.addHalfSpace(normal as Float64Array, h_ground);
 
-    // let controller = gorilla.createNullController();
+    let controller = gorilla.createNullController();
     // let controller = gorilla.createPusherController();
     // let controller = gorilla.createBalancingBotController();
     // let controller = gorilla.createFourBarLinkageController();
     // let controller = gorilla.createFourBarLinkageWithBaseController();
 
-    let controller = gorilla.createNavbotController(1.0 / 600.0);
+    // let controller = gorilla.createNavbotController(1.0 / 600.0);
     let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
     let simulator = new Simulator(interfaceSimulator);
-    simulator.addNavbot();
-    simulator.updateNavbot();
+    simulator.addSphere("sphere", 0xff0000, radius);
+    // simulator.addNavbot();
+    // simulator.updateNavbot();
 
     let rgbeLoader = new RGBELoader();
     rgbeLoader.load("studio_small_08_1k.hdr", (hdrTexture) => {
@@ -89,7 +92,7 @@ import("gorilla-physics").then((gorilla) => {
 
     // Important: Set initial camera position
     let cameraPosition = {
-      eye: { x: -0.5, y: 0, z: 0.2 },
+      eye: { x: 0.0, y: 2.0, z: 0.0 },
       target: { x: 0.0, y: 0, z: 0.0 },
     };
     simulator.graphics.lookAt(cameraPosition);

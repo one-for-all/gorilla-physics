@@ -1,5 +1,7 @@
+use crate::collision::sphere::Sphere;
 use crate::contact::ContactPoint;
 use crate::control::ControlInput;
+use crate::helpers::build_sphere;
 use crate::integrators::Integrator;
 use crate::joint::floating::FloatingJoint;
 use crate::joint::JointVelocity;
@@ -87,7 +89,7 @@ impl InterfaceSimulator {
     pub fn step(&mut self, dt: Float, control_input: Vec<Float>) -> FloatArray {
         let input = ControlInput::new(control_input);
 
-        let n_substep = 10;
+        let n_substep = 1;
         let mut q = vec![];
         for _ in 0..n_substep {
             let torque = self
@@ -420,45 +422,20 @@ pub fn createDoublePendulumHorizontal(length: Float) -> InterfaceMechanismState 
 }
 
 #[wasm_bindgen]
-pub fn createSphere(mass: Float, radius: Float) -> InterfaceMechanismState {
-    let m = mass;
-    let r = radius;
+pub async fn createSphere(mass: Float, radius: Float) -> InterfaceMechanismState {
+    let mut state = build_sphere(mass, radius);
 
-    let moment_x = 2.0 / 5.0 * m * r * r;
-    let moment_y = 2.0 / 5.0 * m * r * r;
-    let moment_z = 2.0 / 5.0 * m * r * r;
-    let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
-    let cross_part = vector![0.0, 0.0, 0.0];
-
-    let ball_frame = "ball";
-    let world_frame = "world";
-    let ball_to_world = Transform3D::identity(&ball_frame, &world_frame);
-
-    let ball = RigidBody::new(SpatialInertia {
-        frame: ball_frame.to_string(),
-        moment,
-        cross_part,
-        mass: m,
-    });
-
-    let treejoints = vec![Joint::FloatingJoint(FloatingJoint {
-        init_iso: ball_to_world.iso,
-        transform: ball_to_world,
-    })];
-    let bodies = vec![ball];
-    let mut state = MechanismState::new(treejoints, bodies);
-
-    let q_init = vec![JointPosition::Pose(Pose {
+    let q_init = JointPosition::Pose(Pose {
         rotation: UnitQuaternion::from_axis_angle(&Vector3::x_axis(), 0.0),
-        translation: vector![0.0, 0.0, 1.0],
-    })];
-    let v_init = vec![JointVelocity::Spatial(SpatialVector {
-        angular: vector![0.0, 0.0, 0.0],
-        linear: vector![0.0, 0.0, 10.0],
-    })];
-    state.update(&q_init, &v_init);
+        translation: vector![0.0, 0.0, 2. * radius],
+    });
+    state.set_joint_q(1, q_init);
 
-    state.add_contact_point(ContactPoint::new("ball", vector![0., 0., -r]));
+    let v_init = JointVelocity::Spatial(SpatialVector {
+        angular: vector![0.0, 0.0, 0.0],
+        linear: vector![0.0, 0.0, -5.0],
+    });
+    state.set_joint_v(1, v_init);
 
     InterfaceMechanismState { inner: state }
 }

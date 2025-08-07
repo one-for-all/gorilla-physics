@@ -247,6 +247,10 @@ impl MechanismState {
             }
         }
         self.q[jointid - 1] = q;
+
+        let bodies_to_root = compute_bodies_to_root(&self);
+        self.update_collider_poses(&bodies_to_root);
+        self.update_visual_poses(&bodies_to_root);
     }
 
     pub fn set_joint_v(&mut self, jointid: usize, v: JointVelocity) {

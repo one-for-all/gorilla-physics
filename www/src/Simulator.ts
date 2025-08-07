@@ -676,7 +676,7 @@ export class Simulator {
     rod.rotation.z = angle;
   }
 
-  updateSpherePose(poses: Float32Array) {
+  updateSpherePose(poses: FloatArrayType) {
     let euler = [poses[0], poses[1], poses[2]];
     let pos = [poses[3], poses[4], poses[5]];
 
@@ -1032,7 +1032,8 @@ export class Simulator {
     // this.updateMesh(5, "gripper");
     // this.updateMesh(6, "jaw");
 
-    this.updateNavbot();
+    // this.updateNavbot();
+
     // let wheel_left = this.meshes.get("wheel_left");
     // let wheel_left_center = this.simulator.sphere_center(4);
     // wheel_left.position.set(
@@ -1048,7 +1049,9 @@ export class Simulator {
     //   wheel_right_center[1],
     //   wheel_right_center[2],
     // );
-    // let poses = this.simulator.poses();
+
+    let poses = this.simulator.poses();
+    this.updateSpherePose(poses);
 
     // this.updatePusher(poses);
     // this.updateMockNavbot(poses);
