@@ -405,13 +405,7 @@ pub fn dynamics_discrete(
     let blocks: Vec<Matrix6xX<Float>> = izip!(state.treejointids.iter(), state.treejoints.iter())
         .filter_map(|(bodyid, joint)| {
             let body_to_root = bodies_to_root.get(bodyid).unwrap();
-            let R = body_to_root.rot();
-            let r = body_to_root.trans();
-            let mut T = Matrix6::<Float>::zeros();
-            T.fixed_view_mut::<3, 3>(0, 0).copy_from(&R);
-            T.fixed_view_mut::<3, 3>(3, 0)
-                .copy_from(&(skew_symmetric(&r) * &R));
-            T.fixed_view_mut::<3, 3>(3, 3).copy_from(&R);
+            let T = compute_twist_transformation_matrix(&body_to_root.iso);
             match joint {
                 Joint::RevoluteJoint(joint) => Some(
                     T * Matrix6xX::from_column_slice(&[

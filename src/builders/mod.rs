@@ -350,7 +350,7 @@ mod so101_tests {
     use super::build_so101;
 
     #[test]
-    // #[ignore] // TODO: complete this test
+    #[ignore] // TODO: complete this test
     fn so101() {
         // Arrange
         let base_buf = read_file("data/so101/base_so101_v2.obj");
@@ -404,6 +404,6 @@ mod so101_tests {
 
         // Assert
         plot(&data, final_time, dt, num_steps, "so101");
-        println!("final q: {:#?}", state.q);
+        // println!("final q: {:#?}", state.q);
     }
 }

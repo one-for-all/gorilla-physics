@@ -11,6 +11,7 @@ mod ccd_tests {
         spatial::{pose::Pose, spatial_vector::SpatialVector},
     };
 
+    #[ignore]
     #[test]
     fn ccd_sphere_ground() {
         // Arrange

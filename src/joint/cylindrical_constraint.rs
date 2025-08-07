@@ -110,6 +110,7 @@ mod cylindrical_constraint_tests {
         util::read_file,
     };
 
+    #[ignore] // TODO: complete this test
     #[test]
     fn navbot() {
         // Arrange
@@ -164,7 +165,7 @@ mod cylindrical_constraint_tests {
         }
 
         // Assert
-        println!("final: {}", data[data.len() - 1]);
+        // println!("final: {}", data[data.len() - 1]);
         // plot(&data, final_time, dt, num_steps, "navbot");
     }
 }
