@@ -674,7 +674,9 @@ pub fn dynamics_discrete(
             let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
             solver.solve();
             let lambda = DVector::from(solver.solution.x);
+
             // Note: with f64 for Clarabel, this might not be needed.
+            // Fall back to linear solver.
             // if lambda.iter().any(|x| x.is_nan()) {
             //     if contact_Js.len() == 0 {
             //         let cholesky = G
@@ -686,6 +688,7 @@ pub fn dynamics_discrete(
             //         panic!("lambda contains NaN: {:?}", lambda);
             //     }
             // }
+
             if lambda.iter().any(|x| x.is_nan()) {
                 panic!("lambda contains NaN: {:?}", lambda);
             }
@@ -719,51 +722,6 @@ pub fn dynamics_discrete(
             JointVelocity::None => JointVelocity::None,
         })
         .collect()
-}
-
-/// Formulate the joint constraints as a quadratic programming problem, and
-/// return the solution.
-pub fn solve_joint_constraints(
-    J: &DMatrix<Float>,
-    mass_matrix_lu: &LU<Float, Dyn, Dyn>,
-    v_free: &DVector<Float>,
-) -> DVector<Float> {
-    let mass_inv = mass_matrix_lu
-        .try_inverse()
-        .expect("mass matrix not invertible");
-
-    // Note: there is chance that G is not exactly symmetric & positive-definite due to numerical error
-    let G: DMatrix<Float> = J * mass_inv * J.transpose();
-    let g = J * v_free;
-
-    let P = CscMatrix::from(G.row_iter());
-    let q: Vec<Float> = Vec::from(g.as_slice());
-    let settings: DefaultSettings<Float> = DefaultSettingsBuilder::default()
-        .verbose(false)
-        .build()
-        .unwrap();
-    let mut solver = DefaultSolver::new(
-        &P,
-        &q,
-        &CscMatrix::zeros((0, P.m)),
-        &vec![],
-        &vec![],
-        settings,
-    );
-    solver.solve();
-
-    let lambda = DVector::from(solver.solution.x);
-    if lambda.iter().any(|x| x.is_nan()) {
-        // Fall back to linear solver. Or maybe this should be the preferred solver?
-        // let G = project_symmetric_psd(&G);
-        let cholesky = G
-            .clone()
-            .cholesky()
-            .expect(&format!("G not positive definite: {}", G));
-        return -cholesky.solve(&g);
-    }
-
-    lambda
 }
 
 /// Given contact information, compute the contact Jacobian that transforms
