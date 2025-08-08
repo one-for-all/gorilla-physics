@@ -402,38 +402,7 @@ pub fn dynamics_discrete(
     // world frame spatial velocity
     // Ref: Contact and Friction Simulation for Computer Graphics, 2022,
     //      Section 1.5 The Coulomb Friction Law
-    let blocks: Vec<Matrix6xX<Float>> = izip!(state.treejointids.iter(), state.treejoints.iter())
-        .filter_map(|(bodyid, joint)| {
-            let body_to_root = bodies_to_root.get(bodyid).unwrap();
-            let T = compute_twist_transformation_matrix(&body_to_root.iso);
-            match joint {
-                Joint::RevoluteJoint(joint) => Some(
-                    T * Matrix6xX::from_column_slice(&[
-                        joint.axis[0],
-                        joint.axis[1],
-                        joint.axis[2],
-                        0.,
-                        0.,
-                        0.,
-                    ]),
-                ),
-                Joint::PrismaticJoint(joint) => Some(
-                    T * Matrix6xX::from_column_slice(&[
-                        0.,
-                        0.,
-                        0.,
-                        joint.axis[0],
-                        joint.axis[1],
-                        joint.axis[2],
-                    ]),
-                ),
-                Joint::FloatingJoint(_) => Some(Matrix6xX::from_columns(
-                    &T.column_iter().collect::<Vec<_>>(),
-                )),
-                Joint::FixedJoint(_) => None,
-            }
-        })
-        .collect();
+    let blocks: Vec<Matrix6xX<Float>> = build_jacobian_blocks(&state, &bodies_to_root);
 
     // Build up the Jacobians for the joint constraints
     let constraint_Js: Vec<DMatrix<Float>> = state
@@ -720,6 +689,47 @@ pub fn dynamics_discrete(
                 JointVelocity::Spatial(SpatialVector { angular, linear })
             }
             JointVelocity::None => JointVelocity::None,
+        })
+        .collect()
+}
+
+/// Build the Jacobian blocks that transform generalized v to
+/// world frame spatial velocity.
+/// Each joint gives a Matrix6xX, ordered by jointid, except for fixed joint, /// because it has no velocity
+fn build_jacobian_blocks(
+    state: &MechanismState,
+    bodies_to_root: &HashMap<usize, Transform3D>,
+) -> Vec<Matrix6xX<Float>> {
+    izip!(state.treejointids.iter(), state.treejoints.iter())
+        .filter_map(|(bodyid, joint)| {
+            let body_to_root = bodies_to_root.get(bodyid).unwrap();
+            let T = compute_twist_transformation_matrix(&body_to_root.iso);
+            match joint {
+                Joint::RevoluteJoint(joint) => Some(
+                    T * Matrix6xX::from_column_slice(&[
+                        joint.axis[0],
+                        joint.axis[1],
+                        joint.axis[2],
+                        0.,
+                        0.,
+                        0.,
+                    ]),
+                ),
+                Joint::PrismaticJoint(joint) => Some(
+                    T * Matrix6xX::from_column_slice(&[
+                        0.,
+                        0.,
+                        0.,
+                        joint.axis[0],
+                        joint.axis[1],
+                        joint.axis[2],
+                    ]),
+                ),
+                Joint::FloatingJoint(_) => Some(Matrix6xX::from_columns(
+                    &T.column_iter().collect::<Vec<_>>(),
+                )),
+                Joint::FixedJoint(_) => None,
+            }
         })
         .collect()
 }
