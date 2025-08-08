@@ -424,92 +424,7 @@ pub fn dynamics_discrete(
         })
         .collect();
 
-    let v_new = {
-        if constraint_Js.len() == 0 && contact_Js.len() == 0 {
-            v_free
-        } else {
-            let mut rows: Vec<Matrix1xX<Float>> = vec![];
-            for contact_J in contact_Js.iter() {
-                rows.extend(contact_J.row_iter().map(|r| r.into_owned()));
-            }
-            for constraint_J in constraint_Js.iter() {
-                rows.extend(constraint_J.row_iter().map(|r| r.into_owned()));
-            }
-            let J = DMatrix::from_rows(&rows);
-
-            // Formulate the second-order cone programming problem and solve it
-            // Ref: Contact Models in Robotics: a Comparative Analysis, 2024,
-            // Quentin Le Lidec and et al. III B. Cone Complementarity Problem
-            //
-            // Also accounting for the joint constraints.
-            // Ref: Proximal and Sparse Resolution of Constrained Dynamic
-            // Equations, 2021, Justin Carpentier and et al. II. BACKGROUND
-            // Lagrangian of the constrained dynamics
-            let mass_matrix_lu = mass_matrix.lu();
-            let mass_inv = mass_matrix_lu
-                .try_inverse()
-                .expect("mass matrix not invertible");
-
-            let G: DMatrix<Float> = &J * mass_inv * J.transpose();
-            let P = CscMatrix::from(G.row_iter());
-            let g = &J * &v_free;
-            let q: Vec<Float> = Vec::from(g.as_slice());
-
-            // model contact impulse friction restriction
-            let n_contacts = contact_Js.len();
-            let mut A_triplets: Vec<(usize, usize, Float)> = vec![];
-            let mu = 0.95; // TODO: special handling for zero friction
-            for i in 0..n_contacts {
-                let index = i * 3;
-                A_triplets.push((index, index, -mu));
-                A_triplets.push((index + 1, index + 1, -1.0));
-                A_triplets.push((index + 2, index + 2, -1.0));
-            }
-            let A = CscMatrix::new_from_triplets(
-                n_contacts * 3, // num of constraints
-                g.len(),        // num of degrees of lambda
-                A_triplets.iter().map(|x| x.0).collect(),
-                A_triplets.iter().map(|x| x.1).collect(),
-                A_triplets.iter().map(|x| x.2).collect(),
-            );
-
-            let b = vec![0.0; n_contacts * 3];
-            let cones: Vec<SupportedConeT<Float>> = vec![SecondOrderConeT(3); n_contacts];
-
-            let settings: DefaultSettings<Float> = DefaultSettingsBuilder::default()
-                .verbose(false)
-                .build()
-                .unwrap();
-            let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
-            solver.solve();
-            let lambda = DVector::from(solver.solution.x);
-
-            // Note: with f64 for Clarabel, this might not be needed.
-            // Fall back to linear solver.
-            // if lambda.iter().any(|x| x.is_nan()) {
-            //     if contact_Js.len() == 0 {
-            //         let cholesky = G
-            //             .clone()
-            //             .cholesky()
-            //             .expect(&format!("G not positive definite: {}", G));
-            //         lambda = -cholesky.solve(&g);
-            //     } else {
-            //         panic!("lambda contains NaN: {:?}", lambda);
-            //     }
-            // }
-
-            if lambda.iter().any(|x| x.is_nan()) {
-                panic!("lambda contains NaN: {:?}", lambda);
-            }
-
-            let impulse = J.transpose() * lambda;
-            let v_next: DVector<Float> = v_free
-                + mass_matrix_lu
-                    .solve(&impulse)
-                    .expect("Failed to solve Mx = J^T λ");
-            v_next
-        }
-    };
+    let v_new = solve_constraint_and_contact(&constraint_Js, &contact_Js, &v_free, mass_matrix);
 
     // Convert from raw floats to joint velocity types
     let mut i = 0;
@@ -750,6 +665,98 @@ fn collision_detection(
     }
 
     contacts
+}
+
+fn solve_constraint_and_contact(
+    constraint_Js: &Vec<DMatrix<Float>>,
+    contact_Js: &Vec<Matrix3xX<Float>>,
+    v_free: &DVector<Float>,
+    mass_matrix: DMatrix<Float>,
+) -> DVector<Float> {
+    if constraint_Js.len() == 0 && contact_Js.len() == 0 {
+        v_free.clone()
+    } else {
+        let mut rows: Vec<Matrix1xX<Float>> = vec![];
+        for contact_J in contact_Js.iter() {
+            rows.extend(contact_J.row_iter().map(|r| r.into_owned()));
+        }
+        for constraint_J in constraint_Js.iter() {
+            rows.extend(constraint_J.row_iter().map(|r| r.into_owned()));
+        }
+        let J = DMatrix::from_rows(&rows);
+
+        // Formulate the second-order cone programming problem and solve it
+        // Ref: Contact Models in Robotics: a Comparative Analysis, 2024,
+        // Quentin Le Lidec and et al. III B. Cone Complementarity Problem
+        //
+        // Also accounting for the joint constraints.
+        // Ref: Proximal and Sparse Resolution of Constrained Dynamic
+        // Equations, 2021, Justin Carpentier and et al. II. BACKGROUND
+        // Lagrangian of the constrained dynamics
+        let mass_matrix_lu = mass_matrix.lu();
+        let mass_inv = mass_matrix_lu
+            .try_inverse()
+            .expect("mass matrix not invertible");
+
+        let G: DMatrix<Float> = &J * mass_inv * J.transpose();
+        let P = CscMatrix::from(G.row_iter());
+        let g = &J * v_free;
+        let q: Vec<Float> = Vec::from(g.as_slice());
+
+        // model contact impulse friction restriction
+        let n_contacts = contact_Js.len();
+        let mut A_triplets: Vec<(usize, usize, Float)> = vec![];
+        let mu = 0.95; // TODO: special handling for zero friction
+        for i in 0..n_contacts {
+            let index = i * 3;
+            A_triplets.push((index, index, -mu));
+            A_triplets.push((index + 1, index + 1, -1.0));
+            A_triplets.push((index + 2, index + 2, -1.0));
+        }
+        let A = CscMatrix::new_from_triplets(
+            n_contacts * 3, // num of constraints
+            g.len(),        // num of degrees of lambda
+            A_triplets.iter().map(|x| x.0).collect(),
+            A_triplets.iter().map(|x| x.1).collect(),
+            A_triplets.iter().map(|x| x.2).collect(),
+        );
+
+        let b = vec![0.0; n_contacts * 3];
+        let cones: Vec<SupportedConeT<Float>> = vec![SecondOrderConeT(3); n_contacts];
+
+        let settings: DefaultSettings<Float> = DefaultSettingsBuilder::default()
+            .verbose(false)
+            .build()
+            .unwrap();
+        let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
+        solver.solve();
+        let lambda = DVector::from(solver.solution.x);
+
+        // Note: with f64 for Clarabel, this might not be needed.
+        // Fall back to linear solver.
+        // if lambda.iter().any(|x| x.is_nan()) {
+        //     if contact_Js.len() == 0 {
+        //         let cholesky = G
+        //             .clone()
+        //             .cholesky()
+        //             .expect(&format!("G not positive definite: {}", G));
+        //         lambda = -cholesky.solve(&g);
+        //     } else {
+        //         panic!("lambda contains NaN: {:?}", lambda);
+        //     }
+        // }
+
+        if lambda.iter().any(|x| x.is_nan()) {
+            panic!("lambda contains NaN: {:?}", lambda);
+        }
+
+        let impulse = J.transpose() * lambda;
+        let v_next: DVector<Float> = v_free
+            + mass_matrix_lu
+                .solve(&impulse)
+                .expect("Failed to solve Mx = J^T λ");
+        v_next
+    }
 }
 
 /// Given contact information, compute the contact Jacobian that transforms
