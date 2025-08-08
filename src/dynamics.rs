@@ -2,7 +2,6 @@ use crate::{
     collision::{mesh::mesh_mesh_collision, CollisionDetector},
     contact::contact_dynamics,
     control::energy_control::spring_force,
-    flog,
     inertia::compute_inertias,
     joint::{Joint, JointAcceleration, JointTorque, JointVelocity, ToFloatDVec},
     mechanism::mass_matrix,
@@ -400,173 +399,14 @@ pub fn dynamics_discrete(
 
     // Construct the building blocks for Jacobian between generalized v and
     // world frame spatial velocity
-    // Ref: Contact and Friction Simulation for Computer Graphics, 2022,
-    //      Section 1.5 The Coulomb Friction Law
-    let blocks: Vec<Matrix6xX<Float>> = build_jacobian_blocks(&state, &bodies_to_root);
+    let jacobian_blocks: Vec<Matrix6xX<Float>> = build_jacobian_blocks(&state, &bodies_to_root);
 
     // Build up the Jacobians for the joint constraints
-    let constraint_Js: Vec<DMatrix<Float>> = state
-        .constraints
-        .iter()
-        .map(|constraint| {
-            let frame1_linked_bodyids = state.linked_bodyids(constraint.frame1());
-            let frame2_linked_bodyids = state.linked_bodyids(constraint.frame2());
+    let constraint_Js: Vec<DMatrix<Float>> =
+        build_constraint_jacobians(&state, &jacobian_blocks, &bodies_to_root, v_free.len());
 
-            let frame1_only_linked_bodyids: HashSet<&usize> = frame1_linked_bodyids
-                .difference(&frame2_linked_bodyids)
-                .collect();
-            let frame2_only_linked_bodyids: HashSet<&usize> = frame2_linked_bodyids
-                .difference(&frame1_linked_bodyids)
-                .collect();
-
-            let mut J = DMatrix::zeros(6, v_free.len());
-            let mut col_offset = 0;
-            for (index, block) in blocks.iter().enumerate() {
-                // TODO(fixed_joint): take care of this in the presence of fixed joint
-                let n_cols = block.ncols();
-                let bodyid = index + 1;
-                if frame1_only_linked_bodyids.contains(&bodyid) {
-                    J.columns_mut(col_offset, n_cols).copy_from(block);
-                } else if frame2_only_linked_bodyids.contains(&bodyid) {
-                    J.columns_mut(col_offset, n_cols).copy_from(&(-block));
-                }
-                col_offset += n_cols;
-            }
-
-            let frame1_body_to_root = bodies_to_root
-                .iter()
-                .find(|x| x.1.from == constraint.frame1())
-                .unwrap()
-                .1;
-            let constraint_to_root = frame1_body_to_root.iso * constraint.to_frame1();
-            let root_to_constraint = constraint_to_root.inverse();
-            let T = compute_twist_transformation_matrix(&root_to_constraint);
-            let J = T * J;
-
-            let selection_matrix = constraint.constraint_matrix();
-            let J = selection_matrix * J;
-
-            // Filter out rows with all near-zeros
-            let (nrows, ncols) = J.shape();
-            // Collect indices of non-zero rows
-            let non_zero_row_indices: Vec<_> = (0..nrows)
-                .filter(|&i| {
-                    // Check if any element in the row is not near-zero
-                    // Checking near-zero rather than precisely zero,
-                    // because rows with only very small values might
-                    // turn G = J * mass_inv * J^T into not positive definite.
-                    // TODO: better way than this?
-                    (0..ncols).any(|j| J[(i, j)].abs() > 1e-4)
-                    // (0..ncols).any(|j| J[(i, j)].abs() != 0.0)
-                })
-                .collect();
-
-            assert!(non_zero_row_indices.len() > 0, "unfiltered J: {}", J);
-            DMatrix::from_fn(non_zero_row_indices.len(), ncols, |i, j| {
-                J[(non_zero_row_indices[i], j)]
-            })
-        })
-        .collect();
-
-    // vec of (contact normal, contact point, bodyid, other_bodyid)
-    let mut contacts: Vec<(UnitVector3<Float>, Vector3<Float>, usize, Option<usize>)> = vec![];
-
-    // Collision handling
-    for (bodyid, body) in izip!(state.treejointids.iter(), state.bodies.iter()) {
-        let body_to_root = bodies_to_root.get(&bodyid).unwrap();
-
-        // Handle point contacts with halfspaces
-        for contact_point in &body.contact_points {
-            let contact_point_world = contact_point.transform(body_to_root); // contact point in world frame
-            for halfspace in &state.halfspaces {
-                if !contact_point_world.inside_halfspace(&halfspace) {
-                    continue;
-                }
-
-                contacts.push((
-                    halfspace.normal,
-                    contact_point_world.location,
-                    *bodyid,
-                    None,
-                ));
-            }
-        }
-    }
-
-    state.update_collidable_mesh_vertex_positions();
-
-    // Handle contacts between body colliders and half-spaces
-    for (bodyid, body) in izip!(state.treejointids.iter(), state.bodies.iter()) {
-        if let Some(collider) = &body.collider {
-            if !collider.enabled {
-                continue;
-            }
-            match &collider.geometry {
-                CollisionGeometry::Mesh(mesh) => {
-                    for vertex in &mesh.vertices {
-                        for halfspace in &state.halfspaces {
-                            if !halfspace.has_inside(&vertex) {
-                                continue;
-                            }
-                            contacts.push((halfspace.normal, *vertex, *bodyid, None));
-                        }
-                    }
-                }
-                CollisionGeometry::Sphere(sphere) => {
-                    for halfspace in &state.halfspaces {
-                        if let Some(contact_point) = sphere.contact_halfspace(halfspace) {
-                            contacts.push((halfspace.normal, contact_point, *bodyid, None));
-                        }
-                    }
-                }
-                _ => {}
-            }
-        }
-    }
-
-    // Handle contacts between body colliders
-    for (i, (bodyid, body)) in izip!(state.treejointids.iter(), state.bodies.iter()).enumerate() {
-        for (other_bodyid, other_body) in izip!(
-            state.treejointids.iter().skip(i + 1),
-            state.bodies.iter().skip(i + 1)
-        ) {
-            if let (Some(collider), Some(other_collider)) = (&body.collider, &other_body.collider) {
-                if !collider.enabled || !other_collider.enabled {
-                    continue;
-                }
-                match &collider.geometry {
-                    CollisionGeometry::Cuboid(cuboid) => match &other_collider.geometry {
-                        CollisionGeometry::Cuboid(other_cuboid) => {
-                            let mut collision_detector =
-                                CollisionDetector::new(&cuboid, &other_cuboid);
-                            if !collision_detector.gjk() {
-                                continue;
-                            }
-                            let (cp_a, cp_b) = collision_detector.epa();
-
-                            // Contact frame normal
-                            let n = UnitVector3::new_normalize(cp_b - cp_a);
-
-                            contacts.push((n, cp_a, *bodyid, Some(*other_bodyid)));
-                        }
-                        _ => {}
-                    },
-                    CollisionGeometry::Mesh(mesh) => match &other_collider.geometry {
-                        CollisionGeometry::Mesh(other_mesh) => {
-                            // TODO: set tolerance according to feature size
-                            let mesh_mesh_contacts = mesh_mesh_collision(mesh, other_mesh, 1e-2);
-
-                            for (cp, n) in mesh_mesh_contacts.iter() {
-                                contacts.push((*n, *cp, *bodyid, Some(*other_bodyid)));
-                            }
-                        }
-                        _ => {}
-                    },
-                    CollisionGeometry::Sphere(_) => {}
-                };
-            }
-        }
-    }
+    // contacts is Vec of (contact normal, contact point, bodyid, other_bodyid)
+    let contacts = collision_detection(state, &bodies_to_root);
 
     // Vec of Jacobian rows, which will be assembled into the Jacobian
     let contact_Js: Vec<Matrix3xX<Float>> = contacts
@@ -579,7 +419,7 @@ pub fn dynamics_discrete(
                 *bodyid,
                 *other_bodyid,
                 v_free.len(),
-                &blocks,
+                &jacobian_blocks,
             )
         })
         .collect();
@@ -695,7 +535,9 @@ pub fn dynamics_discrete(
 
 /// Build the Jacobian blocks that transform generalized v to
 /// world frame spatial velocity.
-/// Each joint gives a Matrix6xX, ordered by jointid, except for fixed joint, /// because it has no velocity
+/// Each joint gives a Matrix6xX, ordered by jointid, except for fixed joint, /// because it has no velocity.
+/// Ref: Contact and Friction Simulation for Computer Graphics, 2022,
+///      Section 1.5 The Coulomb Friction Law
 fn build_jacobian_blocks(
     state: &MechanismState,
     bodies_to_root: &HashMap<usize, Transform3D>,
@@ -732,6 +574,182 @@ fn build_jacobian_blocks(
             }
         })
         .collect()
+}
+
+/// Build, for each constraint, a jacobian that transforms joint velocity to /// constraint frame velocity
+fn build_constraint_jacobians(
+    state: &MechanismState,
+    blocks: &Vec<Matrix6xX<Float>>,
+    bodies_to_root: &HashMap<usize, Transform3D>,
+    dof: usize, // state v dimension
+) -> Vec<DMatrix<Float>> {
+    state
+        .constraints
+        .iter()
+        .map(|constraint| {
+            let frame1_linked_bodyids = state.linked_bodyids(constraint.frame1());
+            let frame2_linked_bodyids = state.linked_bodyids(constraint.frame2());
+
+            let frame1_only_linked_bodyids: HashSet<&usize> = frame1_linked_bodyids
+                .difference(&frame2_linked_bodyids)
+                .collect();
+            let frame2_only_linked_bodyids: HashSet<&usize> = frame2_linked_bodyids
+                .difference(&frame1_linked_bodyids)
+                .collect();
+
+            let mut J = DMatrix::zeros(6, dof);
+            let mut col_offset = 0;
+            for (index, block) in blocks.iter().enumerate() {
+                // TODO(fixed_joint): take care of this in the presence of fixed joint
+                let n_cols = block.ncols();
+                let bodyid = index + 1;
+                if frame1_only_linked_bodyids.contains(&bodyid) {
+                    J.columns_mut(col_offset, n_cols).copy_from(block);
+                } else if frame2_only_linked_bodyids.contains(&bodyid) {
+                    J.columns_mut(col_offset, n_cols).copy_from(&(-block));
+                }
+                col_offset += n_cols;
+            }
+
+            let frame1_body_to_root = bodies_to_root
+                .iter()
+                .find(|x| x.1.from == constraint.frame1())
+                .unwrap()
+                .1;
+            let constraint_to_root = frame1_body_to_root.iso * constraint.to_frame1();
+            let root_to_constraint = constraint_to_root.inverse();
+            let T = compute_twist_transformation_matrix(&root_to_constraint);
+            let J = T * J;
+
+            let selection_matrix = constraint.constraint_matrix();
+            let J = selection_matrix * J;
+
+            // Filter out rows with all near-zeros
+            let (nrows, ncols) = J.shape();
+            // Collect indices of non-zero rows
+            let non_zero_row_indices: Vec<_> = (0..nrows)
+                .filter(|&i| {
+                    // Check if any element in the row is not near-zero
+                    // Checking near-zero rather than precisely zero,
+                    // because rows with only very small values might
+                    // turn G = J * mass_inv * J^T into not positive definite.
+                    // TODO: better way than this?
+                    (0..ncols).any(|j| J[(i, j)].abs() > 1e-4)
+                    // (0..ncols).any(|j| J[(i, j)].abs() != 0.0)
+                })
+                .collect();
+
+            assert!(non_zero_row_indices.len() > 0, "unfiltered J: {}", J);
+            DMatrix::from_fn(non_zero_row_indices.len(), ncols, |i, j| {
+                J[(non_zero_row_indices[i], j)]
+            })
+        })
+        .collect()
+}
+
+/// Performs collision detection and returns a vec of (contact normal, contact point, bodyid, other_bodyid)
+fn collision_detection(
+    state: &mut MechanismState,
+    bodies_to_root: &HashMap<usize, Transform3D>,
+) -> Vec<(UnitVector3<Float>, Vector3<Float>, usize, Option<usize>)> {
+    let mut contacts: Vec<(UnitVector3<Float>, Vector3<Float>, usize, Option<usize>)> = vec![];
+
+    // Handle point contacts with halfspaces
+    for (bodyid, body) in izip!(state.treejointids.iter(), state.bodies.iter()) {
+        let body_to_root = bodies_to_root.get(&bodyid).unwrap();
+
+        for contact_point in &body.contact_points {
+            let contact_point_world = contact_point.transform(body_to_root); // contact point in world frame
+            for halfspace in &state.halfspaces {
+                if !contact_point_world.inside_halfspace(&halfspace) {
+                    continue;
+                }
+                contacts.push((
+                    halfspace.normal,
+                    contact_point_world.location,
+                    *bodyid,
+                    None,
+                ));
+            }
+        }
+    }
+
+    state.update_collidable_mesh_vertex_positions();
+
+    // Handle contacts between body colliders and half-spaces
+    for (bodyid, body) in izip!(state.treejointids.iter(), state.bodies.iter()) {
+        if let Some(collider) = &body.collider {
+            if !collider.enabled {
+                continue;
+            }
+            match &collider.geometry {
+                CollisionGeometry::Mesh(mesh) => {
+                    for vertex in &mesh.vertices {
+                        for halfspace in &state.halfspaces {
+                            if !halfspace.has_inside(&vertex) {
+                                continue;
+                            }
+                            contacts.push((halfspace.normal, *vertex, *bodyid, None));
+                        }
+                    }
+                }
+                CollisionGeometry::Sphere(sphere) => {
+                    for halfspace in &state.halfspaces {
+                        if let Some(contact_point) = sphere.contact_halfspace(halfspace) {
+                            contacts.push((halfspace.normal, contact_point, *bodyid, None));
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    // Handle contacts between body colliders
+    for (i, (bodyid, body)) in izip!(state.treejointids.iter(), state.bodies.iter()).enumerate() {
+        for (other_bodyid, other_body) in izip!(
+            state.treejointids.iter().skip(i + 1),
+            state.bodies.iter().skip(i + 1)
+        ) {
+            if let (Some(collider), Some(other_collider)) = (&body.collider, &other_body.collider) {
+                if !collider.enabled || !other_collider.enabled {
+                    continue;
+                }
+                match &collider.geometry {
+                    CollisionGeometry::Cuboid(cuboid) => match &other_collider.geometry {
+                        CollisionGeometry::Cuboid(other_cuboid) => {
+                            let mut collision_detector =
+                                CollisionDetector::new(&cuboid, &other_cuboid);
+                            if !collision_detector.gjk() {
+                                continue;
+                            }
+                            let (cp_a, cp_b) = collision_detector.epa();
+
+                            // Contact frame normal
+                            let n = UnitVector3::new_normalize(cp_b - cp_a);
+
+                            contacts.push((n, cp_a, *bodyid, Some(*other_bodyid)));
+                        }
+                        _ => {}
+                    },
+                    CollisionGeometry::Mesh(mesh) => match &other_collider.geometry {
+                        CollisionGeometry::Mesh(other_mesh) => {
+                            // TODO: set tolerance according to feature size
+                            let mesh_mesh_contacts = mesh_mesh_collision(mesh, other_mesh, 1e-2);
+
+                            for (cp, n) in mesh_mesh_contacts.iter() {
+                                contacts.push((*n, *cp, *bodyid, Some(*other_bodyid)));
+                            }
+                        }
+                        _ => {}
+                    },
+                    CollisionGeometry::Sphere(_) => {}
+                };
+            }
+        }
+    }
+
+    contacts
 }
 
 /// Given contact information, compute the contact Jacobian that transforms
