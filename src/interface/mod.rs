@@ -427,7 +427,7 @@ pub async fn createSphere(mass: Float, radius: Float) -> InterfaceMechanismState
 
     let q_init = JointPosition::Pose(Pose {
         rotation: UnitQuaternion::from_axis_angle(&Vector3::x_axis(), 0.0),
-        translation: vector![0.0, 0.0, 2. * radius],
+        translation: vector![0.0, 0.0, 10. * radius],
     });
     state.set_joint_q(1, q_init);
 

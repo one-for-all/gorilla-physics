@@ -23,7 +23,7 @@ mod ccd_tests {
             1,
             JointPosition::Pose(Pose {
                 rotation: UnitQuaternion::from_axis_angle(&Vector3::x_axis(), 0.0),
-                translation: vector![0.0, 0.0, 2. * radius],
+                translation: vector![0.0, 0.0, 10. * radius],
             }),
         );
         state.set_joint_v(

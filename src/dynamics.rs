@@ -436,71 +436,73 @@ pub fn dynamics_discrete(
         .collect();
 
     // Build up the Jacobians for the joint constraints
-    let mut constraint_Js: Vec<DMatrix<Float>> = vec![];
-    for constraint in state.constraints.iter() {
-        let frame1_linked_bodyids = state.linked_bodyids(constraint.frame1());
-        let frame2_linked_bodyids = state.linked_bodyids(constraint.frame2());
+    let constraint_Js: Vec<DMatrix<Float>> = state
+        .constraints
+        .iter()
+        .map(|constraint| {
+            let frame1_linked_bodyids = state.linked_bodyids(constraint.frame1());
+            let frame2_linked_bodyids = state.linked_bodyids(constraint.frame2());
 
-        let frame1_only_linked_bodyids: HashSet<&usize> = frame1_linked_bodyids
-            .difference(&frame2_linked_bodyids)
-            .collect();
-        let frame2_only_linked_bodyids: HashSet<&usize> = frame2_linked_bodyids
-            .difference(&frame1_linked_bodyids)
-            .collect();
+            let frame1_only_linked_bodyids: HashSet<&usize> = frame1_linked_bodyids
+                .difference(&frame2_linked_bodyids)
+                .collect();
+            let frame2_only_linked_bodyids: HashSet<&usize> = frame2_linked_bodyids
+                .difference(&frame1_linked_bodyids)
+                .collect();
 
-        let mut J = DMatrix::zeros(6, v_free.len());
-        let mut col_offset = 0;
-        for (index, block) in blocks.iter().enumerate() {
-            // TODO(fixed_joint): take care of this in the presence of fixed joint
-            let n_cols = block.ncols();
-            let bodyid = index + 1;
-            if frame1_only_linked_bodyids.contains(&bodyid) {
-                J.columns_mut(col_offset, n_cols).copy_from(block);
-            } else if frame2_only_linked_bodyids.contains(&bodyid) {
-                J.columns_mut(col_offset, n_cols).copy_from(&(-block));
+            let mut J = DMatrix::zeros(6, v_free.len());
+            let mut col_offset = 0;
+            for (index, block) in blocks.iter().enumerate() {
+                // TODO(fixed_joint): take care of this in the presence of fixed joint
+                let n_cols = block.ncols();
+                let bodyid = index + 1;
+                if frame1_only_linked_bodyids.contains(&bodyid) {
+                    J.columns_mut(col_offset, n_cols).copy_from(block);
+                } else if frame2_only_linked_bodyids.contains(&bodyid) {
+                    J.columns_mut(col_offset, n_cols).copy_from(&(-block));
+                }
+                col_offset += n_cols;
             }
-            col_offset += n_cols;
-        }
 
-        let frame1_body_to_root = bodies_to_root
-            .iter()
-            .find(|x| x.1.from == constraint.frame1())
-            .unwrap()
-            .1;
-        let constraint_to_root = frame1_body_to_root.iso * constraint.to_frame1();
-        let root_to_constraint = constraint_to_root.inverse();
-        let T = compute_twist_transformation_matrix(&root_to_constraint);
-        let J = T * J;
+            let frame1_body_to_root = bodies_to_root
+                .iter()
+                .find(|x| x.1.from == constraint.frame1())
+                .unwrap()
+                .1;
+            let constraint_to_root = frame1_body_to_root.iso * constraint.to_frame1();
+            let root_to_constraint = constraint_to_root.inverse();
+            let T = compute_twist_transformation_matrix(&root_to_constraint);
+            let J = T * J;
 
-        let selection_matrix = constraint.constraint_matrix();
-        let J = selection_matrix * J;
+            let selection_matrix = constraint.constraint_matrix();
+            let J = selection_matrix * J;
 
-        // Filter out rows with all near-zeros
-        let (nrows, ncols) = J.shape();
-        // Collect indices of non-zero rows
-        let non_zero_row_indices: Vec<_> = (0..nrows)
-            .filter(|&i| {
-                // Check if any element in the row is not near-zero
-                // Checking near-zero rather than precisely zero,
-                // because rows with only very small values might
-                // turn G = J * mass_inv * J^T into not positive definite.
-                // TODO: better way than this?
-                (0..ncols).any(|j| J[(i, j)].abs() > 1e-4)
-                // (0..ncols).any(|j| J[(i, j)].abs() != 0.0)
+            // Filter out rows with all near-zeros
+            let (nrows, ncols) = J.shape();
+            // Collect indices of non-zero rows
+            let non_zero_row_indices: Vec<_> = (0..nrows)
+                .filter(|&i| {
+                    // Check if any element in the row is not near-zero
+                    // Checking near-zero rather than precisely zero,
+                    // because rows with only very small values might
+                    // turn G = J * mass_inv * J^T into not positive definite.
+                    // TODO: better way than this?
+                    (0..ncols).any(|j| J[(i, j)].abs() > 1e-4)
+                    // (0..ncols).any(|j| J[(i, j)].abs() != 0.0)
+                })
+                .collect();
+
+            assert!(non_zero_row_indices.len() > 0, "unfiltered J: {}", J);
+            DMatrix::from_fn(non_zero_row_indices.len(), ncols, |i, j| {
+                J[(non_zero_row_indices[i], j)]
             })
-            .collect();
+        })
+        .collect();
 
-        assert!(non_zero_row_indices.len() > 0, "unfiltered J: {}", J);
-        let J = DMatrix::from_fn(non_zero_row_indices.len(), ncols, |i, j| {
-            J[(non_zero_row_indices[i], j)]
-        });
-
-        constraint_Js.push(J);
-    }
+    // vec of (contact normal, contact point, bodyid, other_bodyid)
+    let mut contacts: Vec<(UnitVector3<Float>, Vector3<Float>, usize, Option<usize>)> = vec![];
 
     // Collision handling
-    // Vec of Jacobian rows, which will be assembled into the Jacobian
-    let mut contact_Js: Vec<Matrix3xX<Float>> = vec![];
     for (bodyid, body) in izip!(state.treejointids.iter(), state.bodies.iter()) {
         let body_to_root = bodies_to_root.get(&bodyid).unwrap();
 
@@ -511,16 +513,13 @@ pub fn dynamics_discrete(
                 if !contact_point_world.inside_halfspace(&halfspace) {
                     continue;
                 }
-                let J = compose_contact_jacobian(
-                    &state,
-                    &halfspace.normal,
-                    &contact_point_world.location,
+
+                contacts.push((
+                    halfspace.normal,
+                    contact_point_world.location,
                     *bodyid,
                     None,
-                    v_free.len(),
-                    &blocks,
-                );
-                contact_Js.push(J);
+                ));
             }
         }
     }
@@ -540,32 +539,14 @@ pub fn dynamics_discrete(
                             if !halfspace.has_inside(&vertex) {
                                 continue;
                             }
-                            let J = compose_contact_jacobian(
-                                &state,
-                                &halfspace.normal,
-                                &vertex,
-                                *bodyid,
-                                None,
-                                v_free.len(),
-                                &blocks,
-                            );
-                            contact_Js.push(J);
+                            contacts.push((halfspace.normal, *vertex, *bodyid, None));
                         }
                     }
                 }
                 CollisionGeometry::Sphere(sphere) => {
                     for halfspace in &state.halfspaces {
                         if let Some(contact_point) = sphere.contact_halfspace(halfspace) {
-                            let J = compose_contact_jacobian(
-                                &state,
-                                &halfspace.normal,
-                                &contact_point,
-                                *bodyid,
-                                None,
-                                v_free.len(),
-                                &blocks,
-                            );
-                            contact_Js.push(J);
+                            contacts.push((halfspace.normal, contact_point, *bodyid, None));
                         }
                     }
                 }
@@ -597,38 +578,18 @@ pub fn dynamics_discrete(
                             // Contact frame normal
                             let n = UnitVector3::new_normalize(cp_b - cp_a);
 
-                            let J = compose_contact_jacobian(
-                                &state,
-                                &n,
-                                &cp_a,
-                                *bodyid,
-                                Some(*other_bodyid),
-                                v_free.len(),
-                                &blocks,
-                            );
-                            contact_Js.push(J);
+                            contacts.push((n, cp_a, *bodyid, Some(*other_bodyid)));
                         }
                         _ => {}
                     },
                     CollisionGeometry::Mesh(mesh) => match &other_collider.geometry {
                         CollisionGeometry::Mesh(other_mesh) => {
                             // TODO: set tolerance according to feature size
-                            let contacts = mesh_mesh_collision(mesh, other_mesh, 1e-2);
-                            let mesh_mesh_Js: Vec<Matrix3xX<Float>> = contacts
-                                .iter()
-                                .map(|(cp, n)| {
-                                    compose_contact_jacobian(
-                                        &state,
-                                        n,
-                                        cp,
-                                        *bodyid,
-                                        Some(*other_bodyid),
-                                        v_free.len(),
-                                        &blocks,
-                                    )
-                                })
-                                .collect();
-                            contact_Js.extend(mesh_mesh_Js);
+                            let mesh_mesh_contacts = mesh_mesh_collision(mesh, other_mesh, 1e-2);
+
+                            for (cp, n) in mesh_mesh_contacts.iter() {
+                                contacts.push((*n, *cp, *bodyid, Some(*other_bodyid)));
+                            }
                         }
                         _ => {}
                     },
@@ -637,6 +598,22 @@ pub fn dynamics_discrete(
             }
         }
     }
+
+    // Vec of Jacobian rows, which will be assembled into the Jacobian
+    let contact_Js: Vec<Matrix3xX<Float>> = contacts
+        .iter()
+        .map(|(normal, point, bodyid, other_bodyid)| {
+            compose_contact_jacobian(
+                &state,
+                &normal,
+                &point,
+                *bodyid,
+                *other_bodyid,
+                v_free.len(),
+                &blocks,
+            )
+        })
+        .collect();
 
     let v_new = {
         if constraint_Js.len() == 0 && contact_Js.len() == 0 {
