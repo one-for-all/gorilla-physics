@@ -66,14 +66,9 @@ pub fn ccd_velocity_stepping(
         let (v_new, contacts) = dynamics_discrete(state, &tau, t_remain, expected_contact);
 
         // TODO: twists can just be a Vec, instead of a map
-        let mut joint_new_twists: HashMap<usize, Twist> = HashMap::new();
-        for (jointid, joint, v) in izip!(
-            state.treejointids.iter(),
-            state.treejoints.iter(),
-            v_new.iter()
-        ) {
-            joint_new_twists.insert(*jointid, Twist::new(joint, v));
-        }
+        let joint_new_twists: Vec<Twist> = izip!(state.treejoints.iter(), v_new.iter())
+            .map(|(joint, v)| Twist::new(&joint, v))
+            .collect();
 
         // TODO: make bodies_to_root compute only once
         let bodies_to_root = compute_bodies_to_root(state);

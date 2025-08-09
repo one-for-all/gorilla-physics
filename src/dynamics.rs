@@ -138,7 +138,7 @@ pub fn compute_coriolis_bias_accelerations(
     state: &MechanismState,
     bodies_to_root: &HashMap<usize, Transform3D>,
     twists: &HashMap<usize, Twist>,
-    joint_twists: &HashMap<usize, Twist>,
+    joint_twists: &Vec<Twist>,
 ) -> HashMap<usize, SpatialAcceleration> {
     let mut coriolis_bias_accels = HashMap::new();
     let rootid = 0;
@@ -162,7 +162,7 @@ pub fn compute_coriolis_bias_accelerations(
         // body twist wrt. world expressed in body frame
         let body_twist = twists.get(bodyid).unwrap().transform(&root_to_body);
         // joint twist expressed in body frame
-        let joint_twist = joint_twists.get(bodyid).unwrap();
+        let joint_twist = &joint_twists[bodyid - 1];
         let coriolis_accel = coriolis_accel(&body_twist, joint_twist).transform(body_to_root);
 
         let parent_bias_accel = coriolis_bias_accels.get(&parentid).unwrap();
@@ -195,7 +195,7 @@ pub fn bias_accelerations(
     state: &MechanismState,
     bodies_to_root: &HashMap<usize, Transform3D>,
     twists: &HashMap<usize, Twist>,
-    joint_twists: &HashMap<usize, Twist>,
+    joint_twists: &Vec<Twist>,
 ) -> HashMap<usize, SpatialAcceleration> {
     let mut bias_accels = HashMap::new();
     let coriolis_bias_accels =
@@ -227,7 +227,7 @@ pub fn bias_accelerations(
 pub fn dynamics_bias(
     state: &MechanismState,
     bodies_to_root: &HashMap<usize, Transform3D>,
-    joint_twists: &HashMap<usize, Twist>,
+    joint_twists: &Vec<Twist>,
     twists: &HashMap<usize, Twist>,
     contact_wrenches: &HashMap<usize, Wrench>,
 ) -> DVector<Float> {
@@ -275,7 +275,7 @@ pub fn dynamics_quantities(
     state: &mut MechanismState,
 ) -> (
     HashMap<usize, Transform3D>,
-    HashMap<usize, Twist>,
+    Vec<Twist>,
     HashMap<usize, Twist>,
     DMatrix<Float>,
 ) {

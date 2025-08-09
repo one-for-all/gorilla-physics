@@ -1,7 +1,4 @@
-use std::{
-    collections::HashMap,
-    ops::Add,
-};
+use std::{collections::HashMap, ops::Add};
 
 use itertools::izip;
 use na::{Isometry3, Matrix6};
@@ -171,17 +168,10 @@ impl<'a, 'b> Add<&'b Twist> for &'a Twist {
 }
 
 /// Compute the joint twist of each joint expressed in body frame
-pub fn compute_joint_twists(state: &MechanismState) -> HashMap<usize, Twist> {
-    let mut joint_twists: HashMap<usize, Twist> = HashMap::new();
-    for (jointid, joint, v) in izip!(
-        state.treejointids.iter(),
-        state.treejoints.iter(),
-        state.v.iter()
-    ) {
-        let bodyid = jointid;
-        joint_twists.insert(*bodyid, Twist::new(&joint, v));
-    }
-    joint_twists
+pub fn compute_joint_twists(state: &MechanismState) -> Vec<Twist> {
+    izip!(state.treejoints.iter(), state.v.iter())
+        .map(|(joint, v)| Twist::new(&joint, v))
+        .collect()
 }
 
 /// Compute the twist of each body with respect to the world frame, expressed in
@@ -189,7 +179,7 @@ pub fn compute_joint_twists(state: &MechanismState) -> HashMap<usize, Twist> {
 pub fn compute_twists_wrt_world(
     state: &MechanismState,
     bodies_to_root: &HashMap<usize, Transform3D>,
-    joint_twists: &HashMap<usize, Twist>,
+    joint_twists: &Vec<Twist>,
 ) -> HashMap<usize, Twist> {
     let mut twists: HashMap<usize, Twist> = HashMap::new();
     let rootid = 0;
@@ -199,7 +189,7 @@ pub fn compute_twists_wrt_world(
         let bodyid = jointid;
         let body_to_root = bodies_to_root.get(&bodyid).unwrap();
 
-        let joint_twist = joint_twists.get(&bodyid).unwrap();
+        let joint_twist = &joint_twists[bodyid - 1];
         let parent_twist = twists.get(&parentbodyid).unwrap();
 
         let body_twist = parent_twist + &joint_twist.transform(body_to_root);
