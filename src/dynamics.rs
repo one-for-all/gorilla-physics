@@ -302,7 +302,7 @@ pub fn dynamics_quantities(
 }
 
 /// Add the joint forces resulting from springs attached to prismatic joints
-pub fn addPrismaticJointSpringForce(
+pub fn add_prismatic_joint_spring_force(
     state: &MechanismState,
     tau: &Vec<JointTorque>,
 ) -> Vec<JointTorque> {
@@ -344,7 +344,7 @@ pub fn dynamics_continuous(
     ); // c(q, v) - τ_contact
 
     // Spring force from springs attached to prismatic joints
-    let tau = addPrismaticJointSpringForce(state, tau);
+    let tau = add_prismatic_joint_spring_force(state, tau);
 
     let vdot = dynamics_solve(&mass_matrix, &dynamics_bias, &tau.to_float_dvec());
 
@@ -391,7 +391,7 @@ pub fn dynamics_discrete(
     ); // c(q, v) - τ_contact
 
     // Spring force from springs attached to prismatic joints
-    let tau = addPrismaticJointSpringForce(state, tau);
+    let tau = add_prismatic_joint_spring_force(state, tau);
 
     let v_current = state.v.to_float_dvec();
     let v_update = dynamics_solve(
