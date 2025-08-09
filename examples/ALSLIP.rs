@@ -299,7 +299,7 @@ pub fn main() {
         // data1.push(degree);
         // data2.push(v[0].spatial().linear.z);
         // data1.push(energy);
-        let twist_leg = twists.get(&3).unwrap();
+        let twist_leg = &twists[3];
         let v_leg = twist_leg.linear + twist_leg.angular.cross(&pose_leg.translation);
         data5.push(v_leg.x);
         data6.push(pose_leg.translation.z);

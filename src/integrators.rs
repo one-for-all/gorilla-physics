@@ -65,13 +65,13 @@ pub fn ccd_velocity_stepping(
     loop {
         let (v_new, contacts) = dynamics_discrete(state, &tau, t_remain, expected_contact);
 
-        // TODO: twists can just be a Vec, instead of a map
         let joint_new_twists: Vec<Twist> = izip!(state.treejoints.iter(), v_new.iter())
             .map(|(joint, v)| Twist::new(&joint, v))
             .collect();
 
         // TODO: make bodies_to_root compute only once
         let bodies_to_root = compute_bodies_to_root(state);
+
         let new_twists = compute_twists_wrt_world(state, &bodies_to_root, &joint_new_twists);
 
         // Continuous collision detection (CCD) step
@@ -90,7 +90,7 @@ pub fn ccd_velocity_stepping(
                 match &collider.geometry {
                     CollisionGeometry::Sphere(sphere) => {
                         // compute linear velocity of the body center
-                        let twist = new_twists.get(bodyid).unwrap();
+                        let twist = &new_twists[*bodyid];
                         let center = sphere.center();
                         let v = twist.linear + twist.angular.cross(&center);
 

@@ -265,7 +265,7 @@ impl MechanismState {
         let twists = compute_twists_wrt_world(self, &bodies_to_root, &joint_twists);
         for (jointid, body) in izip!(self.treejointids.iter(), self.bodies.iter()) {
             let bodyid = jointid;
-            let twist = twists.get(bodyid).unwrap();
+            let twist = &twists[*bodyid];
             let body_to_root = bodies_to_root.get(bodyid).unwrap();
             let spatial_inertia = body.inertia.transform(&body_to_root);
 

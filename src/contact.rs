@@ -135,14 +135,14 @@ impl SpringContact {
 pub fn contact_dynamics(
     state: &mut MechanismState,
     bodies_to_root: &HashMap<usize, Transform3D>,
-    twists: &HashMap<usize, Twist>,
+    twists: &Vec<Twist>,
 ) -> HashMap<usize, Wrench> {
     let mut contact_wrenches = HashMap::new();
     for (jointid, body) in izip!(state.treejointids.iter(), state.bodies.iter_mut()) {
         let bodyid = jointid;
         let mut wrench = Wrench::zero("world");
         let body_to_root = bodies_to_root.get(bodyid).unwrap();
-        let twist = twists.get(bodyid).unwrap();
+        let twist = &twists[*bodyid];
 
         // Handle point contacts with halfspaces
         let contact_points = &body.contact_points;
@@ -244,10 +244,10 @@ pub fn contact_dynamics(
                             if collision_detector.gjk() {
                                 let (cp_a, cp_b) = collision_detector.epa();
 
-                                let body_twist = twists.get(jointid).unwrap();
+                                let body_twist = &twists[*jointid];
                                 let cp_a_vel = body_twist
                                     .point_velocity(&ContactPoint::new(WORLD_FRAME, cp_a));
-                                let next_body_twist = twists.get(other_jointid).unwrap();
+                                let next_body_twist = &twists[*other_jointid];
                                 let cp_b_vel = next_body_twist
                                     .point_velocity(&ContactPoint::new(WORLD_FRAME, cp_b));
                                 let velocity = cp_a_vel - cp_b_vel;

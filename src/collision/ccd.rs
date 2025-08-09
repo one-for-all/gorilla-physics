@@ -125,10 +125,11 @@ mod ccd_tests {
         assert!(max_penetration < 1e-8);
 
         // tangential speed
+        // TODO: make twists computation a contained function, or even a cached attribute of MechanismState
         let bodies_to_root = compute_bodies_to_root(&state);
         let joint_twists = compute_joint_twists(&state);
         let twists = compute_twists_wrt_world(&state, &bodies_to_root, &joint_twists);
-        let twist = twists.get(&1).unwrap();
+        let twist = &twists[1];
         let center = state.poses()[0].translation;
         let v = twist.linear + twist.angular.cross(&center);
         assert!(v.x > 1.0);

@@ -155,7 +155,7 @@ pub fn main() {
 
         let z_leg = pose_leg.translation.z;
 
-        let twist_body = twists.get(&1).unwrap();
+        let twist_body = &twists[1];
         let v_body = twist_body.linear + twist_body.angular.cross(&pose_body.translation);
 
         assert_close(v_body.z, v_z, 1e-3);
@@ -214,7 +214,7 @@ pub fn main() {
         // data4.push(pose_leg.translation.z);
 
         // data5.push(*q[1].float());
-        let twist_leg = twists.get(&2).unwrap();
+        let twist_leg = &twists[2];
         let v_leg = twist_leg.linear + twist_leg.angular.cross(&pose_leg.translation);
         data5.push(v_leg.x);
         data6.push(pose_leg.translation.z);

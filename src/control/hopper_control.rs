@@ -118,7 +118,7 @@ mod hopper_control_tests {
             let bodies_to_root = compute_bodies_to_root(&state);
             let joint_twists = compute_joint_twists(&state);
             let twists = compute_twists_wrt_world(&state, &bodies_to_root, &joint_twists);
-            let body_vz = twists.get(&3).unwrap().linear.z;
+            let body_vz = twists[3].linear.z;
 
             if prev_body_vz >= 0.0 && body_vz < 0.0 {
                 println!("peak!");
@@ -135,7 +135,7 @@ mod hopper_control_tests {
                 state.set_joint_q(2, JointPosition::Float(-0.42));
             }
 
-            let body_vx = twists.get(&3).unwrap().linear.x;
+            let body_vx = twists[3].linear.x;
             data1.push(body_vx);
 
             prev_body_vz = body_vz;
@@ -199,7 +199,7 @@ mod hopper_control_tests {
             let bodies_to_root = compute_bodies_to_root(&state);
             let joint_twists = compute_joint_twists(&state);
             let twists = compute_twists_wrt_world(&state, &bodies_to_root, &joint_twists);
-            let body_twist = twists.get(&3).unwrap();
+            let body_twist = &twists[3];
             let body_vel = body_twist.point_velocity(&ContactPoint::new(
                 WORLD_FRAME,
                 bodies_to_root.get(&3).unwrap().trans(),
@@ -210,7 +210,7 @@ mod hopper_control_tests {
             let poses = state.poses();
             let body_x = poses[2].translation.x;
             let leg_angle = poses[0].rotation.euler_angles().1;
-            let leg_angular_v = twists.get(&1).unwrap().angular.y;
+            let leg_angular_v = twists[1].angular.y;
 
             let target_leg_angle = {
                 let vx_d = -body_x.signum() * body_x.abs().scale(10.0).min(1.0);
@@ -228,7 +228,7 @@ mod hopper_control_tests {
             let bodies_to_root = compute_bodies_to_root(&state);
             let joint_twists = compute_joint_twists(&state);
             let twists = compute_twists_wrt_world(&state, &bodies_to_root, &joint_twists);
-            let body_twist = twists.get(&3).unwrap();
+            let body_twist = &twists[3];
 
             // body velocity of the body frame, expressed in world frame
             let body_vel = body_twist.point_velocity(&ContactPoint::new(
@@ -331,7 +331,7 @@ mod hopper_control_tests {
             // Foot placement
             if foot_z >= 0.0 {
                 // body velocity of the body frame, expressed in world frame
-                let body_twist = twists.get(&3).unwrap();
+                let body_twist = &twists[3];
                 let body_vel = body_twist.point_velocity(&ContactPoint::new(
                     WORLD_FRAME,
                     bodies_to_root.get(&3).unwrap().trans(),
@@ -340,7 +340,7 @@ mod hopper_control_tests {
 
                 let body_x = poses[2].translation.x;
                 let leg_angle = poses[0].rotation.euler_angles().1;
-                let leg_angular_v = twists.get(&1).unwrap().angular.y;
+                let leg_angular_v = twists[1].angular.y;
                 let w = l_foot_to_hip + spring_q;
 
                 let dvx_max = 0.2;
@@ -373,7 +373,7 @@ mod hopper_control_tests {
             // Servo attitude
             if foot_z < 0.0 {
                 let body_angle = poses[2].rotation.euler_angles().1;
-                let body_angular_v = twists.get(&3).unwrap().angular.y;
+                let body_angular_v = twists[3].angular.y;
                 torque_hip = 1200.0 * -body_angle + 60.0 * -body_angular_v;
             }
 
@@ -384,7 +384,7 @@ mod hopper_control_tests {
             let bodies_to_root = compute_bodies_to_root(&state);
             let joint_twists = compute_joint_twists(&state);
             let twists = compute_twists_wrt_world(&state, &bodies_to_root, &joint_twists);
-            let body_twist = twists.get(&3).unwrap();
+            let body_twist = &twists[3];
 
             // body velocity of the body frame, expressed in world frame
             let body_vel = body_twist.point_velocity(&ContactPoint::new(
