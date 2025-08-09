@@ -114,16 +114,20 @@ impl Twist {
         }
     }
 
-    /// Compute the velocity of the point that has this twist
-    /// TODO: Take a different struct than ContactPoint
-    pub fn point_velocity(&self, contact_point: &ContactPoint) -> Vector3<Float> {
+    /// Compute the velocity of the contact point that has this twist
+    pub fn contact_point_velocity(&self, contact_point: &ContactPoint) -> Vector3<Float> {
         if self.frame != contact_point.frame {
             panic!(
                 "Twist frame {} is not equal to contact point frame {}!",
                 self.frame, contact_point.frame
             );
         }
-        self.linear + self.angular.cross(&contact_point.location)
+        self.point_velocity(&contact_point.location)
+    }
+
+    /// Compute the velocity of the point that has this twist
+    pub fn point_velocity(&self, point: &Vector3<Float>) -> Vector3<Float> {
+        self.linear + self.angular.cross(point)
     }
 }
 

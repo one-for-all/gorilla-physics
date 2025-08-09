@@ -200,7 +200,7 @@ mod hopper_control_tests {
             let joint_twists = compute_joint_twists(&state);
             let twists = compute_twists_wrt_world(&state, &bodies_to_root, &joint_twists);
             let body_twist = &twists[3];
-            let body_vel = body_twist.point_velocity(&ContactPoint::new(
+            let body_vel = body_twist.contact_point_velocity(&ContactPoint::new(
                 WORLD_FRAME,
                 bodies_to_root.get(&3).unwrap().trans(),
             ));
@@ -231,7 +231,7 @@ mod hopper_control_tests {
             let body_twist = &twists[3];
 
             // body velocity of the body frame, expressed in world frame
-            let body_vel = body_twist.point_velocity(&ContactPoint::new(
+            let body_vel = body_twist.contact_point_velocity(&ContactPoint::new(
                 WORLD_FRAME,
                 bodies_to_root.get(&3).unwrap().trans(),
             ));
@@ -332,7 +332,7 @@ mod hopper_control_tests {
             if foot_z >= 0.0 {
                 // body velocity of the body frame, expressed in world frame
                 let body_twist = &twists[3];
-                let body_vel = body_twist.point_velocity(&ContactPoint::new(
+                let body_vel = body_twist.contact_point_velocity(&ContactPoint::new(
                     WORLD_FRAME,
                     bodies_to_root.get(&3).unwrap().trans(),
                 ));
@@ -387,7 +387,7 @@ mod hopper_control_tests {
             let body_twist = &twists[3];
 
             // body velocity of the body frame, expressed in world frame
-            let body_vel = body_twist.point_velocity(&ContactPoint::new(
+            let body_vel = body_twist.contact_point_velocity(&ContactPoint::new(
                 WORLD_FRAME,
                 bodies_to_root.get(&3).unwrap().trans(),
             ));

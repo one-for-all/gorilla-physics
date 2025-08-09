@@ -148,7 +148,7 @@ pub fn contact_dynamics(
         let contact_points = &body.contact_points;
         for contact_point in contact_points {
             let contact_point = contact_point.transform(body_to_root);
-            let velocity = twist.point_velocity(&contact_point);
+            let velocity = twist.contact_point_velocity(&contact_point);
             for halfspace in state.halfspaces.iter() {
                 if !contact_point.inside_halfspace(&halfspace) {
                     continue;
@@ -246,10 +246,10 @@ pub fn contact_dynamics(
 
                                 let body_twist = &twists[*jointid];
                                 let cp_a_vel = body_twist
-                                    .point_velocity(&ContactPoint::new(WORLD_FRAME, cp_a));
+                                    .contact_point_velocity(&ContactPoint::new(WORLD_FRAME, cp_a));
                                 let next_body_twist = &twists[*other_jointid];
                                 let cp_b_vel = next_body_twist
-                                    .point_velocity(&ContactPoint::new(WORLD_FRAME, cp_b));
+                                    .contact_point_velocity(&ContactPoint::new(WORLD_FRAME, cp_b));
                                 let velocity = cp_a_vel - cp_b_vel;
 
                                 let f_b_to_a =

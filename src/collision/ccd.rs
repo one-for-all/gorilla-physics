@@ -131,7 +131,7 @@ mod ccd_tests {
         let twists = compute_twists_wrt_world(&state, &bodies_to_root, &joint_twists);
         let twist = &twists[1];
         let center = state.poses()[0].translation;
-        let v = twist.linear + twist.angular.cross(&center);
+        let v = twist.point_velocity(&center);
         assert!(v.x > 1.0);
         assert_close!(v.y, 0., 1e-5);
     }
