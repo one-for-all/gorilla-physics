@@ -25,7 +25,6 @@ use crate::integrators::runge_kutta_4;
 use crate::integrators::semi_implicit_euler;
 use crate::integrators::velocity_stepping;
 use crate::integrators::Integrator;
-use crate::joint::float_dvec_to_velocity_vec;
 use crate::joint::JointTorque;
 use crate::joint::JointVelocity;
 use crate::joint::ToFloatDVec;

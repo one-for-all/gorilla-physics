@@ -3,10 +3,7 @@ use crate::{
     contact::contact_dynamics,
     control::energy_control::spring_force,
     inertia::compute_inertias,
-    joint::{
-        float_dvec_to_velocity_vec, Joint, JointAcceleration, JointTorque, JointVelocity,
-        ToFloatDVec,
-    },
+    joint::{FromFloatDVec, Joint, JointAcceleration, JointTorque, JointVelocity, ToFloatDVec},
     mechanism::mass_matrix,
     rigid_body::CollisionGeometry,
     spatial::{
@@ -443,7 +440,10 @@ pub fn dynamics_discrete(
     let v_new = solve_constraint_and_contact(&constraint_Js, &contact_Js, &v_free, mass_matrix);
 
     // Convert from raw floats to joint velocity types
-    (float_dvec_to_velocity_vec(&v_new, &state.v), contacts)
+    (
+        Vec::<JointVelocity>::from_float_dvec(&v_new, &state.v),
+        contacts,
+    )
 }
 
 /// Build the Jacobian blocks that transform generalized v to

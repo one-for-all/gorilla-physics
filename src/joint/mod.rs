@@ -59,6 +59,11 @@ pub trait ToFloatDVec {
     fn to_float_dvec(&self) -> DVector<Float>;
 }
 
+pub trait FromFloatDVec {
+    /// Create a Vec<enum> from float DVector, where v_ref is used to infer each specific enum type
+    fn from_float_dvec(v_new: &DVector<Float>, v_ref: &Self) -> Self;
+}
+
 #[derive(Clone, Debug)]
 pub enum JointPosition {
     Float(Float), // Single float-valued joint position value
@@ -136,29 +141,28 @@ impl JointVelocity {
     }
 }
 
-/// Convert from raw floats to joint velocity types
-/// TODO: make it a trait
-pub fn float_dvec_to_velocity_vec(
-    v_new: &DVector<Float>,
-    v: &Vec<JointVelocity>,
-) -> Vec<JointVelocity> {
-    let mut i = 0;
-    v.iter()
-        .map(|v| match v {
-            JointVelocity::Float(_) => {
-                let v_new = v_new[i];
-                i += 1;
-                JointVelocity::Float(v_new)
-            }
-            JointVelocity::Spatial(_) => {
-                let angular = vector![v_new[i], v_new[i + 1], v_new[i + 2]];
-                let linear = vector![v_new[i + 3], v_new[i + 4], v_new[i + 5]];
-                i += 6;
-                JointVelocity::Spatial(SpatialVector { angular, linear })
-            }
-            JointVelocity::None => JointVelocity::None,
-        })
-        .collect()
+impl FromFloatDVec for Vec<JointVelocity> {
+    /// Convert from raw floats to joint velocity types
+    fn from_float_dvec(v_new: &DVector<Float>, v_ref: &Vec<JointVelocity>) -> Self {
+        let mut i = 0;
+        v_ref
+            .iter()
+            .map(|v| match v {
+                JointVelocity::Float(_) => {
+                    let v_new = v_new[i];
+                    i += 1;
+                    JointVelocity::Float(v_new)
+                }
+                JointVelocity::Spatial(_) => {
+                    let angular = vector![v_new[i], v_new[i + 1], v_new[i + 2]];
+                    let linear = vector![v_new[i + 3], v_new[i + 4], v_new[i + 5]];
+                    i += 6;
+                    JointVelocity::Spatial(SpatialVector { angular, linear })
+                }
+                JointVelocity::None => JointVelocity::None,
+            })
+            .collect()
+    }
 }
 
 impl ToFloatDVec for Vec<JointVelocity> {
