@@ -1,11 +1,18 @@
+use std::collections::HashMap;
+
 use itertools::izip;
-use na::UnitQuaternion;
+use na::{UnitQuaternion, UnitVector3, Vector3};
 
 use crate::{
     dynamics::{dynamics_continuous, dynamics_discrete},
     joint::{JointAcceleration, JointPosition, JointTorque, JointVelocity},
     mechanism::MechanismState,
-    spatial::pose::Pose,
+    rigid_body::CollisionGeometry,
+    spatial::{
+        pose::Pose,
+        transform::compute_bodies_to_root,
+        twist::{compute_twists_wrt_world, Twist},
+    },
     types::Float,
     util::quaternion_derivative,
 };
@@ -15,6 +22,7 @@ pub enum Integrator {
     RungeKutta2,
     RungeKutta4,
     VelocityStepping,
+    CCDVelocityStepping,
 }
 
 pub fn semi_implicit_euler(
@@ -39,9 +47,115 @@ pub fn velocity_stepping(
     dt: Float,
     tau: &Vec<JointTorque>,
 ) -> (Vec<JointPosition>, Vec<JointVelocity>) {
-    let v_next = dynamics_discrete(state, &tau, dt);
+    let (v_next, _contacts) = dynamics_discrete(state, &tau, dt, None);
 
     (compute_new_q(&state.q, &v_next, dt), v_next)
+}
+
+pub fn ccd_velocity_stepping(
+    state: &mut MechanismState,
+    dt: Float,
+    tau: &Vec<JointTorque>,
+) -> (Vec<JointPosition>, Vec<JointVelocity>) {
+    let mut t_remain = dt;
+    // expected contact from CCD step where time progressed to when this contact would happen
+    let mut expected_contact: Option<(UnitVector3<Float>, Vector3<Float>, usize, Option<usize>)> =
+        None;
+
+    loop {
+        let (v_new, contacts) = dynamics_discrete(state, &tau, t_remain, expected_contact);
+
+        // TODO: twists can just be a Vec, instead of a map
+        let mut joint_new_twists: HashMap<usize, Twist> = HashMap::new();
+        for (jointid, joint, v) in izip!(
+            state.treejointids.iter(),
+            state.treejoints.iter(),
+            v_new.iter()
+        ) {
+            joint_new_twists.insert(*jointid, Twist::new(joint, v));
+        }
+
+        // TODO: make bodies_to_root compute only once
+        let bodies_to_root = compute_bodies_to_root(state);
+        let new_twists = compute_twists_wrt_world(state, &bodies_to_root, &joint_new_twists);
+
+        // Continuous collision detection (CCD) step
+        let mut earliest_collision_t = Float::INFINITY;
+        let mut earliest_collision: Option<(
+            UnitVector3<Float>,
+            Vector3<Float>,
+            usize,
+            Option<usize>,
+        )> = None;
+        for (bodyid, body) in izip!(state.treejointids.iter(), state.bodies.iter()) {
+            if let Some(collider) = &body.collider {
+                if !collider.enabled {
+                    continue;
+                }
+                match &collider.geometry {
+                    CollisionGeometry::Sphere(sphere) => {
+                        // compute linear velocity of the body center
+                        let twist = new_twists.get(bodyid).unwrap();
+                        let center = sphere.center();
+                        let v = twist.linear + twist.angular.cross(&center);
+
+                        // TODO: need to take into account that different halfspaces can give different constraints
+                        // No check if this body pair's contact has already been accounted for in contact contraints
+                        if contacts
+                            .iter()
+                            .any(|(_, _, contact_bodyid, contact_other_bodyid)| {
+                                contact_bodyid == bodyid && contact_other_bodyid.is_none()
+                            })
+                        {
+                            continue;
+                        }
+
+                        for halfspace in &state.halfspaces {
+                            let n = halfspace.normal;
+                            let v_dot_n = v.dot(&n);
+
+                            // moving in parallel, early exit to avoid division by zero
+                            if v_dot_n == 0. {
+                                continue;
+                            }
+
+                            // if already in contact, should have already been handled in discrete collision checking step
+                            let distance = sphere.distance_halfspace(halfspace);
+                            if distance <= 0. {
+                                continue;
+                            }
+
+                            // compute collision time
+                            let t = distance / -v_dot_n;
+                            if t < earliest_collision_t && t > 0. {
+                                earliest_collision_t = t;
+
+                                // compute expected contact point
+                                let contact_point =
+                                    sphere.center() + t * v - n.scale(sphere.radius);
+                                earliest_collision = Some((n, contact_point, *bodyid, None))
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        expected_contact = earliest_collision;
+
+        let q_new;
+        if earliest_collision_t < t_remain {
+            q_new = compute_new_q(&state.q, &v_new, earliest_collision_t);
+            state.update(&q_new, &v_new);
+            t_remain -= earliest_collision_t;
+        } else {
+            q_new = compute_new_q(&state.q, &v_new, t_remain);
+            state.update(&q_new, &v_new);
+
+            return (q_new, v_new);
+        }
+    }
 }
 
 pub fn runge_kutta_2(
@@ -163,7 +277,7 @@ fn semi_implicit_euler_step(
 
 /// Compute the next q from current q and updated v
 ///    q(k+1) = q(k) + dt * v(k+1)
-fn compute_new_q(
+pub fn compute_new_q(
     current_q: &Vec<JointPosition>,
     new_v: &Vec<JointVelocity>,
     dt: Float,

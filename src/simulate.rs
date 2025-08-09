@@ -1,11 +1,38 @@
+use std::collections::HashMap;
+use std::f64::INFINITY;
+
+use itertools::izip;
+use na::DMatrix;
+use na::Matrix3xX;
+use na::Matrix6xX;
+use na::UnitVector3;
+use na::Vector3;
+
+use crate::dynamics::addPrismaticJointSpringForce;
+use crate::dynamics::build_constraint_jacobians;
+use crate::dynamics::build_jacobian_blocks;
+use crate::dynamics::collision_detection;
+use crate::dynamics::compose_contact_jacobian;
+use crate::dynamics::dynamics_bias;
+use crate::dynamics::dynamics_quantities;
+use crate::dynamics::dynamics_solve;
+use crate::dynamics::solve_constraint_and_contact;
+use crate::flog;
+use crate::integrators::ccd_velocity_stepping;
+use crate::integrators::compute_new_q;
 use crate::integrators::runge_kutta_2;
 use crate::integrators::runge_kutta_4;
 use crate::integrators::semi_implicit_euler;
 use crate::integrators::velocity_stepping;
 use crate::integrators::Integrator;
+use crate::joint::float_dvec_to_velocity_vec;
 use crate::joint::JointTorque;
 use crate::joint::JointVelocity;
+use crate::joint::ToFloatDVec;
+use crate::rigid_body::CollisionGeometry;
 use crate::spatial::spatial_vector::SpatialVector;
+use crate::spatial::twist::compute_twists_wrt_world;
+use crate::spatial::twist::Twist;
 use crate::{joint::JointPosition, mechanism::MechanismState, types::Float};
 pub struct DynamicsResult {}
 
@@ -46,29 +73,39 @@ pub fn step(
         }
     };
 
-    let (new_q, new_v) = {
-        match integrator {
-            Integrator::SemiImplicitEuler => semi_implicit_euler(state, dt, &tau),
-            Integrator::RungeKutta2 => {
-                assert!(
-                    !state.has_spring_contacts(),
-                    "Cannot use Runge-Kutta on state with spring contacts"
-                );
-                runge_kutta_2(state, dt, &tau)
-            }
-            Integrator::RungeKutta4 => {
-                assert!(
-                    !state.has_spring_contacts(),
-                    "Cannot use Runge-Kutta on state with spring contacts"
-                );
-                runge_kutta_4(state, dt, &tau)
-            }
-            Integrator::VelocityStepping => velocity_stepping(state, dt, &tau),
+    match integrator {
+        Integrator::SemiImplicitEuler => {
+            let (new_q, new_v) = semi_implicit_euler(state, dt, &tau);
+            state.update(&new_q, &new_v);
+            (new_q, new_v)
         }
-    };
-
-    state.update(&new_q, &new_v);
-    (new_q, new_v)
+        Integrator::RungeKutta2 => {
+            assert!(
+                !state.has_spring_contacts(),
+                "Cannot use Runge-Kutta on state with spring contacts"
+            );
+            let (new_q, new_v) = runge_kutta_2(state, dt, &tau);
+            state.update(&new_q, &new_v);
+            (new_q, new_v)
+        }
+        Integrator::RungeKutta4 => {
+            assert!(
+                !state.has_spring_contacts(),
+                "Cannot use Runge-Kutta on state with spring contacts"
+            );
+            let (new_q, new_v) = runge_kutta_4(state, dt, &tau);
+            state.update(&new_q, &new_v);
+            (new_q, new_v)
+        }
+        Integrator::VelocityStepping => {
+            let (new_q, new_v) = velocity_stepping(state, dt, &tau);
+            state.update(&new_q, &new_v);
+            (new_q, new_v)
+        }
+        Integrator::CCDVelocityStepping => {
+            return ccd_velocity_stepping(state, dt, &tau);
+        }
+    }
 }
 
 /// Simulate the mechanism state from 0 to final_time with a time step of dt.

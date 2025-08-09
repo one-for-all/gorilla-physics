@@ -1051,7 +1051,8 @@ export class Simulator {
     // );
 
     let poses = this.simulator.poses();
-    this.updateSpherePose(poses);
+    this.setPose("sphere1", poses.subarray(0, 6));
+    this.setPose("sphere2", poses.subarray(6, 12));
 
     // this.updatePusher(poses);
     // this.updateMockNavbot(poses);
@@ -1064,6 +1065,6 @@ export class Simulator {
     // this.updateCube(poses);
     // this.updatePusher(poses);
 
-    requestAnimationFrame((t) => this.run(t));
+    requestAnimationFrame((t) => this.run(t + 1));
   }
 }

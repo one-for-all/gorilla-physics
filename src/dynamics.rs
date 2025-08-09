@@ -3,7 +3,10 @@ use crate::{
     contact::contact_dynamics,
     control::energy_control::spring_force,
     inertia::compute_inertias,
-    joint::{Joint, JointAcceleration, JointTorque, JointVelocity, ToFloatDVec},
+    joint::{
+        float_dvec_to_velocity_vec, Joint, JointAcceleration, JointTorque, JointVelocity,
+        ToFloatDVec,
+    },
     mechanism::mass_matrix,
     rigid_body::CollisionGeometry,
     spatial::{
@@ -271,7 +274,7 @@ pub fn dynamics_solve(
 
 /// Compute the dynamic quantities necessary for solving both the continuous and
 /// discrete version of the dynamics problem
-fn dynamics_quantities(
+pub fn dynamics_quantities(
     state: &mut MechanismState,
 ) -> (
     HashMap<usize, Transform3D>,
@@ -302,7 +305,7 @@ fn dynamics_quantities(
 }
 
 /// Add the joint forces resulting from springs attached to prismatic joints
-fn addPrismaticJointSpringForce(
+pub fn addPrismaticJointSpringForce(
     state: &MechanismState,
     tau: &Vec<JointTorque>,
 ) -> Vec<JointTorque> {
@@ -375,7 +378,11 @@ pub fn dynamics_discrete(
     state: &mut MechanismState,
     tau: &Vec<JointTorque>,
     dt: Float,
-) -> Vec<JointVelocity> {
+    expected_contact: Option<(UnitVector3<Float>, Vector3<Float>, usize, Option<usize>)>,
+) -> (
+    Vec<JointVelocity>,
+    Vec<(UnitVector3<Float>, Vector3<Float>, usize, Option<usize>)>,
+) {
     let (bodies_to_root, joint_twists, twists, mass_matrix) = dynamics_quantities(state);
 
     let dynamics_bias = dynamics_bias(
@@ -406,7 +413,16 @@ pub fn dynamics_discrete(
         build_constraint_jacobians(&state, &jacobian_blocks, &bodies_to_root, v_free.len());
 
     // contacts is Vec of (contact normal, contact point, bodyid, other_bodyid)
-    let contacts = collision_detection(state, &bodies_to_root);
+    let mut contacts = collision_detection(state, &bodies_to_root);
+    // remove the contact that has already been accounted for in expected_contact.
+    // TODO: note that this is not always valid, e.g. when there are multiple contact points between two bodies.
+    if let Some(expected_contact) = expected_contact {
+        let (_, _, expected_bodyid, expected_other_bodyid) = expected_contact;
+        contacts.retain(|(_, _, bodyid, other_bodyid)| {
+            !(*bodyid == expected_bodyid && *other_bodyid == expected_other_bodyid)
+        });
+        contacts.push(expected_contact);
+    }
 
     // Vec of Jacobian rows, which will be assembled into the Jacobian
     let contact_Js: Vec<Matrix3xX<Float>> = contacts
@@ -427,25 +443,7 @@ pub fn dynamics_discrete(
     let v_new = solve_constraint_and_contact(&constraint_Js, &contact_Js, &v_free, mass_matrix);
 
     // Convert from raw floats to joint velocity types
-    let mut i = 0;
-    state
-        .v
-        .iter()
-        .map(|v| match v {
-            JointVelocity::Float(_) => {
-                let v_new = v_new[i];
-                i += 1;
-                JointVelocity::Float(v_new)
-            }
-            JointVelocity::Spatial(_) => {
-                let angular = vector![v_new[i], v_new[i + 1], v_new[i + 2]];
-                let linear = vector![v_new[i + 3], v_new[i + 4], v_new[i + 5]];
-                i += 6;
-                JointVelocity::Spatial(SpatialVector { angular, linear })
-            }
-            JointVelocity::None => JointVelocity::None,
-        })
-        .collect()
+    (float_dvec_to_velocity_vec(&v_new, &state.v), contacts)
 }
 
 /// Build the Jacobian blocks that transform generalized v to
@@ -453,7 +451,7 @@ pub fn dynamics_discrete(
 /// Each joint gives a Matrix6xX, ordered by jointid, except for fixed joint, /// because it has no velocity.
 /// Ref: Contact and Friction Simulation for Computer Graphics, 2022,
 ///      Section 1.5 The Coulomb Friction Law
-fn build_jacobian_blocks(
+pub fn build_jacobian_blocks(
     state: &MechanismState,
     bodies_to_root: &HashMap<usize, Transform3D>,
 ) -> Vec<Matrix6xX<Float>> {
@@ -492,7 +490,7 @@ fn build_jacobian_blocks(
 }
 
 /// Build, for each constraint, a jacobian that transforms joint velocity to /// constraint frame velocity
-fn build_constraint_jacobians(
+pub fn build_constraint_jacobians(
     state: &MechanismState,
     blocks: &Vec<Matrix6xX<Float>>,
     bodies_to_root: &HashMap<usize, Transform3D>,
@@ -563,7 +561,7 @@ fn build_constraint_jacobians(
 }
 
 /// Performs collision detection and returns a vec of (contact normal, contact point, bodyid, other_bodyid)
-fn collision_detection(
+pub fn collision_detection(
     state: &mut MechanismState,
     bodies_to_root: &HashMap<usize, Transform3D>,
 ) -> Vec<(UnitVector3<Float>, Vector3<Float>, usize, Option<usize>)> {
@@ -667,7 +665,7 @@ fn collision_detection(
     contacts
 }
 
-fn solve_constraint_and_contact(
+pub fn solve_constraint_and_contact(
     constraint_Js: &Vec<DMatrix<Float>>,
     contact_Js: &Vec<Matrix3xX<Float>>,
     v_free: &DVector<Float>,

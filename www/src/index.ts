@@ -6,6 +6,7 @@ import {
   createPusher,
   createFluid2D,
   createSphere,
+  createTwoSphere,
 } from "gorilla-physics";
 import { Simulator } from "./Simulator";
 import { FloatArray } from "./type";
@@ -36,7 +37,7 @@ import("gorilla-physics").then((gorilla) => {
   // });
 
   let radius = 0.1;
-  createSphere(1.0, radius).then((state) => {
+  createTwoSphere(1.0, radius).then((state) => {
     state.addHalfSpace(normal as Float64Array, h_ground);
 
     let controller = gorilla.createNullController();
@@ -48,7 +49,8 @@ import("gorilla-physics").then((gorilla) => {
     // let controller = gorilla.createNavbotController(1.0 / 600.0);
     let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
     let simulator = new Simulator(interfaceSimulator);
-    simulator.addSphere("sphere", 0xff0000, radius);
+    simulator.addSphere("sphere1", 0xff0000, radius);
+    simulator.addSphere("sphere2", 0x00ff00, radius);
     // simulator.addNavbot();
     // simulator.updateNavbot();
 
@@ -92,11 +94,11 @@ import("gorilla-physics").then((gorilla) => {
 
     // Important: Set initial camera position
     let cameraPosition = {
-      eye: { x: 0.0, y: 2.0, z: 0.0 },
+      eye: { x: 0.0, y: -2.0, z: 1.0 },
       target: { x: 0.0, y: 0, z: 0.0 },
     };
     simulator.graphics.lookAt(cameraPosition);
 
-    simulator.run();
+    simulator.run(0);
   });
 });

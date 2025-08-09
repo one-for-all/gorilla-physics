@@ -832,3 +832,19 @@ pub fn build_sphere(mass: Float, radius: Float) -> MechanismState {
 
     MechanismState::new(treejoints, bodies)
 }
+
+pub fn build_n_spheres(mass: Float, radius: Float, n: usize) -> MechanismState {
+    let mut bodies = vec![];
+    let mut treejoints = vec![];
+
+    for i in 1..=n {
+        let binding = format!("sphere {}", i);
+        let frame = binding.as_str();
+        let body = RigidBody::new_sphere(mass, radius, frame);
+        let body_to_world = Transform3D::identity(frame, WORLD_FRAME);
+        bodies.push(body);
+        treejoints.push(Joint::FloatingJoint(FloatingJoint::new(body_to_world)));
+    }
+
+    MechanismState::new(treejoints, bodies)
+}

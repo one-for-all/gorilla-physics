@@ -1,6 +1,7 @@
 use crate::collision::sphere::Sphere;
 use crate::contact::ContactPoint;
 use crate::control::ControlInput;
+use crate::helpers::build_n_spheres;
 use crate::helpers::build_sphere;
 use crate::integrators::Integrator;
 use crate::joint::floating::FloatingJoint;
@@ -100,7 +101,7 @@ impl InterfaceSimulator {
                 &mut (self.state).inner,
                 dt / (n_substep as Float),
                 &torque,
-                &Integrator::VelocityStepping,
+                &Integrator::CCDVelocityStepping,
             );
             q = _q;
         }
@@ -436,6 +437,38 @@ pub async fn createSphere(mass: Float, radius: Float) -> InterfaceMechanismState
         linear: vector![0.0, 0.0, -5.0],
     });
     state.set_joint_v(1, v_init);
+
+    InterfaceMechanismState { inner: state }
+}
+
+#[wasm_bindgen]
+pub async fn createTwoSphere(mass: Float, radius: Float) -> InterfaceMechanismState {
+    let mut state = build_n_spheres(mass, radius, 2);
+
+    let q_init = vec![
+        JointPosition::Pose(Pose {
+            rotation: UnitQuaternion::from_axis_angle(&Vector3::x_axis(), 0.0),
+            translation: vector![0.0, 0.0, 10. * radius],
+        }),
+        JointPosition::Pose(Pose {
+            rotation: UnitQuaternion::identity(),
+            translation: vector![0.0, 1.0, 10. * radius],
+        }),
+    ];
+    state.update_q(&q_init);
+
+    let v_init = JointVelocity::Spatial(SpatialVector {
+        angular: vector![0.0, 0.0, 0.0],
+        linear: vector![0.0, 0.0, -5.0],
+    });
+    state.set_joint_v(1, v_init);
+    state.set_joint_v(
+        2,
+        JointVelocity::Spatial(SpatialVector {
+            angular: vector![0.0, 0.0, 0.0],
+            linear: vector![0.0, 0.0, -5.0],
+        }),
+    );
 
     InterfaceMechanismState { inner: state }
 }

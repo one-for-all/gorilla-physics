@@ -32,6 +32,11 @@ impl Sphere {
         }
         None
     }
+
+    pub fn distance_halfspace(&self, halfspace: &HalfSpace) -> Float {
+        let center = self.center();
+        (center - halfspace.point).dot(&halfspace.normal) - self.radius
+    }
 }
 
 #[cfg(test)]

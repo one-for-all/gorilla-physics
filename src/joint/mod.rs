@@ -2,7 +2,7 @@ use std::ops::{Add, Div, Mul};
 
 use fixed::FixedJoint;
 use floating::FloatingJoint;
-use na::{dvector, DVector, Vector3};
+use na::{dvector, vector, DVector, Vector3};
 use prismatic::PrismaticJoint;
 use revolute::RevoluteJoint;
 
@@ -134,6 +134,31 @@ impl JointVelocity {
             _ => panic!("JointVelocity is not a Twist"),
         }
     }
+}
+
+/// Convert from raw floats to joint velocity types
+/// TODO: make it a trait
+pub fn float_dvec_to_velocity_vec(
+    v_new: &DVector<Float>,
+    v: &Vec<JointVelocity>,
+) -> Vec<JointVelocity> {
+    let mut i = 0;
+    v.iter()
+        .map(|v| match v {
+            JointVelocity::Float(_) => {
+                let v_new = v_new[i];
+                i += 1;
+                JointVelocity::Float(v_new)
+            }
+            JointVelocity::Spatial(_) => {
+                let angular = vector![v_new[i], v_new[i + 1], v_new[i + 2]];
+                let linear = vector![v_new[i + 3], v_new[i + 4], v_new[i + 5]];
+                i += 6;
+                JointVelocity::Spatial(SpatialVector { angular, linear })
+            }
+            JointVelocity::None => JointVelocity::None,
+        })
+        .collect()
 }
 
 impl ToFloatDVec for Vec<JointVelocity> {
