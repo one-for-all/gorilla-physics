@@ -68,8 +68,8 @@ mod SLIP_control_tests {
     use na::{vector, UnitVector3, Vector3};
 
     use crate::{
-        contact::HalfSpace, helpers::build_SLIP, integrators::Integrator, simulate::step,
-        util::assert_close,
+        assert_close, contact::HalfSpace, helpers::build_SLIP, integrators::Integrator,
+        simulate::step,
     };
 
     use super::*;
@@ -126,7 +126,7 @@ mod SLIP_control_tests {
 
         // Assert
         let x = state.q[0].pose().translation.x;
-        assert_close(x.abs(), x_target, 1e-3);
+        assert_close!(x.abs(), x_target, 1e-3);
     }
 
     #[test]
@@ -183,9 +183,9 @@ mod SLIP_control_tests {
         }
 
         // Assert
-        assert_close(v_x[v_x.len() - 1], v_x_target, 1e-3);
-        assert_close(v_x[v_x.len() - 2], v_x_target, 1e-3);
-        assert_close(v_x[v_x.len() - 3], v_x_target, 1e-3);
+        assert_close!(v_x[v_x.len() - 1], v_x_target, 1e-3);
+        assert_close!(v_x[v_x.len() - 2], v_x_target, 1e-3);
+        assert_close!(v_x[v_x.len() - 3], v_x_target, 1e-3);
     }
 }
 

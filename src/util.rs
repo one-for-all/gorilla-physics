@@ -128,10 +128,6 @@ macro_rules! flog {
     };
 }
 
-pub fn assert_close(a: Float, b: Float, tol: Float) {
-    assert!((a - b).abs() < tol, "{} != {}", a, b);
-}
-
 /// Read a file into a string
 pub fn read_file(file_path: &str) -> String {
     let file = File::open(file_path).expect(&format!("{} should exist", file_path));

@@ -397,7 +397,6 @@ mod contact_tests {
         rigid_body::RigidBody,
         simulate::step,
         spatial::pose::Pose,
-        util::assert_close,
         GRAVITY,
     };
     use na::{dvector, vector, zero, Isometry3, Matrix3, UnitQuaternion};
@@ -476,7 +475,7 @@ mod contact_tests {
 
         // Assert
         let q_final = qs[qs.len() - 1][0].pose();
-        assert_close(q_final.translation.z, h_ground + l / 2.0, 1e-2);
+        assert_close!(q_final.translation.z, h_ground + l / 2.0, 1e-2);
     }
 
     #[test]
@@ -561,11 +560,11 @@ mod contact_tests {
 
         // Assert
         let q_final = qs[qs.len() - 1][0].pose();
-        assert_close(q_final.translation.z, h_ground + l / 2.0, 1e-2);
+        assert_close!(q_final.translation.z, h_ground + l / 2.0, 1e-2);
 
         let v_final = vs[vs.len() - 1][0].spatial();
-        assert_close(v_final.linear.norm(), 0.0, 5e-3);
-        assert_close(v_final.angular.norm(), 0.0, 1e-2);
+        assert_close!(v_final.linear.norm(), 0.0, 5e-3);
+        assert_close!(v_final.angular.norm(), 0.0, 1e-2);
     }
 
     #[test]
@@ -1182,7 +1181,7 @@ mod contact_tests {
         let q_final = &q[q.len() - 1][0];
         let pose_body = q_final.pose();
         // rod fall to the ground
-        assert_close(pose_body.translation.z, h_ground, 1e-2);
+        assert_close!(pose_body.translation.z, h_ground, 1e-2);
 
         let rotation_to_horizontal =
             pose_body
@@ -1192,7 +1191,7 @@ mod contact_tests {
                     PI / 2.0,
                 ));
         // rod lying flat on the ground
-        assert_close(rotation_to_horizontal.angle(), 0.0, 1e-5);
+        assert_close!(rotation_to_horizontal.angle(), 0.0, 1e-5);
 
         let v_final = &v[v.len() - 1][0];
         let v_body = v_final.spatial();

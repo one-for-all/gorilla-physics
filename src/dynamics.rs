@@ -871,7 +871,6 @@ mod dynamics_tests {
             JointPosition, ToJointTorqueVec,
         },
         simulate::simulate,
-        util::assert_close,
         WORLD_FRAME,
     };
     use na::{dvector, vector, Isometry3, Matrix3};
@@ -1192,7 +1191,7 @@ mod dynamics_tests {
         let x_A = pose_A.translation.x;
         let x_B = pose_B.translation.x;
         let x_midpoint = (x_A + x_B) / 2.0;
-        assert_close(x_midpoint, l_init / 2.0, 1e-5);
+        assert_close!(x_midpoint, l_init / 2.0, 1e-5);
         assert!(x_A > 0.0);
         assert!(x_B < l_init);
     }

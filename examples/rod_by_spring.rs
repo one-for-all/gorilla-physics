@@ -1,4 +1,5 @@
 use gorilla_physics::{
+    assert_close,
     contact::{ContactPoint, HalfSpace},
     control::{Controller, NullController},
     inertia::SpatialInertia,
@@ -18,7 +19,6 @@ use gorilla_physics::{
         twist::{compute_joint_twists, compute_twists_wrt_world},
     },
     types::Float,
-    util::assert_close,
     WORLD_FRAME,
 };
 use nalgebra::{vector, Isometry3, Matrix3, UnitQuaternion, Vector3};
@@ -159,7 +159,7 @@ pub fn main() {
         let twist_body = &twists[1];
         let v_body = twist_body.linear + twist_body.angular.cross(&pose_body.translation);
 
-        assert_close(v_body.z, v_z, 1e-3);
+        assert_close!(v_body.z, v_z, 1e-3);
 
         if prev_z_leg > h_ground && z_leg <= h_ground {
             println!("\n===================\ncontact");
