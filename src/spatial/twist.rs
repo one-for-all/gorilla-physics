@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ops::Add};
+use std::ops::Add;
 
 use itertools::izip;
 use na::{Isometry3, Matrix6};

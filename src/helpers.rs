@@ -4,7 +4,6 @@ use crate::contact::ContactPoint;
 use crate::contact::SpringContact;
 use crate::joint::floating::FloatingJoint;
 use crate::joint::prismatic::JointSpring;
-use crate::rigid_body::Collider;
 use crate::PI;
 use crate::WORLD_FRAME;
 use crate::{

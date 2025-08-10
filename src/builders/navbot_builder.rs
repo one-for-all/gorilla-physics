@@ -2,14 +2,10 @@ use na::{vector, Isometry3, Matrix3, Translation3, UnitQuaternion, Vector3};
 
 use crate::{
     collision::{mesh::Mesh, sphere::Sphere},
-    flog,
     inertia::SpatialInertia,
     joint::{
-        constraint_revolute::RevoluteConstraintJoint,
-        cylindrical_constraint::{Constraint, CylindricalConstraintJoint},
-        floating::FloatingJoint,
-        revolute::RevoluteJoint,
-        Joint,
+        constraint_revolute::RevoluteConstraintJoint, cylindrical_constraint::Constraint,
+        floating::FloatingJoint, revolute::RevoluteJoint, Joint,
     },
     mechanism::MechanismState,
     rigid_body::{Collider, RigidBody},

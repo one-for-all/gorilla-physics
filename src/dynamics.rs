@@ -25,8 +25,8 @@ use clarabel::{
 };
 use itertools::izip;
 use na::{
-    dvector, vector, zero, DMatrix, DVector, Dyn, Matrix1xX, Matrix3, Matrix3x6, Matrix3xX,
-    Matrix6, Matrix6xX, UnitVector3, LU,
+    dvector, vector, zero, DMatrix, DVector, Matrix1xX, Matrix3, Matrix3x6, Matrix3xX, Matrix6xX,
+    UnitVector3,
 };
 use nalgebra::Vector3;
 use std::collections::{HashMap, HashSet};

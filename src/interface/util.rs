@@ -1,6 +1,6 @@
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{js_sys, window, Response, TextDecoder};
+use web_sys::{window, Response};
 
 /// Read a file into a string. File needs to be hosted on the site.
 pub async fn read_web_file(file_path: &str) -> String {

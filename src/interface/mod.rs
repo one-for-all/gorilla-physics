@@ -1,4 +1,3 @@
-use crate::collision::sphere::Sphere;
 use crate::contact::ContactPoint;
 use crate::control::ControlInput;
 use crate::helpers::build_n_spheres;

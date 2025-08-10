@@ -9,7 +9,7 @@ mod ccd_tests {
         helpers::{build_n_spheres, build_sphere},
         joint::{JointPosition, JointVelocity},
         simulate::step,
-        spatial::{pose::Pose, spatial_vector::SpatialVector, twist::compute_joint_twists},
+        spatial::{pose::Pose, spatial_vector::SpatialVector},
         types::Float,
     };
 

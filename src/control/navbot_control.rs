@@ -68,6 +68,7 @@ impl PIModule {
         (proportional + integral).clamp(-self.limit, self.limit)
     }
 
+    #[allow(dead_code)]
     pub fn reset(&mut self) {
         self.integral_prev = 0.;
         self.error_prev = 0.;
@@ -93,6 +94,8 @@ pub struct NavbotController {
 
     lpf_joyy: LowPassFilter,
     lpf_zeropoint: LowPassFilter,
+
+    #[allow(dead_code)]
     lpf_roll: LowPassFilter,
 
     angle_zeropoint: Float,

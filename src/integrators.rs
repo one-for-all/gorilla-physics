@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use itertools::izip;
 use na::{UnitQuaternion, UnitVector3, Vector3};
 

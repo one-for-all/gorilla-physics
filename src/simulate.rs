@@ -1,13 +1,3 @@
-use std::collections::HashMap;
-use std::f64::INFINITY;
-
-use itertools::izip;
-use na::DMatrix;
-use na::Matrix3xX;
-use na::Matrix6xX;
-use na::UnitVector3;
-use na::Vector3;
-
 use crate::integrators::ccd_velocity_stepping;
 use crate::integrators::runge_kutta_2;
 use crate::integrators::runge_kutta_4;
@@ -16,10 +6,7 @@ use crate::integrators::velocity_stepping;
 use crate::integrators::Integrator;
 use crate::joint::JointTorque;
 use crate::joint::JointVelocity;
-use crate::joint::ToFloatDVec;
-use crate::rigid_body::CollisionGeometry;
 use crate::spatial::spatial_vector::SpatialVector;
-use crate::spatial::twist::Twist;
 use crate::{joint::JointPosition, mechanism::MechanismState, types::Float};
 pub struct DynamicsResult {}
 
@@ -131,7 +118,6 @@ mod simulate_tests {
     use crate::{assert_close, assert_vec_close};
     use crate::{
         helpers::{build_cart, build_cart_pole},
-        util::assert_dvec_close,
         GRAVITY, PI,
     };
 
