@@ -24,7 +24,7 @@ mod hopper_control_tests {
         spatial::pose::Pose,
         spatial::spatial_vector::SpatialVector,
         spatial::transform::Transform3D,
-        spatial::twist::{compute_joint_twists, compute_twists_wrt_world},
+        spatial::twist::compute_joint_twists,
         types::Float,
         WORLD_FRAME,
     };
@@ -110,9 +110,7 @@ mod hopper_control_tests {
 
             let (q, _v) = step(&mut state, dt, &torque, &Integrator::SemiImplicitEuler);
 
-            let bodies_to_root = state.get_bodies_to_root();
-            let joint_twists = compute_joint_twists(&state);
-            let twists = compute_twists_wrt_world(&state, &bodies_to_root, &joint_twists);
+            let twists = state.get_body_twists();
             let body_vz = twists[3].linear.z;
 
             if prev_body_vz >= 0.0 && body_vz < 0.0 {
@@ -193,7 +191,7 @@ mod hopper_control_tests {
             // body velocity of the body frame, expressed in world frame
             let bodies_to_root = state.get_bodies_to_root();
             let joint_twists = compute_joint_twists(&state);
-            let twists = compute_twists_wrt_world(&state, &bodies_to_root, &joint_twists);
+            let twists = state.get_body_twists();
             let body_twist = &twists[3];
             let body_vel = body_twist
                 .contact_point_velocity(&ContactPoint::new(WORLD_FRAME, bodies_to_root[3].trans()));
@@ -220,7 +218,7 @@ mod hopper_control_tests {
 
             let bodies_to_root = state.get_bodies_to_root();
             let joint_twists = compute_joint_twists(&state);
-            let twists = compute_twists_wrt_world(&state, &bodies_to_root, &joint_twists);
+            let twists = state.get_body_twists();
             let body_twist = &twists[3];
 
             // body velocity of the body frame, expressed in world frame
@@ -305,7 +303,7 @@ mod hopper_control_tests {
 
             let bodies_to_root = state.get_bodies_to_root();
             let joint_twists = compute_joint_twists(&state);
-            let twists = compute_twists_wrt_world(&state, &bodies_to_root, &joint_twists);
+            let twists = state.get_body_twists();
 
             let poses = state.poses();
             let foot_z = poses[0].translation.z;
@@ -373,8 +371,7 @@ mod hopper_control_tests {
             let (_q, _v) = step(&mut state, dt, &torque, &Integrator::SemiImplicitEuler);
 
             let bodies_to_root = state.get_bodies_to_root();
-            let joint_twists = compute_joint_twists(&state);
-            let twists = compute_twists_wrt_world(&state, &bodies_to_root, &joint_twists);
+            let twists = state.get_body_twists();
             let body_twist = &twists[3];
 
             // body velocity of the body frame, expressed in world frame

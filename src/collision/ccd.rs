@@ -9,11 +9,7 @@ mod ccd_tests {
         helpers::{build_n_spheres, build_sphere},
         joint::{JointPosition, JointVelocity},
         simulate::step,
-        spatial::{
-            pose::Pose,
-            spatial_vector::SpatialVector,
-            twist::{compute_joint_twists, compute_twists_wrt_world},
-        },
+        spatial::{pose::Pose, spatial_vector::SpatialVector, twist::compute_joint_twists},
         types::Float,
     };
 
@@ -124,9 +120,7 @@ mod ccd_tests {
         assert!(max_penetration < 1e-8);
 
         // tangential speed
-        let bodies_to_root = state.get_bodies_to_root();
-        let joint_twists = compute_joint_twists(&state);
-        let twists = compute_twists_wrt_world(&state, &bodies_to_root, &joint_twists);
+        let twists = state.get_body_twists();
         let twist = &twists[1];
         let center = state.poses()[0].translation;
         let v = twist.point_velocity(&center);

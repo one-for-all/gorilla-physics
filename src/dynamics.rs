@@ -9,10 +9,7 @@ use crate::{
     spatial::{
         spatial_vector::SpatialVector,
         transform::Transform3D,
-        twist::{
-            compute_joint_twists, compute_twist_transformation_matrix, compute_twists_wrt_world,
-            Twist,
-        },
+        twist::{compute_joint_twists, compute_twist_transformation_matrix, Twist},
         wrench::{compute_torques, Wrench},
     },
     types::Float,
@@ -280,8 +277,8 @@ pub fn dynamics_quantities(
     // Compute the twist of each joint
     let joint_twists = compute_joint_twists(state);
 
-    // Compute the twist of the each body with respect to the world frame
-    let twists = compute_twists_wrt_world(state, &bodies_to_root, &joint_twists);
+    // Get the twist of the each body with respect to the world frame
+    let twists = state.get_body_twists();
 
     let mass_matrix_lower = mass_matrix(state, &bodies_to_root);
 

@@ -19,7 +19,6 @@ use crate::joint::JointVelocity;
 use crate::joint::ToFloatDVec;
 use crate::rigid_body::CollisionGeometry;
 use crate::spatial::spatial_vector::SpatialVector;
-use crate::spatial::twist::compute_twists_wrt_world;
 use crate::spatial::twist::Twist;
 use crate::{joint::JointPosition, mechanism::MechanismState, types::Float};
 pub struct DynamicsResult {}

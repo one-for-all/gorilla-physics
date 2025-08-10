@@ -21,6 +21,7 @@ use crate::spatial::spatial_vector::SpatialVector;
 use crate::spatial::transform::Transform3D;
 use crate::spatial::twist::compute_joint_twists;
 use crate::spatial::twist::compute_twists_wrt_world;
+use crate::spatial::twist::Twist;
 use crate::types::Float;
 use crate::GRAVITY;
 use crate::WORLD_FRAME;
@@ -45,6 +46,9 @@ pub struct MechanismState {
 
     _bodies_to_root: Vec<Transform3D>,
     _bodies_to_root_obsolete: bool,
+
+    _body_twists: Vec<Twist>,
+    _body_twists_obsolete: bool,
 }
 
 impl MechanismState {
@@ -127,6 +131,8 @@ impl MechanismState {
             constraints: vec![],
             _bodies_to_root: vec![],
             _bodies_to_root_obsolete: true,
+            _body_twists: vec![],
+            _body_twists_obsolete: true,
         };
 
         let bodies_to_root = state.get_bodies_to_root();
@@ -156,12 +162,29 @@ impl MechanismState {
         self._bodies_to_root.clone()
     }
 
+    /// Compute the twist of each body with respect to the world frame,
+    /// expressed in the world frame
+    /// Note: the first twist is world
+    pub fn get_body_twists(&mut self) -> Vec<Twist> {
+        if !self._body_twists_obsolete {
+            return self._body_twists.clone(); // TODO(efficiency): remove the need for explicit cloning. Maybe return a reference?
+        }
+
+        let bodies_to_root = self.get_bodies_to_root();
+        let joint_twists = compute_joint_twists(self);
+        let body_twists = compute_twists_wrt_world(self, &bodies_to_root, &joint_twists);
+
+        self._body_twists = body_twists;
+        self._body_twists_obsolete = false;
+
+        self._body_twists.clone()
+    }
+
     pub fn get_bodies_to_root_no_update(&self) -> Vec<Transform3D> {
         assert!(
             !self._bodies_to_root_obsolete,
             "trying to retrieve obsolete bodies_to_root data"
         );
-
         self._bodies_to_root.clone()
     }
 
@@ -176,6 +199,8 @@ impl MechanismState {
     }
 
     pub fn update(&mut self, q: &Vec<JointPosition>, v: &Vec<JointVelocity>) {
+        self._bodies_to_root_obsolete = true;
+        self._body_twists_obsolete = true;
         self.update_q(q);
         self.v = v.clone();
     }
@@ -214,6 +239,8 @@ impl MechanismState {
         }
 
         self._bodies_to_root_obsolete = true;
+        self._body_twists_obsolete = true;
+
         let bodies_to_root = self.get_bodies_to_root();
         self.update_collider_poses(&bodies_to_root);
         self.update_visual_poses(&bodies_to_root);
@@ -283,12 +310,15 @@ impl MechanismState {
         self.q[jointid - 1] = q;
 
         self._bodies_to_root_obsolete = true;
+        self._body_twists_obsolete = true;
+
         let bodies_to_root = self.get_bodies_to_root();
         self.update_collider_poses(&bodies_to_root);
         self.update_visual_poses(&bodies_to_root);
     }
 
     pub fn set_joint_v(&mut self, jointid: usize, v: JointVelocity) {
+        self._body_twists_obsolete = true;
         self.v[jointid - 1] = v;
     }
 
