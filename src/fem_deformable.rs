@@ -11,12 +11,14 @@ use std::ops::AddAssign;
 use crate::collision::mesh::read_mesh;
 use crate::contact::HalfSpace;
 use crate::dynamics::solve_cone_complementarity;
-use crate::gpu::{
-    async_initialize_gpu, compute_dH, setup_compute_dH_pipeline, Matrix3x3, WgpuContext,
-};
 use crate::types::Float;
 use crate::util::read_file;
 use crate::GRAVITY;
+
+#[cfg(any(feature = "gpu", rust_analyzer))]
+use crate::gpu::{
+    async_initialize_gpu, compute_dH, setup_compute_dH_pipeline, Matrix3x3, WgpuContext,
+};
 
 /// Deformable modeled by finite element method
 /// Ref:
@@ -44,6 +46,7 @@ pub struct FEMDeformable {
     pub qdot: DVector<Float>,
 
     // for working with GPU
+    #[cfg(any(feature = "gpu", rust_analyzer))]
     pub wgpu_context: WgpuContext,
 
     halfspaces: Vec<HalfSpace>, // TODO: store halfspaces in a container, not inside FEMDeformable
@@ -113,54 +116,58 @@ impl FEMDeformable {
         let lambda = k * v / ((1.0 + v) * (1.0 - 2.0 * v));
 
         // Initialize GPU
-        let (device, queue) = async_initialize_gpu().await;
+        #[cfg(any(feature = "gpu", rust_analyzer))]
+        let wgpu_context = {
+            let (device, queue) = async_initialize_gpu().await;
 
-        let padded_Bs: &Vec<Matrix3x3> = &(Bs
-            .iter()
-            .map(|mat| {
-                let mut cols = [[0.0; 4]; 3];
-                for i in 0..3 {
-                    cols[i][0] = mat[(0, i)] as f32;
-                    cols[i][1] = mat[(1, i)] as f32;
-                    cols[i][2] = mat[(2, i)] as f32;
-                }
-                Matrix3x3 { cols }
-            })
-            .collect());
+            let padded_Bs: &Vec<Matrix3x3> = &(Bs
+                .iter()
+                .map(|mat| {
+                    let mut cols = [[0.0; 4]; 3];
+                    for i in 0..3 {
+                        cols[i][0] = mat[(0, i)] as f32;
+                        cols[i][1] = mat[(1, i)] as f32;
+                        cols[i][2] = mat[(2, i)] as f32;
+                    }
+                    Matrix3x3 { cols }
+                })
+                .collect());
 
-        let (
-            shader_module,
-            pipeline,
-            bind_group,
-            input_dq_buffer,
-            input_F_invs_buffer,
-            input_Js_buffer,
-            output_dH_buffer,
-            download_dH_buffer,
-        ) = setup_compute_dH_pipeline(
-            &device,
-            n_vertices,
-            &tetrahedra,
-            padded_Bs,
-            &Ws.iter().map(|x| *x as f32).collect(),
-            mu as f32,
-            lambda as f32,
-        );
+            let (
+                shader_module,
+                pipeline,
+                bind_group,
+                input_dq_buffer,
+                input_F_invs_buffer,
+                input_Js_buffer,
+                output_dH_buffer,
+                download_dH_buffer,
+            ) = setup_compute_dH_pipeline(
+                &device,
+                n_vertices,
+                &tetrahedra,
+                padded_Bs,
+                &Ws.iter().map(|x| *x as f32).collect(),
+                mu as f32,
+                lambda as f32,
+            );
 
-        let wgpu_context = WgpuContext {
-            device,
-            queue,
-            module: shader_module,
-            pipeline,
-            bind_group,
-            input_buffers: HashMap::from([
-                ("dq", input_dq_buffer),
-                ("F_invs", input_F_invs_buffer),
-                ("Js", input_Js_buffer),
-            ]),
-            output_buffers: HashMap::from([("dH", output_dH_buffer)]),
-            download_buffers: HashMap::from([("dH", download_dH_buffer)]),
+            WgpuContext {
+                device,
+                queue,
+                module: shader_module,
+                pipeline,
+                bind_group,
+                input_buffers: HashMap::from([
+                    ("dq", input_dq_buffer),
+                    ("F_invs", input_F_invs_buffer),
+                    ("Js", input_Js_buffer),
+                ]),
+                output_buffers: HashMap::from([("dH", output_dH_buffer)]),
+                download_buffers: HashMap::from([("dH", download_dH_buffer)]),
+            }
         };
+
         Self {
             vertices,
             tetrahedra,
@@ -176,7 +183,10 @@ impl FEMDeformable {
             boundary_facets: vec![],
             q,
             qdot: DVector::zeros(n_vertices * 3),
+
+            #[cfg(any(feature = "gpu", rust_analyzer))]
             wgpu_context,
+
             halfspaces: vec![],
             enable_gravity: false,
         }
@@ -401,7 +411,9 @@ impl FEMDeformable {
             let mass_matrix_lumped = &self.mass_matrix_lumped;
             let n_vertices = self.n_vertices;
             let tetrahedra = &self.tetrahedra;
-            if cfg!(feature = "gpu") {
+
+            #[cfg(any(feature = "gpu", rust_analyzer))]
+            {
                 let wgpu_context = &self.wgpu_context;
                 let Js_f32: Vec<f32> = Js.iter().map(|x| *x as f32).collect();
                 let Js_bytemuck: &[u8] = bytemuck::cast_slice(&Js_f32.as_slice());
@@ -438,7 +450,9 @@ impl FEMDeformable {
                     }
                 };
                 delta_x = conjugate_gradient(A_mul_func, &b, &dx0, 1e-3).await;
-            } else {
+            }
+            #[cfg(not(feature = "gpu"))]
+            {
                 let F_inv_Ts: Vec<Matrix3<Float>> =
                     F_invs.iter().map(|F_inv| F_inv.transpose()).collect();
                 let Bs = &self.Bs;
@@ -650,6 +664,7 @@ async fn cpu_compute_force_differential(
 ///     FEM Simulation of 3D Deformable Solids: A practitioner’s guide to theory, discretization and model reduction.
 ///     Part One: The classical FEM method and discretization methodology,
 ///     Eftychios D. Sifakis, 2012, Section 4.3 Force differentials
+#[cfg(any(feature = "gpu", rust_analyzer))]
 async fn gpu_compute_force_differential(
     n_vertices: usize,
     tetrahedra: &Vec<Vec<usize>>,

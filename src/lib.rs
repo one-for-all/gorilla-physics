@@ -12,7 +12,6 @@ pub mod dynamics;
 pub mod energy;
 pub mod fem_deformable;
 pub mod fluid;
-pub mod gpu;
 pub mod inertia;
 pub mod integrators;
 pub mod joint;
@@ -31,6 +30,9 @@ pub mod plot;
 // Wasm bindings
 #[cfg(any(target_arch = "wasm32", rust_analyzer))]
 pub mod interface;
+
+#[cfg(any(feature = "gpu", rust_analyzer))]
+pub mod gpu;
 
 pub mod helpers;
 
