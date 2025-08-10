@@ -120,9 +120,9 @@ impl FEMDeformable {
             .map(|mat| {
                 let mut cols = [[0.0; 4]; 3];
                 for i in 0..3 {
-                    cols[i][0] = mat[(0, i)];
-                    cols[i][1] = mat[(1, i)];
-                    cols[i][2] = mat[(2, i)];
+                    cols[i][0] = mat[(0, i)] as f32;
+                    cols[i][1] = mat[(1, i)] as f32;
+                    cols[i][2] = mat[(2, i)] as f32;
                 }
                 Matrix3x3 { cols }
             })
@@ -137,7 +137,15 @@ impl FEMDeformable {
             input_Js_buffer,
             output_dH_buffer,
             download_dH_buffer,
-        ) = setup_compute_dH_pipeline(&device, n_vertices, &tetrahedra, padded_Bs, &Ws, mu, lambda);
+        ) = setup_compute_dH_pipeline(
+            &device,
+            n_vertices,
+            &tetrahedra,
+            padded_Bs,
+            &Ws.iter().map(|x| *x as f32).collect(),
+            mu as f32,
+            lambda as f32,
+        );
 
         let wgpu_context = WgpuContext {
             device,
@@ -395,16 +403,17 @@ impl FEMDeformable {
             let tetrahedra = &self.tetrahedra;
             if cfg!(feature = "gpu") {
                 let wgpu_context = &self.wgpu_context;
-                let Js_bytemuck: &[u8] = bytemuck::cast_slice(&Js.as_slice());
+                let Js_f32: Vec<f32> = Js.iter().map(|x| *x as f32).collect();
+                let Js_bytemuck: &[u8] = bytemuck::cast_slice(&Js_f32.as_slice());
 
                 let padded_F_invs: &Vec<Matrix3x3> = &(F_invs
                     .iter()
                     .map(|mat| {
                         let mut cols = [[0.0; 4]; 3];
                         for i in 0..3 {
-                            cols[i][0] = mat[(0, i)];
-                            cols[i][1] = mat[(1, i)];
-                            cols[i][2] = mat[(2, i)];
+                            cols[i][0] = mat[(0, i)] as f32;
+                            cols[i][1] = mat[(1, i)] as f32;
+                            cols[i][2] = mat[(2, i)] as f32;
                         }
                         Matrix3x3 { cols }
                     })
@@ -413,16 +422,18 @@ impl FEMDeformable {
 
                 let A_mul_func = |x: &DVector<Float>| {
                     let x_clone = x.clone();
+                    let x32: DVector<f32> = x_clone.map(|a| a as f32);
                     async move {
                         gpu_compute_force_differential(
                             n_vertices,
                             tetrahedra,
-                            &-&x_clone,
+                            &-x32,
                             Js_bytemuck,
                             padded_F_invs_bytemuck,
                             wgpu_context,
                         )
                         .await
+                        .map(|a| a as Float)
                             + mass_matrix_lumped.component_mul(&x_clone) / dt_squared
                     }
                 };
@@ -642,11 +653,11 @@ async fn cpu_compute_force_differential(
 async fn gpu_compute_force_differential(
     n_vertices: usize,
     tetrahedra: &Vec<Vec<usize>>,
-    dx: &DVector<Float>,
+    dx: &DVector<f32>,
     Js_bytemuck: &[u8],
     padded_F_invs_bytemuck: &[u8],
     wgpu_context: &WgpuContext,
-) -> DVector<Float> {
+) -> DVector<f32> {
     wgpu_context.queue.write_buffer(
         &wgpu_context.input_buffers["dq"],
         0,

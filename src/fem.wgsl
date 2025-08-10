@@ -53,8 +53,8 @@ fn compute_dH(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let mu = params[0];
     let lambda = params[1];
     let F_inv_dF_trace = F_inv_dF[0][0] + F_inv_dF[1][1] + F_inv_dF[2][2];
-    let dP = mu * dF 
-        + (mu - lambda * log(Js[index])) * F_inv_T * transpose(F_inv_dF) 
+    let dP = mu * dF
+        + (mu - lambda * log(Js[index])) * F_inv_T * transpose(F_inv_dF)
         + lambda * F_inv_dF_trace * F_inv_T;
     let dH = Ws[index] * dP * transpose(B);
 

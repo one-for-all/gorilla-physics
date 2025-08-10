@@ -3,8 +3,6 @@ use std::{collections::HashMap, num::NonZeroU64};
 use na::Matrix3;
 use wgpu::{util::DeviceExt, BindGroup, Buffer, ComputePipeline, Device, Queue, ShaderModule};
 
-use crate::types::Float;
-
 /// Convenience container of GPU related objects
 pub struct WgpuContext {
     pub device: Device,
@@ -54,7 +52,7 @@ pub async fn async_initialize_gpu() -> (Device, Queue) {
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable, Debug)]
 pub struct Matrix3x3 {
-    pub cols: [[Float; 4]; 3], // Column-major for WGSL, each column has 4 values to account for wgsl padding
+    pub cols: [[f32; 4]; 3], // Column-major for WGSL, each column has 4 values to account for wgsl padding
 } // TODO/Note: the type Float needs to correspond to wgsl type
 
 /// Set up the pipeline for computing dH
@@ -63,9 +61,9 @@ pub fn setup_compute_dH_pipeline(
     n_vertices: usize,
     tetrahedra: &Vec<Vec<usize>>,
     padded_Bs: &Vec<Matrix3x3>,
-    Ws: &Vec<Float>,
-    mu: Float,
-    lambda: Float,
+    Ws: &Vec<f32>,
+    mu: f32,
+    lambda: f32,
 ) -> (
     ShaderModule,
     ComputePipeline,
@@ -311,7 +309,7 @@ pub fn setup_compute_dH_pipeline(
 pub async fn compute_dH(
     wgpu_context: &WgpuContext,
     tetrahedra: &Vec<Vec<usize>>,
-) -> Vec<Matrix3<Float>> {
+) -> Vec<Matrix3<f32>> {
     let mut encoder = wgpu_context
         .device
         .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
