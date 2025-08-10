@@ -191,7 +191,7 @@ pub fn main() {
             println!("===============\napex");
             let revolute_jointid = 2;
             let angle = state.q[revolute_jointid - 1].float();
-            let _degree = Float::to_degrees(*angle);
+            let _degree = Float::to_degrees(angle);
             // println!("current degree: {}", degree);
 
             state.set_joint_q(revolute_jointid, JointPosition::Float(touch_down_angle));
@@ -262,7 +262,7 @@ pub fn main() {
 
         let revolute_jointid = 2;
         let angle = state.q[revolute_jointid - 1].float();
-        let _degree = Float::to_degrees(*angle);
+        let _degree = Float::to_degrees(angle);
         // println!("current degree: {}", degree);
 
         v_z_prev = v_z;

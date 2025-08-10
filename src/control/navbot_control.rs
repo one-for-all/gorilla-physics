@@ -262,8 +262,8 @@ impl Controller for NavbotController {
         let v_right = state.v[5].float();
 
         // update servo state
-        self.servo_left.update(*q_left, *v_left);
-        self.servo_right.update(*q_right, *v_right);
+        self.servo_left.update(q_left, v_left);
+        self.servo_right.update(q_right, v_right);
 
         // Jump
         let mut tau_left;

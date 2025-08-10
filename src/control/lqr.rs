@@ -91,7 +91,7 @@ mod lqr_tests {
         let axis = Vector3::y_axis(); // axis of joint rotation
 
         let mut state = build_double_pendulum(
-            &m,
+            m,
             &moment,
             &cross_part,
             &rod1_to_world,
@@ -143,8 +143,8 @@ mod lqr_tests {
         let axis_pole = -Vector3::y_axis();
 
         let mut state = build_cart_pole(
-            &m_cart,
-            &m_pole,
+            m_cart,
+            m_pole,
             &moment_cart,
             &moment_pole,
             &cross_part_cart,

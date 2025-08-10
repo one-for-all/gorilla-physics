@@ -26,7 +26,7 @@ pub fn main() {
     let axis = Vector3::y_axis();
 
     let mut state = build_double_pendulum(
-        &m,
+        m,
         &moment,
         &cross_part,
         &rod1_to_world,

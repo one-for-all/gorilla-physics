@@ -421,7 +421,7 @@ mod contact_tests {
         let rod_to_world = Isometry3::identity();
         let axis = Vector3::y_axis();
 
-        let mut state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, axis);
+        let mut state = build_pendulum(m, &moment, &cross_part, &rod_to_world, axis);
         state.add_contact_point(ContactPoint::new("rod", vector![l, 0., 0.]));
 
         state.add_halfspace(HalfSpace::new(Vector3::z_axis(), -5.0));
@@ -440,7 +440,7 @@ mod contact_tests {
         // Assert
         let q_final = qs[qs.len() - 1][0].float();
         let q_expect = 30.0 * PI / 180.0; // 30 degrees
-        assert_dvec_close(&dvector![*q_final], &dvector![q_expect], 1e-3);
+        assert_dvec_close(&dvector![q_final], &dvector![q_expect], 1e-3);
     }
 
     #[test]
@@ -1092,7 +1092,7 @@ mod contact_tests {
             let (q, v) = step(&mut state, dt, &torque, &Integrator::RungeKutta4);
 
             let v_spring = v[1].float();
-            if prev_v_spring < 0.0 && *v_spring >= 0.0 {
+            if prev_v_spring < 0.0 && v_spring >= 0.0 {
                 // Bottom time: spring going from compressing to decompressing.
                 had_bottom = true;
 
@@ -1108,7 +1108,7 @@ mod contact_tests {
 
                 break; // only check first bottom time
             }
-            prev_v_spring = *v_spring;
+            prev_v_spring = v_spring;
         }
         assert_eq!(had_bottom, true); // At least had one bottom time
     }

@@ -23,7 +23,7 @@ use na::{vector, Matrix3, Vector3};
 
 /// Build a mechanism state of a pendulum
 pub fn build_pendulum(
-    mass: &Float,
+    mass: Float,
     moment: &Matrix3<Float>,
     cross_part: &Vector3<Float>,
     rod_to_world: &Isometry3<Float>,
@@ -49,7 +49,7 @@ pub fn build_pendulum(
 
 /// Build a mechanism state of a double pendulum
 pub fn build_double_pendulum(
-    mass: &Float,
+    mass: Float,
     moment: &Matrix3<Float>,
     cross_part: &Vector3<Float>,
     rod1_to_world: &Isometry3<Float>,
@@ -87,7 +87,7 @@ pub fn build_double_pendulum(
 
 /// Build the mechanism state of a cart system
 pub fn build_cart(
-    mass: &Float,
+    mass: Float,
     moment: &Matrix3<Float>,
     cross_part: &Vector3<Float>,
     axis: &Vector3<Float>,
@@ -105,7 +105,7 @@ pub fn build_cart(
         frame: cart_frame.to_string(),
         moment: *moment,
         cross_part: *cross_part,
-        mass: *mass,
+        mass: mass,
     })];
     let state = MechanismState::new(treejoints, bodies);
     state
@@ -113,8 +113,8 @@ pub fn build_cart(
 
 /// Build the mechanism state of a cart pole system
 pub fn build_cart_pole(
-    mass_cart: &Float,
-    mass_pole: &Float,
+    mass_cart: Float,
+    mass_pole: Float,
     moment_cart: &Matrix3<Float>,
     moment_pole: &Matrix3<Float>,
     cross_part_cart: &Vector3<Float>,
@@ -139,13 +139,13 @@ pub fn build_cart_pole(
             frame: cart_frame.to_string(),
             moment: *moment_cart,
             cross_part: *cross_part_cart,
-            mass: *mass_cart,
+            mass: mass_cart,
         }),
         RigidBody::new(SpatialInertia {
             frame: pole_frame.to_string(),
             moment: *moment_pole,
             cross_part: *cross_part_pole,
-            mass: *mass_pole,
+            mass: mass_pole,
         }),
     ];
     let state = MechanismState::new(treejoints, bodies);

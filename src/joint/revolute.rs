@@ -38,12 +38,12 @@ impl RevoluteJoint {
 
     /// Return the spatial acceleration of the successor with respect
     /// to its predecessor, expressed in the successor frame.
-    pub fn spatial_acceleration(&self, vdot: &Float) -> SpatialAcceleration {
+    pub fn spatial_acceleration(&self, vdot: Float) -> SpatialAcceleration {
         SpatialAcceleration {
             body: self.transform.from.clone(),
             base: self.transform.to.clone(),
             frame: self.transform.from.clone(),
-            angular: self.axis.mul(*vdot),
+            angular: self.axis.mul(vdot),
             linear: Vector3::zeros(),
         }
     }
@@ -59,11 +59,11 @@ impl RevoluteJoint {
     }
 
     /// Update the transform to be intial transform rotated around axis by q
-    pub fn update(&mut self, q: &Float) {
+    pub fn update(&mut self, q: Float) {
         self.transform = Transform3D {
             from: self.transform.from.clone(),
             to: self.transform.to.clone(),
-            iso: self.init_iso * UnitQuaternion::from_axis_angle(&self.axis, *q),
+            iso: self.init_iso * UnitQuaternion::from_axis_angle(&self.axis, q),
         };
     }
 }
@@ -79,7 +79,7 @@ mod revolute_tests {
         let vdot = 1.0;
 
         // Act
-        let spatial_acceleration = joint.spatial_acceleration(&vdot);
+        let spatial_acceleration = joint.spatial_acceleration(vdot);
 
         // Assert
         assert_eq!(spatial_acceleration.angular, Vector3::new(0.0, 0.0, vdot));

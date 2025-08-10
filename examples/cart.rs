@@ -23,7 +23,7 @@ pub fn main() {
     let cross_part = vector![0.0, 0.0, 0.0];
     let axis = vector![1.0, 0.0, 0.0];
 
-    let mut state = build_cart(&m, &moment, &cross_part, &axis);
+    let mut state = build_cart(m, &moment, &cross_part, &axis);
     state.set_joint_v(1, JointVelocity::Float(1.0));
 
     // Simulate
@@ -38,7 +38,7 @@ pub fn main() {
         |_state| vec![0.0].to_joint_torque_vec(),
         &gorilla_physics::integrators::Integrator::SemiImplicitEuler,
     );
-    let data = qs.iter().map(|x| *x[0].float()).collect::<Vec<Float>>();
+    let data = qs.iter().map(|x| x[0].float()).collect::<Vec<Float>>();
 
     plot(&data, final_time, dt, num_steps, "plot");
 }

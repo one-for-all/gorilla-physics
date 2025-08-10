@@ -56,7 +56,7 @@ impl Controller for Hopper1DController {
         if self.v_vertical_prev < 0.0 && v_vertical > 0.0 {
             // Bottom: The moment in stance when the body has minimum altitude
             // and vertical motion of the body changes from downward to upward.
-            let E = hopper_energy(state, q_foot, &self.k_spring);
+            let E = hopper_energy(state, q_foot, self.k_spring);
             let h_setpoint = self.h_setpoint;
             let E_target = GRAVITY
                 * (m_body * h_setpoint
@@ -81,12 +81,12 @@ impl Controller for Hopper1DController {
         // Spring simulation
         let l_rest = 0.0;
         let tau_foot = {
-            if *q_foot < l_rest {
-                spring_force(l_rest, *q_foot, self.k_spring) // force exerted by spring
+            if q_foot < l_rest {
+                spring_force(l_rest, q_foot, self.k_spring) // force exerted by spring
             } else {
                 let k_stop = 1e5;
                 let b_stop = 125.0;
-                mechanical_stop(l_rest, *q_foot, *v_foot, k_stop, b_stop)
+                mechanical_stop(l_rest, q_foot, v_foot, k_stop, b_stop)
             }
         };
 
@@ -168,7 +168,7 @@ impl Controller for Hopper2DController {
         if self.v_vertical_prev < 0.0 && v_vertical > 0.0 {
             // Bottom: The moment in stance when the body has minimum altitude
             // and vertical motion of the body changes from downward to upward.
-            let E = hopper_energy(state, q_leg, &self.k_spring);
+            let E = hopper_energy(state, q_leg, self.k_spring);
             let h_setpoint = self.h_setpoint;
             let E_target = GRAVITY
                 * (m_body * h_setpoint
@@ -199,12 +199,12 @@ impl Controller for Hopper2DController {
         // Spring simulation
         let l_rest = 0.0;
         let tau_leg = {
-            if *q_leg < l_rest {
-                spring_force(l_rest, *q_leg, self.k_spring) // force exerted by spring
+            if q_leg < l_rest {
+                spring_force(l_rest, q_leg, self.k_spring) // force exerted by spring
             } else {
                 let k_stop = 1e5;
                 let b_stop = 125.0;
-                mechanical_stop(l_rest, *q_leg, *v_leg, k_stop, b_stop)
+                mechanical_stop(l_rest, q_leg, v_leg, k_stop, b_stop)
             }
         };
 

@@ -22,7 +22,7 @@ pub fn createDoublePendulum(length: Float) -> InterfaceMechanismState {
     let axis = -Vector3::y_axis(); // axis of joint rotation
 
     let mut state = build_double_pendulum(
-        &m,
+        m,
         &moment,
         &cross_part,
         &rod1_to_world,

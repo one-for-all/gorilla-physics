@@ -305,7 +305,7 @@ pub fn add_prismatic_joint_spring_force(
     for (jointid, joint) in izip!(state.treejointids.iter(), state.treejoints.iter()) {
         if let Joint::PrismaticJoint(joint) = joint {
             if let Some(spring) = &joint.spring {
-                let l = *state.q[*jointid - 1].float();
+                let l = state.q[*jointid - 1].float();
 
                 let f_spring = spring_force(spring.l, l, spring.k); // force in the direction of spring
 
@@ -907,7 +907,7 @@ mod dynamics_tests {
         let axis = Vector3::y_axis(); // axis of joint rotation
 
         let mut state =
-            crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, axis);
+            crate::helpers::build_pendulum(m, &moment, &cross_part, &rod_to_world, axis);
 
         // Act
         let joint_accels = dynamics_continuous(&mut state, &vec![0.0].to_joint_torque_vec());
@@ -939,7 +939,7 @@ mod dynamics_tests {
         let rod_to_world = Isometry3::rotation(Vector3::x_axis().scale(PI / 2.0));
         let axis = Vector3::z_axis();
 
-        let mut state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, axis);
+        let mut state = build_pendulum(m, &moment, &cross_part, &rod_to_world, axis);
 
         // Act
         let joint_accels = dynamics_continuous(&mut state, &vec![0.0].to_joint_torque_vec());
@@ -973,7 +973,7 @@ mod dynamics_tests {
         let rod_to_world = Isometry3::new(vector![d, 0., 0.], Vector3::x_axis().scale(PI / 2.0));
         let axis = Vector3::z_axis();
 
-        let mut state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, axis);
+        let mut state = build_pendulum(m, &moment, &cross_part, &rod_to_world, axis);
 
         // Act
         let joint_accels = dynamics_continuous(&mut state, &vec![0.0].to_joint_torque_vec());
@@ -1003,7 +1003,7 @@ mod dynamics_tests {
         let axis = Vector3::y_axis(); // axis of joint rotation
 
         let mut state =
-            crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, axis);
+            crate::helpers::build_pendulum(m, &moment, &cross_part, &rod_to_world, axis);
 
         // Act
         let torque = -m * GRAVITY * l / 2.0;
@@ -1035,7 +1035,7 @@ mod dynamics_tests {
         let axis = Vector3::y_axis(); // axis of joint rotation
 
         let mut state =
-            crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, axis);
+            crate::helpers::build_pendulum(m, &moment, &cross_part, &rod_to_world, axis);
 
         // Act
         let joint_accels = dynamics_continuous(&mut state, &vec![0.0].to_joint_torque_vec());
@@ -1116,7 +1116,7 @@ mod dynamics_tests {
         let axis = Vector3::y_axis();
 
         let mut state = build_double_pendulum(
-            &m,
+            m,
             &moment,
             &cross_part,
             &rod1_to_world,

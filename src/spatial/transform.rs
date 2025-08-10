@@ -157,18 +157,18 @@ impl Transform3D {
 
     /// Returns a transformation matrix from axis-angle
     /// https://en.wikipedia.org/wiki/Rotation_matrix
-    pub fn rotation(axis: &Vector3<Float>, theta: &Float) -> Matrix4<Float> {
+    pub fn rotation(axis: &Vector3<Float>, theta: Float) -> Matrix4<Float> {
         Isometry3::from_parts(
             Translation3::<Float>::identity(),
-            UnitQuaternion::from_axis_angle(&UnitVector3::new_normalize(*axis), *theta),
+            UnitQuaternion::from_axis_angle(&UnitVector3::new_normalize(*axis), theta),
         )
         .to_homogeneous()
     }
 
     /// Returns a transformation matrix of translation by amount
     #[rustfmt::skip]
-    pub fn translation(axis: &Vector3<Float>, distance: &Float) -> Matrix4<Float> {
-        let p = axis * (*distance);
+    pub fn translation(axis: &Vector3<Float>, distance: Float) -> Matrix4<Float> {
+        let p = axis * distance;
         Matrix4::new(
             1.0, 0.0, 0.0, p.x,
             0.0, 1.0, 0.0, p.y,

@@ -100,16 +100,11 @@ mod hopper_control_tests {
                 JointTorque::Float(0.0),
                 JointTorque::Float(0.0),
             ];
-            if *state.q[2].float() > 0.0 {
+            if state.q[2].float() > 0.0 {
                 let k_stop = 1e5;
                 let b_stop = 125.0;
-                let tau_spring = mechanical_stop(
-                    0.0,
-                    *state.q[2].float(),
-                    *state.v[2].float(),
-                    k_stop,
-                    b_stop,
-                );
+                let tau_spring =
+                    mechanical_stop(0.0, state.q[2].float(), state.v[2].float(), k_stop, b_stop);
                 torque[2] = JointTorque::Float(tau_spring);
             }
 
@@ -186,8 +181,8 @@ mod hopper_control_tests {
             ];
 
             // Simulate mechanical stop on the spring
-            let spring_q = *state.q[1].float();
-            let spring_v = *state.v[1].float();
+            let spring_q = state.q[1].float();
+            let spring_v = state.v[1].float();
             if spring_q > 0.0 {
                 let k_stop = 1e5;
                 let b_stop = 125.0;
@@ -299,8 +294,8 @@ mod hopper_control_tests {
             ];
 
             // Simulate mechanical stop on the spring
-            let spring_q = *state.q[1].float();
-            let spring_v = *state.v[1].float();
+            let spring_q = state.q[1].float();
+            let spring_v = state.v[1].float();
             if spring_q > 0.0 {
                 let k_stop = 1e5;
                 let b_stop = 125.0;

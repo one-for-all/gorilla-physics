@@ -80,10 +80,10 @@ pub fn main() {
         );
 
         let v_spring = v[1].float();
-        if prev_v_spring < 0.0 && *v_spring >= 0.0 {
+        if prev_v_spring < 0.0 && v_spring >= 0.0 {
             println!("bottom");
         }
-        prev_v_spring = *v_spring;
+        prev_v_spring = v_spring;
 
         let pose_foot = &state.poses()[1];
         data1.push(pose_foot.translation.z);

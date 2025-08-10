@@ -130,7 +130,7 @@ pub fn main() {
             &torque,
             &gorilla_physics::integrators::Integrator::SemiImplicitEuler,
         );
-        let _energy = hopper_energy(&state, _q[2].float(), &k_spring);
+        let _energy = hopper_energy(&state, _q[2].float(), k_spring);
 
         data.push(_q[0].pose().translation.z);
     }

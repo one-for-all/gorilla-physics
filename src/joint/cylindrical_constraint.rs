@@ -161,7 +161,7 @@ mod cylindrical_constraint_tests {
                 &crate::integrators::Integrator::VelocityStepping,
             );
 
-            data.push(*_q[1].float());
+            data.push(_q[1].float());
         }
 
         // Assert

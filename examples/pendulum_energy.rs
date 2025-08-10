@@ -5,7 +5,7 @@ use gorilla_physics::{
 };
 use nalgebra::{dvector, vector, DVector, Isometry3, Matrix3, Vector3};
 
-fn potential_energy(state: &MechanismState, l: &Float) -> Float {
+fn potential_energy(state: &MechanismState, l: Float) -> Float {
     let q = state.q[0].float();
     let m = state.bodies.get(0).unwrap().inertia.mass;
 
@@ -28,12 +28,12 @@ pub fn main() {
     let rod_to_world = Isometry3::identity();
     let axis = Vector3::y_axis();
 
-    let mut state = build_pendulum(&m, &moment, &cross_part, &rod_to_world, axis);
+    let mut state = build_pendulum(m, &moment, &cross_part, &rod_to_world, axis);
 
     let mut KEs: DVector<Float> = dvector![];
     let mut PEs: DVector<Float> = dvector![];
     KEs.extend([state.kinetic_energy()]);
-    PEs.extend([potential_energy(&state, &l)]);
+    PEs.extend([potential_energy(&state, l)]);
 
     let mut t = 0.0;
     let final_time = 10.0;
@@ -47,7 +47,7 @@ pub fn main() {
             &gorilla_physics::integrators::Integrator::SemiImplicitEuler,
         );
         KEs.extend([state.kinetic_energy()]);
-        PEs.extend([potential_energy(&state, &l)]);
+        PEs.extend([potential_energy(&state, l)]);
         t += dt;
     }
 

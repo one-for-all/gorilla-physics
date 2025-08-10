@@ -25,7 +25,7 @@ pub fn main() {
     let axis = -Vector3::y_axis();
 
     let mut state = build_double_pendulum(
-        &m,
+        m,
         &moment,
         &cross_part,
         &rod1_to_world,
@@ -48,7 +48,7 @@ pub fn main() {
     let dt = 1.0 / 1000.0;
     let num_steps = (final_time / dt) as usize;
     while t < final_time {
-        let torque = swingup_acrobot(&state, &m, &l);
+        let torque = swingup_acrobot(&state, m, l);
         let (q, v) = step(
             &mut state,
             dt,
@@ -59,7 +59,7 @@ pub fn main() {
         vs.extend([v.to_float_dvec()]);
         taus.extend([torque.to_float_dvec()]);
 
-        data1.push(state.kinetic_energy() + double_pendulum_potential_energy2(&state, &m, &l));
+        data1.push(state.kinetic_energy() + double_pendulum_potential_energy2(&state, m, l));
 
         t += dt;
     }

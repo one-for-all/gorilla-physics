@@ -399,7 +399,7 @@ mod so101_tests {
                 &crate::integrators::Integrator::VelocityStepping,
             );
 
-            data.push(*state.q[5].float());
+            data.push(state.q[5].float());
         }
 
         // Assert

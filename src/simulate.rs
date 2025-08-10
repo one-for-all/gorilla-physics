@@ -156,7 +156,7 @@ mod simulate_tests {
         let axis = Vector3::y_axis(); // axis of joint rotation
 
         let mut state =
-            crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, axis);
+            crate::helpers::build_pendulum(m, &moment, &cross_part, &rod_to_world, axis);
 
         let initial_energy = 0.0 + 0.0; // E = PE + KE, both are zero at the start.
 
@@ -201,7 +201,7 @@ mod simulate_tests {
         let cross_part = vector![0.0, 0.0, 0.0];
         let axis = vector![1.0, 0.0, 0.0];
 
-        let mut state = build_cart(&m, &moment, &cross_part, &axis);
+        let mut state = build_cart(m, &moment, &cross_part, &axis);
 
         let q_init = vec![2.0].to_joint_pos_vec();
         let v_init = vec![-1.0].to_joint_vel_vec();
@@ -250,8 +250,8 @@ mod simulate_tests {
         let axis_pole = Vector3::y_axis();
 
         let mut state = build_cart_pole(
-            &m_cart,
-            &m_pole,
+            m_cart,
+            m_pole,
             &moment_cart,
             &moment_pole,
             &cross_part_cart,

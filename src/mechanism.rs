@@ -186,14 +186,14 @@ impl MechanismState {
             match joint {
                 Joint::RevoluteJoint(j) => {
                     if let JointPosition::Float(qi) = qi {
-                        j.update(qi)
+                        j.update(*qi)
                     } else {
                         panic!("Revolute joint expects a Float position");
                     }
                 }
                 Joint::PrismaticJoint(j) => {
                     if let JointPosition::Float(qi) = qi {
-                        j.update(qi)
+                        j.update(*qi)
                     } else {
                         panic!("Prismatic joint expects a Float position");
                     }
@@ -257,14 +257,14 @@ impl MechanismState {
         match &mut self.treejoints[jointid - 1] {
             Joint::RevoluteJoint(j) => {
                 if let JointPosition::Float(q) = q {
-                    (*j).update(&q)
+                    (*j).update(q)
                 } else {
                     panic!("Revolute joint expects a Float position");
                 }
             }
             Joint::PrismaticJoint(j) => {
                 if let JointPosition::Float(q) = q {
-                    (*j).update(&q)
+                    (*j).update(q)
                 } else {
                     panic!("Prismatic joint expects a Float position");
                 }
@@ -330,7 +330,7 @@ impl MechanismState {
             if let Joint::PrismaticJoint(joint) = joint {
                 if let Some(spring) = &joint.spring {
                     let q = &self.q[jointid - 1];
-                    E += spring_elastic_energy(spring.l, *q.float(), spring.k);
+                    E += spring_elastic_energy(spring.l, q.float(), spring.k);
                 }
             }
         }

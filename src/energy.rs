@@ -5,7 +5,7 @@ pub fn spring_elastic_energy(l_rest: Float, l: Float, k: Float) -> Float {
 }
 
 /// Compute the gravitational potential energy of a simple double pendulum system
-pub fn double_pendulum_potential_energy(state: &MechanismState, m: &Float, l: &Float) -> Float {
+pub fn double_pendulum_potential_energy(state: &MechanismState, m: Float, l: Float) -> Float {
     let q1 = state.q[0].float();
     let q2 = state.q[1].float();
 
@@ -16,7 +16,7 @@ pub fn double_pendulum_potential_energy(state: &MechanismState, m: &Float, l: &F
 
 /// Compute the gravitational potential energy of a simple double pendulum
 /// system, where the q=0 pose is horizontal
-pub fn double_pendulum_potential_energy2(state: &MechanismState, m: &Float, l: &Float) -> Float {
+pub fn double_pendulum_potential_energy2(state: &MechanismState, m: Float, l: Float) -> Float {
     let q1 = state.q[0].float();
     let q2 = state.q[1].float();
 
@@ -26,12 +26,12 @@ pub fn double_pendulum_potential_energy2(state: &MechanismState, m: &Float, l: &
 }
 
 /// Compute double pendulum system total energy
-pub fn double_pendulum_energy(state: &MechanismState, m: &Float, l: &Float) -> Float {
+pub fn double_pendulum_energy(state: &MechanismState, m: Float, l: Float) -> Float {
     state.kinetic_energy() + double_pendulum_potential_energy(state, m, l)
 }
 
 /// Compute cart-pole system total energy
-pub fn cart_pole_energy(state: &MechanismState, m_p: &Float, l: &Float) -> Float {
+pub fn cart_pole_energy(state: &MechanismState, m_p: Float, l: Float) -> Float {
     let theta = state.q[1].float();
     let cos_theta = theta.cos();
     let KE = state.kinetic_energy();
@@ -41,13 +41,13 @@ pub fn cart_pole_energy(state: &MechanismState, m_p: &Float, l: &Float) -> Float
 }
 
 /// Compute hopper energy
-pub fn hopper_energy(state: &MechanismState, l_spring: &Float, k_spring: &Float) -> Float {
+pub fn hopper_energy(state: &MechanismState, l_spring: Float, k_spring: Float) -> Float {
     let KE = state.kinetic_energy();
     let PE = state.gravitational_energy();
 
     // let l = state.q[2].float();
     let l_rest = 0.0;
-    let EPE = spring_elastic_energy(l_rest, *l_spring, *k_spring);
+    let EPE = spring_elastic_energy(l_rest, l_spring, k_spring);
 
     KE + PE + EPE
 }
@@ -60,13 +60,13 @@ mod energy_tests {
     use crate::joint::ToJointPositionVec;
     use crate::joint::ToJointTorqueVec;
     use crate::PI;
-    
+
     use na::Isometry3;
     use na::Vector3;
     use na::{dvector, vector, Matrix3};
 
     use crate::joint::ToJointVelocityVec;
-    
+
     use crate::{
         energy::double_pendulum_energy,
         helpers::{build_cart_pole, build_double_pendulum},
@@ -95,7 +95,7 @@ mod energy_tests {
         let axis = Vector3::y_axis();
 
         let mut state = build_double_pendulum(
-            &m,
+            m,
             &moment,
             &cross_part,
             &rod1_to_world,
@@ -107,7 +107,7 @@ mod energy_tests {
         let v_init = vec![0.1, 0.1].to_joint_vel_vec();
         state.update(&q_init, &v_init);
 
-        let init_energy = double_pendulum_energy(&state, &m, &l);
+        let init_energy = double_pendulum_energy(&state, m, l);
 
         // Act
         let final_time = 2.0;
@@ -121,7 +121,7 @@ mod energy_tests {
         );
 
         // Assert
-        let final_energy = double_pendulum_energy(&state, &m, &l);
+        let final_energy = double_pendulum_energy(&state, m, l);
         assert_close!(final_energy, init_energy, 1e-1);
         // TODO: check for lower tolerance when more energy-conserving integration scheme is implemented
     }
@@ -146,8 +146,8 @@ mod energy_tests {
         let axis_pole = -Vector3::y_axis();
 
         let mut state = build_cart_pole(
-            &m_cart,
-            &m_pole,
+            m_cart,
+            m_pole,
             &moment_cart,
             &moment_pole,
             &cross_part_cart,
@@ -159,7 +159,7 @@ mod energy_tests {
         let v_init = vec![0.0, 0.0].to_joint_vel_vec();
         state.update(&q_init, &v_init);
 
-        let init_energy = cart_pole_energy(&state, &m_pole, &l_pole);
+        let init_energy = cart_pole_energy(&state, m_pole, l_pole);
 
         // Act
         let final_time = 2.0;
@@ -173,7 +173,7 @@ mod energy_tests {
         );
 
         // Assert
-        let final_energy = cart_pole_energy(&state, &m_pole, &l_pole);
+        let final_energy = cart_pole_energy(&state, m_pole, l_pole);
         assert_dvec_close(&dvector![final_energy], &dvector![init_energy], 1e-1);
         // TODO: check for lower tolerance when better integration scheme is implemented
     }

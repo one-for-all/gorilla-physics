@@ -19,7 +19,7 @@ pub fn createCart(length: Float) -> InterfaceMechanismState {
     let cross_part = vector![0.0, 0.0, 0.0];
     let axis = vector![1.0, 0.0, 0.0];
 
-    let mut state = build_cart(&m, &moment, &cross_part, &axis);
+    let mut state = build_cart(m, &moment, &cross_part, &axis);
 
     let q_init = vec![0.0].to_joint_pos_vec();
     let v_init = vec![1.0].to_joint_vel_vec();

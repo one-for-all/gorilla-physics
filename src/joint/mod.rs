@@ -72,10 +72,9 @@ pub enum JointPosition {
 }
 
 impl JointPosition {
-    // TODO(pattern): return raw Float, not reference
-    pub fn float(&self) -> &Float {
+    pub fn float(&self) -> Float {
         match self {
-            JointPosition::Float(v) => v,
+            JointPosition::Float(v) => *v,
             _ => panic!("JointPosition is not a float"),
         }
     }
@@ -127,9 +126,9 @@ pub enum JointVelocity {
 }
 
 impl JointVelocity {
-    pub fn float(&self) -> &Float {
+    pub fn float(&self) -> Float {
         match self {
-            JointVelocity::Float(v) => v,
+            JointVelocity::Float(v) => *v,
             _ => panic!("JointVelocity is not a Float"),
         }
     }
@@ -205,9 +204,9 @@ pub enum JointTorque {
 }
 
 impl JointTorque {
-    pub fn float(&self) -> &Float {
+    pub fn float(&self) -> Float {
         match self {
-            JointTorque::Float(v) => v,
+            JointTorque::Float(v) => *v,
             _ => panic!("JointTorque is not a Float"),
         }
     }
@@ -257,9 +256,9 @@ pub enum JointAcceleration {
 }
 
 impl JointAcceleration {
-    pub fn float(&self) -> &Float {
+    pub fn float(&self) -> Float {
         match self {
-            JointAcceleration::Float(v) => v,
+            JointAcceleration::Float(v) => *v,
             _ => panic!("JointAcceleration is not a Float"),
         }
     }

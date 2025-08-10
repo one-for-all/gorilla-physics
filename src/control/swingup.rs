@@ -6,7 +6,7 @@ use crate::{mechanism::MechanismState, types::Float, GRAVITY};
 /// Swing-up controller for a acrobot
 /// Reference: ENERGY BASED CONTROL OF A CLASS OF UNDERACTUATED MECHANICAL
 /// SYSTEMS by Mark W. Spong, 1996
-pub fn swingup_acrobot(state: &MechanismState, m: &Float, l: &Float) -> Vec<JointTorque> {
+pub fn swingup_acrobot(state: &MechanismState, m: Float, l: Float) -> Vec<JointTorque> {
     let q1 = state.q[0].float();
     let q2 = state.q[1].float();
     let q1dot = state.v[0].float();
@@ -75,9 +75,9 @@ pub fn swingup_acrobot(state: &MechanismState, m: &Float, l: &Float) -> Vec<Join
 ///     HAUSER, 1995
 pub fn swingup_cart_pole(
     state: &MechanismState,
-    m_c: &Float,
-    m_p: &Float,
-    l: &Float,
+    m_c: Float,
+    m_p: Float,
+    l: Float,
 ) -> Vec<JointTorque> {
     let theta = state.q[1].float();
     let theta_dot = state.v[1].float();
@@ -144,7 +144,7 @@ mod swingup_tests {
         let axis = -Vector3::y_axis();
 
         let mut state = build_double_pendulum(
-            &m,
+            m,
             &moment,
             &cross_part,
             &rod1_to_world,
@@ -159,7 +159,7 @@ mod swingup_tests {
         // Act
         let final_time = 50.0;
         let dt = 1e-2;
-        let swingup = |state: &MechanismState| swingup_acrobot(state, &m, &l);
+        let swingup = |state: &MechanismState| swingup_acrobot(state, m, l);
         let (qs, vs) = simulate(
             &mut state,
             final_time,
@@ -208,8 +208,8 @@ mod swingup_tests {
         let axis_pole = -Vector3::y_axis();
 
         let mut state = build_cart_pole(
-            &m_cart,
-            &m_pole,
+            m_cart,
+            m_pole,
             &moment_cart,
             &moment_pole,
             &cross_part_cart,
@@ -224,7 +224,7 @@ mod swingup_tests {
         // Act
         let final_time = 30.0;
         let dt = 1e-2;
-        let swingup = |state: &MechanismState| swingup_cart_pole(state, &m_cart, &m_pole, &l_pole);
+        let swingup = |state: &MechanismState| swingup_cart_pole(state, m_cart, m_pole, l_pole);
         let (qs, vs) = simulate(
             &mut state,
             final_time,
@@ -255,9 +255,9 @@ mod swingup_tests {
         // upright pole on a stationary cart
         let cart_q = qs[qs.len() - 1][0].float();
         let cart_v = vs[vs.len() - 1][0].float();
-        let E = cart_pole_energy(&state, &m_pole, &l_pole);
+        let E = cart_pole_energy(&state, m_pole, l_pole);
         let E_expected = m_pole * l_pole * GRAVITY;
-        assert_dvec_close(&dvector![*cart_q, *cart_v], &dvector![0.0, 0.0], 1e-1);
+        assert_dvec_close(&dvector![cart_q, cart_v], &dvector![0.0, 0.0], 1e-1);
         assert_close!(E, E_expected, 2.0);
     }
 }

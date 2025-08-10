@@ -51,13 +51,13 @@ impl PrismaticJoint {
 
     /// Return the spatial acceleration of the successor with respect
     /// to its predecessor, expressed in the successor frame.
-    pub fn spatial_acceleration(&self, vdot: &Float) -> SpatialAcceleration {
+    pub fn spatial_acceleration(&self, vdot: Float) -> SpatialAcceleration {
         SpatialAcceleration {
             body: self.transform.from.clone(),
             base: self.transform.to.clone(),
             frame: self.transform.from.clone(),
             angular: zero(),
-            linear: self.axis * (*vdot),
+            linear: self.axis * vdot,
         }
     }
 
@@ -72,8 +72,8 @@ impl PrismaticJoint {
     }
 
     /// Update the transform to be intial transform moved along axis by q
-    pub fn update(&mut self, q: &Float) {
-        let iso = self.init_iso * Translation3::from(self.axis.scale(*q));
+    pub fn update(&mut self, q: Float) {
+        let iso = self.init_iso * Translation3::from(self.axis.scale(q));
 
         self.transform = Transform3D {
             from: self.transform.from.clone(),

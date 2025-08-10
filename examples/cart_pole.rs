@@ -42,8 +42,8 @@ pub fn main() {
     let axis_pole = -Vector3::y_axis();
 
     let mut state = build_cart_pole(
-        &m_cart,
-        &m_pole,
+        m_cart,
+        m_pole,
         &moment_cart,
         &moment_pole,
         &cross_part_cart,
@@ -67,7 +67,7 @@ pub fn main() {
     let dt = 1.0 / 100.0;
     let num_steps = (final_time / dt) as usize;
     while t < final_time {
-        let torque = swingup_cart_pole(&state, &m_cart, &m_pole, &l_pole);
+        let torque = swingup_cart_pole(&state, m_cart, m_pole, l_pole);
         // let torque = dvector![0.0, 0.0];
         let (q, v) = step(
             &mut state,
@@ -78,7 +78,7 @@ pub fn main() {
         qs.extend([q.to_float_dvec()]);
         vs.extend([v.to_float_dvec()]);
         taus.extend([torque.to_float_dvec()]);
-        Es.extend([cart_pole_energy(&state, &m_pole, &l_pole)]);
+        Es.extend([cart_pole_energy(&state, m_pole, l_pole)]);
         t += dt;
     }
 

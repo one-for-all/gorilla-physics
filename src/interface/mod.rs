@@ -349,7 +349,7 @@ pub fn createRodPendulumAtBottom(length: Float) -> InterfaceMechanismState {
     let rod_to_world = Isometry3::identity(); // transformation from rod to world frame
     let axis = Vector3::y_axis(); // axis of joint rotation
 
-    let mut state = crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, axis);
+    let mut state = crate::helpers::build_pendulum(m, &moment, &cross_part, &rod_to_world, axis);
 
     let q_init = vec![JointPosition::Float(0.1)];
     let v_init = vec![0.0].to_joint_vel_vec();
@@ -403,7 +403,7 @@ pub fn createDoublePendulumHorizontal(length: Float) -> InterfaceMechanismState 
     let axis = Vector3::y_axis(); // axis of joint rotation
 
     let mut state = build_double_pendulum(
-        &m,
+        m,
         &moment,
         &cross_part,
         &rod1_to_world,

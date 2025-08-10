@@ -70,7 +70,7 @@ pub fn pendulum_energy_shaping(state: &MechanismState) -> Vec<JointTorque> {
 
     let q = state.q[0].float();
     let v = state.v[0].float();
-    let omega = axis * *v;
+    let omega = axis * v;
 
     let E_desired = mass * GRAVITY * length_to_com;
     let KE = (0.5 * omega.transpose() * moment * omega)[0];
@@ -145,7 +145,7 @@ mod control_tests {
         let axis = Vector3::y_axis(); // axis of joint rotation
 
         let mut state =
-            crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, axis);
+            crate::helpers::build_pendulum(m, &moment, &cross_part, &rod_to_world, axis);
 
         let q_init = vec![0.1].to_joint_pos_vec(); // give it some initial displacement
         let v_init = vec![0.0].to_joint_vel_vec();
@@ -195,7 +195,7 @@ mod control_tests {
         let axis = Vector3::y_axis(); // axis of joint rotation
 
         let mut state =
-            crate::helpers::build_pendulum(&m, &moment, &cross_part, &rod_to_world, axis);
+            crate::helpers::build_pendulum(m, &moment, &cross_part, &rod_to_world, axis);
 
         let q_init = vec![0.0].to_joint_pos_vec();
         let v_init = vec![0.1].to_joint_vel_vec(); // give it some initial velocity

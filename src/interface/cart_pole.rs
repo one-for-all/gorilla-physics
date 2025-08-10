@@ -27,8 +27,8 @@ pub fn createCartPole(length: Float) -> InterfaceMechanismState {
     let axis_pole = -Vector3::y_axis();
 
     let mut state = build_cart_pole(
-        &m_cart,
-        &m_pole,
+        m_cart,
+        m_pole,
         &moment_cart,
         &moment_pole,
         &cross_part_cart,
