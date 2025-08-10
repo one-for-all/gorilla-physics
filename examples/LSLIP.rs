@@ -1,8 +1,7 @@
 use gorilla_physics::{
     contact::{ContactPoint, HalfSpace},
-    control::Controller,
+    control::{Controller, NullController},
     inertia::SpatialInertia,
-    interface::controller::NullController,
     joint::{
         floating::FloatingJoint,
         prismatic::{JointSpring, PrismaticJoint},
@@ -12,9 +11,7 @@ use gorilla_physics::{
     plot::{plot, plot_trajectory},
     rigid_body::RigidBody,
     simulate::step,
-    spatial::pose::Pose,
-    spatial::spatial_vector::SpatialVector,
-    spatial::transform::Transform3D,
+    spatial::{pose::Pose, spatial_vector::SpatialVector, transform::Transform3D},
     types::Float,
     WORLD_FRAME,
 };

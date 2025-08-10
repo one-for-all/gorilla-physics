@@ -1,6 +1,6 @@
 use gorilla_physics::contact::{ContactPoint, HalfSpace};
-use gorilla_physics::control::Controller;
-use gorilla_physics::interface::controller::NullController;
+use gorilla_physics::control::{Controller, NullController};
+
 use gorilla_physics::joint::floating::FloatingJoint;
 use gorilla_physics::mechanism::MechanismState;
 use gorilla_physics::plot::{plot, plot_trajectory};

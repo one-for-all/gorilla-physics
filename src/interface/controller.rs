@@ -7,10 +7,8 @@ use crate::{
         pusher_control::PusherController,
         quadruped_control::{QuadrupedStandingController, QuadrupedTrottingController},
         so101_control::SO101PositionController,
-        ControlInput, Controller,
+        Controller, NullController,
     },
-    joint::JointTorque,
-    mechanism::MechanismState,
     types::Float,
 };
 use wasm_bindgen::prelude::*;
@@ -117,18 +115,6 @@ pub fn createFourBarLinkageController() -> InterfaceController {
 pub fn createFourBarLinkageWithBaseController() -> InterfaceController {
     let inner: Box<dyn Controller> = Box::new(FourBarLinkageWithBaseController {});
     InterfaceController { inner }
-}
-
-pub struct NullController {}
-
-impl Controller for NullController {
-    fn control(
-        &mut self,
-        _state: &mut MechanismState,
-        _input: Option<&ControlInput>,
-    ) -> Vec<JointTorque> {
-        vec![]
-    }
 }
 
 #[wasm_bindgen]

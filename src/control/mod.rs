@@ -35,6 +35,18 @@ pub trait Controller {
     ) -> Vec<JointTorque>;
 }
 
+pub struct NullController {}
+
+impl Controller for NullController {
+    fn control(
+        &mut self,
+        _state: &mut MechanismState,
+        _input: Option<&ControlInput>,
+    ) -> Vec<JointTorque> {
+        vec![]
+    }
+}
+
 /// Control algorithm that effectively inverts the gravity for a pendulum system.
 /// u = 2mglsin(q) - Bv
 /// where q is the angle from the bottom, and Bv is the damping term.

@@ -1,8 +1,7 @@
 use gorilla_physics::{
     contact::{ContactPoint, HalfSpace},
-    control::Controller,
+    control::{Controller, NullController},
     inertia::SpatialInertia,
-    interface::controller::NullController,
     joint::{
         floating::FloatingJoint,
         prismatic::{JointSpring, PrismaticJoint},
