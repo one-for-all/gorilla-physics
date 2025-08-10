@@ -44,7 +44,7 @@ impl SimpleDoublePendulum {
         } else {
             panic!(
                 r#"Failed to solve for vdot in M(q) vdot + c(q, v) = 0
-            where M = {}, 
+            where M = {},
                   c = {}
             "#,
                 self.M, self.dynamics_bias
@@ -55,8 +55,9 @@ impl SimpleDoublePendulum {
 
 #[cfg(test)]
 mod double_pendulum_tests {
+    use crate::assert_vec_close;
+
     use super::*;
-    use crate::util::assert_dvec_close;
     use na::{dvector, DVector};
 
     #[test]
@@ -78,6 +79,6 @@ mod double_pendulum_tests {
         let vdot = DVector::from_column_slice(dp.dynamics().as_slice());
 
         // Assert
-        assert_dvec_close(&vdot, &dvector![68.8824, -58.9877], 1e-4); // reference values from RigidBodyDynamics.jl
+        assert_vec_close!(&vdot, &dvector![68.8824, -58.9877], 1e-4); // reference values from RigidBodyDynamics.jl
     }
 }

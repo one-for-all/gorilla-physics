@@ -111,9 +111,9 @@ pub fn swingup_cart_pole(
 
 #[cfg(test)]
 mod swingup_tests {
-    use crate::assert_close;
     use crate::integrators::Integrator;
     use crate::joint::{ToJointPositionVec, ToJointVelocityVec};
+    use crate::{assert_close, assert_vec_close};
     use itertools::izip;
     use na::{dvector, vector, DVector, Isometry3, Matrix3, Vector3};
 
@@ -124,7 +124,6 @@ mod swingup_tests {
         helpers::{build_cart_pole, build_double_pendulum},
         joint::ToFloatDVec,
         simulate::simulate,
-        util::assert_dvec_close,
     };
 
     #[test]
@@ -257,7 +256,7 @@ mod swingup_tests {
         let cart_v = vs[vs.len() - 1][0].float();
         let E = cart_pole_energy(&state, m_pole, l_pole);
         let E_expected = m_pole * l_pole * GRAVITY;
-        assert_dvec_close(&dvector![cart_q, cart_v], &dvector![0.0, 0.0], 1e-1);
+        assert_vec_close!(&dvector![cart_q, cart_v], &dvector![0.0, 0.0], 1e-1);
         assert_close!(E, E_expected, 2.0);
     }
 }

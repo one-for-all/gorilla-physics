@@ -378,6 +378,7 @@ pub fn calculate_contact_force_halfspace(
 #[cfg(test)]
 mod contact_tests {
 
+    use crate::assert_vec_close;
     use crate::control::{Controller, NullController};
     use crate::helpers::add_cube_contacts;
     use crate::integrators::Integrator;
@@ -401,7 +402,7 @@ mod contact_tests {
     };
     use na::{dvector, vector, zero, Isometry3, Matrix3, UnitQuaternion};
 
-    use crate::{helpers::build_pendulum, simulate::simulate, util::assert_dvec_close, PI};
+    use crate::{helpers::build_pendulum, simulate::simulate, PI};
 
     use super::*;
 
@@ -439,7 +440,7 @@ mod contact_tests {
         // Assert
         let q_final = qs[qs.len() - 1][0].float();
         let q_expect = 30.0 * PI / 180.0; // 30 degrees
-        assert_dvec_close(&dvector![q_final], &dvector![q_expect], 1e-3);
+        assert_vec_close!(&dvector![q_final], &dvector![q_expect], 1e-3);
     }
 
     #[test]

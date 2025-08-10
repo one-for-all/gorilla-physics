@@ -882,7 +882,6 @@ mod dynamics_tests {
         inertia::SpatialInertia,
         joint::{revolute::RevoluteJoint, Joint, ToJointPositionVec, ToJointVelocityVec},
         rigid_body::RigidBody,
-        util::assert_dvec_close,
         GRAVITY, PI,
     };
 
@@ -1089,10 +1088,10 @@ mod dynamics_tests {
         let joint_accels = dynamics_continuous(&mut state, &vec![0.0, 0.0].to_joint_torque_vec());
 
         // Assert
-        assert_dvec_close(
+        assert_vec_close!(
             &joint_accels.to_float_dvec(),
             &dvector![GRAVITY / l, -GRAVITY / l],
-            1e-6,
+            1e-6
         );
     }
 

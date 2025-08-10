@@ -132,12 +132,6 @@ pub fn assert_close(a: Float, b: Float, tol: Float) {
     assert!((a - b).abs() < tol, "{} != {}", a, b);
 }
 
-pub fn assert_dvec_close(a: &DVector<Float>, b: &DVector<Float>, tol: Float) {
-    for (a, b) in a.iter().zip(b.iter()) {
-        assert!((a - b).abs() < tol, "{} != {}", a, b);
-    }
-}
-
 /// Read a file into a string
 pub fn read_file(file_path: &str) -> String {
     let file = File::open(file_path).expect(&format!("{} should exist", file_path));

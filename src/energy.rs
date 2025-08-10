@@ -56,6 +56,7 @@ pub fn hopper_energy(state: &MechanismState, l_spring: Float, k_spring: Float) -
 mod energy_tests {
 
     use crate::assert_close;
+    use crate::assert_vec_close;
     use crate::integrators::Integrator;
     use crate::joint::ToJointPositionVec;
     use crate::joint::ToJointTorqueVec;
@@ -73,7 +74,6 @@ mod energy_tests {
         joint::JointPosition,
         simulate::simulate,
         types::Float,
-        util::assert_dvec_close,
     };
 
     use super::cart_pole_energy;
@@ -174,7 +174,7 @@ mod energy_tests {
 
         // Assert
         let final_energy = cart_pole_energy(&state, m_pole, l_pole);
-        assert_dvec_close(&dvector![final_energy], &dvector![init_energy], 1e-1);
+        assert_vec_close!(&dvector![final_energy], &dvector![init_energy], 1e-1);
         // TODO: check for lower tolerance when better integration scheme is implemented
     }
 }
