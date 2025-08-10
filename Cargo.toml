@@ -140,3 +140,6 @@ strip = true
 
 [features]
 gpu = []
+
+[lints.rust]
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(rust_analyzer)'] }
