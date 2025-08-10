@@ -90,7 +90,7 @@ impl<'a, 'b> Add<&'b Wrench> for &'a Wrench {
 pub fn compute_torques(
     state: &MechanismState,
     wrenches: &HashMap<usize, Wrench>,
-    bodies_to_root: &HashMap<usize, Transform3D>,
+    bodies_to_root: &Vec<Transform3D>,
 ) -> DVector<Float> {
     let mut torquesout: DVector<Float> = dvector![];
 
@@ -124,7 +124,7 @@ pub fn compute_torques(
             parent_joint_wrench.linear += joint_wrench.linear;
         }
 
-        let body_to_root = bodies_to_root.get(bodyid).unwrap();
+        let body_to_root = &bodies_to_root[*bodyid];
         let motion_subspace = joint.motion_subspace().transform(body_to_root);
 
         let mut joint_torques = vec![];

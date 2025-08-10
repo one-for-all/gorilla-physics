@@ -174,7 +174,7 @@ impl InterfaceMechanismState {
 
         let mut poses = vec![];
         for jointid in self.inner.treejointids.iter() {
-            let body_to_root = bodies_to_root.get(jointid).unwrap().iso;
+            let body_to_root = bodies_to_root[*jointid].iso;
             let rotation = body_to_root.rotation;
             let translation = body_to_root.translation.vector;
 
@@ -197,7 +197,7 @@ impl InterfaceMechanismState {
 
         let mut positions = vec![];
         for (jointid, body) in izip!(self.inner.treejointids.iter(), self.inner.bodies.iter()) {
-            let body_to_root = bodies_to_root.get(jointid).unwrap();
+            let body_to_root = &bodies_to_root[*jointid];
 
             for contact in body.contact_points.iter() {
                 let location_in_body = contact.location;

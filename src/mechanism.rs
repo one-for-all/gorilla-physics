@@ -8,7 +8,6 @@ use crate::energy::spring_elastic_energy;
 use crate::inertia::compute_inertias;
 use crate::inertia::kinetic_energy;
 use crate::inertia::SpatialInertia;
-use crate::joint::constraint_revolute::RevoluteConstraintJoint;
 use crate::joint::cylindrical_constraint::Constraint;
 use crate::joint::Joint;
 use crate::joint::JointPosition;
@@ -186,10 +185,10 @@ impl MechanismState {
     }
 
     /// Updates the collider of each body to have the body's pose
-    pub fn update_collider_poses(&mut self, bodies_to_root: &HashMap<usize, Transform3D>) {
+    pub fn update_collider_poses(&mut self, bodies_to_root: &Vec<Transform3D>) {
         for (jointid, body) in izip!(self.treejointids.iter(), self.bodies.iter_mut()) {
             if let Some(collider) = body.collider.as_mut() {
-                let body_to_root = bodies_to_root.get(jointid).unwrap();
+                let body_to_root = &bodies_to_root[*jointid];
                 let isometry = body_to_root.iso;
                 match &mut collider.geometry {
                     CollisionGeometry::Cuboid(cuboid) => {
@@ -207,9 +206,9 @@ impl MechanismState {
     }
 
     /// Updates the visual of each body to have the body's pose
-    pub fn update_visual_poses(&mut self, bodies_to_root: &HashMap<usize, Transform3D>) {
+    pub fn update_visual_poses(&mut self, bodies_to_root: &Vec<Transform3D>) {
         for (jointid, body) in izip!(self.treejointids.iter(), self.bodies.iter_mut()) {
-            let body_to_root = bodies_to_root.get(jointid).unwrap();
+            let body_to_root = &bodies_to_root[*jointid];
             let isometry = body_to_root.iso;
             // TODO: update only once as a whole, since they all share the same
             // isometry. Or just keep the isometry on the body instead.
@@ -266,7 +265,7 @@ impl MechanismState {
         for (jointid, body) in izip!(self.treejointids.iter(), self.bodies.iter()) {
             let bodyid = jointid;
             let twist = &twists[*bodyid];
-            let body_to_root = bodies_to_root.get(bodyid).unwrap();
+            let body_to_root = &bodies_to_root[*bodyid];
             let spatial_inertia = body.inertia.transform(&body_to_root);
 
             let ke = kinetic_energy(&spatial_inertia, &twist);
@@ -279,7 +278,7 @@ impl MechanismState {
         let mut PE = 0.0;
         let bodies_to_root = compute_bodies_to_root(self);
         for jointid in self.treejointids.iter() {
-            let height = bodies_to_root.get(jointid).unwrap().trans().z;
+            let height = bodies_to_root[*jointid].trans().z;
             let mass = self.bodies[jointid - 1].inertia.mass;
             PE += mass * GRAVITY * height;
         }
@@ -332,7 +331,7 @@ impl MechanismState {
 
         let mut poses: Vec<Pose> = vec![];
         for jointid in self.treejointids.iter() {
-            let body_to_root = bodies_to_root.get(jointid).unwrap().iso;
+            let body_to_root = bodies_to_root[*jointid].iso;
 
             let pose = Pose {
                 rotation: body_to_root.rotation,
@@ -401,11 +400,11 @@ impl MechanismState {
 /// Computes the motion space of each joint, expressed in world frame.
 pub fn compute_motion_subspaces(
     state: &MechanismState,
-    bodies_to_root: &HashMap<usize, Transform3D>,
+    bodies_to_root: &Vec<Transform3D>,
 ) -> HashMap<usize, GeometricJacobian> {
     let mut motion_subspaces = HashMap::new();
     for (bodyid, joint) in izip!(state.treejointids.iter(), state.treejoints.iter()) {
-        let body_to_root = bodies_to_root.get(bodyid).unwrap();
+        let body_to_root = &bodies_to_root[*bodyid];
         let ms_in_body = joint.motion_subspace();
         motion_subspaces.insert(*bodyid, ms_in_body.transform(body_to_root));
     }
@@ -444,10 +443,7 @@ pub fn compute_crb_inertias(
 /// is the dimension of the Mechanism's joint velocity vector v.
 ///
 /// Ref: Table 6.2 in Featherstone's Rigid Body Dynamics Algorithms, 2008
-pub fn mass_matrix(
-    state: &MechanismState,
-    bodies_to_root: &HashMap<usize, Transform3D>,
-) -> DMatrix<Float> {
+pub fn mass_matrix(state: &MechanismState, bodies_to_root: &Vec<Transform3D>) -> DMatrix<Float> {
     let n_v = state
         .v
         .iter()

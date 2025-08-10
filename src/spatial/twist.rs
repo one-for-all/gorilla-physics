@@ -183,14 +183,14 @@ pub fn compute_joint_twists(state: &MechanismState) -> Vec<Twist> {
 /// Note: the first twist is world
 pub fn compute_twists_wrt_world(
     state: &MechanismState,
-    bodies_to_root: &HashMap<usize, Transform3D>,
+    bodies_to_root: &Vec<Transform3D>,
     joint_twists: &Vec<Twist>,
 ) -> Vec<Twist> {
     let mut twists: Vec<Twist> = vec![Twist::zero("world", "world")];
     for jointid in state.treejointids.iter() {
         let parentbodyid = state.parents[*jointid - 1];
         let bodyid = jointid;
-        let body_to_root = bodies_to_root.get(&bodyid).unwrap();
+        let body_to_root = &bodies_to_root[*bodyid];
 
         let joint_twist = &joint_twists[bodyid - 1];
         let parent_twist = &twists[parentbodyid];

@@ -44,7 +44,7 @@ use crate::{mechanism::MechanismState, spatial::spatial_acceleration::SpatialAcc
 pub fn newton_euler(
     state: &MechanismState,
     accels: &HashMap<usize, SpatialAcceleration>,
-    bodies_to_root: &HashMap<usize, Transform3D>,
+    bodies_to_root: &Vec<Transform3D>,
     twists: &Vec<Twist>,
 ) -> HashMap<usize, Wrench> {
     // Compute the body inertias wrt. world frame
@@ -136,7 +136,7 @@ pub fn coriolis_accel(body_twist: &Twist, joint_twist: &Twist) -> SpatialAcceler
 /// Reference: Chapter 5.3 The Recursive Newton-Euler Algorithm in "Robot Dynamics Algorithms" by Roy Featherstone
 pub fn compute_coriolis_bias_accelerations(
     state: &MechanismState,
-    bodies_to_root: &HashMap<usize, Transform3D>,
+    bodies_to_root: &Vec<Transform3D>,
     twists: &Vec<Twist>,
     joint_twists: &Vec<Twist>,
 ) -> HashMap<usize, SpatialAcceleration> {
@@ -156,7 +156,7 @@ pub fn compute_coriolis_bias_accelerations(
         let bodyid = jointid;
         let parentid = state.parents[*jointid - 1];
 
-        let body_to_root = bodies_to_root.get(bodyid).unwrap();
+        let body_to_root = &bodies_to_root[*bodyid];
         let root_to_body = body_to_root.inv();
 
         // body twist wrt. world expressed in body frame
@@ -193,7 +193,7 @@ pub fn compute_coriolis_bias_accelerations(
 /// Imagine the whole system is in a elevator accelerating upwards at 9.81 m/s^2.
 pub fn bias_accelerations(
     state: &MechanismState,
-    bodies_to_root: &HashMap<usize, Transform3D>,
+    bodies_to_root: &Vec<Transform3D>,
     twists: &Vec<Twist>,
     joint_twists: &Vec<Twist>,
 ) -> HashMap<usize, SpatialAcceleration> {
@@ -226,7 +226,7 @@ pub fn bias_accelerations(
 /// acceleration vector vdot, and contact wrenches.
 pub fn dynamics_bias(
     state: &MechanismState,
-    bodies_to_root: &HashMap<usize, Transform3D>,
+    bodies_to_root: &Vec<Transform3D>,
     joint_twists: &Vec<Twist>,
     twists: &Vec<Twist>,
     contact_wrenches: &HashMap<usize, Wrench>,
@@ -273,12 +273,7 @@ pub fn dynamics_solve(
 /// discrete version of the dynamics problem
 pub fn dynamics_quantities(
     state: &mut MechanismState,
-) -> (
-    HashMap<usize, Transform3D>,
-    Vec<Twist>,
-    Vec<Twist>,
-    DMatrix<Float>,
-) {
+) -> (Vec<Transform3D>, Vec<Twist>, Vec<Twist>, DMatrix<Float>) {
     // Compute the body to root frame transform for each body
     let bodies_to_root = compute_bodies_to_root(state);
 
@@ -453,11 +448,11 @@ pub fn dynamics_discrete(
 ///      Section 1.5 The Coulomb Friction Law
 pub fn build_jacobian_blocks(
     state: &MechanismState,
-    bodies_to_root: &HashMap<usize, Transform3D>,
+    bodies_to_root: &Vec<Transform3D>,
 ) -> Vec<Matrix6xX<Float>> {
     izip!(state.treejointids.iter(), state.treejoints.iter())
         .filter_map(|(bodyid, joint)| {
-            let body_to_root = bodies_to_root.get(bodyid).unwrap();
+            let body_to_root = &bodies_to_root[*bodyid];
             let T = compute_twist_transformation_matrix(&body_to_root.iso);
             match joint {
                 Joint::RevoluteJoint(joint) => Some(
@@ -493,7 +488,7 @@ pub fn build_jacobian_blocks(
 pub fn build_constraint_jacobians(
     state: &MechanismState,
     blocks: &Vec<Matrix6xX<Float>>,
-    bodies_to_root: &HashMap<usize, Transform3D>,
+    bodies_to_root: &Vec<Transform3D>,
     dof: usize, // state v dimension
 ) -> Vec<DMatrix<Float>> {
     state
@@ -526,9 +521,8 @@ pub fn build_constraint_jacobians(
 
             let frame1_body_to_root = bodies_to_root
                 .iter()
-                .find(|x| x.1.from == constraint.frame1())
-                .unwrap()
-                .1;
+                .find(|x| x.from == constraint.frame1())
+                .unwrap();
             let constraint_to_root = frame1_body_to_root.iso * constraint.to_frame1();
             let root_to_constraint = constraint_to_root.inverse();
             let T = compute_twist_transformation_matrix(&root_to_constraint);
@@ -563,13 +557,13 @@ pub fn build_constraint_jacobians(
 /// Performs collision detection and returns a vec of (contact normal, contact point, bodyid, other_bodyid)
 pub fn collision_detection(
     state: &mut MechanismState,
-    bodies_to_root: &HashMap<usize, Transform3D>,
+    bodies_to_root: &Vec<Transform3D>,
 ) -> Vec<(UnitVector3<Float>, Vector3<Float>, usize, Option<usize>)> {
     let mut contacts: Vec<(UnitVector3<Float>, Vector3<Float>, usize, Option<usize>)> = vec![];
 
     // Handle point contacts with halfspaces
     for (bodyid, body) in izip!(state.treejointids.iter(), state.bodies.iter()) {
-        let body_to_root = bodies_to_root.get(&bodyid).unwrap();
+        let body_to_root = &bodies_to_root[*bodyid];
 
         for contact_point in &body.contact_points {
             let contact_point_world = contact_point.transform(body_to_root); // contact point in world frame

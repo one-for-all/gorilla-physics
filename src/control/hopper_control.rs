@@ -200,10 +200,8 @@ mod hopper_control_tests {
             let joint_twists = compute_joint_twists(&state);
             let twists = compute_twists_wrt_world(&state, &bodies_to_root, &joint_twists);
             let body_twist = &twists[3];
-            let body_vel = body_twist.contact_point_velocity(&ContactPoint::new(
-                WORLD_FRAME,
-                bodies_to_root.get(&3).unwrap().trans(),
-            ));
+            let body_vel = body_twist
+                .contact_point_velocity(&ContactPoint::new(WORLD_FRAME, bodies_to_root[3].trans()));
             let body_vx = body_vel.x;
 
             // Foot placement
@@ -231,10 +229,8 @@ mod hopper_control_tests {
             let body_twist = &twists[3];
 
             // body velocity of the body frame, expressed in world frame
-            let body_vel = body_twist.contact_point_velocity(&ContactPoint::new(
-                WORLD_FRAME,
-                bodies_to_root.get(&3).unwrap().trans(),
-            ));
+            let body_vel = body_twist
+                .contact_point_velocity(&ContactPoint::new(WORLD_FRAME, bodies_to_root[3].trans()));
             let body_vz = body_vel.z;
 
             // Bottom point
@@ -334,7 +330,7 @@ mod hopper_control_tests {
                 let body_twist = &twists[3];
                 let body_vel = body_twist.contact_point_velocity(&ContactPoint::new(
                     WORLD_FRAME,
-                    bodies_to_root.get(&3).unwrap().trans(),
+                    bodies_to_root[3].trans(),
                 ));
                 let body_vx = body_vel.x;
 
@@ -387,10 +383,8 @@ mod hopper_control_tests {
             let body_twist = &twists[3];
 
             // body velocity of the body frame, expressed in world frame
-            let body_vel = body_twist.contact_point_velocity(&ContactPoint::new(
-                WORLD_FRAME,
-                bodies_to_root.get(&3).unwrap().trans(),
-            ));
+            let body_vel = body_twist
+                .contact_point_velocity(&ContactPoint::new(WORLD_FRAME, bodies_to_root[3].trans()));
             let body_vz = body_vel.z;
 
             // Bottom point, actuate the spring to jump the robot

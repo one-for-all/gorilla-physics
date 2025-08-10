@@ -134,14 +134,14 @@ impl SpringContact {
 /// Compute the contact wrenches due to contacts
 pub fn contact_dynamics(
     state: &mut MechanismState,
-    bodies_to_root: &HashMap<usize, Transform3D>,
+    bodies_to_root: &Vec<Transform3D>,
     twists: &Vec<Twist>,
 ) -> HashMap<usize, Wrench> {
     let mut contact_wrenches = HashMap::new();
     for (jointid, body) in izip!(state.treejointids.iter(), state.bodies.iter_mut()) {
         let bodyid = jointid;
         let mut wrench = Wrench::zero("world");
-        let body_to_root = bodies_to_root.get(bodyid).unwrap();
+        let body_to_root = &bodies_to_root[*bodyid];
         let twist = &twists[*bodyid];
 
         // Handle point contacts with halfspaces

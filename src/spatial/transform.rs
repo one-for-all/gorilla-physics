@@ -21,8 +21,8 @@ impl Matrix4Ext for Matrix4<Float> {
     #[rustfmt::skip]
     fn move_x(amount: Float) -> Matrix4<Float> {
         Matrix4::new(
-            1., 0., 0., amount, 
-            0., 1., 0., 0., 
+            1., 0., 0., amount,
+            0., 1., 0., 0.,
             0., 0., 1., 0.,
             0., 0., 0., 1.,
         )
@@ -31,8 +31,8 @@ impl Matrix4Ext for Matrix4<Float> {
     #[rustfmt::skip]
     fn move_y(amount: Float) -> Matrix4<Float> {
         Matrix4::new(
-            1., 0., 0., 0., 
-            0., 1., 0., amount, 
+            1., 0., 0., 0.,
+            0., 1., 0., amount,
             0., 0., 1., 0.,
             0., 0., 0., 1.,
         )
@@ -41,8 +41,8 @@ impl Matrix4Ext for Matrix4<Float> {
     #[rustfmt::skip]
     fn move_z(amount: Float) -> Matrix4<Float> {
         Matrix4::new(
-            1., 0., 0., 0., 
-            0., 1., 0., 0., 
+            1., 0., 0., 0.,
+            0., 1., 0., 0.,
             0., 0., 1., amount,
             0., 0., 0., 1.,
         )
@@ -55,7 +55,7 @@ impl Matrix4Ext for Matrix4<Float> {
 pub struct Transform3D {
     pub from: String,
     pub to: String,
-    pub iso: Isometry3<Float> 
+    pub iso: Isometry3<Float>,
 }
 
 impl Transform3D {
@@ -75,7 +75,7 @@ impl Transform3D {
         }
     }
 
-    pub fn new_xyz_rpy(from: &str, to:&str, xyz: &Vec<Float>, rpy: &Vec<Float>) ->  Self {
+    pub fn new_xyz_rpy(from: &str, to: &str, xyz: &Vec<Float>, rpy: &Vec<Float>) -> Self {
         let x = xyz[0];
         let y = xyz[1];
         let z = xyz[2];
@@ -87,7 +87,7 @@ impl Transform3D {
         let rotation = UnitQuaternion::from_euler_angles(r, p, y);
 
         let isometry = Isometry3::from_parts(translation, rotation);
-        Transform3D {             
+        Transform3D {
             from: from.to_string(),
             to: to.to_string(),
             iso: isometry,
@@ -102,7 +102,7 @@ impl Transform3D {
         Transform3D {
             from: from.to_string(),
             to: to.to_string(),
-            iso: Isometry3::translation(amount, 0., 0.)
+            iso: Isometry3::translation(amount, 0., 0.),
         }
     }
 
@@ -110,7 +110,7 @@ impl Transform3D {
         Transform3D {
             from: from.to_string(),
             to: to.to_string(),
-            iso: Isometry3::translation(0., 0., amount)
+            iso: Isometry3::translation(0., 0., amount),
         }
     }
 
@@ -119,7 +119,7 @@ impl Transform3D {
         Transform3D {
             from: from.to_string(),
             to: to.to_string(),
-            iso: Isometry3::translation(x, y, z)
+            iso: Isometry3::translation(x, y, z),
         }
     }
 
@@ -149,8 +149,8 @@ impl Transform3D {
         let c = theta.cos();
         let s = theta.sin();
         Matrix4::new(
-                1., 0., 0., 0., 
-                0., c, -s, 0., 
+                1., 0., 0., 0.,
+                0., c, -s, 0.,
                 0., s, c, 0.,
                 0., 0., 0., 1.,
         )
@@ -160,9 +160,10 @@ impl Transform3D {
     /// https://en.wikipedia.org/wiki/Rotation_matrix
     pub fn rotation(axis: &Vector3<Float>, theta: &Float) -> Matrix4<Float> {
         Isometry3::from_parts(
-            Translation3::<Float>::identity(), 
-            UnitQuaternion::from_axis_angle(&UnitVector3::new_normalize(*axis), *theta)
-        ).to_homogeneous()
+            Translation3::<Float>::identity(),
+            UnitQuaternion::from_axis_angle(&UnitVector3::new_normalize(*axis), *theta),
+        )
+        .to_homogeneous()
     }
 
     /// Returns a transformation matrix of translation by amount
@@ -207,16 +208,25 @@ impl<'a, 'b> Mul<&'b Transform3D> for &'a Transform3D {
     }
 }
 
-pub fn compute_bodies_to_root(state: &MechanismState) -> HashMap<usize, Transform3D> {
-    let rootid = 0;
-    let mut bodies_to_root = HashMap::new();
-    bodies_to_root.insert(rootid, Transform3D::identity("world", "world"));
+/// Compute the transforms from body frames to root, i.e. the isometries of the body frames
+pub fn compute_bodies_to_root(state: &MechanismState) -> Vec<Transform3D> {
+    // let rootid = 0;
+    // let mut bodies_to_root = HashMap::new();
+    // bodies_to_root.insert(rootid, Transform3D::identity("world", "world"));
+    // for (jointid, joint) in izip!(state.treejointids.iter(), state.treejoints.iter()) {
+    //     let parentbodyid = state.parents[jointid - 1];
+    //     let bodyid = jointid;
+    //     let parent_to_root = bodies_to_root.get(&parentbodyid).unwrap();
+    //     let body_to_root = parent_to_root * &joint.transform();
+    //     bodies_to_root.insert(*bodyid, body_to_root);
+    // }
+
+    let mut bodies_to_root = vec![Transform3D::identity("world", "world")];
     for (jointid, joint) in izip!(state.treejointids.iter(), state.treejoints.iter()) {
-        let parentbodyid = state.parents[jointid-1];
-        let bodyid = jointid;
-        let parent_to_root = bodies_to_root.get(&parentbodyid).unwrap();     
+        let parentbodyid = state.parents[jointid - 1];
+        let parent_to_root = &bodies_to_root[parentbodyid];
         let body_to_root = parent_to_root * &joint.transform();
-        bodies_to_root.insert(*bodyid, body_to_root);
+        bodies_to_root.push(body_to_root);
     }
 
     bodies_to_root
@@ -225,9 +235,10 @@ pub fn compute_bodies_to_root(state: &MechanismState) -> HashMap<usize, Transfor
 #[cfg(test)]
 mod tests {
 
-    
     use crate::{
-        joint::{floating::FloatingJoint, revolute::RevoluteJoint, Joint}, rigid_body::RigidBody, WORLD_FRAME
+        joint::{floating::FloatingJoint, revolute::RevoluteJoint, Joint},
+        rigid_body::RigidBody,
+        WORLD_FRAME,
     };
 
     use super::{compute_bodies_to_root, *};
@@ -245,7 +256,7 @@ mod tests {
         let four_to_one = Transform3D::move_x("4", "1", 1.0);
         let five_to_four = Transform3D::move_z("5", "4", 1.0);
 
-        let axis = Vector3::y_axis(); 
+        let axis = Vector3::y_axis();
         let treejoints = vec![
             Joint::FloatingJoint(FloatingJoint::new(one_to_world)),
             Joint::RevoluteJoint(RevoluteJoint::new(two_to_one, axis)),
@@ -254,12 +265,11 @@ mod tests {
             Joint::RevoluteJoint(RevoluteJoint::new(five_to_four, axis)),
         ];
         let bodies = vec![
-            RigidBody::new_sphere(1., 1., "1"), 
-            RigidBody::new_sphere(1., 1., "2"), 
-            RigidBody::new_sphere(1., 1., "3"), 
-            RigidBody::new_sphere(1., 1., "4"), 
-            RigidBody::new_sphere(1., 1., "5")
-
+            RigidBody::new_sphere(1., 1., "1"),
+            RigidBody::new_sphere(1., 1., "2"),
+            RigidBody::new_sphere(1., 1., "3"),
+            RigidBody::new_sphere(1., 1., "4"),
+            RigidBody::new_sphere(1., 1., "5"),
         ];
         let state = MechanismState::new(treejoints, bodies);
 
@@ -267,14 +277,20 @@ mod tests {
         let bodies_to_root = compute_bodies_to_root(&state);
 
         // Assert
-        let one_to_root = bodies_to_root.get(&1).unwrap();
+        let one_to_root = &bodies_to_root[1];
         assert_eq!(*one_to_root, Transform3D::identity("1", WORLD_FRAME));
 
-        let two_to_root = bodies_to_root.get(&2).unwrap();
-        assert_eq!(*two_to_root, Transform3D::new("2", WORLD_FRAME, &Isometry3::translation(-1., 0.,0.)));
+        let two_to_root = &bodies_to_root[2];
+        assert_eq!(
+            *two_to_root,
+            Transform3D::new("2", WORLD_FRAME, &Isometry3::translation(-1., 0., 0.))
+        );
 
-        let five_to_root = bodies_to_root.get(&5).unwrap();
+        let five_to_root = &bodies_to_root[5];
         let five_to_root_iso = Isometry3::translation(1., 0., 1.);
-        assert_eq!(*five_to_root, Transform3D::new("5", WORLD_FRAME, &five_to_root_iso));
+        assert_eq!(
+            *five_to_root,
+            Transform3D::new("5", WORLD_FRAME, &five_to_root_iso)
+        );
     }
 }
