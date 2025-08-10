@@ -210,17 +210,6 @@ impl<'a, 'b> Mul<&'b Transform3D> for &'a Transform3D {
 
 /// Compute the transforms from body frames to root, i.e. the isometries of the body frames
 pub fn compute_bodies_to_root(state: &MechanismState) -> Vec<Transform3D> {
-    // let rootid = 0;
-    // let mut bodies_to_root = HashMap::new();
-    // bodies_to_root.insert(rootid, Transform3D::identity("world", "world"));
-    // for (jointid, joint) in izip!(state.treejointids.iter(), state.treejoints.iter()) {
-    //     let parentbodyid = state.parents[jointid - 1];
-    //     let bodyid = jointid;
-    //     let parent_to_root = bodies_to_root.get(&parentbodyid).unwrap();
-    //     let body_to_root = parent_to_root * &joint.transform();
-    //     bodies_to_root.insert(*bodyid, body_to_root);
-    // }
-
     let mut bodies_to_root = vec![Transform3D::identity("world", "world")];
     for (jointid, joint) in izip!(state.treejointids.iter(), state.treejoints.iter()) {
         let parentbodyid = state.parents[jointid - 1];
