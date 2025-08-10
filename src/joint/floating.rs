@@ -60,7 +60,7 @@ mod floating_joint_tests {
         rigid_body::RigidBody,
         simulate::simulate,
         spatial::spatial_vector::SpatialVector,
-        GRAVITY, PI,
+        GRAVITY, PI, WORLD_FRAME,
     };
 
     use super::*;
@@ -79,8 +79,7 @@ mod floating_joint_tests {
         let cross_part = vector![0.0, 0.0, 0.0];
 
         let ball_frame = "ball";
-        let world_frame = "world";
-        let ball_to_world = Transform3D::identity(&ball_frame, &world_frame);
+        let ball_to_world = Transform3D::identity(&ball_frame, WORLD_FRAME);
 
         let ball = RigidBody::new(SpatialInertia {
             frame: ball_frame.to_string(),
@@ -134,8 +133,7 @@ mod floating_joint_tests {
         let cross_part = vector![0.0, 0.0, 0.0];
 
         let ball_frame = "ball";
-        let world_frame = "world";
-        let ball_to_world = Transform3D::identity(&ball_frame, &world_frame);
+        let ball_to_world = Transform3D::identity(&ball_frame, WORLD_FRAME);
 
         let ball = RigidBody::new(SpatialInertia {
             frame: ball_frame.to_string(),

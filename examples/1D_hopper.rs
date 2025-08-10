@@ -2,6 +2,7 @@ use gorilla_physics::control::Controller;
 use gorilla_physics::joint::floating::FloatingJoint;
 use gorilla_physics::joint::prismatic::PrismaticJoint;
 use gorilla_physics::joint::Joint;
+use gorilla_physics::WORLD_FRAME;
 use gorilla_physics::{
     contact::{ContactPoint, HalfSpace},
     control::energy_control::Hopper1DController,
@@ -34,8 +35,7 @@ pub fn main() {
     let cross_part_body = vector![0.0, 0.0, 0.0];
 
     let body_frame = "body";
-    let world_frame = "world";
-    let body_to_world = Transform3D::identity(&body_frame, &world_frame);
+    let body_to_world = Transform3D::identity(&body_frame, WORLD_FRAME);
     let body = RigidBody::new(SpatialInertia {
         frame: body_frame.to_string(),
         moment: moment_body,

@@ -6,6 +6,7 @@ use na::{zero, Vector3};
 use crate::spatial::transform::Transform3D;
 use crate::types::Float;
 use crate::GRAVITY;
+use crate::WORLD_FRAME;
 
 /// A spatial acceleration is the time derivative of a twist
 #[derive(PartialEq, Debug, Clone)]
@@ -53,9 +54,9 @@ impl SpatialAcceleration {
 
     pub fn inv_gravitational_spatial_acceleration() -> SpatialAcceleration {
         SpatialAcceleration {
-            body: "world".to_string(),
-            base: "world".to_string(),
-            frame: "world".to_string(),
+            body: WORLD_FRAME.to_string(),
+            base: WORLD_FRAME.to_string(),
+            frame: WORLD_FRAME.to_string(),
             angular: Vector3::zeros(),
             linear: Vector3::new(0.0, 0.0, GRAVITY),
         }

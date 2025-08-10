@@ -14,7 +14,7 @@ use crate::{
     },
     types::Float,
     util::{mul_inertia, se3_commutator, skew_symmetric},
-    GRAVITY,
+    GRAVITY, WORLD_FRAME,
 };
 use clarabel::{
     algebra::CscMatrix,
@@ -106,10 +106,10 @@ pub fn coriolis_accel(body_twist: &Twist, joint_twist: &Twist) -> SpatialAcceler
             body_twist.body, joint_twist.body
         )
     }
-    if body_twist.base != "world" {
+    if body_twist.base != WORLD_FRAME {
         panic!(
             "body_twist base frame {}  is not equal to world frame {} !",
-            body_twist.base, "world"
+            body_twist.base, WORLD_FRAME
         )
     }
 
@@ -142,9 +142,9 @@ pub fn compute_coriolis_bias_accelerations(
     coriolis_bias_accels.insert(
         rootid,
         SpatialAcceleration {
-            body: "world".to_string(),
-            base: "world".to_string(),
-            frame: "world".to_string(),
+            body: WORLD_FRAME.to_string(),
+            base: WORLD_FRAME.to_string(),
+            frame: WORLD_FRAME.to_string(),
             angular: zero(),
             linear: zero(),
         },
@@ -202,8 +202,8 @@ pub fn bias_accelerations(
         let body_name = &joint.transform().from;
         let inv_gravity_accel = SpatialAcceleration {
             body: body_name.clone(),
-            base: "world".to_string(),
-            frame: "world".to_string(),
+            base: WORLD_FRAME.to_string(),
+            frame: WORLD_FRAME.to_string(),
             angular: Vector3::zeros(),
             linear: Vector3::new(0.0, 0.0, GRAVITY),
         };
@@ -1061,7 +1061,7 @@ mod dynamics_tests {
 
         let treejoints = vec![
             Joint::RevoluteJoint(RevoluteJoint::new(
-                Transform3D::new("rod1", "world", &rod1_to_world),
+                Transform3D::new("rod1", WORLD_FRAME, &rod1_to_world),
                 axis.clone(),
             )),
             Joint::RevoluteJoint(RevoluteJoint::new(

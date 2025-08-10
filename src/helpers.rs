@@ -30,8 +30,7 @@ pub fn build_pendulum(
     axis: UnitVector3<Float>,
 ) -> MechanismState {
     let rod_frame = "rod";
-    let world_frame = "world";
-    let rod_to_world = Transform3D::new(rod_frame, world_frame, &rod_to_world);
+    let rod_to_world = Transform3D::new(rod_frame, WORLD_FRAME, &rod_to_world);
 
     let rod = RigidBody::new(SpatialInertia {
         frame: rod_frame.to_string(),
@@ -58,9 +57,8 @@ pub fn build_double_pendulum(
 ) -> MechanismState {
     let rod1_frame = "rod1";
     let rod2_frame = "rod2";
-    let world_frame = "world";
 
-    let rod1_to_world = Transform3D::new(rod1_frame, world_frame, &rod1_to_world);
+    let rod1_to_world = Transform3D::new(rod1_frame, WORLD_FRAME, &rod1_to_world);
     let rod2_to_rod1 = Transform3D::new(rod2_frame, rod1_frame, &rod2_to_rod1);
 
     let treejoints = vec![
@@ -93,9 +91,8 @@ pub fn build_cart(
     axis: &Vector3<Float>,
 ) -> MechanismState {
     let cart_frame = "cart";
-    let world_frame = "world";
 
-    let cart_to_world = Transform3D::identity(cart_frame, world_frame);
+    let cart_to_world = Transform3D::identity(cart_frame, WORLD_FRAME);
 
     let treejoints = vec![Joint::PrismaticJoint(PrismaticJoint::new(
         cart_to_world,
@@ -121,11 +118,10 @@ pub fn build_cart_pole(
     cross_part_pole: &Vector3<Float>,
     axis_pole: UnitVector3<Float>,
 ) -> MechanismState {
-    let world_frame = "world";
     let cart_frame = "cart";
     let pole_frame = "pole";
 
-    let cart_to_world = Transform3D::identity(cart_frame, world_frame);
+    let cart_to_world = Transform3D::identity(cart_frame, WORLD_FRAME);
     let axis_cart = vector![1.0, 0.0, 0.0];
 
     let pole_to_cart = Transform3D::identity(pole_frame, cart_frame);
@@ -181,8 +177,7 @@ pub fn build_rimless_wheel(
     let cross_part = vector![0.0, 0.0, 0.0];
 
     let body_frame = "body";
-    let world_frame = "world";
-    let body_to_world = Transform3D::identity(&body_frame, &world_frame);
+    let body_to_world = Transform3D::identity(&body_frame, WORLD_FRAME);
 
     let body = RigidBody::new(SpatialInertia {
         frame: body_frame.to_string(),
@@ -228,8 +223,7 @@ pub fn build_2d_hopper(
     let cross_part_body = vector![0.0, 0.0, 0.0];
 
     let body_frame = "body";
-    let world_frame = "world";
-    let body_to_world = Transform3D::identity(&body_frame, &world_frame);
+    let body_to_world = Transform3D::identity(&body_frame, WORLD_FRAME);
     let body = RigidBody::new(SpatialInertia {
         frame: body_frame.to_string(),
         moment: moment_body,

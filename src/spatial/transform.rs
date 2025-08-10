@@ -3,7 +3,7 @@ use std::ops::Mul;
 use na::{Isometry3, Translation3, UnitQuaternion, UnitVector3};
 use nalgebra::{Matrix3, Matrix4, Vector3};
 
-use crate::types::Float;
+use crate::{types::Float, WORLD_FRAME};
 
 pub trait Matrix4Ext {
     /// Create the transformation matrix for a linear translation along the x-axis
@@ -61,7 +61,7 @@ impl Transform3D {
     pub fn default() -> Self {
         Transform3D {
             from: "body".to_string(),
-            to: "world".to_string(),
+            to: WORLD_FRAME.to_string(),
             iso: Isometry3::identity(),
         }
     }

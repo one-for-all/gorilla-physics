@@ -41,8 +41,7 @@ pub fn create1DHopper(
     let cross_part_body = vector![0.0, 0.0, 0.0];
 
     let body_frame = "body";
-    let world_frame = "world";
-    let body_to_world = Transform3D::identity(&body_frame, &world_frame);
+    let body_to_world = Transform3D::identity(&body_frame, WORLD_FRAME);
     let body = RigidBody::new(SpatialInertia {
         frame: body_frame.to_string(),
         moment: moment_body,

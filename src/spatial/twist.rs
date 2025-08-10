@@ -11,6 +11,7 @@ use crate::{
     spatial::{spatial_acceleration::SpatialAcceleration, transform::Transform3D},
     types::Float,
     util::skew_symmetric,
+    WORLD_FRAME,
 };
 
 /// A twist represents the relative angular and linear velocity between two bodies.
@@ -186,7 +187,7 @@ pub fn compute_twists_wrt_world(
     bodies_to_root: &Vec<Transform3D>,
     joint_twists: &Vec<Twist>,
 ) -> Vec<Twist> {
-    let mut twists: Vec<Twist> = vec![Twist::zero("world", "world")];
+    let mut twists: Vec<Twist> = vec![Twist::zero(WORLD_FRAME, WORLD_FRAME)];
     for jointid in state.treejointids.iter() {
         let parentbodyid = state.parents[*jointid - 1];
         let bodyid = jointid;

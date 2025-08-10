@@ -12,12 +12,15 @@ use gorilla_physics::{
     plot::{plot, plot2, plot_trajectory},
     rigid_body::RigidBody,
     simulate::step,
-    spatial::pose::Pose,
-    spatial::spatial_vector::SpatialVector,
-    spatial::transform::Transform3D,
-    spatial::twist::{compute_joint_twists, compute_twists_wrt_world},
+    spatial::{
+        pose::Pose,
+        spatial_vector::SpatialVector,
+        transform::Transform3D,
+        twist::{compute_joint_twists, compute_twists_wrt_world},
+    },
     types::Float,
     util::assert_close,
+    WORLD_FRAME,
 };
 use nalgebra::{vector, Isometry3, Matrix3, UnitQuaternion, Vector3};
 
@@ -49,8 +52,7 @@ pub fn main() {
     let cross_part_body = vector![0.0, 0.0, 0.0];
 
     let body_frame = "body";
-    let world_frame = "world";
-    let body_to_world = Transform3D::identity(&body_frame, &world_frame);
+    let body_to_world = Transform3D::identity(&body_frame, WORLD_FRAME);
     let body = RigidBody::new(SpatialInertia {
         frame: body_frame.to_string(),
         moment: moment_body,

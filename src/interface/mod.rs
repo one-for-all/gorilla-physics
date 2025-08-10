@@ -371,8 +371,7 @@ pub fn createRodPendulum(length: Float) -> InterfaceMechanismState {
     let cross_part = vector![m * l / 2.0, 0.0, 0.0];
 
     let rod_frame = "rod";
-    let world_frame = "world";
-    let rod_to_world = Transform3D::identity(rod_frame, world_frame);
+    let rod_to_world = Transform3D::identity(rod_frame, WORLD_FRAME);
     let axis = Vector3::y_axis();
 
     let treejoints = vec![Joint::RevoluteJoint(RevoluteJoint::new(rod_to_world, axis))];

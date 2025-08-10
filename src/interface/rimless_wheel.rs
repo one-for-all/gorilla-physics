@@ -4,11 +4,9 @@ use crate::{
     joint::{floating::FloatingJoint, Joint, JointPosition, JointVelocity},
     mechanism::MechanismState,
     rigid_body::RigidBody,
-    spatial::pose::Pose,
-    spatial::spatial_vector::SpatialVector,
-    spatial::transform::Transform3D,
+    spatial::{pose::Pose, spatial_vector::SpatialVector, transform::Transform3D},
     types::Float,
-    PI,
+    PI, WORLD_FRAME,
 };
 
 use super::InterfaceMechanismState;
@@ -27,8 +25,7 @@ pub fn createRimlessWheel(r_body: Float, n_foot: usize) -> InterfaceMechanismSta
     let cross_part = vector![0.0, 0.0, 0.0];
 
     let body_frame = "body";
-    let world_frame = "world";
-    let body_to_world = Transform3D::identity(&body_frame, &world_frame);
+    let body_to_world = Transform3D::identity(&body_frame, WORLD_FRAME);
 
     let body = RigidBody::new(SpatialInertia {
         frame: body_frame.to_string(),

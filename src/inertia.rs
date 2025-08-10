@@ -3,7 +3,11 @@ use std::ops::{Add, AddAssign};
 use na::{DMatrix, Point3, SMatrix, Vector3};
 use nalgebra::{vector, Matrix3};
 
-use crate::{spatial::transform::Transform3D, spatial::twist::Twist, types::Float};
+use crate::{
+    spatial::{transform::Transform3D, twist::Twist},
+    types::Float,
+    WORLD_FRAME,
+};
 use itertools::izip;
 use std::collections::HashMap;
 
@@ -54,7 +58,7 @@ impl SpatialInertia {
 
     pub fn default() -> Self {
         SpatialInertia {
-            frame: "world".to_string(),
+            frame: WORLD_FRAME.to_string(),
             moment: SMatrix::identity(),
             cross_part: vector![1.0, 1.0, 1.0],
             mass: 1.0,
@@ -85,7 +89,7 @@ impl SpatialInertia {
         let Jnew = R * J * R.transpose() - Y + Y.trace() * DMatrix::identity(Y.nrows(), Y.ncols());
 
         SpatialInertia {
-            frame: "world".to_string(),
+            frame: WORLD_FRAME.to_string(),
             moment: Jnew,
             cross_part: mcnew,
             mass: m,
@@ -140,14 +144,14 @@ pub fn compute_inertias(
 /// Essentially implements KE = 1/2 * v^T * M * v
 pub fn kinetic_energy(inertia: &SpatialInertia, twist: &Twist) -> Float {
     // Ensure both are expressed in world frame
-    if inertia.frame != "world" {
+    if inertia.frame != WORLD_FRAME {
         panic!("spatial inertia frame {} is not world.", inertia.frame);
     }
-    if twist.frame != "world" {
+    if twist.frame != WORLD_FRAME {
         panic!("twist frame {} is not world.", twist.frame);
     }
 
-    if twist.base != "world" {
+    if twist.base != WORLD_FRAME {
         panic!("twist base {} is not world.", twist.base);
     }
 

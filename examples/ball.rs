@@ -7,6 +7,7 @@ use gorilla_physics::plot::{plot, plot_trajectory};
 use gorilla_physics::rigid_body::RigidBody;
 use gorilla_physics::simulate::step;
 use gorilla_physics::spatial::transform::Transform3D;
+use gorilla_physics::WORLD_FRAME;
 use nalgebra::{vector, UnitQuaternion, Vector3};
 
 use gorilla_physics::joint::{Joint, JointPosition, JointVelocity};
@@ -19,8 +20,7 @@ pub fn main() {
     let v_x_init = 1.0;
 
     let ball_frame = "ball";
-    let world_frame = "world";
-    let ball_to_world = Transform3D::identity(&ball_frame, &world_frame);
+    let ball_to_world = Transform3D::identity(&ball_frame, WORLD_FRAME);
 
     let ball = RigidBody::new_sphere(m, r, &ball_frame);
 

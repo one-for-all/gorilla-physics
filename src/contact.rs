@@ -140,7 +140,7 @@ pub fn contact_dynamics(
     let mut contact_wrenches = HashMap::new();
     for (jointid, body) in izip!(state.treejointids.iter(), state.bodies.iter_mut()) {
         let bodyid = jointid;
-        let mut wrench = Wrench::zero("world");
+        let mut wrench = Wrench::zero(WORLD_FRAME);
         let body_to_root = &bodies_to_root[*bodyid];
         let twist = &twists[*bodyid];
 
@@ -161,7 +161,7 @@ pub fn contact_dynamics(
                     &normal,
                     contact_point.k,
                 );
-                wrench += Wrench::from_force(&contact_point.location, &contact_force, "world");
+                wrench += Wrench::from_force(&contact_point.location, &contact_force, WORLD_FRAME);
             }
         }
 
@@ -650,8 +650,7 @@ mod contact_tests {
         let v_x_init = 2.0;
 
         let ball_frame = "ball";
-        let world_frame = "world";
-        let ball_to_world = Transform3D::identity(&ball_frame, &world_frame);
+        let ball_to_world = Transform3D::identity(&ball_frame, WORLD_FRAME);
 
         let ball = RigidBody::new_sphere(m, r, &ball_frame);
 

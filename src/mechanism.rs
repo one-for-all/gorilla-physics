@@ -148,7 +148,7 @@ impl MechanismState {
             return self._bodies_to_root.clone(); // TODO(efficiency): remove the need for explicit cloning. Maybe return a reference?
         }
 
-        let mut bodies_to_root = vec![Transform3D::identity("world", "world")];
+        let mut bodies_to_root = vec![Transform3D::identity(WORLD_FRAME, WORLD_FRAME)];
         for (jointid, joint) in izip!(self.treejointids.iter(), self.treejoints.iter()) {
             let parentbodyid = self.parents[jointid - 1];
             let parent_to_root = &bodies_to_root[parentbodyid];
@@ -585,8 +585,7 @@ mod mechanism_tests {
         let cross_part_body = vector![0.0, 0.0, 0.0];
 
         let body_frame = "body";
-        let world_frame = "world";
-        let body_to_world = Transform3D::identity(&body_frame, &world_frame);
+        let body_to_world = Transform3D::identity(&body_frame, WORLD_FRAME);
         let body = RigidBody::new(SpatialInertia {
             frame: body_frame.to_string(),
             moment: moment_body,
