@@ -14,7 +14,7 @@ use gorilla_physics::{
     simulate::step,
     spatial::pose::Pose,
     spatial::spatial_vector::SpatialVector,
-    spatial::transform::{compute_bodies_to_root, Transform3D},
+    spatial::transform::Transform3D,
     spatial::twist::{compute_joint_twists, compute_twists_wrt_world},
     types::Float,
     util::assert_close,
@@ -149,7 +149,7 @@ pub fn main() {
         let pose_body = &state.poses()[0];
         let pose_leg = &state.poses()[1];
 
-        let bodies_to_root = compute_bodies_to_root(&state);
+        let bodies_to_root = state.get_bodies_to_root_no_update();
         let joint_twists = compute_joint_twists(&state);
         let twists = compute_twists_wrt_world(&state, &bodies_to_root, &joint_twists);
 

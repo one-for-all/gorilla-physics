@@ -10,7 +10,6 @@ use crate::{
     rigid_body::CollisionGeometry,
     spatial::{
         pose::Pose,
-        transform::compute_bodies_to_root,
         twist::{compute_twists_wrt_world, Twist},
     },
     types::Float,
@@ -69,8 +68,7 @@ pub fn ccd_velocity_stepping(
             .map(|(joint, v)| Twist::new(&joint, v))
             .collect();
 
-        // TODO: make bodies_to_root compute only once
-        let bodies_to_root = compute_bodies_to_root(state);
+        let bodies_to_root = state.get_bodies_to_root();
 
         let new_twists = compute_twists_wrt_world(state, &bodies_to_root, &joint_new_twists);
 

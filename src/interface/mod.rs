@@ -10,7 +10,7 @@ use crate::joint::ToFloatDVec;
 use crate::joint::ToJointVelocityVec;
 use crate::spatial::pose::Pose;
 use crate::spatial::spatial_vector::SpatialVector;
-use crate::spatial::transform::compute_bodies_to_root;
+
 use crate::types::FloatArray;
 use crate::WORLD_FRAME;
 use controller::InterfaceController;
@@ -118,12 +118,12 @@ impl InterfaceSimulator {
     }
 
     #[wasm_bindgen]
-    pub fn poses(&self) -> FloatArray {
+    pub fn poses(&mut self) -> FloatArray {
         self.state.poses()
     }
 
     #[wasm_bindgen]
-    pub fn contact_positions(&self) -> FloatArray {
+    pub fn contact_positions(&mut self) -> FloatArray {
         self.state.contact_positions()
     }
 
@@ -166,11 +166,10 @@ pub struct InterfaceMechanismState {
 #[wasm_bindgen]
 impl InterfaceMechanismState {
     /// Get the poses of each body in the system
-    pub fn poses(&self) -> FloatArray {
+    pub fn poses(&mut self) -> FloatArray {
         let njoints = self.inner.treejointids.len();
 
-        // TODO: use cached bodies_to_root
-        let bodies_to_root = compute_bodies_to_root(&self.inner);
+        let bodies_to_root = self.inner.get_bodies_to_root();
 
         let mut poses = vec![];
         for jointid in self.inner.treejointids.iter() {
@@ -192,8 +191,8 @@ impl InterfaceMechanismState {
     }
 
     /// Get the positions of each contact point in the system
-    pub fn contact_positions(&self) -> FloatArray {
-        let bodies_to_root = compute_bodies_to_root(&self.inner);
+    pub fn contact_positions(&mut self) -> FloatArray {
+        let bodies_to_root = self.inner.get_bodies_to_root();
 
         let mut positions = vec![];
         for (jointid, body) in izip!(self.inner.treejointids.iter(), self.inner.bodies.iter()) {

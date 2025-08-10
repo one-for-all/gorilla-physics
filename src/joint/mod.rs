@@ -72,6 +72,7 @@ pub enum JointPosition {
 }
 
 impl JointPosition {
+    // TODO(pattern): return raw Float, not reference
     pub fn float(&self) -> &Float {
         match self {
             JointPosition::Float(v) => v,

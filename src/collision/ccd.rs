@@ -12,7 +12,6 @@ mod ccd_tests {
         spatial::{
             pose::Pose,
             spatial_vector::SpatialVector,
-            transform::compute_bodies_to_root,
             twist::{compute_joint_twists, compute_twists_wrt_world},
         },
         types::Float,
@@ -125,8 +124,7 @@ mod ccd_tests {
         assert!(max_penetration < 1e-8);
 
         // tangential speed
-        // TODO: make twists computation a contained function, or even a cached attribute of MechanismState
-        let bodies_to_root = compute_bodies_to_root(&state);
+        let bodies_to_root = state.get_bodies_to_root();
         let joint_twists = compute_joint_twists(&state);
         let twists = compute_twists_wrt_world(&state, &bodies_to_root, &joint_twists);
         let twist = &twists[1];

@@ -3,7 +3,6 @@ use gorilla_physics::joint::ToJointVelocityVec;
 use gorilla_physics::{
     dynamics::bias_accelerations,
     helpers::build_double_pendulum,
-    spatial::transform::compute_bodies_to_root,
     spatial::twist::{compute_joint_twists, compute_twists_wrt_world},
     types::Float,
 };
@@ -39,7 +38,7 @@ pub fn main() {
     let v_init = vec![1., 1.].to_joint_vel_vec();
     state.update(&q_init, &v_init);
 
-    let bodies_to_root = compute_bodies_to_root(&state); // Compute the twist of each joint
+    let bodies_to_root = state.get_bodies_to_root_no_update(); // Compute the twist of each joint
     let joint_twists = compute_joint_twists(&state);
     let twists = compute_twists_wrt_world(&state, &bodies_to_root, &joint_twists);
     println!(

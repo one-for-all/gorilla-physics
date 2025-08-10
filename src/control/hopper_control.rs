@@ -23,7 +23,7 @@ mod hopper_control_tests {
         simulate::step,
         spatial::pose::Pose,
         spatial::spatial_vector::SpatialVector,
-        spatial::transform::{compute_bodies_to_root, Transform3D},
+        spatial::transform::Transform3D,
         spatial::twist::{compute_joint_twists, compute_twists_wrt_world},
         types::Float,
         WORLD_FRAME,
@@ -115,7 +115,7 @@ mod hopper_control_tests {
 
             let (q, _v) = step(&mut state, dt, &torque, &Integrator::SemiImplicitEuler);
 
-            let bodies_to_root = compute_bodies_to_root(&state);
+            let bodies_to_root = state.get_bodies_to_root();
             let joint_twists = compute_joint_twists(&state);
             let twists = compute_twists_wrt_world(&state, &bodies_to_root, &joint_twists);
             let body_vz = twists[3].linear.z;
@@ -196,7 +196,7 @@ mod hopper_control_tests {
             }
 
             // body velocity of the body frame, expressed in world frame
-            let bodies_to_root = compute_bodies_to_root(&state);
+            let bodies_to_root = state.get_bodies_to_root();
             let joint_twists = compute_joint_twists(&state);
             let twists = compute_twists_wrt_world(&state, &bodies_to_root, &joint_twists);
             let body_twist = &twists[3];
@@ -223,7 +223,7 @@ mod hopper_control_tests {
 
             let (_q, _v) = step(&mut state, dt, &torque, &Integrator::SemiImplicitEuler);
 
-            let bodies_to_root = compute_bodies_to_root(&state);
+            let bodies_to_root = state.get_bodies_to_root();
             let joint_twists = compute_joint_twists(&state);
             let twists = compute_twists_wrt_world(&state, &bodies_to_root, &joint_twists);
             let body_twist = &twists[3];
@@ -308,7 +308,7 @@ mod hopper_control_tests {
                 torque[1] = JointTorque::Float(tau_spring);
             }
 
-            let bodies_to_root = compute_bodies_to_root(&state);
+            let bodies_to_root = state.get_bodies_to_root();
             let joint_twists = compute_joint_twists(&state);
             let twists = compute_twists_wrt_world(&state, &bodies_to_root, &joint_twists);
 
@@ -377,7 +377,7 @@ mod hopper_control_tests {
 
             let (_q, _v) = step(&mut state, dt, &torque, &Integrator::SemiImplicitEuler);
 
-            let bodies_to_root = compute_bodies_to_root(&state);
+            let bodies_to_root = state.get_bodies_to_root();
             let joint_twists = compute_joint_twists(&state);
             let twists = compute_twists_wrt_world(&state, &bodies_to_root, &joint_twists);
             let body_twist = &twists[3];

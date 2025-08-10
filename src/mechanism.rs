@@ -18,7 +18,6 @@ use crate::rigid_body::RigidBody;
 use crate::spatial::geometric_jacobian::GeometricJacobian;
 use crate::spatial::pose::Pose;
 use crate::spatial::spatial_vector::SpatialVector;
-use crate::spatial::transform::compute_bodies_to_root;
 use crate::spatial::transform::Transform3D;
 use crate::spatial::twist::compute_joint_twists;
 use crate::spatial::twist::compute_twists_wrt_world;
@@ -43,6 +42,9 @@ pub struct MechanismState {
     pub halfspaces: Vec<HalfSpace>,
 
     pub constraints: Vec<Constraint>,
+
+    _bodies_to_root: Vec<Transform3D>,
+    _bodies_to_root_obsolete: bool,
 }
 
 impl MechanismState {
@@ -123,12 +125,44 @@ impl MechanismState {
             v,
             halfspaces: vec![],
             constraints: vec![],
+            _bodies_to_root: vec![],
+            _bodies_to_root_obsolete: true,
         };
 
-        let bodies_to_root = compute_bodies_to_root(&state);
+        let bodies_to_root = state.get_bodies_to_root();
         state.update_collider_poses(&bodies_to_root);
         state.update_visual_poses(&bodies_to_root);
         state
+    }
+
+    /// Compute the transforms from body frames to root, i.e. the isometries of the body frames
+    /// Return the cached data, if not obsolete.
+    pub fn get_bodies_to_root(&mut self) -> Vec<Transform3D> {
+        if !self._bodies_to_root_obsolete {
+            return self._bodies_to_root.clone(); // TODO(efficiency): remove the need for explicit cloning. Maybe return a reference?
+        }
+
+        let mut bodies_to_root = vec![Transform3D::identity("world", "world")];
+        for (jointid, joint) in izip!(self.treejointids.iter(), self.treejoints.iter()) {
+            let parentbodyid = self.parents[jointid - 1];
+            let parent_to_root = &bodies_to_root[parentbodyid];
+            let body_to_root = parent_to_root * &joint.transform();
+            bodies_to_root.push(body_to_root);
+        }
+
+        self._bodies_to_root = bodies_to_root;
+        self._bodies_to_root_obsolete = false;
+
+        self._bodies_to_root.clone()
+    }
+
+    pub fn get_bodies_to_root_no_update(&self) -> Vec<Transform3D> {
+        assert!(
+            !self._bodies_to_root_obsolete,
+            "trying to retrieve obsolete bodies_to_root data"
+        );
+
+        self._bodies_to_root.clone()
     }
 
     pub fn new_with_constraint(
@@ -179,7 +213,8 @@ impl MechanismState {
             }
         }
 
-        let bodies_to_root = compute_bodies_to_root(&self);
+        self._bodies_to_root_obsolete = true;
+        let bodies_to_root = self.get_bodies_to_root();
         self.update_collider_poses(&bodies_to_root);
         self.update_visual_poses(&bodies_to_root);
     }
@@ -247,7 +282,8 @@ impl MechanismState {
         }
         self.q[jointid - 1] = q;
 
-        let bodies_to_root = compute_bodies_to_root(&self);
+        self._bodies_to_root_obsolete = true;
+        let bodies_to_root = self.get_bodies_to_root();
         self.update_collider_poses(&bodies_to_root);
         self.update_visual_poses(&bodies_to_root);
     }
@@ -259,7 +295,8 @@ impl MechanismState {
     /// Computes the total kinetic energy of the system
     pub fn kinetic_energy(&self) -> Float {
         let mut KE = 0.0;
-        let bodies_to_root = compute_bodies_to_root(self);
+
+        let bodies_to_root = self.get_bodies_to_root_no_update();
         let joint_twists = compute_joint_twists(self);
         let twists = compute_twists_wrt_world(self, &bodies_to_root, &joint_twists);
         for (jointid, body) in izip!(self.treejointids.iter(), self.bodies.iter()) {
@@ -276,7 +313,7 @@ impl MechanismState {
 
     pub fn gravitational_energy(&self) -> Float {
         let mut PE = 0.0;
-        let bodies_to_root = compute_bodies_to_root(self);
+        let bodies_to_root = self.get_bodies_to_root_no_update();
         for jointid in self.treejointids.iter() {
             let height = bodies_to_root[*jointid].trans().z;
             let mass = self.bodies[jointid - 1].inertia.mass;
@@ -326,8 +363,7 @@ impl MechanismState {
 
     /// Get the poses of each body
     pub fn poses(&self) -> Vec<Pose> {
-        // TODO: use cached bodies_to_root
-        let bodies_to_root = compute_bodies_to_root(&self);
+        let bodies_to_root = self.get_bodies_to_root_no_update();
 
         let mut poses: Vec<Pose> = vec![];
         for jointid in self.treejointids.iter() {
@@ -574,7 +610,7 @@ mod mechanism_tests {
         let state = MechanismState::new(treejoints, bodies);
 
         // Act
-        let bodies_to_root = &compute_bodies_to_root(&state);
+        let bodies_to_root = &state.get_bodies_to_root_no_update();
         let mass_matrix = mass_matrix(&state, bodies_to_root);
 
         // Assert

@@ -8,7 +8,7 @@ use crate::{
     rigid_body::CollisionGeometry,
     spatial::{
         spatial_vector::SpatialVector,
-        transform::{compute_bodies_to_root, Transform3D},
+        transform::Transform3D,
         twist::{
             compute_joint_twists, compute_twist_transformation_matrix, compute_twists_wrt_world,
             Twist,
@@ -275,7 +275,7 @@ pub fn dynamics_quantities(
     state: &mut MechanismState,
 ) -> (Vec<Transform3D>, Vec<Twist>, Vec<Twist>, DMatrix<Float>) {
     // Compute the body to root frame transform for each body
-    let bodies_to_root = compute_bodies_to_root(state);
+    let bodies_to_root = state.get_bodies_to_root();
 
     // Compute the twist of each joint
     let joint_twists = compute_joint_twists(state);

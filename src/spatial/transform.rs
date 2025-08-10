@@ -1,10 +1,9 @@
-use std::{collections::HashMap, ops::Mul};
+use std::ops::Mul;
 
-use itertools::izip;
 use na::{Isometry3, Translation3, UnitQuaternion, UnitVector3};
 use nalgebra::{Matrix3, Matrix4, Vector3};
 
-use crate::{mechanism::MechanismState, types::Float};
+use crate::types::Float;
 
 pub trait Matrix4Ext {
     /// Create the transformation matrix for a linear translation along the x-axis
@@ -51,7 +50,7 @@ impl Matrix4Ext for Matrix4<Float> {
 
 /// A homogeneous transformation matrix representing the transformation from one
 /// 3-dimensional Cartesion coordiante system to another.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Transform3D {
     pub from: String,
     pub to: String,
@@ -208,29 +207,17 @@ impl<'a, 'b> Mul<&'b Transform3D> for &'a Transform3D {
     }
 }
 
-/// Compute the transforms from body frames to root, i.e. the isometries of the body frames
-pub fn compute_bodies_to_root(state: &MechanismState) -> Vec<Transform3D> {
-    let mut bodies_to_root = vec![Transform3D::identity("world", "world")];
-    for (jointid, joint) in izip!(state.treejointids.iter(), state.treejoints.iter()) {
-        let parentbodyid = state.parents[jointid - 1];
-        let parent_to_root = &bodies_to_root[parentbodyid];
-        let body_to_root = parent_to_root * &joint.transform();
-        bodies_to_root.push(body_to_root);
-    }
-
-    bodies_to_root
-}
-
 #[cfg(test)]
 mod tests {
 
     use crate::{
         joint::{floating::FloatingJoint, revolute::RevoluteJoint, Joint},
+        mechanism::MechanismState,
         rigid_body::RigidBody,
         WORLD_FRAME,
     };
 
-    use super::{compute_bodies_to_root, *};
+    use super::*;
 
     /// Verify compute_bodies_to_root fn on the following mechanism
     /// 3         5
@@ -263,7 +250,7 @@ mod tests {
         let state = MechanismState::new(treejoints, bodies);
 
         // Act
-        let bodies_to_root = compute_bodies_to_root(&state);
+        let bodies_to_root = state.get_bodies_to_root_no_update();
 
         // Assert
         let one_to_root = &bodies_to_root[1];

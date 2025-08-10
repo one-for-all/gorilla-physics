@@ -118,7 +118,7 @@ mod swingup_tests {
     use na::{dvector, vector, DVector, Isometry3, Matrix3, Vector3};
 
     use super::*;
-    
+
     use crate::{
         energy::cart_pole_energy,
         helpers::{build_cart_pole, build_double_pendulum},
