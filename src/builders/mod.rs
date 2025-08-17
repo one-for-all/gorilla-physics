@@ -10,6 +10,7 @@ use crate::{
     WORLD_FRAME,
 };
 
+pub mod biped_builder;
 pub mod kinematic_loop_builder;
 pub mod navbot_builder;
 

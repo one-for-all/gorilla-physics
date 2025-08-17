@@ -7,8 +7,10 @@ import {
   createFluid2D,
   createSphere,
   createTwoSphere,
+  createBiped,
 } from "gorilla-physics";
 import { Simulator } from "./Simulator";
+import "./biped";
 import { FloatArray } from "./type";
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader";
 import { Color, EquirectangularReflectionMapping } from "three";
@@ -37,7 +39,7 @@ import("gorilla-physics").then((gorilla) => {
   // });
 
   let radius = 0.1;
-  createTwoSphere(1.0, radius).then((state) => {
+  createBiped().then((state) => {
     state.addHalfSpace(normal as Float64Array, h_ground);
 
     let controller = gorilla.createNullController();
@@ -49,8 +51,10 @@ import("gorilla-physics").then((gorilla) => {
     // let controller = gorilla.createNavbotController(1.0 / 600.0);
     let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
     let simulator = new Simulator(interfaceSimulator);
-    simulator.addSphere("sphere1", 0xff0000, radius);
-    simulator.addSphere("sphere2", 0x00ff00, radius);
+    simulator.addBiped();
+
+    // simulator.addSphere("sphere1", 0xff0000, radius);
+    // simulator.addSphere("sphere2", 0x00ff00, radius);
     // simulator.addNavbot();
     // simulator.updateNavbot();
 
@@ -64,7 +68,7 @@ import("gorilla-physics").then((gorilla) => {
     // let wheel_radius = 0.037 / 2.0;
     // simulator.addSphere("wheel_left", 0x00ff00, wheel_radius);
     // simulator.addSphere("wheel_right", 0x00ff00, wheel_radius);
-    simulator.addPlane(normal, h_ground, 10);
+    // simulator.addPlane(normal, h_ground, 10);
 
     // simulator.addFluid2D(state);
 

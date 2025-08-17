@@ -39,6 +39,7 @@ use crate::{
     PI,
 };
 
+pub mod biped;
 pub mod cart;
 pub mod cart_pole;
 pub mod controller;

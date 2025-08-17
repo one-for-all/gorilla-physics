@@ -154,6 +154,29 @@ impl RigidBody {
         })
     }
 
+    /// Create a uniform cuboid, whose center of mass is not at the origin of frame
+    pub fn new_cuboid_at(
+        com: Vector3<Float>,
+        m: Float,
+        w: Float,
+        d: Float,
+        h: Float,
+        frame: &str,
+    ) -> RigidBody {
+        let moment_x = m * (d * d + h * h) / 12.0;
+        let moment_y = m * (w * w + h * h) / 12.0;
+        let moment_z = m * (w * w + d * d) / 12.0;
+        let moment_com = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
+
+        // generalized parallel axis theorem
+        let moment =
+            moment_com + m * (com.norm_squared() * Matrix3::identity() - com * com.transpose());
+        let cross_part = m * com;
+        let spatial_inertia = SpatialInertia::new(moment, cross_part, m, frame);
+
+        RigidBody::new(spatial_inertia)
+    }
+
     pub fn add_cuboid_collider(&mut self, cuboid: Cuboid) {
         self.collider = Some(Collider::new_cuboid(cuboid));
     }
