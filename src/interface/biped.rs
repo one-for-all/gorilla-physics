@@ -18,8 +18,8 @@ pub async fn createBiped() -> InterfaceMechanismState {
     // ];
     // state.update_q(&q_init);
 
-    state.set_joint_v(2, JointVelocity::Float(0.5));
-    state.set_joint_q(3, JointPosition::Float(-PI / 2.));
+    // state.set_joint_v(2, JointVelocity::Float(0.5));
+    // state.set_joint_q(3, JointPosition::Float(-PI / 2.));
 
     InterfaceMechanismState { inner: state }
 }

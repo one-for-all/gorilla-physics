@@ -18,10 +18,12 @@ Simulator.prototype.addBiped = function () {
   this.addCuboid("pelvis_left", 0x00ff00, l1, l1, l2, pelvisLeftOffset);
   let hipLeftOffset = new Matrix4().makeTranslation(l2 / 2, 0, 0);
   this.addCuboid("hip_left", 0x0000ff, l2, l1, l1, hipLeftOffset);
+  let thighLeftOffset = new Matrix4().makeTranslation(0, 0, -l2 / 2);
+  this.addCuboid("thigh_left", 0xff0000, l1, l1, l2, thighLeftOffset);
 };
 
 Simulator.prototype.updateBiped = function (poses: FloatArrayType) {
-  if (poses.length != 3 * 7) {
+  if (poses.length != 4 * 7) {
     throw new Error("poses len != 3 * 7");
   }
 
@@ -36,4 +38,8 @@ Simulator.prototype.updateBiped = function (poses: FloatArrayType) {
   i += 7;
   let hip_left_pose = poses.subarray(i, i + 7);
   this.setPose("hip_left", hip_left_pose);
+
+  i += 7;
+  let thigh_left_pose = poses.subarray(i, i + 7);
+  this.setPose("thigh_left", thigh_left_pose);
 };
