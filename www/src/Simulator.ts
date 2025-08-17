@@ -267,16 +267,17 @@ export class Simulator {
   }
 
   setPose(name: string, poses: FloatArrayType) {
-    let euler = [poses[0], poses[1], poses[2]];
-    let pos = [poses[3], poses[4], poses[5]];
+    let quaternion = new THREE.Quaternion();
+    quaternion.set(poses[0], poses[1], poses[2], poses[3]);
+    let pos = [poses[4], poses[5], poses[6]];
 
     let body = this.meshes.get(name);
-    body.rotation.set(euler[0], euler[1], euler[2], "ZYX");
+    body.rotation.setFromQuaternion(quaternion, "ZYX");
     body.position.set(pos[0], pos[1], pos[2]);
 
     let edges = this.edgesMeshes.get(name);
     if (edges) {
-      edges.rotation.set(euler[0], euler[1], euler[2], "ZYX");
+      edges.rotation.setFromQuaternion(quaternion, "ZYX");
       edges.position.set(pos[0], pos[1], pos[2]);
     }
   }

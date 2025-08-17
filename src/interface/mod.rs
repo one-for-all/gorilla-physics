@@ -177,13 +177,13 @@ impl InterfaceMechanismState {
             let rotation = body_to_root.rotation;
             let translation = body_to_root.translation.vector;
 
-            let euler = rotation.euler_angles(); // TODO: use a more stable representation? to avoid jumping effects.
-            poses.extend_from_slice(&[euler.0, euler.1, euler.2]);
+            let quaternion = rotation.quaternion();
+            poses.extend_from_slice(&[quaternion.i, quaternion.j, quaternion.k, quaternion.w]);
             poses.extend_from_slice(&[translation[0], translation[1], translation[2]]);
         }
 
         // TODO: extract below into a function
-        let q_js = FloatArray::new_with_length(6 * njoints as u32);
+        let q_js = FloatArray::new_with_length(poses.len() as u32);
         for (i, q) in poses.iter().enumerate() {
             q_js.set_index(i as u32, *q);
         }

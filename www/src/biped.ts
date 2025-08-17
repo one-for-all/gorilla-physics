@@ -21,15 +21,19 @@ Simulator.prototype.addBiped = function () {
 };
 
 Simulator.prototype.updateBiped = function (poses: FloatArrayType) {
+  if (poses.length != 3 * 7) {
+    throw new Error("poses len != 3 * 7");
+  }
+
   let i = 0;
-  let base_pose = poses.subarray(i, i + 6);
+  let base_pose = poses.subarray(i, i + 7);
   this.setPose("base", base_pose);
 
-  i += 6;
-  let pelvis_left_pose = poses.subarray(i, i + 6);
+  i += 7;
+  let pelvis_left_pose = poses.subarray(i, i + 7);
   this.setPose("pelvis_left", pelvis_left_pose);
 
-  i += 6;
-  let hip_left_pose = poses.subarray(i, i + 6);
+  i += 7;
+  let hip_left_pose = poses.subarray(i, i + 7);
   this.setPose("hip_left", hip_left_pose);
 };
