@@ -1,7 +1,7 @@
 use na::{vector, UnitVector3, Vector3};
 
 use crate::{
-    joint::{fixed::FixedJoint, floating::FloatingJoint, revolute::RevoluteJoint, Joint},
+    joint::{fixed::FixedJoint, Joint},
     mechanism::MechanismState,
     rigid_body::RigidBody,
     spatial::transform::Transform3D,
@@ -75,9 +75,9 @@ pub fn build_biped() -> MechanismState {
 
     let treejoints = vec![
         Joint::FixedJoint(FixedJoint::new(base_to_world)),
-        Joint::RevoluteJoint(RevoluteJoint::new(pelvis_left_to_base, pelvis_axis)),
-        Joint::RevoluteJoint(RevoluteJoint::new(hip_left_to_pelvis_left, hip_axis)),
-        Joint::RevoluteJoint(RevoluteJoint::new(thigh_left_to_hip_left, thigh_axis)),
+        Joint::new_revolute(pelvis_left_to_base, pelvis_axis),
+        Joint::new_revolute(hip_left_to_pelvis_left, hip_axis),
+        Joint::new_revolute(thigh_left_to_hip_left, thigh_axis),
     ];
     let bodies = vec![base, pelvis_left, hip_left, thigh_left];
     MechanismState::new(treejoints, bodies)

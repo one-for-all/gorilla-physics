@@ -2,7 +2,7 @@ use std::ops::{Add, Div, Mul};
 
 use fixed::FixedJoint;
 use floating::FloatingJoint;
-use na::{dvector, vector, DVector, Vector3};
+use na::{dvector, vector, DVector, UnitVector3, Vector3};
 use prismatic::PrismaticJoint;
 use revolute::RevoluteJoint;
 
@@ -52,6 +52,10 @@ impl Joint {
             Joint::PrismaticJoint(joint) => joint.motion_subspace(),
             Joint::FloatingJoint(joint) => joint.motion_subspace(),
         }
+    }
+
+    pub fn new_revolute(transform: Transform3D, axis: UnitVector3<Float>) -> Self {
+        Self::RevoluteJoint(RevoluteJoint::new(transform, axis))
     }
 }
 
