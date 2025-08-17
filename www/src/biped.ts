@@ -20,26 +20,19 @@ Simulator.prototype.addBiped = function () {
   this.addCuboid("hip_left", 0x0000ff, l2, l1, l1, hipLeftOffset);
   let thighLeftOffset = new Matrix4().makeTranslation(0, 0, -l2 / 2);
   this.addCuboid("thigh_left", 0xff0000, l1, l1, l2, thighLeftOffset);
+  let calfLeftOffset = new Matrix4().makeTranslation(0, 0, -l2 / 2);
+  this.addCuboid("calf_left", 0x00ff00, l1, l1, l2, calfLeftOffset);
 };
 
 Simulator.prototype.updateBiped = function (poses: FloatArrayType) {
-  if (poses.length != 4 * 7) {
+  if (poses.length != 5 * 7) {
     throw new Error("poses len != 3 * 7");
   }
 
-  let i = 0;
-  let base_pose = poses.subarray(i, i + 7);
-  this.setPose("base", base_pose);
+  let frames = ["base", "pelvis_left", "hip_left", "thigh_left", "calf_left"];
 
-  i += 7;
-  let pelvis_left_pose = poses.subarray(i, i + 7);
-  this.setPose("pelvis_left", pelvis_left_pose);
-
-  i += 7;
-  let hip_left_pose = poses.subarray(i, i + 7);
-  this.setPose("hip_left", hip_left_pose);
-
-  i += 7;
-  let thigh_left_pose = poses.subarray(i, i + 7);
-  this.setPose("thigh_left", thigh_left_pose);
+  for (let i = 0; i < poses.length; i += 7) {
+    let pose = poses.subarray(i, i + 7);
+    this.setPose(frames[i / 7], pose);
+  }
 };

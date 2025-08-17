@@ -73,13 +73,25 @@ pub fn build_biped() -> MechanismState {
     );
     let thigh_left_to_hip_left = Transform3D::move_x(thigh_left_frame, hip_left_frame, w_hip);
 
+    let m_calf = 0.1;
+    let w_calf = l1;
+    let d_calf = l1;
+    let h_calf = l2;
+    let calf_axis = Vector3::x_axis();
+    let calf_com = vector![0., 0., -h_calf / 2.];
+    let calf_left_frame = "calf_left";
+    let calf_left =
+        RigidBody::new_cuboid_at(calf_com, m_calf, w_calf, d_calf, h_calf, calf_left_frame);
+    let calf_left_to_thigh_left = Transform3D::move_z(calf_left_frame, thigh_left_frame, -h_thigh);
+
     let treejoints = vec![
         Joint::FixedJoint(FixedJoint::new(base_to_world)),
         Joint::new_revolute(pelvis_left_to_base, pelvis_axis),
         Joint::new_revolute(hip_left_to_pelvis_left, hip_axis),
         Joint::new_revolute(thigh_left_to_hip_left, thigh_axis),
+        Joint::new_revolute(calf_left_to_thigh_left, calf_axis),
     ];
-    let bodies = vec![base, pelvis_left, hip_left, thigh_left];
+    let bodies = vec![base, pelvis_left, hip_left, thigh_left, calf_left];
     MechanismState::new(treejoints, bodies)
 }
 
