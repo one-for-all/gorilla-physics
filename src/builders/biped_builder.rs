@@ -141,7 +141,8 @@ pub fn build_biped() -> MechanismState {
     let foot_right_to_calf_right = Transform3D::move_z(foot_right_frame, calf_right_frame, -h_calf);
 
     let treejoints = vec![
-        Joint::FixedJoint(FixedJoint::new(base_to_world)),
+        // Joint::FixedJoint(FixedJoint::new(base_to_world)),
+        Joint::FloatingJoint(FloatingJoint::new(base_to_world)),
         Joint::new_revolute(pelvis_left_to_base, pelvis_axis),
         Joint::new_revolute(hip_left_to_pelvis_left, hip_axis),
         Joint::new_revolute(thigh_left_to_hip_left, thigh_axis),

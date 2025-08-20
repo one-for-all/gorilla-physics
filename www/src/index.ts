@@ -30,7 +30,7 @@ import("gorilla-physics").then((gorilla) => {
 
   let angle: number = (0.0 * Math.PI) / 180.0;
   let normal = new FloatArray([Math.sin(angle), 0.0, Math.cos(angle)]);
-  let h_ground = 0.0;
+  let h_ground = -0.8;
   let alpha = 1.0;
   let mu = 1.0;
 
@@ -68,7 +68,7 @@ import("gorilla-physics").then((gorilla) => {
     // let wheel_radius = 0.037 / 2.0;
     // simulator.addSphere("wheel_left", 0x00ff00, wheel_radius);
     // simulator.addSphere("wheel_right", 0x00ff00, wheel_radius);
-    // simulator.addPlane(normal, h_ground, 10);
+    simulator.addPlane(normal, h_ground, 10);
 
     // simulator.addFluid2D(state);
 
