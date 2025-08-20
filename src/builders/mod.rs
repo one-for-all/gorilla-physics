@@ -12,6 +12,7 @@ use crate::{
 
 pub mod biped_builder;
 pub mod kinematic_loop_builder;
+pub mod leg_builder;
 pub mod navbot_builder;
 
 fn build_so101_base_body(mut mesh: Mesh, frame: &str) -> RigidBody {

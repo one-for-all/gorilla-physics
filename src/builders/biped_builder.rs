@@ -1,7 +1,7 @@
-use na::{vector, Transform3, UnitVector3, Vector3};
+use na::{vector, UnitVector3, Vector3};
 
 use crate::{
-    joint::{fixed::FixedJoint, floating::FloatingJoint, Joint},
+    joint::{floating::FloatingJoint, Joint},
     mechanism::MechanismState,
     rigid_body::RigidBody,
     spatial::transform::Transform3D,
@@ -29,7 +29,7 @@ pub fn build_biped() -> MechanismState {
     let pelvis_left_frame = "pelvis_left";
     let pelvis_com = vector![0., 0., -h_pelvis / 2.];
     let pelvis_left = RigidBody::new_cuboid_at(
-        pelvis_com,
+        &pelvis_com,
         m_pelvis,
         w_pelvis,
         d_pelvis,
@@ -52,7 +52,7 @@ pub fn build_biped() -> MechanismState {
     let hip_left_frame = "hip_left";
     let hip_left_com = vector![w_hip / 2., 0., 0.];
     let hip_left =
-        RigidBody::new_cuboid_at(hip_left_com, m_hip, w_hip, d_hip, h_hip, hip_left_frame);
+        RigidBody::new_cuboid_at(&hip_left_com, m_hip, w_hip, d_hip, h_hip, hip_left_frame);
     let hip_left_to_pelvis_left =
         Transform3D::move_xyz(hip_left_frame, pelvis_left_frame, 0., 0., -h_pelvis);
 
@@ -64,7 +64,7 @@ pub fn build_biped() -> MechanismState {
     let thigh_com = vector![0., 0., -h_thigh / 2.];
     let thigh_left_frame = "thigh_left";
     let thigh_left = RigidBody::new_cuboid_at(
-        thigh_com,
+        &thigh_com,
         m_thigh,
         w_thigh,
         d_thigh,
@@ -81,7 +81,7 @@ pub fn build_biped() -> MechanismState {
     let calf_com = vector![0., 0., -h_calf / 2.];
     let calf_left_frame = "calf_left";
     let calf_left =
-        RigidBody::new_cuboid_at(calf_com, m_calf, w_calf, d_calf, h_calf, calf_left_frame);
+        RigidBody::new_cuboid_at(&calf_com, m_calf, w_calf, d_calf, h_calf, calf_left_frame);
     let calf_left_to_thigh_left = Transform3D::move_z(calf_left_frame, thigh_left_frame, -h_thigh);
 
     let m_foot = 0.1;
@@ -96,7 +96,7 @@ pub fn build_biped() -> MechanismState {
 
     let pelvis_right_frame = "pelvis_right";
     let pelvis_right = RigidBody::new_cuboid_at(
-        pelvis_com,
+        &pelvis_com,
         m_pelvis,
         w_pelvis,
         d_pelvis,
@@ -108,7 +108,7 @@ pub fn build_biped() -> MechanismState {
 
     let hip_right_frame = "hip_right";
     let hip_right = RigidBody::new_cuboid_at(
-        vector![-w_hip / 2., 0., 0.],
+        &vector![-w_hip / 2., 0., 0.],
         m_hip,
         w_hip,
         d_hip,
@@ -120,7 +120,7 @@ pub fn build_biped() -> MechanismState {
 
     let thigh_right_frame = "thigh_right";
     let thigh_right = RigidBody::new_cuboid_at(
-        thigh_com,
+        &thigh_com,
         m_thigh,
         w_thigh,
         d_thigh,
@@ -131,7 +131,7 @@ pub fn build_biped() -> MechanismState {
 
     let calf_right_frame = "calf_right";
     let calf_right =
-        RigidBody::new_cuboid_at(calf_com, m_calf, w_calf, d_calf, h_calf, calf_right_frame);
+        RigidBody::new_cuboid_at(&calf_com, m_calf, w_calf, d_calf, h_calf, calf_right_frame);
     let calf_right_to_thigh_right =
         Transform3D::move_z(calf_right_frame, thigh_right_frame, -h_thigh);
 

@@ -60,3 +60,35 @@ Simulator.prototype.updateBiped = function (poses: FloatArrayType) {
     this.setPose(frames[i / 7], pose);
   }
 };
+
+declare module "./Simulator" {
+  interface Simulator {
+    addLeg(): void;
+    updateLeg(poses: FloatArrayType): void;
+  }
+}
+
+Simulator.prototype.addLeg = function () {
+  let l1 = 0.05;
+  let l2 = 0.2;
+
+  let thighLeftOffset = new Matrix4().makeTranslation(0, 0, -l2 / 2);
+  this.addCuboid("thigh_left", 0xff0000, l1, l1, l2, thighLeftOffset);
+  let calfLeftOffset = new Matrix4().makeTranslation(0, 0, -l2 / 2);
+  this.addCuboid("calf_left", 0x00ff00, l1, l1, l2, calfLeftOffset);
+  this.addCuboid("foot_left", 0x0000ff, l1, l2, l1);
+};
+
+Simulator.prototype.updateLeg = function (poses: FloatArrayType) {
+  let frames = ["thigh_left", "calf_left", "foot_left"];
+
+  let n_bodies = frames.length;
+  if (poses.length != n_bodies * 7) {
+    throw new Error(`poses len != ${n_bodies} * 7`);
+  }
+
+  for (let i = 0; i < poses.length; i += 7) {
+    let pose = poses.subarray(i, i + 7);
+    this.setPose(frames[i / 7], pose);
+  }
+};

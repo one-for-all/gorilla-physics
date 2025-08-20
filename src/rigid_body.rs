@@ -156,7 +156,7 @@ impl RigidBody {
 
     /// Create a uniform cuboid, whose center of mass is not at the origin of frame
     pub fn new_cuboid_at(
-        com: Vector3<Float>,
+        com: &Vector3<Float>,
         m: Float,
         w: Float,
         d: Float,
@@ -229,6 +229,21 @@ impl RigidBody {
             frame,
             vector![w / 2.0, -d / 2.0, -h / 2.0],
         ));
+    }
+
+    pub fn add_cuboid_contacts_with(&mut self, com: &Vector3<Float>, w: Float, d: Float, h: Float) {
+        let frame = self.inertia.frame.clone();
+        let frame = frame.as_str();
+        for i in [-1., 1.].iter() {
+            for j in [-1., 1.].iter() {
+                for k in [-1., 1.].iter() {
+                    self.add_contact_point(ContactPoint::new(
+                        frame,
+                        com + vector![i * w / 2.0, j * d / 2.0, k * h / 2.0],
+                    ));
+                }
+            }
+        }
     }
 
     pub fn add_spring_contact(&mut self, spring_contact: &SpringContact) {
