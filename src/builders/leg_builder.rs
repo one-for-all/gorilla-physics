@@ -53,7 +53,7 @@ pub fn build_leg() -> MechanismState {
     let foot_left_to_calf_left = Transform3D::move_z(foot_left_frame, calf_left_frame, -h_calf);
 
     let treejoints = vec![
-        Joint::FloatingJoint(FloatingJoint::new(thigh_left_to_world)),
+        Joint::new_floating(thigh_left_to_world),
         Joint::new_revolute(calf_left_to_thigh_left, calf_axis),
         Joint::new_revolute(foot_left_to_calf_left, foot_axis),
     ];

@@ -57,6 +57,10 @@ impl Joint {
     pub fn new_revolute(transform: Transform3D, axis: UnitVector3<Float>) -> Self {
         Self::RevoluteJoint(RevoluteJoint::new(transform, axis))
     }
+
+    pub fn new_floating(transform: Transform3D) -> Self {
+        Self::FloatingJoint(FloatingJoint::new(transform))
+    }
 }
 
 pub trait ToFloatDVec {
