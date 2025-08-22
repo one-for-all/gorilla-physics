@@ -35,46 +35,47 @@ impl Controller for LegController {
         flog!("z com: {}", z_com);
         let y_com = 1. / 3. * (-l / 2. * q1.sin() - l * q1.sin() - l / 2. * (q1 + q2).sin());
 
-        // Compute J_com
-        let J1 = vector![-l / 2. * q1.cos(), 0.];
-        let J2 = vector![
-            -l * q1.cos() - l / 2. * (q1 + q2).cos(),
-            -l / 2. * (q1 + q2).cos()
+        // Compute J_com systematically
+        let J_spatial_vs = state.spatial_velocity_jacobians();
+        let mat_linear_v_com = state.com_linear_velocity_extraction_matrices();
+
+        let T_keep_y = Vector3::y().transpose() * &mat_linear_v_com[2]; // T_v_com;
+        let J2_1 = T_keep_y * &J_spatial_vs[1]; // T1_to_world * S1;
+        let J2_2 = T_keep_y * &J_spatial_vs[2]; // T2_to_world * S2;
+        let J2 = vector![J2_1[(0, 0)], J2_2[(0, 0)]];
+
+        let J1 = vector![
+            (Vector3::y().transpose() * &mat_linear_v_com[1] * &J_spatial_vs[1])[(0, 0)],
+            0.
         ];
+
+        // flog!("J1: {}", J1);
+        // flog!("J2: {}", J2);
+        // flog!("J1 diff: {}", J1 - J1_orig);
+        // flog!("J2 diff: {}", J2 - J2_orig);
+        // flog!("base transform: {}", bodies_to_root[1].iso);
         let J = 1. / 3. * (J1 + J2);
 
-        // Compute J_com by systematic formula
-        let bodies_to_root = state.get_bodies_to_root();
-
-        let S1 = state.treejoints[1].motion_subspace().as_matrix();
-        let body1_to_root = &bodies_to_root[2];
-        let T1_to_world = body1_to_root.spatial_matrix();
-
-        let S2 = state.treejoints[2].motion_subspace().as_matrix();
-        let body2_to_root = &bodies_to_root[3];
-        let T2_to_world = body2_to_root.spatial_matrix();
-
-        let r_2_com = body2_to_root.trans() + body2_to_root.rot() * vector![0., 0., l / 2.];
-        let mut T_v_com = Matrix3x6::<Float>::zeros();
-        T_v_com
-            .fixed_view_mut::<3, 3>(0, 3)
-            .copy_from(&Matrix3::identity());
-        T_v_com
-            .fixed_view_mut::<3, 3>(0, 0)
-            .copy_from(&(-skew_symmetric(&r_2_com)));
-        let T_keep_y = Vector3::y().transpose() * T_v_com;
-        let J2_1 = T_keep_y * T1_to_world * S1;
-        let J2_2 = T_keep_y * T2_to_world * S2;
-        let J2_other = vector![J2_1[(0, 0)], J2_2[(0, 0)]];
-        flog!("J2 diff: {}", J2 - J2_other);
-        flog!("base transform: {}", bodies_to_root[1].iso);
-
-        // Compute J_dot_com
-        let J1_dot = vector![l / 2. * q1.sin() * q1_dot, 0.];
-        let J2_dot = vector![
-            l * q1.sin() * q1_dot + l / 2. * (q1 + q2).sin() * (q1_dot + q2_dot),
-            l / 2. * (q1 + q2).sin() * (q1_dot + q2_dot)
+        // Compute J_dot_com systematically
+        let J_spatial_v_derivs = state.spatial_velocity_jacobian_derivatives();
+        let mat_linear_v_com_derivs = state.com_linear_velocity_extraction_matrix_derivatives();
+        let J1_dot = vector![
+            (Vector3::<Float>::y().transpose()
+                * (&mat_linear_v_com_derivs[1] * &J_spatial_vs[1]
+                    + &mat_linear_v_com[1] * &J_spatial_v_derivs[1]))[(0, 0)],
+            0.
         ];
+        let J2_dot = vector![
+            (Vector3::<Float>::y().transpose()
+                * (&mat_linear_v_com_derivs[2] * &J_spatial_vs[1]
+                    + &mat_linear_v_com[2] * &J_spatial_v_derivs[1]))[(0, 0)],
+            (Vector3::<Float>::y().transpose()
+                * (&mat_linear_v_com_derivs[2] * &J_spatial_vs[2]
+                    + &mat_linear_v_com[2] * &J_spatial_v_derivs[2]))[(0, 0)],
+        ];
+
+        // flog!("J1 dot diff: {}", J1_dot - J1_dot_orig);
+        // flog!("J2 dot diff: {}", J2_dot - J2_dot_orig);
         let J_dot = 1. / 3. * (J1_dot + J2_dot);
 
         // Fill in pre-computed Ricatti equation solution S
@@ -113,8 +114,8 @@ impl Controller for LegController {
         // let tau = q_ddot_des.clone();
 
         vec![
-            // JointTorque::Spatial(SpatialVector::zero()),
-            JointTorque::None,
+            JointTorque::Spatial(SpatialVector::zero()),
+            // JointTorque::None,
             JointTorque::Float(tau[0]),
             JointTorque::Float(tau[1]),
         ]

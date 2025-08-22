@@ -23,10 +23,15 @@ use crate::spatial::twist::compute_joint_twists;
 use crate::spatial::twist::compute_twists_wrt_world;
 use crate::spatial::twist::Twist;
 use crate::types::Float;
+use crate::util::skew_symmetric;
 use crate::GRAVITY;
 use crate::WORLD_FRAME;
 use itertools::izip;
 use na::DMatrix;
+use na::Matrix3;
+use na::Matrix3x6;
+use na::Matrix6;
+use na::Matrix6xX;
 
 /// MechanismState stores the state information about the mechanism
 /// Joint i's child body is body i.
@@ -460,6 +465,99 @@ impl MechanismState {
         }
 
         linked_bodyids
+    }
+
+    /// Get the Jacobian of each joint velocity to each body's spatial velocity.
+    /// ith element is the Jacobian of ith joint velocity to the twist, i.e.
+    /// spatial velocity, of ith body relative to (i-1)th body, expressed in
+    /// world frame.
+    pub fn spatial_velocity_jacobians(&self) -> Vec<Matrix6xX<Float>> {
+        let bodies_to_root = self.get_bodies_to_root_no_update();
+        izip!(self.treejoints.iter(), bodies_to_root.iter().skip(1))
+            .map(|(j, T)| T.spatial_matrix() * j.motion_subspace().as_matrix())
+            .collect()
+    }
+
+    /// Time derivatives of spatial_velocity_jacobians
+    pub fn spatial_velocity_jacobian_derivatives(&mut self) -> Vec<Matrix6xX<Float>> {
+        let bodies_to_root = self.get_bodies_to_root_no_update();
+        let body_twists = self.get_body_twists();
+        izip!(
+            self.treejoints.iter(),
+            bodies_to_root.iter().skip(1),
+            body_twists.iter().skip(1)
+        )
+        .map(|(j, T, twist)| {
+            let r = T.trans();
+            let R = T.rot();
+            let v = twist.linear;
+            let omega_cross = skew_symmetric(&twist.angular);
+            let R_dot = omega_cross * R;
+            let r_dot = v + omega_cross * r;
+
+            let mut T_dot = Matrix6::<Float>::zeros();
+            T_dot.fixed_view_mut::<3, 3>(0, 0).copy_from(&R_dot);
+            T_dot.fixed_view_mut::<3, 3>(3, 3).copy_from(&R_dot);
+            T_dot
+                .fixed_view_mut::<3, 3>(3, 0)
+                .copy_from(&(skew_symmetric(&r_dot) * R + skew_symmetric(&r) * R_dot));
+
+            T_dot * j.motion_subspace().as_matrix()
+        })
+        .collect()
+    }
+
+    /// Matrices, multiplied by which, gives the linear velocity of the
+    ///  center-of-mass velocity of each body
+    pub fn com_linear_velocity_extraction_matrices(&self) -> Vec<Matrix3x6<Float>> {
+        let bodies_to_root = self.get_bodies_to_root_no_update();
+        izip!(self.bodies.iter(), bodies_to_root.iter().skip(1))
+            .map(|(b, T)| {
+                let mut mat_v_com = Matrix3x6::<Float>::zeros();
+                // center of mass, expressed in body frame
+                let body_com = b.inertia.center_of_mass();
+                // center of mass expressed in world frame
+                let com = T.trans() + T.rot() * body_com;
+                mat_v_com
+                    .fixed_view_mut::<3, 3>(0, 3)
+                    .copy_from(&Matrix3::identity());
+                mat_v_com
+                    .fixed_view_mut::<3, 3>(0, 0)
+                    .copy_from(&(-skew_symmetric(&com)));
+                mat_v_com
+            })
+            .collect()
+    }
+
+    /// Time derivatives of com_linear_velocity_extraction_matrices
+    pub fn com_linear_velocity_extraction_matrix_derivatives(&mut self) -> Vec<Matrix3x6<Float>> {
+        let bodies_to_root = self.get_bodies_to_root_no_update();
+        let body_twists = self.get_body_twists();
+        izip!(
+            self.bodies.iter(),
+            bodies_to_root.iter().skip(1),
+            body_twists.iter().skip(1)
+        )
+        .map(|(b, T, twist)| {
+            let r = T.trans();
+            let R = T.rot();
+            let v = twist.linear;
+            let omega_cross = skew_symmetric(&twist.angular);
+            let R_dot = omega_cross * R;
+            let r_dot = v + omega_cross * r;
+
+            // center of mass, expressed in body frame
+            let body_com = b.inertia.center_of_mass();
+            // time derivative of center of mass expressed in world frame
+            let com_dot = r_dot + R_dot * body_com;
+
+            let mut mat_dot_v_com = Matrix3x6::<Float>::zeros();
+            mat_dot_v_com
+                .fixed_view_mut::<3, 3>(0, 0)
+                .copy_from(&(-skew_symmetric(&com_dot)));
+            mat_dot_v_com
+        })
+        .collect()
     }
 }
 

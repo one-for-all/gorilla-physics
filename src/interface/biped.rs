@@ -65,14 +65,14 @@ pub async fn createLeg() -> InterfaceMechanismState {
 pub async fn createLegFromFoot() -> InterfaceMechanismState {
     let mut state = build_leg_from_foot();
 
-    let calf_angle = PI / 4. - 0.2;
+    let calf_angle = PI / 4. - 0.4;
     let thigh_angle = -PI / 2.;
     let q_init = vec![
-        // JointPosition::Pose(Pose {
-        //     rotation: UnitQuaternion::identity(),
-        //     translation: zero(),
-        // }),
-        JointPosition::None,
+        JointPosition::Pose(Pose {
+            rotation: UnitQuaternion::identity(),
+            translation: zero(),
+        }),
+        // JointPosition::None,
         JointPosition::Float(calf_angle),
         JointPosition::Float(thigh_angle),
     ];
