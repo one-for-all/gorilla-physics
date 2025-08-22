@@ -1,9 +1,9 @@
 use std::ops::Mul;
 
-use na::{Isometry3, Translation3, UnitQuaternion, UnitVector3};
+use na::{Isometry3, Matrix6, Translation3, UnitQuaternion, UnitVector3};
 use nalgebra::{Matrix3, Matrix4, Vector3};
 
-use crate::{types::Float, WORLD_FRAME};
+use crate::{types::Float, util::skew_symmetric, WORLD_FRAME};
 
 pub trait Matrix4Ext {
     /// Create the transformation matrix for a linear translation along the x-axis
@@ -175,6 +175,21 @@ impl Transform3D {
             0.0, 0.0, 1.0, p.z,
             0.0, 0.0, 0.0, 1.0,
         )
+    }
+
+    /// Returns the matrix that transforms a spatial vector from one frame to another
+    /// TODO: this function ~= compute_twist_transformation_matrix. remove redundancy
+    pub fn spatial_matrix(&self) -> Matrix6<Float> {
+        let R = self.rot();
+        let r = self.trans();
+
+        let mut out = Matrix6::<Float>::zeros();
+        out.fixed_view_mut::<3, 3>(0, 0).copy_from(&R);
+        out.fixed_view_mut::<3, 3>(3, 0)
+            .copy_from(&(skew_symmetric(&r) * R));
+        out.fixed_view_mut::<3, 3>(3, 3).copy_from(&R);
+
+        out
     }
 }
 
