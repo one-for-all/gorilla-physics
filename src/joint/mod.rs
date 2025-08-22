@@ -6,6 +6,7 @@ use na::{dvector, vector, DVector, UnitVector3, Vector3};
 use prismatic::PrismaticJoint;
 use revolute::RevoluteJoint;
 
+use crate::spatial::transform;
 use crate::spatial::{
     geometric_jacobian::GeometricJacobian, pose::Pose, spatial_vector::SpatialVector,
     transform::Transform3D,
@@ -60,6 +61,10 @@ impl Joint {
 
     pub fn new_floating(transform: Transform3D) -> Self {
         Self::FloatingJoint(FloatingJoint::new(transform))
+    }
+
+    pub fn new_fixed(transform: Transform3D) -> Self {
+        Self::FixedJoint(FixedJoint::new(transform))
     }
 }
 
