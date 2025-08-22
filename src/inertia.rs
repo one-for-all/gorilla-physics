@@ -51,9 +51,9 @@ impl SpatialInertia {
         }
     }
 
-    pub fn center_of_mass(&self) -> Point3<Float> {
+    pub fn center_of_mass(&self) -> Vector3<Float> {
         let p = self.cross_part / self.mass;
-        Point3::<Float>::new(p.x, p.y, p.z)
+        vector![p.x, p.y, p.z]
     }
 
     pub fn default() -> Self {

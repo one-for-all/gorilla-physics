@@ -55,7 +55,7 @@ impl Controller for NullController {
 /// Reference: https://underactuated.csail.mit.edu/pend.html#section2
 pub fn pendulum_gravity_inversion(state: &MechanismState) -> Vec<JointTorque> {
     let mass = state.bodies[0].inertia.mass;
-    let length_to_com = state.bodies[0].inertia.center_of_mass().coords.norm();
+    let length_to_com = state.bodies[0].inertia.center_of_mass().norm();
     let q = state.q[0].float();
 
     let gravity_inversion = 2.0 * mass * GRAVITY * length_to_com * q.sin();
@@ -76,7 +76,7 @@ pub fn pendulum_gravity_inversion(state: &MechanismState) -> Vec<JointTorque> {
 /// Reference: https://underactuated.csail.mit.edu/pend.html#section3
 pub fn pendulum_energy_shaping(state: &MechanismState) -> Vec<JointTorque> {
     let mass = state.bodies[0].inertia.mass;
-    let length_to_com = state.bodies[0].inertia.center_of_mass().coords.norm();
+    let length_to_com = state.bodies[0].inertia.center_of_mass().norm();
     let moment = state.bodies[0].inertia.moment;
 
     let axis = state.treejoints[0].axis();
