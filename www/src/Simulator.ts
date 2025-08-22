@@ -1052,7 +1052,7 @@ export class Simulator {
     // );
 
     let poses = this.simulator.poses();
-    this.updateLeg(poses);
+    this.updateLegFromFoot(poses);
     // this.updateBiped(poses);
 
     // this.setPose("sphere1", poses.subarray(0, 6));

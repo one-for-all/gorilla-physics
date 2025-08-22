@@ -9,6 +9,7 @@ import {
   createTwoSphere,
   createBiped,
   createLeg,
+  createLegFromFoot,
 } from "gorilla-physics";
 import { Simulator } from "./Simulator";
 import "./biped";
@@ -31,7 +32,7 @@ import("gorilla-physics").then((gorilla) => {
 
   let angle: number = (0.0 * Math.PI) / 180.0;
   let normal = new FloatArray([Math.sin(angle), 0.0, Math.cos(angle)]);
-  let h_ground = 0.0;
+  let h_ground = -0.05 / 2; // 0.0;
   let alpha = 1.0;
   let mu = 1.0;
 
@@ -40,10 +41,11 @@ import("gorilla-physics").then((gorilla) => {
   // });
 
   let radius = 0.1;
-  createLeg().then((state) => {
+  createLegFromFoot().then((state) => {
     state.addHalfSpace(normal as Float64Array, h_ground);
 
-    let controller = gorilla.createNullController();
+    let controller = gorilla.createLegController();
+    // let controller = gorilla.createNullController();
     // let controller = gorilla.createPusherController();
     // let controller = gorilla.createBalancingBotController();
     // let controller = gorilla.createFourBarLinkageController();
@@ -52,10 +54,10 @@ import("gorilla-physics").then((gorilla) => {
     // let controller = gorilla.createNavbotController(1.0 / 600.0);
     let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
     let simulator = new Simulator(interfaceSimulator);
-    simulator.addLeg();
+    simulator.addLegFromFoot();
 
     let poses = simulator.simulator.poses();
-    simulator.updateLeg(poses);
+    simulator.updateLegFromFoot(poses);
 
     // simulator.addSphere("sphere1", 0xff0000, radius);
     // simulator.addSphere("sphere2", 0x00ff00, radius);
@@ -102,8 +104,8 @@ import("gorilla-physics").then((gorilla) => {
 
     // Important: Set initial camera position
     let cameraPosition = {
-      eye: { x: -2.0, y: 0.0, z: 0.0 },
-      target: { x: 0.0, y: 0, z: 0.0 },
+      eye: { x: -2.0, y: 0.0, z: h_ground },
+      target: { x: 0.0, y: 0, z: h_ground },
     };
     simulator.graphics.lookAt(cameraPosition);
 

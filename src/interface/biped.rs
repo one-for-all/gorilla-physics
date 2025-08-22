@@ -2,7 +2,10 @@ use na::{vector, zero, UnitQuaternion, UnitVector3, Vector3};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{
-    builders::{biped_builder::build_biped, leg_builder::build_leg},
+    builders::{
+        biped_builder::build_biped,
+        leg_builder::{build_leg, build_leg_from_foot},
+    },
     interface::InterfaceMechanismState,
     joint::{Joint, JointPosition, JointVelocity},
     spatial::pose::Pose,
@@ -54,6 +57,27 @@ pub async fn createLeg() -> InterfaceMechanismState {
             translation: vector![0., 0., -foot_height + h_foot / 2.],
         }),
     );
+
+    InterfaceMechanismState { inner: state }
+}
+
+#[wasm_bindgen]
+pub async fn createLegFromFoot() -> InterfaceMechanismState {
+    let mut state = build_leg_from_foot();
+
+    let calf_angle = PI / 4. - 0.2;
+    let thigh_angle = -PI / 2.;
+    let q_init = vec![
+        JointPosition::Pose(Pose {
+            rotation: UnitQuaternion::identity(),
+            translation: zero(),
+        }),
+        // JointPosition::None,
+        JointPosition::Float(calf_angle),
+        JointPosition::Float(thigh_angle),
+    ];
+
+    state.update_q(&q_init);
 
     InterfaceMechanismState { inner: state }
 }

@@ -9,6 +9,7 @@ pub mod energy_control;
 pub mod gripper_control;
 pub mod hopper_control;
 pub mod kinematic_loop;
+pub mod leg_control;
 pub mod lqr;
 pub mod navbot_control;
 pub mod pusher_control;
