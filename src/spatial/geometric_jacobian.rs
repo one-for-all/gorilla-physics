@@ -1,4 +1,4 @@
-use na::Matrix3xX;
+use na::{Matrix3xX, Matrix6xX, Vector6};
 use std::ops::Mul;
 
 use crate::{spatial::transform::Transform3D, types::Float, util::colwise_cross};
@@ -43,5 +43,15 @@ impl GeometricJacobian {
         }
 
         self.angular.ncols()
+    }
+
+    pub fn as_matrix(&self) -> Matrix6xX<Float> {
+        let mut out = Matrix6xX::<Float>::zeros(self.angular.ncols());
+
+        out.view_mut((0, 0), (3, self.angular.ncols()))
+            .copy_from(&self.angular);
+        out.view_mut((3, 0), (3, self.linear.ncols()))
+            .copy_from(&self.linear);
+        out
     }
 }
