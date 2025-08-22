@@ -113,7 +113,8 @@ impl Controller for LegController {
         // let tau = q_ddot_des.clone();
 
         vec![
-            JointTorque::Spatial(SpatialVector::zero()),
+            // JointTorque::Spatial(SpatialVector::zero()),
+            JointTorque::None,
             JointTorque::Float(tau[0]),
             JointTorque::Float(tau[1]),
         ]

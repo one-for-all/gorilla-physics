@@ -68,11 +68,11 @@ pub async fn createLegFromFoot() -> InterfaceMechanismState {
     let calf_angle = PI / 4. - 0.2;
     let thigh_angle = -PI / 2.;
     let q_init = vec![
-        JointPosition::Pose(Pose {
-            rotation: UnitQuaternion::identity(),
-            translation: zero(),
-        }),
-        // JointPosition::None,
+        // JointPosition::Pose(Pose {
+        //     rotation: UnitQuaternion::identity(),
+        //     translation: zero(),
+        // }),
+        JointPosition::None,
         JointPosition::Float(calf_angle),
         JointPosition::Float(thigh_angle),
     ];

@@ -25,8 +25,8 @@ use clarabel::{
 };
 use itertools::izip;
 use na::{
-    dvector, vector, zero, DMatrix, DVector, Matrix1xX, Matrix3, Matrix3x6, Matrix3xX, Matrix6xX,
-    UnitVector3,
+    dvector, vector, zero, Const, DMatrix, DVector, Dyn, Matrix, Matrix1xX, Matrix3, Matrix3x6,
+    Matrix3xX, Matrix6xX, UnitVector3,
 };
 use nalgebra::Vector3;
 use std::collections::{HashMap, HashSet};
@@ -448,11 +448,11 @@ pub fn build_jacobian_blocks(
     bodies_to_root: &Vec<Transform3D>,
 ) -> Vec<Matrix6xX<Float>> {
     izip!(state.treejointids.iter(), state.treejoints.iter())
-        .filter_map(|(bodyid, joint)| {
+        .map(|(bodyid, joint)| {
             let body_to_root = &bodies_to_root[*bodyid];
             let T = compute_twist_transformation_matrix(&body_to_root.iso);
             match joint {
-                Joint::RevoluteJoint(joint) => Some(
+                Joint::RevoluteJoint(joint) => {
                     T * Matrix6xX::from_column_slice(&[
                         joint.axis[0],
                         joint.axis[1],
@@ -460,9 +460,10 @@ pub fn build_jacobian_blocks(
                         0.,
                         0.,
                         0.,
-                    ]),
-                ),
-                Joint::PrismaticJoint(joint) => Some(
+                    ])
+                }
+
+                Joint::PrismaticJoint(joint) => {
                     T * Matrix6xX::from_column_slice(&[
                         0.,
                         0.,
@@ -470,12 +471,13 @@ pub fn build_jacobian_blocks(
                         joint.axis[0],
                         joint.axis[1],
                         joint.axis[2],
-                    ]),
-                ),
-                Joint::FloatingJoint(_) => Some(Matrix6xX::from_columns(
-                    &T.column_iter().collect::<Vec<_>>(),
-                )),
-                Joint::FixedJoint(_) => None,
+                    ])
+                }
+
+                Joint::FloatingJoint(_) => {
+                    Matrix6xX::from_columns(&T.column_iter().collect::<Vec<_>>())
+                }
+                Joint::FixedJoint(_) => Matrix::<Float, Const<6>, Dyn, _>::zeros(0), // a 6x0 matrix
             }
         })
         .collect()
