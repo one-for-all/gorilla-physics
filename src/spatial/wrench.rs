@@ -39,6 +39,22 @@ impl Wrench {
     }
 }
 
+impl<'a, 'b> Add<&'b Wrench> for &'a Wrench {
+    type Output = Wrench;
+
+    fn add(self, rhs: &Wrench) -> Wrench {
+        if self.frame != rhs.frame {
+            panic!("lhs frame {} != rhs frame {}!", self.frame, rhs.frame);
+        }
+
+        Wrench {
+            frame: self.frame.clone(),
+            angular: self.angular + rhs.angular,
+            linear: self.linear + rhs.linear,
+        }
+    }
+}
+
 impl AddAssign for Wrench {
     fn add_assign(&mut self, rhs: Self) {
         if self.frame != rhs.frame {
@@ -74,22 +90,6 @@ impl SubAssign<&Wrench> for Wrench {
 
         self.angular -= rhs.angular;
         self.linear -= rhs.linear;
-    }
-}
-
-impl<'a, 'b> Add<&'b Wrench> for &'a Wrench {
-    type Output = Wrench;
-
-    fn add(self, rhs: &Wrench) -> Wrench {
-        if self.frame != rhs.frame {
-            panic!("lhs frame {} != rhs frame {}!", self.frame, rhs.frame);
-        }
-
-        Wrench {
-            frame: self.frame.clone(),
-            angular: self.angular + rhs.angular,
-            linear: self.linear + rhs.linear,
-        }
     }
 }
 
