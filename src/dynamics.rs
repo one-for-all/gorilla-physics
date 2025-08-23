@@ -34,7 +34,7 @@ use std::collections::{HashMap, HashSet};
 use crate::{mechanism::MechanismState, spatial::spatial_acceleration::SpatialAcceleration};
 
 /// Apply the Newton-Euler equation to compute the wrench to move each body at
-/// given acceleration and velocity:
+/// given acceleration and velocity, expressed in world frame:
 ///     f_i = I_i * a_i + v_i \dualcross I_i * v_i
 ///
 /// Reference: Table 5.1 in "Robot Dynamics Algorithms" by Roy Featherstone
@@ -61,9 +61,9 @@ pub fn newton_euler(
         let T = &twists[*bodyid];
         let Tdot = accels.get(bodyid).unwrap();
 
-        if T.frame != Tdot.frame {
+        if T.frame != WORLD_FRAME || Tdot.frame != WORLD_FRAME {
             panic!(
-                "T frame {}  is not equal to Tdot frame {} !",
+                "T frame {} and Tdot frame {} should be world frame!",
                 T.frame, Tdot.frame
             );
         }
@@ -85,7 +85,7 @@ pub fn newton_euler(
         ang += T.angular.cross(&angular_momentum) + T.linear.cross(&linear_momentum);
         lin += T.angular.cross(&linear_momentum);
         wrenches.push(Wrench {
-            frame: T.frame.clone(),
+            frame: WORLD_FRAME.to_string(),
             angular: ang,
             linear: lin,
         })
