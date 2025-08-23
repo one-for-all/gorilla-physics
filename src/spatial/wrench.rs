@@ -1,4 +1,4 @@
-use std::ops::{Add, AddAssign, Sub};
+use std::ops::{Add, AddAssign, Sub, SubAssign};
 
 use itertools::izip;
 use na::{dvector, DVector};
@@ -63,6 +63,17 @@ impl<'a, 'b> Sub<&'b Wrench> for &'a Wrench {
             angular: self.angular - rhs.angular,
             linear: self.linear - rhs.linear,
         }
+    }
+}
+
+impl SubAssign<&Wrench> for Wrench {
+    fn sub_assign(&mut self, rhs: &Wrench) {
+        if self.frame != rhs.frame {
+            panic!("lhs frame {} != rhs frame {}!", self.frame, rhs.frame);
+        }
+
+        self.angular -= rhs.angular;
+        self.linear -= rhs.linear;
     }
 }
 

@@ -242,7 +242,7 @@ pub fn dynamics_bias(
     let mut wrenches = newton_euler(&state, &bias_accels, &bodies_to_root, &twists);
 
     for (bodyid, contact_wrench) in contact_wrenches {
-        wrenches[*bodyid] = &wrenches[*bodyid] - contact_wrench;
+        wrenches[*bodyid] -= contact_wrench;
     }
 
     let torques = compute_torques(state, &wrenches, &bodies_to_root);
