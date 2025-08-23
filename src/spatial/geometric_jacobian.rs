@@ -1,4 +1,4 @@
-use na::{Matrix3xX, Matrix6xX, Vector6};
+use na::{Matrix3xX, Matrix6xX};
 use std::ops::Mul;
 
 use crate::{spatial::transform::Transform3D, types::Float, util::colwise_cross};

@@ -1,7 +1,4 @@
-use std::{
-    collections::HashMap,
-    ops::{Add, AddAssign, Sub},
-};
+use std::ops::{Add, AddAssign, Sub};
 
 use itertools::izip;
 use na::{dvector, DVector};

@@ -1,6 +1,6 @@
 use std::ops::{Add, AddAssign};
 
-use na::{DMatrix, Point3, SMatrix, Vector3};
+use na::{DMatrix, SMatrix, Vector3};
 use nalgebra::{vector, Matrix3};
 
 use crate::{

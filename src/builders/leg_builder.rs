@@ -1,12 +1,8 @@
 use na::{vector, UnitVector3, Vector3};
 
 use crate::{
-    joint::{floating::FloatingJoint, Joint},
-    mechanism::MechanismState,
-    rigid_body::RigidBody,
-    spatial::transform::Transform3D,
-    types::Float,
-    WORLD_FRAME,
+    joint::Joint, mechanism::MechanismState, rigid_body::RigidBody,
+    spatial::transform::Transform3D, types::Float, WORLD_FRAME,
 };
 
 pub fn build_leg() -> MechanismState {

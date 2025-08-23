@@ -6,7 +6,6 @@ use na::{dvector, vector, DVector, UnitVector3, Vector3};
 use prismatic::PrismaticJoint;
 use revolute::RevoluteJoint;
 
-use crate::spatial::transform;
 use crate::spatial::{
     geometric_jacobian::GeometricJacobian, pose::Pose, spatial_vector::SpatialVector,
     transform::Transform3D,

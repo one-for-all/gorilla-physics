@@ -21,7 +21,7 @@ impl Controller for LegController {
     fn control(
         &mut self,
         state: &mut crate::mechanism::MechanismState,
-        input: Option<&super::ControlInput>,
+        _input: Option<&super::ControlInput>,
     ) -> Vec<crate::joint::JointTorque> {
         let q1 = state.q[1].float();
         let q2 = state.q[2].float();
