@@ -58,32 +58,37 @@ pub fn newton_euler(
     for jointid in state.treejointids.iter() {
         let bodyid = jointid;
         let I = inertias.get(bodyid).unwrap();
-        let T = &twists[*bodyid];
-        let Tdot = accels.get(bodyid).unwrap();
+        let twist = &twists[*bodyid];
+        let accel = accels.get(bodyid).unwrap();
 
-        if T.frame != WORLD_FRAME || Tdot.frame != WORLD_FRAME {
+        if twist.frame != WORLD_FRAME || accel.frame != WORLD_FRAME {
             panic!(
-                "T frame {} and Tdot frame {} should be world frame!",
-                T.frame, Tdot.frame
+                "twist frame {} and accel frame {} should both be world frame!",
+                twist.frame, accel.frame
             );
         }
 
-        if T.body != Tdot.body || T.base != Tdot.base {
-            panic!("T and Tdot body/base do not match!");
+        if twist.body != accel.body || twist.base != accel.base {
+            panic!("twist and accel body/base do not match!");
         }
 
         let (mut ang, mut lin) = mul_inertia(
             &I.moment,
             &I.cross_part,
             I.mass,
-            &Tdot.angular,
-            &Tdot.linear,
+            &accel.angular,
+            &accel.linear,
         );
-        let (angular_momentum, linear_momentum) =
-            mul_inertia(&I.moment, &I.cross_part, I.mass, &T.angular, &T.linear);
+        let (angular_momentum, linear_momentum) = mul_inertia(
+            &I.moment,
+            &I.cross_part,
+            I.mass,
+            &twist.angular,
+            &twist.linear,
+        );
 
-        ang += T.angular.cross(&angular_momentum) + T.linear.cross(&linear_momentum);
-        lin += T.angular.cross(&linear_momentum);
+        ang += twist.angular.cross(&angular_momentum) + twist.linear.cross(&linear_momentum);
+        lin += twist.angular.cross(&linear_momentum);
         wrenches.push(Wrench {
             frame: WORLD_FRAME.to_string(),
             angular: ang,
