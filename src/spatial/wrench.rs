@@ -1,12 +1,10 @@
 use std::ops::{Add, AddAssign, Sub, SubAssign};
 
 use itertools::izip;
-use na::{dvector, DVector};
+use na::DVector;
 use nalgebra::Vector3;
 
-use crate::{
-    mechanism::MechanismState, spatial::transform::Transform3D, types::Float, WORLD_FRAME,
-};
+use crate::{mechanism::MechanismState, spatial::transform::Transform3D, types::Float};
 
 /// A wrench represents a system of forces.
 /// The wrench w^i expressed in frame i in defined as
@@ -55,8 +53,8 @@ impl<'a, 'b> Add<&'b Wrench> for &'a Wrench {
     }
 }
 
-impl AddAssign for Wrench {
-    fn add_assign(&mut self, rhs: Self) {
+impl AddAssign<&Wrench> for Wrench {
+    fn add_assign(&mut self, rhs: &Self) {
         if self.frame != rhs.frame {
             panic!("lhs frame {} != rhs frame {}!", self.frame, rhs.frame);
         }
@@ -107,13 +105,11 @@ pub fn compute_torques(
         state.treejointids.iter().rev(),
         state.treejoints.iter().rev()
     ) {
-        let joint_wrench = &joint_wrenches[*jointid].clone();
+        let joint_wrench = joint_wrenches[*jointid].clone();
 
         // update parent's joint wrench. action = -reaction
         let parentid = state.parents[*jointid - 1];
-        let parent_joint_wrench = &mut joint_wrenches[parentid];
-        parent_joint_wrench.angular += joint_wrench.angular;
-        parent_joint_wrench.linear += joint_wrench.linear;
+        joint_wrenches[parentid] += &joint_wrench;
 
         let body_to_root = &bodies_to_root[*jointid];
         let motion_subspace = joint.motion_subspace().transform(body_to_root);

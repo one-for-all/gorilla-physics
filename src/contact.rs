@@ -161,7 +161,7 @@ pub fn contact_dynamics(
                     &normal,
                     contact_point.k,
                 );
-                wrench += Wrench::from_force(&contact_point.location, &contact_force, WORLD_FRAME);
+                wrench += &Wrench::from_force(&contact_point.location, &contact_force, WORLD_FRAME);
             }
         }
 
@@ -207,7 +207,7 @@ pub fn contact_dynamics(
                         spring_force(spring_contact.l_rest, direction_distance, spring_contact.k);
                     let force = -spring_direction * spring_force;
 
-                    wrench += Wrench::from_force(&body_location, &force, WORLD_FRAME);
+                    wrench += &Wrench::from_force(&body_location, &force, WORLD_FRAME);
                 } else {
                     // Spring no longer under load, detach
                     spring_contact.registered_contact = None;
@@ -260,12 +260,12 @@ pub fn contact_dynamics(
                                     Wrench::from_force(&cp_b, &-f_b_to_a, WORLD_FRAME);
 
                                 if let Some(wrench) = contact_wrenches.get_mut(jointid) {
-                                    *wrench += wrench_b_to_a
+                                    *wrench += &wrench_b_to_a
                                 } else {
                                     contact_wrenches.insert(*jointid, wrench_b_to_a);
                                 }
                                 if let Some(wrench) = contact_wrenches.get_mut(other_jointid) {
-                                    *wrench += wrench_a_to_b
+                                    *wrench += &wrench_a_to_b
                                 } else {
                                     contact_wrenches.insert(*other_jointid, wrench_a_to_b);
                                 }
