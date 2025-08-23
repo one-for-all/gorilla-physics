@@ -280,15 +280,7 @@ pub fn dynamics_quantities(
     // Get the twist of the each body with respect to the world frame
     let twists = state.get_body_twists();
 
-    let mass_matrix_lower = mass_matrix(state, &bodies_to_root);
-
-    // Convert lower-triangular matrix to full symmetric matrix M
-    let mut mass_matrix = mass_matrix_lower.clone();
-    for i in 0..mass_matrix_lower.nrows() {
-        for j in (i + 1)..mass_matrix_lower.nrows() {
-            mass_matrix[(i, j)] = mass_matrix_lower[(j, i)];
-        }
-    }
+    let mass_matrix = mass_matrix(state, &bodies_to_root);
 
     (bodies_to_root, joint_twists, twists, mass_matrix)
 }

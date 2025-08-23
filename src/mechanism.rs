@@ -603,8 +603,8 @@ pub fn compute_crb_inertias(
 ///     M(q) vdot + c(q, v) = τ
 /// This method implements the composite rigid body algorithm.
 ///
-/// The result must be a n_v by n_v lower triangular symmetric matrix, where n_v
-/// is the dimension of the Mechanism's joint velocity vector v.
+/// The result must be a n_v by n_v positive-definite symmetric matrix, where
+/// n_v is the dimension of the Mechanism's joint velocity vector v.
 ///
 /// Ref: Table 6.2 in Featherstone's Rigid Body Dynamics Algorithms, 2008
 pub fn mass_matrix(state: &MechanismState, bodies_to_root: &Vec<Transform3D>) -> DMatrix<Float> {
@@ -617,7 +617,7 @@ pub fn mass_matrix(state: &MechanismState, bodies_to_root: &Vec<Transform3D>) ->
             JointVelocity::None => 0,
         })
         .sum();
-    let mut mass_matrix = DMatrix::zeros(n_v, n_v);
+    let mut mass_matrix_lower = DMatrix::zeros(n_v, n_v);
     let motion_subspaces = compute_motion_subspaces(state, bodies_to_root);
     let inertias = compute_inertias(state, bodies_to_root);
     let crb_inertias = compute_crb_inertias(state, &inertias);
@@ -642,7 +642,7 @@ pub fn mass_matrix(state: &MechanismState, bodies_to_root: &Vec<Transform3D>) ->
             // if joint j supports body i
             if state.supports[j - 1].contains(i) {
                 let Hij = Fi.transpose_mul(Sj);
-                mass_matrix
+                mass_matrix_lower
                     .view_mut((i_index, j_index), (nrows, ncols))
                     .copy_from(&Hij);
             }
@@ -654,6 +654,14 @@ pub fn mass_matrix(state: &MechanismState, bodies_to_root: &Vec<Transform3D>) ->
             } else {
                 j_index += ncols;
             }
+        }
+    }
+
+    // Convert lower-triangular matrix to full symmetric matrix M
+    let mut mass_matrix = mass_matrix_lower.clone();
+    for i in 0..mass_matrix_lower.nrows() {
+        for j in (i + 1)..mass_matrix_lower.nrows() {
+            mass_matrix[(i, j)] = mass_matrix_lower[(j, i)];
         }
     }
 
