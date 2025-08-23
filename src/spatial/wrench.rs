@@ -107,15 +107,7 @@ pub fn compute_torques(
         state.treejointids.iter().rev(),
         state.treejoints.iter().rev()
     ) {
-        let bodyid = jointid;
-
-        let joint_wrench = {
-            let w = &joint_wrenches[*bodyid];
-            if w.frame != WORLD_FRAME {
-                panic!("Wrenches must be expressed in the world frame");
-            }
-            w.clone()
-        };
+        let joint_wrench = &joint_wrenches[*jointid].clone();
 
         // update parent's joint wrench. action = -reaction
         let parentid = state.parents[*jointid - 1];
@@ -123,7 +115,7 @@ pub fn compute_torques(
         parent_joint_wrench.angular += joint_wrench.angular;
         parent_joint_wrench.linear += joint_wrench.linear;
 
-        let body_to_root = &bodies_to_root[*bodyid];
+        let body_to_root = &bodies_to_root[*jointid];
         let motion_subspace = joint.motion_subspace().transform(body_to_root);
 
         let mut joint_torques = vec![];
