@@ -100,7 +100,7 @@ pub fn compute_torques(
     wrenches: &Vec<Wrench>,
     bodies_to_root: &Vec<Transform3D>,
 ) -> DVector<Float> {
-    let mut torquesout: DVector<Float> = dvector![];
+    let mut torquesout: Vec<Float> = vec![];
 
     let mut joint_wrenches = (*wrenches).clone();
     for (jointid, joint) in izip!(
@@ -118,20 +118,13 @@ pub fn compute_torques(
         let body_to_root = &bodies_to_root[*jointid];
         let motion_subspace = joint.motion_subspace().transform(body_to_root);
 
-        let ncols = motion_subspace.angular.ncols();
         // Computes the torques at each spatial direction
-        let joint_torques: Vec<Float> = (0..ncols)
-            .rev() // Reverse it because it will be reversed later
-            .map(|i| {
-                motion_subspace.angular.column(i).dot(&joint_wrench.angular)
-                    + motion_subspace.linear.column(i).dot(&joint_wrench.linear)
-            })
-            .collect();
+        let joint_torques = motion_subspace.angular.tr_mul(&joint_wrench.angular)
+            + motion_subspace.linear.tr_mul(&joint_wrench.linear);
 
-        // joint_torques.reverse();
-        torquesout.extend(joint_torques);
+        torquesout.extend(joint_torques.iter().rev()); // Reverse it because it will be reversed later
     }
-    torquesout.as_mut_slice().reverse(); // Reverse to make it in original order
 
-    torquesout
+    torquesout.reverse(); // Reverse to make it in original order
+    DVector::from_vec(torquesout)
 }
