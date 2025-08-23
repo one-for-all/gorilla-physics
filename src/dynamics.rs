@@ -43,12 +43,18 @@ pub fn newton_euler(
     accels: &HashMap<usize, SpatialAcceleration>,
     bodies_to_root: &Vec<Transform3D>,
     twists: &Vec<Twist>,
-) -> HashMap<usize, Wrench> {
+) -> Vec<Wrench> {
     // Compute the body inertias wrt. world frame
     let inertias = compute_inertias(state, bodies_to_root);
 
     // Compute the wrenches at each joint for each body expressed in world frame
-    let mut wrenches: HashMap<usize, Wrench> = HashMap::new();
+    // wrenches[i] = wrench at joint w/ jointid i
+    // wrenches[0] is the zero wrench on the world frame
+    let mut wrenches = vec![Wrench {
+        frame: WORLD_FRAME.to_string(),
+        angular: Vector3::zeros(),
+        linear: Vector3::zeros(),
+    }];
     for jointid in state.treejointids.iter() {
         let bodyid = jointid;
         let I = inertias.get(bodyid).unwrap();
@@ -78,15 +84,13 @@ pub fn newton_euler(
 
         ang += T.angular.cross(&angular_momentum) + T.linear.cross(&linear_momentum);
         lin += T.angular.cross(&linear_momentum);
-        wrenches.insert(
-            *bodyid,
-            Wrench {
-                frame: T.frame.clone(),
-                angular: ang,
-                linear: lin,
-            },
-        );
+        wrenches.push(Wrench {
+            frame: T.frame.clone(),
+            angular: ang,
+            linear: lin,
+        })
     }
+
     wrenches
 }
 
@@ -233,7 +237,7 @@ pub fn dynamics_bias(
     let mut wrenches = newton_euler(&state, &bias_accels, &bodies_to_root, &twists);
 
     for (bodyid, contact_wrench) in contact_wrenches {
-        wrenches.insert(*bodyid, &wrenches[bodyid] - contact_wrench);
+        wrenches[*bodyid] = &wrenches[*bodyid] - contact_wrench;
     }
 
     let torques = compute_torques(state, &wrenches, &bodies_to_root);

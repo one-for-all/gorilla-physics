@@ -89,20 +89,12 @@ impl<'a, 'b> Add<&'b Wrench> for &'a Wrench {
 /// Wrenches are expressed in the world frame.
 pub fn compute_torques(
     state: &MechanismState,
-    wrenches: &HashMap<usize, Wrench>,
+    wrenches: &Vec<Wrench>,
     bodies_to_root: &Vec<Transform3D>,
 ) -> DVector<Float> {
     let mut torquesout: DVector<Float> = dvector![];
 
     let mut joint_wrenches = (*wrenches).clone();
-    joint_wrenches.insert(
-        0,
-        Wrench {
-            frame: WORLD_FRAME.to_string(),
-            angular: Vector3::zeros(),
-            linear: Vector3::zeros(),
-        },
-    );
     for (jointid, joint) in izip!(
         state.treejointids.iter().rev(),
         state.treejoints.iter().rev()
@@ -110,7 +102,7 @@ pub fn compute_torques(
         let bodyid = jointid;
 
         let joint_wrench = {
-            let w = joint_wrenches.get(bodyid).unwrap();
+            let w = &joint_wrenches[*bodyid];
             if w.frame != WORLD_FRAME {
                 panic!("Wrenches must be expressed in the world frame");
             }
@@ -119,10 +111,9 @@ pub fn compute_torques(
 
         // update parent's joint wrench. action = -reaction
         let parentid = state.parents[*jointid - 1];
-        if let Some(parent_joint_wrench) = joint_wrenches.get_mut(&parentid) {
-            parent_joint_wrench.angular += joint_wrench.angular;
-            parent_joint_wrench.linear += joint_wrench.linear;
-        }
+        let parent_joint_wrench = &mut joint_wrenches[parentid];
+        parent_joint_wrench.angular += joint_wrench.angular;
+        parent_joint_wrench.linear += joint_wrench.linear;
 
         let body_to_root = &bodies_to_root[*bodyid];
         let motion_subspace = joint.motion_subspace().transform(body_to_root);
