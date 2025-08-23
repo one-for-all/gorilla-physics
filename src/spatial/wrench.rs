@@ -118,16 +118,17 @@ pub fn compute_torques(
         let body_to_root = &bodies_to_root[*jointid];
         let motion_subspace = joint.motion_subspace().transform(body_to_root);
 
-        let mut joint_torques = vec![];
         let ncols = motion_subspace.angular.ncols();
         // Computes the torques at each spatial direction
-        for i in 0..ncols {
-            joint_torques.push(
+        let joint_torques: Vec<Float> = (0..ncols)
+            .rev() // Reverse it because it will be reversed later
+            .map(|i| {
                 motion_subspace.angular.column(i).dot(&joint_wrench.angular)
-                    + motion_subspace.linear.column(i).dot(&joint_wrench.linear),
-            );
-        }
-        joint_torques.reverse(); // Reverse it because it will be reversed later
+                    + motion_subspace.linear.column(i).dot(&joint_wrench.linear)
+            })
+            .collect();
+
+        // joint_torques.reverse();
         torquesout.extend(joint_torques);
     }
     torquesout.as_mut_slice().reverse(); // Reverse to make it in original order
