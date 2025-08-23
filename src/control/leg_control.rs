@@ -28,7 +28,7 @@ impl Controller for LegController {
         let q = vector![q1, q2];
 
         let v = state.v.to_float_dvec();
-        let dof = v.len();
+        let dof_robot = v.len();
 
         let q_des = vector![PI / 4., -PI / 2.];
         let v_dot_des = (q_des - q) - 0.1 * vector![v[6], v[7]];
@@ -40,21 +40,25 @@ impl Controller for LegController {
         // flog!("z com: {}", z_com);
         let y_com = 1. / 3. * (-l / 2. * q1.sin() - l * q1.sin() - l / 2. * (q1 + q2).sin());
 
+        let n_contacts = 4;
+        let dof_contact = n_contacts * 3;
+        let dof = dof_robot + dof_contact;
+
         // Compute J_com systematically
         let J_spatial_vs = state.spatial_velocity_jacobians();
         let mat_linear_v_com = state.com_linear_velocity_extraction_matrices();
 
-        let mut J0: Matrix1xX<Float> = Matrix1xX::zeros(dof);
+        let mut J0: Matrix1xX<Float> = Matrix1xX::zeros(dof_robot);
         J0.fixed_view_mut::<1, 6>(0, 0)
             .copy_from(&(Vector3::y().transpose() * &mat_linear_v_com[0] * &J_spatial_vs[0]));
 
-        let mut J1: Matrix1xX<Float> = Matrix1xX::zeros(dof);
+        let mut J1: Matrix1xX<Float> = Matrix1xX::zeros(dof_robot);
         J1.fixed_view_mut::<1, 6>(0, 0)
             .copy_from(&(Vector3::y().transpose() * &mat_linear_v_com[1] * &J_spatial_vs[0]));
         J1.fixed_view_mut::<1, 1>(0, 6)
             .copy_from(&(Vector3::y().transpose() * &mat_linear_v_com[1] * &J_spatial_vs[1]));
 
-        let mut J2 = Matrix1xX::zeros(dof);
+        let mut J2 = Matrix1xX::zeros(dof_robot);
         J2.fixed_view_mut::<1, 6>(0, 0)
             .copy_from(&(Vector3::y().transpose() * &mat_linear_v_com[2] * &J_spatial_vs[0]));
         J2.fixed_view_mut::<1, 1>(0, 6)
@@ -73,14 +77,14 @@ impl Controller for LegController {
         let J_spatial_v_derivs = state.spatial_velocity_jacobian_derivatives();
         let mat_linear_v_com_derivs = state.com_linear_velocity_extraction_matrix_derivatives();
 
-        let mut J0_dot: Matrix1xX<Float> = Matrix1xX::zeros(dof);
+        let mut J0_dot: Matrix1xX<Float> = Matrix1xX::zeros(dof_robot);
         J0_dot.fixed_view_mut::<1, 6>(0, 0).copy_from(
             &(Vector3::<Float>::y().transpose()
                 * (&mat_linear_v_com_derivs[0] * &J_spatial_vs[0]
                     + &mat_linear_v_com[0] * &J_spatial_v_derivs[0])),
         );
 
-        let mut J1_dot = Matrix1xX::zeros(dof);
+        let mut J1_dot = Matrix1xX::zeros(dof_robot);
         J1_dot.fixed_view_mut::<1, 6>(0, 0).copy_from(
             &(Vector3::<Float>::y().transpose()
                 * (&mat_linear_v_com_derivs[1] * &J_spatial_vs[0]
@@ -92,7 +96,7 @@ impl Controller for LegController {
                     + &mat_linear_v_com[1] * &J_spatial_v_derivs[1])),
         );
 
-        let mut J2_dot = Matrix1xX::zeros(dof);
+        let mut J2_dot = Matrix1xX::zeros(dof_robot);
         J2_dot.fixed_view_mut::<1, 6>(0, 0).copy_from(
             &(Vector3::<Float>::y().transpose()
                 * (&mat_linear_v_com_derivs[2] * &J_spatial_vs[0]
@@ -119,30 +123,48 @@ impl Controller for LegController {
 
         let w_v_dot = 0.1;
         let P = ((z_com / GRAVITY).powi(2) * J.transpose() * &J
-            + DMatrix::identity(dof, dof).scale(w_v_dot))
+            + DMatrix::identity(dof_robot, dof_robot).scale(w_v_dot))
         .scale(2.);
-        let P = CscMatrix::from(P.row_iter());
+        let mut P_padded = DMatrix::zeros(dof, dof);
+        P_padded
+            .view_mut((0, 0), (dof_robot, dof_robot))
+            .copy_from(&P);
+        let P_padded = CscMatrix::from(P_padded.row_iter());
 
         let opt_q = ((z_com / GRAVITY).powi(2) * 2. * (&J_dot * &v)[(0, 0)]
             - 2. * z_com / GRAVITY * y_com
             + 2. * x.tr_mul(&(S * B))[(0, 0)])
             * J.transpose()
             - 2. * w_v_dot * v_dot_des;
+        let mut opt_q_padded = DVector::zeros(dof);
+        opt_q_padded
+            .view_mut((0, 0), (dof_robot, 1))
+            .copy_from(&opt_q);
 
+        // No-slip constraint on base(foot) body.
+        // TODO: constrain only planar movement
         let A = Matrix6xX::<Float>::identity(dof);
-        let A = CscMatrix::from(A.row_iter());
         let b = Vector6::zeros();
         let cones = [ZeroConeT(6)];
 
+        let A = CscMatrix::from(A.row_iter());
+
         let settings = DefaultSettings::default();
-        let mut solver =
-            DefaultSolver::new(&P, &opt_q.as_slice(), &A, &b.as_slice(), &cones, settings);
+        let mut solver = DefaultSolver::new(
+            &P_padded,
+            &opt_q_padded.as_slice(),
+            &A,
+            &b.as_slice(),
+            &cones,
+            settings,
+        );
 
         solver.solve();
 
         let tau = solver.solution.x;
-        flog!("tau diff: {}", DVector::from_column_slice(&tau) - v_dot_des);
-        flog!("angle diff: {}", q - q_des);
+        flog!("tau: {:?}", tau);
+        // flog!("tau diff: {}", DVector::from_column_slice(&tau) - v_dot_des);
+        // flog!("angle diff: {}", q - q_des);
         // let tau = q_ddot_des.clone();
 
         vec![
