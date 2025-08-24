@@ -7,6 +7,7 @@ use clarabel::{
         SupportedConeT::{SecondOrderConeT, ZeroConeT},
     },
 };
+use itertools::izip;
 use na::Vector3;
 use na::{vector, DMatrix, DVector, Matrix1xX, Vector6};
 
@@ -54,7 +55,11 @@ impl Controller for LegController {
         //     * (l / 2. * (PI / 4.).cos() + l * (PI / 4.).cos() + l / 2. * (PI / 4. - PI / 2.).cos());
         let z_com = 0.09428090415820635; // pre-computed z_com at nominal q
                                          // flog!("z com: {}", z_com);
-        let y_com = 1. / 3. * (-l / 2. * q1.sin() - l * q1.sin() - l / 2. * (q1 + q2).sin());
+
+        // let y_com =
+        //     1. / 3. * (-l / 2. * q1.sin() - l * q1.sin() - l / 2. * (q1 + q2).sin()) + q_full[5];
+        let com = state.center_of_mass();
+        let y_com = com.y;
 
         let n_contacts = 4;
         let dof_contact = n_contacts * 3;
@@ -64,30 +69,28 @@ impl Controller for LegController {
         let J_spatial_vs = state.spatial_velocity_jacobians();
         let mat_linear_v_com = state.com_linear_velocity_extraction_matrices();
 
-        let mut J0: Matrix1xX<Float> = Matrix1xX::zeros(dof_robot);
-        J0.fixed_view_mut::<1, 6>(0, 0)
-            .copy_from(&(Vector3::y().transpose() * &mat_linear_v_com[0] * &J_spatial_vs[0]));
-
-        let mut J1: Matrix1xX<Float> = Matrix1xX::zeros(dof_robot);
-        J1.fixed_view_mut::<1, 6>(0, 0)
-            .copy_from(&(Vector3::y().transpose() * &mat_linear_v_com[1] * &J_spatial_vs[0]));
-        J1.fixed_view_mut::<1, 1>(0, 6)
-            .copy_from(&(Vector3::y().transpose() * &mat_linear_v_com[1] * &J_spatial_vs[1]));
-
-        let mut J2 = Matrix1xX::zeros(dof_robot);
-        J2.fixed_view_mut::<1, 6>(0, 0)
-            .copy_from(&(Vector3::y().transpose() * &mat_linear_v_com[2] * &J_spatial_vs[0]));
-        J2.fixed_view_mut::<1, 1>(0, 6)
-            .copy_from(&(Vector3::y().transpose() * &mat_linear_v_com[2] * &J_spatial_vs[1]));
-        J2.fixed_view_mut::<1, 1>(0, 7)
-            .copy_from(&(Vector3::y().transpose() * &mat_linear_v_com[2] * &J_spatial_vs[2]));
-
-        // flog!("J1: {}", J1);
-        // flog!("J2: {}", J2);
-        // flog!("J1 diff: {}", J1 - J1_orig);
-        // flog!("J2 diff: {}", J2 - J2_orig);
-        // flog!("base transform: {}", bodies_to_root[1].iso);
-        let J = 1. / 3. * (J0 + J1 + J2);
+        let n_bodies = state.bodies.len();
+        let joint_dofs = state.joint_dofs();
+        // Jacobian of center-of-mass of each body
+        let J_coms: Vec<Matrix1xX<Float>> = (0..n_bodies)
+            .map(|i| {
+                let mut J_com: Matrix1xX<Float> = Matrix1xX::zeros(dof_robot);
+                let mut col_offset = 0;
+                for j in 0..=i {
+                    let dof = joint_dofs[j];
+                    J_com.view_mut((0, col_offset), (1, dof)).copy_from(
+                        &(Vector3::y().transpose() * &mat_linear_v_com[i] * &J_spatial_vs[j]),
+                    );
+                    col_offset += dof;
+                }
+                J_com
+            })
+            .collect();
+        // Jacobian of center-of-mass of the whole system
+        let J_com = izip!(state.bodies.iter(), J_coms.iter())
+            .map(|(b, J)| b.inertia.mass * J)
+            .fold(Matrix1xX::<Float>::zeros(dof_robot), |acc, J| acc + J)
+            / state.total_mass();
 
         // Compute J_dot_com systematically
         let J_spatial_v_derivs = state.spatial_velocity_jacobian_derivatives();
@@ -138,7 +141,7 @@ impl Controller for LegController {
         let x = vector![y_com, y_dot_com];
 
         let w_v_dot = 0.1;
-        let P = ((z_com / GRAVITY).powi(2) * J.transpose() * &J
+        let P = ((z_com / GRAVITY).powi(2) * J_com.transpose() * &J_com
             + DMatrix::identity(dof_robot, dof_robot).scale(w_v_dot))
         .scale(2.);
         let mut P_padded = DMatrix::zeros(dof, dof);
@@ -150,7 +153,7 @@ impl Controller for LegController {
         let opt_q = ((z_com / GRAVITY).powi(2) * 2. * (&J_dot * &v_full)[(0, 0)]
             - 2. * z_com / GRAVITY * y_com
             + 2. * x.tr_mul(&(S * B))[(0, 0)])
-            * J.transpose()
+            * J_com.transpose()
             - 2. * w_v_dot * v_dot_des;
         let mut opt_q_padded = DVector::zeros(dof);
         opt_q_padded

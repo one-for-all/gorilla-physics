@@ -509,6 +509,10 @@ impl MechanismState {
         .collect()
     }
 
+    pub fn joint_dofs(&self) -> Vec<usize> {
+        self.treejoints.iter().map(|j| j.dof()).collect()
+    }
+
     pub fn total_mass(&self) -> Float {
         self.bodies.iter().map(|b| b.inertia.mass).sum()
     }

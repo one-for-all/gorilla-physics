@@ -54,6 +54,15 @@ impl Joint {
         }
     }
 
+    pub fn dof(&self) -> usize {
+        match self {
+            Joint::FixedJoint(_) => 0,
+            Joint::RevoluteJoint(_) => 1,
+            Joint::PrismaticJoint(_) => 1,
+            Joint::FloatingJoint(_) => 6,
+        }
+    }
+
     pub fn new_revolute(transform: Transform3D, axis: UnitVector3<Float>) -> Self {
         Self::RevoluteJoint(RevoluteJoint::new(transform, axis))
     }
