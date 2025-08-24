@@ -41,7 +41,7 @@ impl Controller for LegController {
         let dof_robot = v.len();
 
         let q_des = vector![PI / 4., -PI / 2.];
-        let v_dot_des = (q_des - q) - 0.1 * vector![v[6], v[7]];
+        let v_dot_des = (q_des - q) - 1. * vector![v[6], v[7]];
         let v_dot_des = vector![0., 0., 0., 0., 0., 0., v_dot_des[0], v_dot_des[1]];
 
         let l = 0.2;
@@ -220,7 +220,7 @@ impl Controller for LegController {
         A_free_dynamics
             .view_mut((0, dof_robot), (6, dof_contact))
             .copy_from(&-phi_free.rows(0, 6)); // Note: do not forget negation
-        let b_free_dynamics = Vector6::from_row_slice(&(-C).as_slice()[0..6]); // Note: do not forget negation
+        let b_free_dynamics = Vector6::from_row_slice(&(-&C).as_slice()[0..6]); // Note: do not forget negation
         let cone_free_dynamics = ZeroConeT(6);
 
         // Add friction cone constraint
@@ -279,18 +279,25 @@ impl Controller for LegController {
         );
 
         solver.solve();
+        let sol = solver.solution.x;
 
-        let tau = solver.solution.x;
+        // Inverse-dynamics to compute torque
+        let dof_actuated = dof_robot - 6;
+        let v_dot = DVector::from_row_slice(&sol[0..dof_robot]);
+        let H_a: DMatrix<Float> = H.rows(6, dof_actuated).into_owned();
+        let C_a: DVector<Float> = C.rows(6, dof_actuated).into_owned();
+        let tau = H_a * v_dot + C_a;
+
         flog!("tau: {:?}", tau);
         // flog!("tau diff: {}", DVector::from_column_slice(&tau) - v_dot_des);
-        // flog!("angle diff: {}", q - q_des);
+        flog!("angle diff: {}", q - q_des);
         // let tau = q_ddot_des.clone();
 
         vec![
             JointTorque::Spatial(SpatialVector::zero()),
             // JointTorque::None,
-            JointTorque::Float(tau[6]),
-            JointTorque::Float(tau[7]),
+            JointTorque::Float(tau[0]),
+            JointTorque::Float(tau[1]),
         ]
     }
 }
