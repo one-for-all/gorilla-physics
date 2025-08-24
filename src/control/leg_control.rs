@@ -1,20 +1,30 @@
+use std::collections::HashMap;
+
 use clarabel::{
     algebra::CscMatrix,
-    solver::{DefaultSettings, DefaultSolver, IPSolver, SupportedConeT::ZeroConeT},
+    solver::{
+        DefaultSettings, DefaultSolver, IPSolver,
+        SupportedConeT::{self, SecondOrderConeT, ZeroConeT},
+    },
 };
+use itertools::izip;
 use na::Vector3;
 use na::{vector, DMatrix, DVector, Matrix1xX, Matrix6xX, Vector6};
 
 use crate::{
     control::Controller,
+    dynamics::dynamics_bias,
     flog,
     joint::{JointTorque, ToFloatDVec},
-    spatial::spatial_vector::SpatialVector,
+    mechanism::mass_matrix,
+    spatial::{spatial_vector::SpatialVector, twist::compute_joint_twists},
     types::Float,
+    util::skew_symmetric,
     GRAVITY, PI,
 };
 
 /// QP based controller with ZMP dynamics
+/// Ref: An Efficiently Solvable Quadratic Program for Stabilizing Dynamic Locomotion, Scott Kuindersma and etc., 2014
 pub struct LegController {}
 
 impl Controller for LegController {
@@ -143,11 +153,120 @@ impl Controller for LegController {
 
         // No-slip constraint on base(foot) body.
         // TODO: constrain only planar movement
-        let A = Matrix6xX::<Float>::identity(dof);
-        let b = Vector6::zeros();
-        let cones = [ZeroConeT(6)];
+        let A_no_slip = DMatrix::<Float>::identity(6, dof);
+        let b_no_slip = Vector6::zeros();
+        let cones_no_slip = ZeroConeT(6);
 
-        let A = CscMatrix::from(A.row_iter());
+        // Add free-body dynamics constraint
+        let bodies_to_root = state.get_bodies_to_root_no_update();
+        let H: DMatrix<Float> = mass_matrix(state, &bodies_to_root);
+
+        let joint_twists = compute_joint_twists(state);
+        let twists = state.get_body_twists();
+        let C = dynamics_bias(
+            state,
+            &bodies_to_root,
+            &joint_twists,
+            &twists,
+            &HashMap::new(),
+        );
+
+        // Matrix that transforms contact force to generalized forces
+        let mut phi_free = DMatrix::zeros(6, dof_contact);
+        let foot_to_root = &bodies_to_root[0];
+        let l_short = 0.05;
+        let cp1 = foot_to_root.trans()
+            + foot_to_root.rot() * vector![l_short / 2., l / 2., -l_short / 2.];
+        let cp2 = foot_to_root.trans()
+            + foot_to_root.rot() * vector![-l_short / 2., l / 2., -l_short / 2.];
+        let cp3 = foot_to_root.trans()
+            + foot_to_root.rot() * vector![l_short / 2., -l / 2., -l_short / 2.];
+        let cp4 = foot_to_root.trans()
+            + foot_to_root.rot() * vector![-l_short / 2., -l / 2., -l_short / 2.];
+        phi_free
+            .view_mut((0, 0), (3, 3))
+            .copy_from(&skew_symmetric(&cp1));
+        phi_free
+            .view_mut((3, 0), (3, 3))
+            .copy_from(&DMatrix::identity(3, 3));
+
+        phi_free
+            .view_mut((0, 3), (3, 3))
+            .copy_from(&skew_symmetric(&cp2));
+        phi_free
+            .view_mut((3, 3), (3, 3))
+            .copy_from(&DMatrix::identity(3, 3));
+
+        phi_free
+            .view_mut((0, 6), (3, 3))
+            .copy_from(&skew_symmetric(&cp3));
+        phi_free
+            .view_mut((3, 6), (3, 3))
+            .copy_from(&DMatrix::identity(3, 3));
+
+        phi_free
+            .view_mut((0, 9), (3, 3))
+            .copy_from(&skew_symmetric(&cp4));
+        phi_free
+            .view_mut((3, 9), (3, 3))
+            .copy_from(&DMatrix::identity(3, 3));
+
+        phi_free = J_spatial_vs[0].tr_mul(&phi_free);
+
+        let mut A_free_dynamics = DMatrix::<Float>::zeros(6, dof);
+        A_free_dynamics
+            .view_mut((0, 0), (6, dof_robot))
+            .copy_from(&H.rows(0, 6));
+        A_free_dynamics
+            .view_mut((0, dof_robot), (6, dof_contact))
+            .copy_from(&-phi_free.rows(0, 6)); // Note: do not forget negation
+        let b_free_dynamics = Vector6::from_row_slice(&(-C).as_slice()[0..6]); // Note: do not forget negation
+        let cone_free_dynamics = ZeroConeT(6);
+
+        // Add friction cone constraint
+        let mut A_friction_cone = DMatrix::zeros(dof_contact, dof);
+        let mu = 0.95;
+        A_friction_cone[(0, dof_robot + 2)] = -mu;
+        A_friction_cone[(1, dof_robot)] = -1.;
+        A_friction_cone[(2, dof_robot + 1)] = -1.;
+
+        A_friction_cone[(3, dof_robot + 5)] = -mu;
+        A_friction_cone[(4, dof_robot + 3)] = -1.;
+        A_friction_cone[(5, dof_robot + 4)] = -1.;
+
+        A_friction_cone[(6, dof_robot + 8)] = -mu;
+        A_friction_cone[(7, dof_robot + 6)] = -1.;
+        A_friction_cone[(8, dof_robot + 7)] = -1.;
+
+        A_friction_cone[(9, dof_robot + 11)] = -mu;
+        A_friction_cone[(10, dof_robot + 9)] = -1.;
+        A_friction_cone[(11, dof_robot + 10)] = -1.;
+
+        let b_friction_cone = DVector::<Float>::zeros(dof_contact);
+        let cones_friction_cone = SecondOrderConeT(3);
+
+        let A = CscMatrix::from(
+            A_no_slip
+                .row_iter()
+                .chain(A_free_dynamics.row_iter())
+                .chain(A_friction_cone.row_iter()),
+        );
+        let b = DVector::from_iterator(
+            6 + 6 + dof_contact,
+            b_no_slip
+                .iter()
+                .chain(b_free_dynamics.iter())
+                .chain(b_friction_cone.iter())
+                .cloned(),
+        );
+        let cone = [
+            cones_no_slip,
+            cone_free_dynamics,
+            cones_friction_cone.clone(),
+            cones_friction_cone.clone(),
+            cones_friction_cone.clone(),
+            cones_friction_cone,
+        ];
 
         let settings = DefaultSettings::default();
         let mut solver = DefaultSolver::new(
@@ -155,7 +274,7 @@ impl Controller for LegController {
             &opt_q_padded.as_slice(),
             &A,
             &b.as_slice(),
-            &cones,
+            &cone,
             settings,
         );
 
