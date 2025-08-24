@@ -56,7 +56,7 @@ impl Controller for LegController {
         //     * (l / 2. * (PI / 4.).cos() + l * (PI / 4.).cos() + l / 2. * (PI / 4. - PI / 2.).cos());
         // let z_com = 0.09428090415820635; // up to thigh
         // let z_com = 0.14402571247741597; // up to hip
-        let z_com = 0.18574486784165944; // pre-computed z_com at nominal q
+        let z_com = 0.18970562748477146; // pre-computed z_com at nominal q
                                          // flog!("z com: {}", z_com);
 
         // let y_com =
@@ -123,12 +123,12 @@ impl Controller for LegController {
             / state.total_mass();
 
         // Fill in pre-computed Ricatti equation solution S
-        let S = DMatrix::from_row_slice(2, 2, &[0.19606829, 0.01922139, 0.01922139, 0.00188435]);
+        let S = DMatrix::from_row_slice(2, 2, &[0.27812216, 0.03867597, 0.03867597, 0.00537832]);
         let B = DMatrix::from_row_slice(2, 1, &[0., 1.]);
         let y_dot_com = (&J_dot_com * &v_full)[(0, 0)];
         let x = vector![y_com, y_dot_com];
 
-        let w_v_dot = 0.1;
+        let w_v_dot = 0.001;
         let P = ((z_com / GRAVITY).powi(2) * J_com.transpose() * &J_com
             + DMatrix::identity(dof_robot, dof_robot).scale(w_v_dot))
         .scale(2.);
@@ -283,7 +283,7 @@ impl Controller for LegController {
         let v_dot = DVector::from_row_slice(&sol[0..dof_robot]);
         let H_a: DMatrix<Float> = H.rows(6, dof_actuated).into_owned();
         let C_a: DVector<Float> = C.rows(6, dof_actuated).into_owned();
-        let tau = H_a * v_dot + C_a;
+        let tau = H_a * &v_dot + C_a;
 
         flog!("tau: {:?}", tau);
         // flog!("tau diff: {}", DVector::from_column_slice(&tau) - v_dot_des);
@@ -292,6 +292,10 @@ impl Controller for LegController {
 
         let contact_forces = Matrix4x3::from_row_slice(&sol[dof_robot..]);
         flog!("contact forces: {}", contact_forces);
+
+        let u = J_dot_com * v_full + J_com * &v_dot;
+        let y_zmp = y_com - z_com / GRAVITY * u[(0, 0)];
+        flog!("y_zmp: {}", y_zmp);
 
         let joint_torques: Vec<JointTorque> = tau.iter().map(|x| JointTorque::Float(*x)).collect();
         [
