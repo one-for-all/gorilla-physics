@@ -45,20 +45,11 @@ impl Controller for LegController {
             DVector::from_iterator(dof_actuated, v_full.iter().skip(dof_unactuated).cloned());
 
         let q_actuated_des = vector![PI / 4., -PI / 2., PI / 4., 0.];
-        let v_dot_des = (q_actuated_des - &q_actuated)
-            - 1. * vector![v_actuated[0], v_actuated[1], v_actuated[2], v_actuated[3]];
-        let v_dot_des = vector![
-            0.,
-            0.,
-            0.,
-            0.,
-            0.,
-            0.,
-            v_dot_des[0],
-            v_dot_des[1],
-            v_dot_des[2],
-            v_dot_des[3],
-        ];
+        let v_dot_des_actuated = (q_actuated_des - &q_actuated) - 1. * v_actuated;
+        let mut v_dot_des = DVector::zeros(dof_robot);
+        v_dot_des
+            .view_mut((dof_unactuated, 0), (dof_actuated, 1))
+            .copy_from(&v_dot_des_actuated);
 
         let l = 0.2;
         // let z_com = 1. / 3.
@@ -302,13 +293,11 @@ impl Controller for LegController {
         let contact_forces = Matrix4x3::from_row_slice(&sol[dof_robot..]);
         flog!("contact forces: {}", contact_forces);
 
-        vec![
-            JointTorque::Spatial(SpatialVector::zero()),
-            // JointTorque::None,
-            JointTorque::Float(tau[0]),
-            JointTorque::Float(tau[1]),
-            JointTorque::Float(tau[2]),
-            JointTorque::Float(tau[3]),
+        let joint_torques: Vec<JointTorque> = tau.iter().map(|x| JointTorque::Float(*x)).collect();
+        [
+            vec![JointTorque::Spatial(SpatialVector::zero())],
+            joint_torques,
         ]
+        .concat()
     }
 }
