@@ -64,7 +64,7 @@ pub fn build_leg_from_foot() -> MechanismState {
     let l2 = 0.2;
 
     let m_foot = 0.1;
-    let w_foot = l1;
+    let w_foot = 0.1;
     let d_foot = l2;
     let h_foot = l1;
     let foot_left_frame = "foot_left";
@@ -102,13 +102,25 @@ pub fn build_leg_from_foot() -> MechanismState {
     thigh_left.add_cuboid_contacts_with(&thigh_com, w_thigh, d_thigh, h_thigh);
     let thigh_left_to_calf_left = Transform3D::move_z(thigh_left_frame, calf_left_frame, h_calf);
 
+    let m_hip = 0.1;
+    let w_hip = l2;
+    let d_hip = l1;
+    let h_hip = l1;
+    let hip_axis: UnitVector3<Float> = Vector3::x_axis();
+    let hip_left_frame = "hip_left";
+    let hip_left_com = vector![-w_hip / 2., 0., 0.]; // vector![0., 0., 0.]; //
+    let hip_left =
+        RigidBody::new_cuboid_at(&hip_left_com, m_hip, w_hip, d_hip, h_hip, hip_left_frame);
+    let hip_left_to_thigh_left = Transform3D::move_z(hip_left_frame, thigh_left_frame, h_thigh);
+
     let treejoints = vec![
         Joint::new_floating(foot_left_to_world),
         // Joint::new_fixed(foot_left_to_world),
         Joint::new_revolute(calf_left_to_foot_left, calf_axis),
         Joint::new_revolute(thigh_left_to_calf_left, thigh_axis),
+        Joint::new_revolute(hip_left_to_thigh_left, hip_axis),
     ];
-    let bodies = vec![foot_left, calf_left, thigh_left];
+    let bodies = vec![foot_left, calf_left, thigh_left, hip_left];
 
     MechanismState::new(treejoints, bodies)
 }

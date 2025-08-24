@@ -8,8 +8,8 @@ use clarabel::{
     },
 };
 use itertools::izip;
-use na::Vector3;
 use na::{vector, DMatrix, DVector, Matrix1xX, Vector6};
+use na::{Matrix4x3, Vector3};
 
 use crate::{
     control::Controller,
@@ -33,8 +33,6 @@ impl Controller for LegController {
         state: &mut crate::mechanism::MechanismState,
         _input: Option<&super::ControlInput>,
     ) -> Vec<crate::joint::JointTorque> {
-        let q1 = state.q[1].float();
-        let q2 = state.q[2].float();
         let q_full = state.q.to_float_dvec();
         let q_actuated: DVector<Float> =
             DVector::from_iterator(q_full.len() - 7, q_full.iter().skip(7).cloned());
@@ -46,14 +44,26 @@ impl Controller for LegController {
         let v_actuated =
             DVector::from_iterator(dof_actuated, v_full.iter().skip(dof_unactuated).cloned());
 
-        let q_actuated_des = vector![PI / 4., -PI / 2.];
-        let v_dot_des = (q_actuated_des - &q_actuated) - 1. * vector![v_actuated[0], v_actuated[1]];
-        let v_dot_des = vector![0., 0., 0., 0., 0., 0., v_dot_des[0], v_dot_des[1]];
+        let q_actuated_des = vector![PI / 4., -PI / 2., 0.];
+        let v_dot_des = (q_actuated_des - &q_actuated)
+            - 1. * vector![v_actuated[0], v_actuated[1], v_actuated[2]];
+        let v_dot_des = vector![
+            0.,
+            0.,
+            0.,
+            0.,
+            0.,
+            0.,
+            v_dot_des[0],
+            v_dot_des[1],
+            v_dot_des[2]
+        ];
 
         let l = 0.2;
         // let z_com = 1. / 3.
         //     * (l / 2. * (PI / 4.).cos() + l * (PI / 4.).cos() + l / 2. * (PI / 4. - PI / 2.).cos());
-        let z_com = 0.09428090415820635; // pre-computed z_com at nominal q
+        // let z_com = 0.09428090415820635; // up to thigh
+        let z_com = 0.14402571247741597; // pre-computed z_com at nominal q
                                          // flog!("z com: {}", z_com);
 
         // let y_com =
@@ -168,15 +178,16 @@ impl Controller for LegController {
         // Matrix that transforms contact force to generalized forces
         let mut phi_free = DMatrix::zeros(6, dof_contact);
         let foot_to_root = &bodies_to_root[0];
-        let l_short = 0.05;
-        let cp1 = foot_to_root.trans()
-            + foot_to_root.rot() * vector![l_short / 2., l / 2., -l_short / 2.];
-        let cp2 = foot_to_root.trans()
-            + foot_to_root.rot() * vector![-l_short / 2., l / 2., -l_short / 2.];
-        let cp3 = foot_to_root.trans()
-            + foot_to_root.rot() * vector![l_short / 2., -l / 2., -l_short / 2.];
+        let w_foot = 0.1;
+        let h_foot = 0.05;
+        let cp1 =
+            foot_to_root.trans() + foot_to_root.rot() * vector![w_foot / 2., l / 2., -h_foot / 2.];
+        let cp2 =
+            foot_to_root.trans() + foot_to_root.rot() * vector![-w_foot / 2., l / 2., -h_foot / 2.];
+        let cp3 =
+            foot_to_root.trans() + foot_to_root.rot() * vector![w_foot / 2., -l / 2., -h_foot / 2.];
         let cp4 = foot_to_root.trans()
-            + foot_to_root.rot() * vector![-l_short / 2., -l / 2., -l_short / 2.];
+            + foot_to_root.rot() * vector![-w_foot / 2., -l / 2., -h_foot / 2.];
         phi_free
             .view_mut((0, 0), (3, 3))
             .copy_from(&skew_symmetric(&cp1));
@@ -286,11 +297,15 @@ impl Controller for LegController {
         flog!("angle diff: {}", q_actuated - q_actuated_des);
         // let tau = q_ddot_des.clone();
 
+        let contact_forces = Matrix4x3::from_row_slice(&sol[dof_robot..]);
+        flog!("contact forces: {}", contact_forces);
+
         vec![
             JointTorque::Spatial(SpatialVector::zero()),
             // JointTorque::None,
             JointTorque::Float(tau[0]),
             JointTorque::Float(tau[1]),
+            JointTorque::Float(tau[2]),
         ]
     }
 }
