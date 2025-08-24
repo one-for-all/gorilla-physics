@@ -4,12 +4,11 @@ use clarabel::{
     algebra::CscMatrix,
     solver::{
         DefaultSettings, DefaultSolver, IPSolver,
-        SupportedConeT::{self, SecondOrderConeT, ZeroConeT},
+        SupportedConeT::{SecondOrderConeT, ZeroConeT},
     },
 };
-use itertools::izip;
 use na::Vector3;
-use na::{vector, DMatrix, DVector, Matrix1xX, Matrix6xX, Vector6};
+use na::{vector, DMatrix, DVector, Matrix1xX, Vector6};
 
 use crate::{
     control::Controller,
@@ -35,19 +34,26 @@ impl Controller for LegController {
     ) -> Vec<crate::joint::JointTorque> {
         let q1 = state.q[1].float();
         let q2 = state.q[2].float();
-        let q = vector![q1, q2];
+        let q_full = state.q.to_float_dvec();
+        let q_actuated: DVector<Float> =
+            DVector::from_iterator(q_full.len() - 7, q_full.iter().skip(7).cloned());
 
-        let v = state.v.to_float_dvec();
-        let dof_robot = v.len();
+        let v_full = state.v.to_float_dvec();
+        let dof_robot = v_full.len();
+        let dof_unactuated = 6;
+        let dof_actuated = dof_robot - dof_unactuated;
+        let v_actuated =
+            DVector::from_iterator(dof_actuated, v_full.iter().skip(dof_unactuated).cloned());
 
-        let q_des = vector![PI / 4., -PI / 2.];
-        let v_dot_des = (q_des - q) - 1. * vector![v[6], v[7]];
+        let q_actuated_des = vector![PI / 4., -PI / 2.];
+        let v_dot_des = (q_actuated_des - &q_actuated) - 1. * vector![v_actuated[0], v_actuated[1]];
         let v_dot_des = vector![0., 0., 0., 0., 0., 0., v_dot_des[0], v_dot_des[1]];
 
         let l = 0.2;
-        let z_com = 1. / 3.
-            * (l / 2. * (PI / 4.).cos() + l * (PI / 4.).cos() + l / 2. * (PI / 4. - PI / 2.).cos());
-        // flog!("z com: {}", z_com);
+        // let z_com = 1. / 3.
+        //     * (l / 2. * (PI / 4.).cos() + l * (PI / 4.).cos() + l / 2. * (PI / 4. - PI / 2.).cos());
+        let z_com = 0.09428090415820635; // pre-computed z_com at nominal q
+                                         // flog!("z com: {}", z_com);
         let y_com = 1. / 3. * (-l / 2. * q1.sin() - l * q1.sin() - l / 2. * (q1 + q2).sin());
 
         let n_contacts = 4;
@@ -128,7 +134,7 @@ impl Controller for LegController {
         // Fill in pre-computed Ricatti equation solution S
         let S = DMatrix::from_row_slice(2, 2, &[0.19606829, 0.01922139, 0.01922139, 0.00188435]);
         let B = DMatrix::from_row_slice(2, 1, &[0., 1.]);
-        let y_dot_com = (&J_dot * &v)[(0, 0)];
+        let y_dot_com = (&J_dot * &v_full)[(0, 0)];
         let x = vector![y_com, y_dot_com];
 
         let w_v_dot = 0.1;
@@ -141,7 +147,7 @@ impl Controller for LegController {
             .copy_from(&P);
         let P_padded = CscMatrix::from(P_padded.row_iter());
 
-        let opt_q = ((z_com / GRAVITY).powi(2) * 2. * (&J_dot * &v)[(0, 0)]
+        let opt_q = ((z_com / GRAVITY).powi(2) * 2. * (&J_dot * &v_full)[(0, 0)]
             - 2. * z_com / GRAVITY * y_com
             + 2. * x.tr_mul(&(S * B))[(0, 0)])
             * J.transpose()
@@ -290,7 +296,7 @@ impl Controller for LegController {
 
         flog!("tau: {:?}", tau);
         // flog!("tau diff: {}", DVector::from_column_slice(&tau) - v_dot_des);
-        flog!("angle diff: {}", q - q_des);
+        flog!("angle diff: {}", q_actuated - q_actuated_des);
         // let tau = q_ddot_des.clone();
 
         vec![

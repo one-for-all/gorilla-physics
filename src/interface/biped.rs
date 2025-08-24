@@ -6,6 +6,7 @@ use crate::{
         biped_builder::build_biped,
         leg_builder::{build_leg, build_leg_from_foot},
     },
+    flog,
     interface::InterfaceMechanismState,
     joint::{Joint, JointPosition, JointVelocity},
     spatial::pose::Pose,
@@ -78,6 +79,8 @@ pub async fn createLegFromFoot() -> InterfaceMechanismState {
     ];
 
     state.update_q(&q_init);
+
+    // flog!("center of mass: {}", state.center_of_mass());
 
     InterfaceMechanismState { inner: state }
 }

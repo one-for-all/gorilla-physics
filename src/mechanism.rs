@@ -28,10 +28,12 @@ use crate::GRAVITY;
 use crate::WORLD_FRAME;
 use itertools::izip;
 use na::DMatrix;
+use na::DVector;
 use na::Matrix3;
 use na::Matrix3x6;
 use na::Matrix6;
 use na::Matrix6xX;
+use na::Vector3;
 
 /// MechanismState stores the state information about the mechanism
 /// Joint i's child body is body i.
@@ -505,6 +507,26 @@ impl MechanismState {
             T_dot * j.motion_subspace().as_matrix()
         })
         .collect()
+    }
+
+    pub fn total_mass(&self) -> Float {
+        self.bodies.iter().map(|b| b.inertia.mass).sum()
+    }
+
+    /// Computes the center of mass of the system, in world frame
+    pub fn center_of_mass(&self) -> Vector3<Float> {
+        let bodies_to_root = self.get_bodies_to_root_no_update();
+        izip!(self.bodies.iter(), bodies_to_root.iter().skip(1))
+            .map(|(b, T)| {
+                let m = b.inertia.mass;
+                // center of mass, expressed in body frame
+                let body_com = b.inertia.center_of_mass();
+                // center of mass expressed in world frame
+                let com = T.trans() + T.rot() * body_com;
+                m * com
+            })
+            .sum::<Vector3<Float>>()
+            / self.total_mass()
     }
 
     /// Matrices, multiplied by which, gives the linear velocity of the
