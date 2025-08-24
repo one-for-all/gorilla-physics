@@ -44,9 +44,9 @@ impl Controller for LegController {
         let v_actuated =
             DVector::from_iterator(dof_actuated, v_full.iter().skip(dof_unactuated).cloned());
 
-        let q_actuated_des = vector![PI / 4., -PI / 2., 0.];
+        let q_actuated_des = vector![PI / 4., -PI / 2., PI / 4., 0.];
         let v_dot_des = (q_actuated_des - &q_actuated)
-            - 1. * vector![v_actuated[0], v_actuated[1], v_actuated[2]];
+            - 1. * vector![v_actuated[0], v_actuated[1], v_actuated[2], v_actuated[3]];
         let v_dot_des = vector![
             0.,
             0.,
@@ -56,14 +56,16 @@ impl Controller for LegController {
             0.,
             v_dot_des[0],
             v_dot_des[1],
-            v_dot_des[2]
+            v_dot_des[2],
+            v_dot_des[3],
         ];
 
         let l = 0.2;
         // let z_com = 1. / 3.
         //     * (l / 2. * (PI / 4.).cos() + l * (PI / 4.).cos() + l / 2. * (PI / 4. - PI / 2.).cos());
         // let z_com = 0.09428090415820635; // up to thigh
-        let z_com = 0.14402571247741597; // pre-computed z_com at nominal q
+        // let z_com = 0.14402571247741597; // up to hip
+        let z_com = 0.18574486784165944; // pre-computed z_com at nominal q
                                          // flog!("z com: {}", z_com);
 
         // let y_com =
@@ -178,7 +180,7 @@ impl Controller for LegController {
         // Matrix that transforms contact force to generalized forces
         let mut phi_free = DMatrix::zeros(6, dof_contact);
         let foot_to_root = &bodies_to_root[0];
-        let w_foot = 0.1;
+        let w_foot = 0.2;
         let h_foot = 0.05;
         let cp1 =
             foot_to_root.trans() + foot_to_root.rot() * vector![w_foot / 2., l / 2., -h_foot / 2.];
@@ -306,6 +308,7 @@ impl Controller for LegController {
             JointTorque::Float(tau[0]),
             JointTorque::Float(tau[1]),
             JointTorque::Float(tau[2]),
+            JointTorque::Float(tau[3]),
         ]
     }
 }
