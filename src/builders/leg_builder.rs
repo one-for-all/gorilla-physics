@@ -130,6 +130,16 @@ pub fn build_leg_from_foot() -> MechanismState {
     );
     let pelvis_left_to_hip_left = Transform3D::move_x(pelvis_left_frame, hip_left_frame, -w_hip);
 
+    let m_base = 0.1;
+    let w_base = l1;
+    let d_base = l1;
+    let h_base = l2;
+    let base_axis = Vector3::z_axis();
+    let base_frame = "base";
+    let base_com = vector![-(w_pelvis + w_base) / 2., 0., 0.];
+    let base = RigidBody::new_cuboid_at(&base_com, m_base, w_base, d_base, h_base, base_frame);
+    let base_to_pelvis_left = Transform3D::move_z(base_frame, pelvis_left_frame, h_pelvis);
+
     let treejoints = vec![
         Joint::new_floating(foot_left_to_world),
         // Joint::new_fixed(foot_left_to_world),
@@ -137,8 +147,16 @@ pub fn build_leg_from_foot() -> MechanismState {
         Joint::new_revolute(thigh_left_to_calf_left, thigh_axis),
         Joint::new_revolute(hip_left_to_thigh_left, hip_axis),
         Joint::new_revolute(pelvis_left_to_hip_left, pelvis_axis),
+        Joint::new_revolute(base_to_pelvis_left, base_axis),
     ];
-    let bodies = vec![foot_left, calf_left, thigh_left, hip_left, pelvis_left];
+    let bodies = vec![
+        foot_left,
+        calf_left,
+        thigh_left,
+        hip_left,
+        pelvis_left,
+        base,
+    ];
 
     MechanismState::new(treejoints, bodies)
 }

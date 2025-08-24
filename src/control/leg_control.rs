@@ -44,7 +44,7 @@ impl Controller for LegController {
         let v_actuated =
             DVector::from_iterator(dof_actuated, v_full.iter().skip(dof_unactuated).cloned());
 
-        let q_actuated_des = vector![PI / 4., -PI / 2., PI / 4., 0.];
+        let q_actuated_des = vector![PI / 4., -PI / 2., PI / 4., 0., 0.];
         let v_dot_des_actuated = (q_actuated_des - &q_actuated) - 1. * v_actuated;
         let mut v_dot_des = DVector::zeros(dof_robot);
         v_dot_des
@@ -56,7 +56,8 @@ impl Controller for LegController {
         //     * (l / 2. * (PI / 4.).cos() + l * (PI / 4.).cos() + l / 2. * (PI / 4. - PI / 2.).cos());
         // let z_com = 0.09428090415820635; // up to thigh
         // let z_com = 0.14402571247741597; // up to hip
-        let z_com = 0.18970562748477146; // pre-computed z_com at nominal q
+        // let z_com = 0.18970562748477146; // up to pelvis
+        let z_com = 0.23856180831641274; // pre-computed z_com at nominal q
                                          // flog!("z com: {}", z_com);
 
         // let y_com =
@@ -123,7 +124,7 @@ impl Controller for LegController {
             / state.total_mass();
 
         // Fill in pre-computed Ricatti equation solution S
-        let S = DMatrix::from_row_slice(2, 2, &[0.27812216, 0.03867597, 0.03867597, 0.00537832]);
+        let S = DMatrix::from_row_slice(2, 2, &[0.31188605, 0.04863645, 0.04863645, 0.00758452]);
         let B = DMatrix::from_row_slice(2, 1, &[0., 1.]);
         let y_dot_com = (&J_dot_com * &v_full)[(0, 0)];
         let x = vector![y_com, y_dot_com];

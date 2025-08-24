@@ -115,6 +115,8 @@ Simulator.prototype.addLegFromFoot = function () {
   this.addCuboid("hip_left", 0x0000ff, l2, l1, l1, hipLeftOffset);
   let pelvisLeftOffset = new Matrix4().makeTranslation(0, 0, l2 / 2);
   this.addCuboid("pelvis_left", 0x00ff00, l1, l1, l2, pelvisLeftOffset);
+  let baseOffset = new Matrix4().makeTranslation(-(l1 + l1) / 2, 0, 0);
+  this.addCuboid("base", 0xff0000, l1, l1, l2, baseOffset);
 };
 
 Simulator.prototype.updateLegFromFoot = function (poses: FloatArrayType) {
@@ -124,6 +126,7 @@ Simulator.prototype.updateLegFromFoot = function (poses: FloatArrayType) {
     "thigh_left",
     "hip_left",
     "pelvis_left",
+    "base",
   ];
 
   let n_bodies = frames.length;
