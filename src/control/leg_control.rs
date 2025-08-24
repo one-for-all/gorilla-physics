@@ -96,48 +96,33 @@ impl Controller for LegController {
         let J_spatial_v_derivs = state.spatial_velocity_jacobian_derivatives();
         let mat_linear_v_com_derivs = state.com_linear_velocity_extraction_matrix_derivatives();
 
-        let mut J0_dot: Matrix1xX<Float> = Matrix1xX::zeros(dof_robot);
-        J0_dot.fixed_view_mut::<1, 6>(0, 0).copy_from(
-            &(Vector3::<Float>::y().transpose()
-                * (&mat_linear_v_com_derivs[0] * &J_spatial_vs[0]
-                    + &mat_linear_v_com[0] * &J_spatial_v_derivs[0])),
-        );
-
-        let mut J1_dot = Matrix1xX::zeros(dof_robot);
-        J1_dot.fixed_view_mut::<1, 6>(0, 0).copy_from(
-            &(Vector3::<Float>::y().transpose()
-                * (&mat_linear_v_com_derivs[1] * &J_spatial_vs[0]
-                    + &mat_linear_v_com[1] * &J_spatial_v_derivs[0])),
-        );
-        J1_dot.fixed_view_mut::<1, 1>(0, 6).copy_from(
-            &(Vector3::<Float>::y().transpose()
-                * (&mat_linear_v_com_derivs[1] * &J_spatial_vs[1]
-                    + &mat_linear_v_com[1] * &J_spatial_v_derivs[1])),
-        );
-
-        let mut J2_dot = Matrix1xX::zeros(dof_robot);
-        J2_dot.fixed_view_mut::<1, 6>(0, 0).copy_from(
-            &(Vector3::<Float>::y().transpose()
-                * (&mat_linear_v_com_derivs[2] * &J_spatial_vs[0]
-                    + &mat_linear_v_com[2] * &J_spatial_v_derivs[0])),
-        );
-        J2_dot.fixed_view_mut::<1, 1>(0, 6).copy_from(
-            &(Vector3::<Float>::y().transpose()
-                * (&mat_linear_v_com_derivs[2] * &J_spatial_vs[1]
-                    + &mat_linear_v_com[2] * &J_spatial_v_derivs[1])),
-        );
-        J2_dot.fixed_view_mut::<1, 1>(0, 7).copy_from(
-            &(Vector3::<Float>::y().transpose()
-                * (&mat_linear_v_com_derivs[2] * &J_spatial_vs[2]
-                    + &mat_linear_v_com[2] * &J_spatial_v_derivs[2])),
-        );
-
-        let J_dot = 1. / 3. * (J0_dot + J1_dot + J2_dot);
+        // time derivative of Jacobian of center-of-mass of each body
+        let J_dot_coms: Vec<Matrix1xX<Float>> = (0..n_bodies)
+            .map(|i| {
+                let mut J_dot_com: Matrix1xX<Float> = Matrix1xX::zeros(dof_robot);
+                let mut col_offset = 0;
+                for j in 0..=i {
+                    let dof = joint_dofs[j];
+                    J_dot_com.view_mut((0, col_offset), (1, dof)).copy_from(
+                        &(Vector3::<Float>::y().transpose()
+                            * (&mat_linear_v_com_derivs[i] * &J_spatial_vs[j]
+                                + &mat_linear_v_com[i] * &J_spatial_v_derivs[j])),
+                    );
+                    col_offset += dof;
+                }
+                J_dot_com
+            })
+            .collect();
+        // time derivative of Jacobian of center-of-mass of the whole system
+        let J_dot_com = izip!(state.bodies.iter(), J_dot_coms.iter())
+            .map(|(b, J)| b.inertia.mass * J)
+            .fold(Matrix1xX::<Float>::zeros(dof_robot), |acc, J| acc + J)
+            / state.total_mass();
 
         // Fill in pre-computed Ricatti equation solution S
         let S = DMatrix::from_row_slice(2, 2, &[0.19606829, 0.01922139, 0.01922139, 0.00188435]);
         let B = DMatrix::from_row_slice(2, 1, &[0., 1.]);
-        let y_dot_com = (&J_dot * &v_full)[(0, 0)];
+        let y_dot_com = (&J_dot_com * &v_full)[(0, 0)];
         let x = vector![y_com, y_dot_com];
 
         let w_v_dot = 0.1;
@@ -150,7 +135,7 @@ impl Controller for LegController {
             .copy_from(&P);
         let P_padded = CscMatrix::from(P_padded.row_iter());
 
-        let opt_q = ((z_com / GRAVITY).powi(2) * 2. * (&J_dot * &v_full)[(0, 0)]
+        let opt_q = ((z_com / GRAVITY).powi(2) * 2. * (&J_dot_com * &v_full)[(0, 0)]
             - 2. * z_com / GRAVITY * y_com
             + 2. * x.tr_mul(&(S * B))[(0, 0)])
             * J_com.transpose()
@@ -291,7 +276,6 @@ impl Controller for LegController {
         let sol = solver.solution.x;
 
         // Inverse-dynamics to compute torque
-        let dof_actuated = dof_robot - 6;
         let v_dot = DVector::from_row_slice(&sol[0..dof_robot]);
         let H_a: DMatrix<Float> = H.rows(6, dof_actuated).into_owned();
         let C_a: DVector<Float> = C.rows(6, dof_actuated).into_owned();
