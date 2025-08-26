@@ -328,7 +328,7 @@ impl Controller for LegController {
         let v_actuated =
             DVector::from_iterator(dof_actuated, v_full.iter().skip(dof_unactuated).cloned());
 
-        let q_actuated_des = vector![PI / 2., -PI / 4.];
+        let q_actuated_des = vector![-PI / 4., PI / 2., -PI / 4.];
         let v_dot_des_actuated = (q_actuated_des - &q_actuated) - 1. * v_actuated;
         let mut v_dot_des = DVector::zeros(dof_robot);
         v_dot_des
@@ -472,7 +472,7 @@ impl Controller for LegController {
         // Matrix that transforms contact force to wrench expressed in world frame
         let mut wrench_transform = DMatrix::zeros(6, dof_contact);
         let foot_to_root = &bodies_to_root[0];
-        let w_foot = 0.2;
+        let w_foot = 0.1;
         let h_foot = 0.05;
         let cp1 =
             foot_to_root.trans() + foot_to_root.rot() * vector![w_foot / 2., l / 2., -h_foot / 2.];
@@ -610,7 +610,7 @@ impl Controller for LegController {
         let joint_torques: Vec<JointTorque> = tau.iter().map(|x| JointTorque::Float(*x)).collect();
 
         let force = input.unwrap().floats[2];
-        let f = bodies_to_root[0].inv().rot() * vector![0., 0., force * 0.1];
+        let f = bodies_to_root[0].inv().rot() * vector![0., force * 0.1, 0.];
         [
             vec![JointTorque::Spatial(SpatialVector {
                 angular: zero(),

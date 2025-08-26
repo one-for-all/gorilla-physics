@@ -39,9 +39,10 @@ pub async fn createLeg() -> InterfaceMechanismState {
     let foot_angle = -PI / 4.;
     let q_init = vec![
         JointPosition::Pose(Pose {
-            rotation: UnitQuaternion::from_axis_angle(&Vector3::x_axis(), thigh_angle),
+            rotation: UnitQuaternion::identity(),
             translation: zero(),
         }),
+        JointPosition::Float(thigh_angle),
         JointPosition::Float(calf_angle),
         JointPosition::Float(foot_angle),
     ];
@@ -55,7 +56,7 @@ pub async fn createLeg() -> InterfaceMechanismState {
     state.set_joint_q(
         1,
         JointPosition::Pose(Pose {
-            rotation: UnitQuaternion::from_axis_angle(&Vector3::x_axis(), thigh_angle),
+            rotation: UnitQuaternion::identity(),
             translation: -foot_pos,
         }),
     );
