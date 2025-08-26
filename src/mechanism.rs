@@ -470,8 +470,8 @@ impl MechanismState {
     }
 
     /// Get the Jacobian of each joint velocity to each body's spatial velocity.
-    /// ith element is the Jacobian of ith joint velocity to the twist, i.e.
-    /// spatial velocity, of ith body relative to (i-1)th body, expressed in
+    /// ith element is the Jacobian of ith joint velocity to the spatial
+    /// velocity of ith body relative to (i-1)th body, expressed in
     /// world frame.
     pub fn spatial_velocity_jacobians(&self) -> Vec<Matrix6xX<Float>> {
         let bodies_to_root = self.get_bodies_to_root_no_update();

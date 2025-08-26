@@ -41,7 +41,7 @@ import("gorilla-physics").then((gorilla) => {
   // });
 
   let radius = 0.1;
-  createLegFromFoot().then((state) => {
+  createLeg().then((state) => {
     state.addHalfSpace(normal as Float64Array, h_ground);
 
     let controller = gorilla.createLegController();
@@ -54,10 +54,10 @@ import("gorilla-physics").then((gorilla) => {
     // let controller = gorilla.createNavbotController(1.0 / 600.0);
     let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
     let simulator = new Simulator(interfaceSimulator);
-    simulator.addLegFromFoot();
+    simulator.addLeg();
 
     let poses = simulator.simulator.poses();
-    simulator.updateLegFromFoot(poses);
+    simulator.updateLeg(poses);
 
     // simulator.addSphere("sphere1", 0xff0000, radius);
     // simulator.addSphere("sphere2", 0x00ff00, radius);
@@ -104,7 +104,7 @@ import("gorilla-physics").then((gorilla) => {
 
     // Important: Set initial camera position
     let cameraPosition = {
-      eye: { x: 0, y: -2.0, z: 1.0 },
+      eye: { x: -2.0, y: 0.0, z: h_ground },
       target: { x: 0.0, y: 0, z: h_ground },
     };
     simulator.graphics.lookAt(cameraPosition);

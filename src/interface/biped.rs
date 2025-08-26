@@ -48,16 +48,19 @@ pub async fn createLeg() -> InterfaceMechanismState {
 
     state.update_q(&q_init);
 
-    // Set the leg to appropriate height
-    let h_foot = 0.05;
-    let foot_height = state.poses().last().unwrap().translation.z;
+    // Set the height so that foot is at origin
+    let foot_pos = state.poses().last().unwrap().translation;
+    let foot_height = foot_pos.z;
+    flog!("foot init y: {}", foot_pos.y);
     state.set_joint_q(
         1,
         JointPosition::Pose(Pose {
             rotation: UnitQuaternion::from_axis_angle(&Vector3::x_axis(), thigh_angle),
-            translation: vector![0., 0., -foot_height + h_foot / 2.],
+            translation: -foot_pos,
         }),
     );
+
+    flog!("center of mass: {}", state.center_of_mass());
 
     InterfaceMechanismState { inner: state }
 }
