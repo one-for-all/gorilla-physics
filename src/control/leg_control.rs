@@ -8,7 +8,10 @@ use clarabel::{
     },
 };
 use itertools::izip;
-use na::{vector, zero, DMatrix, DVector, Matrix, Matrix1xX, Matrix6xX, Vector6};
+use na::{
+    vector, zero, DMatrix, DVector, Matrix, Matrix1xX, Matrix2, Matrix2x3, Matrix2xX, Matrix4,
+    Matrix4x2, Matrix6xX, Vector6,
+};
 use na::{Matrix4x3, Vector3};
 
 use crate::{
@@ -341,6 +344,7 @@ impl Controller for LegController {
 
         let com = state.center_of_mass();
         let y_com = com.y;
+        let x_com = com.x;
 
         let n_contacts = 4;
         let dof_contact = n_contacts * 3;
@@ -352,16 +356,22 @@ impl Controller for LegController {
 
         let n_bodies = state.bodies.len();
         let joint_dofs = state.joint_dofs();
+        #[rustfmt::skip]
+        let xy_extraction = Matrix2x3::new(
+            1., 0., 0.,
+            0., 1., 0.
+        );
+
         // Jacobian of center-of-mass of each body
-        let J_coms: Vec<Matrix1xX<Float>> = (0..n_bodies)
+        let J_coms: Vec<Matrix2xX<Float>> = (0..n_bodies)
             .map(|i| {
-                let mut J_com: Matrix1xX<Float> = Matrix1xX::zeros(dof_robot);
+                let mut J_com: Matrix2xX<Float> = Matrix2xX::zeros(dof_robot);
                 let mut col_offset = 0;
                 for j in 0..=i {
                     let dof = joint_dofs[j];
-                    J_com.view_mut((0, col_offset), (1, dof)).copy_from(
-                        &(Vector3::y().transpose() * &mat_linear_v_com[i] * &J_spatial_vs[j]),
-                    );
+                    J_com
+                        .view_mut((0, col_offset), (2, dof))
+                        .copy_from(&(xy_extraction * &mat_linear_v_com[i] * &J_spatial_vs[j]));
                     col_offset += dof;
                 }
                 J_com
@@ -370,7 +380,7 @@ impl Controller for LegController {
         // Jacobian of center-of-mass of the whole system
         let J_com = izip!(state.bodies.iter(), J_coms.iter())
             .map(|(b, J)| b.inertia.mass * J)
-            .fold(Matrix1xX::<Float>::zeros(dof_robot), |acc, J| acc + J)
+            .fold(Matrix2xX::<Float>::zeros(dof_robot), |acc, J| acc + J)
             / state.total_mass();
 
         // Compute J_dot_com systematically
@@ -378,14 +388,14 @@ impl Controller for LegController {
         let mat_linear_v_com_derivs = state.com_linear_velocity_extraction_matrix_derivatives();
 
         // time derivative of Jacobian of center-of-mass of each body
-        let J_dot_coms: Vec<Matrix1xX<Float>> = (0..n_bodies)
+        let J_dot_coms: Vec<Matrix2xX<Float>> = (0..n_bodies)
             .map(|i| {
-                let mut J_dot_com: Matrix1xX<Float> = Matrix1xX::zeros(dof_robot);
+                let mut J_dot_com: Matrix2xX<Float> = Matrix2xX::zeros(dof_robot);
                 let mut col_offset = 0;
                 for j in 0..=i {
                     let dof = joint_dofs[j];
-                    J_dot_com.view_mut((0, col_offset), (1, dof)).copy_from(
-                        &(Vector3::<Float>::y().transpose()
+                    J_dot_com.view_mut((0, col_offset), (2, dof)).copy_from(
+                        &(xy_extraction
                             * (&mat_linear_v_com_derivs[i] * &J_spatial_vs[j]
                                 + &mat_linear_v_com[i] * &J_spatial_v_derivs[j])),
                     );
@@ -397,15 +407,28 @@ impl Controller for LegController {
         // time derivative of Jacobian of center-of-mass of the whole system
         let J_dot_com = izip!(state.bodies.iter(), J_dot_coms.iter())
             .map(|(b, J)| b.inertia.mass * J)
-            .fold(Matrix1xX::<Float>::zeros(dof_robot), |acc, J| acc + J)
+            .fold(Matrix2xX::<Float>::zeros(dof_robot), |acc, J| acc + J)
             / state.total_mass();
 
         // Fill in pre-computed Ricatti equation solution S
         // let S = DMatrix::from_row_slice(2, 2, &[0.19606829, 0.01922139, 0.01922139, 0.00188435]); // up to thigh
-        let S = DMatrix::from_row_slice(2, 2, &[0.31188605, 0.04863645, 0.04863645, 0.00758452]);
-        let B = DMatrix::from_row_slice(2, 1, &[0., 1.]);
-        let y_dot_com = (&J_dot_com * &v_full)[(0, 0)];
-        let x = vector![y_com, y_dot_com];
+        #[rustfmt::skip]
+        let S = Matrix4::new(
+            3.11886051e-01, 7.57559937e-17, 4.86364543e-02, 1.38365331e-17,
+            7.57559937e-17, 3.11886051e-01, 1.05856105e-17, 4.86364543e-02,
+            4.86364543e-02, 1.05856105e-17, 7.58451582e-03, 1.54579567e-18,
+            1.38365331e-17, 4.86364543e-02, 1.54579567e-18, 7.58451582e-03,
+        );
+        #[rustfmt::skip]
+        let B = Matrix4x2::new(
+            0., 0.,
+            0., 0.,
+            1., 0.,
+            0., 1.,
+        );
+
+        let com_dot = &J_dot_com * &v_full;
+        let x = vector![x_com, y_com, com_dot[0], com_dot[1]];
 
         let mut P_q_des: DMatrix<Float> = DMatrix::zeros(dof_robot, dof_robot);
         P_q_des
@@ -420,10 +443,11 @@ impl Controller for LegController {
             .copy_from(&P);
         let P_padded = CscMatrix::from(P_padded.row_iter());
 
-        let opt_q = ((z_com / GRAVITY).powi(2) * 2. * (&J_dot_com * &v_full)[(0, 0)]
-            - 2. * z_com / GRAVITY * y_com
-            + 2. * x.tr_mul(&(S * B))[(0, 0)])
-            * J_com.transpose()
+        let opt_q = (((z_com / GRAVITY).powi(2) * 2. * (&J_dot_com * &v_full).transpose()
+            - 2. * z_com / GRAVITY * vector![x_com, y_com].transpose()
+            + 2. * x.tr_mul(&(S * B)))
+            * &J_com)
+            .transpose()
             - 2. * w_v_dot * v_dot_des;
         let mut opt_q_padded = DVector::zeros(dof);
         opt_q_padded
@@ -606,8 +630,8 @@ impl Controller for LegController {
         // let tau = q_ddot_des.clone();
 
         let u = J_dot_com * v_full + J_com * &v_dot;
-        let y_zmp = y_com - z_com / GRAVITY * u[(0, 0)];
-        flog!("y_zmp: {}", y_zmp);
+        let zmp = vector![x_com, y_com] - z_com / GRAVITY * u;
+        flog!("zmp: {}", zmp);
 
         let joint_torques: Vec<JointTorque> = tau.iter().map(|x| JointTorque::Float(*x)).collect();
 
@@ -651,22 +675,25 @@ mod leg_control_tests {
         let foot_angle = -PI / 4.;
         let q_init = vec![
             JointPosition::Pose(Pose {
-                rotation: UnitQuaternion::from_axis_angle(&Vector3::x_axis(), thigh_angle),
+                rotation: UnitQuaternion::identity(),
                 translation: zero(),
             }),
+            JointPosition::Float(0.),
+            JointPosition::Float(0.),
+            JointPosition::Float(thigh_angle),
             JointPosition::Float(calf_angle),
             JointPosition::Float(foot_angle),
         ];
 
         state.update_q(&q_init);
 
-        // Set the height so that foot touches ground
-        let foot_height = state.poses().last().unwrap().translation.z;
+        // Set the height so that foot is at origin
+        let foot_pos = state.poses().last().unwrap().translation;
         state.set_joint_q(
             1,
             JointPosition::Pose(Pose {
-                rotation: UnitQuaternion::from_axis_angle(&Vector3::x_axis(), thigh_angle),
-                translation: vector![0., 0., -foot_height],
+                rotation: UnitQuaternion::identity(),
+                translation: -foot_pos,
             }),
         );
 
