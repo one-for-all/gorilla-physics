@@ -51,7 +51,7 @@ pub struct MechanismState {
 
     pub constraints: Vec<Constraint>,
 
-    _bodies_to_root: Vec<Transform3D>,
+    _bodies_to_root: Vec<Transform3D>, // Note: the first transform is world
     _bodies_to_root_obsolete: bool,
 
     _body_twists: Vec<Twist>,
@@ -150,6 +150,7 @@ impl MechanismState {
 
     /// Compute the transforms from body frames to root, i.e. the isometries of the body frames
     /// Return the cached data, if not obsolete.
+    /// Note: the first transform is world
     pub fn get_bodies_to_root(&mut self) -> Vec<Transform3D> {
         if !self._bodies_to_root_obsolete {
             return self._bodies_to_root.clone(); // TODO(efficiency): remove the need for explicit cloning. Maybe return a reference?
@@ -187,6 +188,7 @@ impl MechanismState {
         self._body_twists.clone()
     }
 
+    /// Note: the first transform is world
     pub fn get_bodies_to_root_no_update(&self) -> Vec<Transform3D> {
         assert!(
             !self._bodies_to_root_obsolete,

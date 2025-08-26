@@ -961,7 +961,7 @@ export class Simulator {
 
     let control_input = new FloatArray(3);
 
-    let joyx = 100.0;
+    let joyx = 1.0; // 100.0;
     if (keysPressed["a"]) {
       control_input[0] = -joyx;
     } else if (keysPressed["d"]) {
@@ -970,7 +970,7 @@ export class Simulator {
       control_input[0] = 0.0;
     }
 
-    let joyy = 100.0;
+    let joyy = 1.0; // 100.0
     if (keysPressed["w"]) {
       control_input[1] = joyy;
     } else if (keysPressed["s"]) {

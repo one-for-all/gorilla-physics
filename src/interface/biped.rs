@@ -42,6 +42,7 @@ pub async fn createLeg() -> InterfaceMechanismState {
             rotation: UnitQuaternion::identity(),
             translation: zero(),
         }),
+        JointPosition::Float(0.),
         JointPosition::Float(thigh_angle),
         JointPosition::Float(calf_angle),
         JointPosition::Float(foot_angle),
