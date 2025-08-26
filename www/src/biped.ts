@@ -72,6 +72,7 @@ Simulator.prototype.addLeg = function () {
   let l1 = 0.05;
   let l2 = 0.2;
 
+  this.addCuboid("base", 0xff0000, l1, l1, l2);
   let pelvisLeftOffset = new Matrix4().makeTranslation(0, 0, -l2 / 2);
   this.addCuboid("pelvis_left", 0x00ff00, l1, l1, l2, pelvisLeftOffset);
   let hipLeftOffset = new Matrix4().makeTranslation(l2 / 2, 0, 0);
@@ -86,6 +87,7 @@ Simulator.prototype.addLeg = function () {
 
 Simulator.prototype.updateLeg = function (poses: FloatArrayType) {
   let frames = [
+    "base",
     "pelvis_left",
     "hip_left",
     "thigh_left",
