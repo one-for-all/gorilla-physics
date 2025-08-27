@@ -368,11 +368,11 @@ impl Controller for LegController {
                 let mut J_com: Matrix2xX<Float> = Matrix2xX::zeros(dof_robot);
                 let mut col_offset = 0;
                 for j in 0..=i {
-                    let dof = joint_dofs[j];
+                    let joint_dof = joint_dofs[j];
                     J_com
-                        .view_mut((0, col_offset), (2, dof))
+                        .view_mut((0, col_offset), (2, joint_dof))
                         .copy_from(&(xy_extraction * &mat_linear_v_com[i] * &J_spatial_vs[j]));
-                    col_offset += dof;
+                    col_offset += joint_dof;
                 }
                 J_com
             })
@@ -393,13 +393,15 @@ impl Controller for LegController {
                 let mut J_dot_com: Matrix2xX<Float> = Matrix2xX::zeros(dof_robot);
                 let mut col_offset = 0;
                 for j in 0..=i {
-                    let dof = joint_dofs[j];
-                    J_dot_com.view_mut((0, col_offset), (2, dof)).copy_from(
-                        &(xy_extraction
-                            * (&mat_linear_v_com_derivs[i] * &J_spatial_vs[j]
-                                + &mat_linear_v_com[i] * &J_spatial_v_derivs[j])),
-                    );
-                    col_offset += dof;
+                    let joint_dof = joint_dofs[j];
+                    J_dot_com
+                        .view_mut((0, col_offset), (2, joint_dof))
+                        .copy_from(
+                            &(xy_extraction
+                                * (&mat_linear_v_com_derivs[i] * &J_spatial_vs[j]
+                                    + &mat_linear_v_com[i] * &J_spatial_v_derivs[j])),
+                        );
+                    col_offset += joint_dof;
                 }
                 J_dot_com
             })
