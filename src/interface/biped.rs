@@ -17,15 +17,40 @@ use crate::{
 pub async fn createBiped() -> InterfaceMechanismState {
     let mut state = build_biped();
 
-    // let q_init = vec![
-    //     JointPosition::None,
-    //     JointPosition::Float(0.1),
-    //     JointPosition::Float(0.1),
-    // ];
-    // state.update_q(&q_init);
+    let thigh_angle = -PI / 4.;
+    let calf_angle = PI / 2.;
+    let foot_angle = -PI / 4.;
+    let q_init = vec![
+        JointPosition::Pose(Pose {
+            rotation: UnitQuaternion::identity(),
+            translation: zero(),
+        }),
+        JointPosition::Float(0.),
+        JointPosition::Float(0.),
+        JointPosition::Float(thigh_angle),
+        JointPosition::Float(calf_angle),
+        JointPosition::Float(foot_angle),
+        JointPosition::Float(0.),
+        JointPosition::Float(0.),
+        JointPosition::Float(thigh_angle),
+        JointPosition::Float(calf_angle),
+        JointPosition::Float(foot_angle),
+    ];
 
-    // state.set_joint_v(2, JointVelocity::Float(0.5));
-    // state.set_joint_q(3, JointPosition::Float(-PI / 2.));
+    state.update_q(&q_init);
+
+    // Set the height so that foot is touching ground
+    let foot_pos = state.poses().last().unwrap().translation;
+    let foot_height = foot_pos.z;
+    state.set_joint_q(
+        1,
+        JointPosition::Pose(Pose {
+            rotation: UnitQuaternion::identity(),
+            translation: vector![0., 0., -foot_height],
+        }),
+    );
+
+    flog!("center of mass: {}", state.center_of_mass());
 
     InterfaceMechanismState { inner: state }
 }

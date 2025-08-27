@@ -5,6 +5,7 @@ use na::{dvector, DVector};
 use crate::{mechanism::MechanismState, types::Float, GRAVITY};
 
 pub mod SLIP_control;
+pub mod biped_control;
 pub mod energy_control;
 pub mod gripper_control;
 pub mod hopper_control;

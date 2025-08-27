@@ -36,13 +36,8 @@ pub fn build_biped() -> MechanismState {
         h_pelvis,
         pelvis_left_frame,
     );
-    let pelvis_left_to_base = Transform3D::move_xyz(
-        pelvis_left_frame,
-        base_frame,
-        (w_base + w_pelvis) / 2.0,
-        0.,
-        0.,
-    );
+    let pelvis_left_to_base =
+        Transform3D::move_x(pelvis_left_frame, base_frame, (w_base + w_pelvis) / 2.0);
 
     let m_hip = 0.1;
     let w_hip = l2;
@@ -85,7 +80,7 @@ pub fn build_biped() -> MechanismState {
     let calf_left_to_thigh_left = Transform3D::move_z(calf_left_frame, thigh_left_frame, -h_thigh);
 
     let m_foot = 0.1;
-    let w_foot = l1;
+    let w_foot = 0.2;
     let d_foot = l2;
     let h_foot = l1;
     let foot_axis = Vector3::x_axis();

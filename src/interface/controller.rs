@@ -1,5 +1,6 @@
 use crate::{
     control::{
+        biped_control::BipedController,
         energy_control::{Hopper1DController, Hopper2DController},
         gripper_control::GripperManualController,
         kinematic_loop::{FourBarLinkageController, FourBarLinkageWithBaseController},
@@ -127,6 +128,12 @@ pub fn createLegFromFootController() -> InterfaceController {
 #[wasm_bindgen]
 pub fn createLegController() -> InterfaceController {
     let inner: Box<dyn Controller> = Box::new(LegController {});
+    InterfaceController { inner }
+}
+
+#[wasm_bindgen]
+pub fn createBipedController() -> InterfaceController {
+    let inner: Box<dyn Controller> = Box::new(BipedController {});
     InterfaceController { inner }
 }
 
