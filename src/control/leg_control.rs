@@ -497,7 +497,7 @@ impl Controller for LegController {
 
         // Matrix that transforms contact force to wrench expressed in world frame
         let mut wrench_transform = DMatrix::zeros(6, dof_contact);
-        let foot_to_root = &bodies_to_root[0];
+        let foot_to_root = &bodies_to_root[6];
         let w_foot = 0.2;
         let h_foot = 0.05;
         let cp1 =
