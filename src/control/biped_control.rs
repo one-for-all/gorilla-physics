@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use clarabel::{
     algebra::CscMatrix,
     solver::{
-        DefaultSettings, DefaultSolver, IPSolver,
+        DefaultSettings, DefaultSettingsBuilder, DefaultSolver, IPSolver,
         SupportedConeT::{SecondOrderConeT, ZeroConeT},
     },
 };
@@ -280,7 +280,7 @@ impl Controller for BipedController {
         let mut left_wrench_transform = DMatrix::zeros(6, dof_contact);
         let w_foot = 0.2;
         let h_foot = 0.05;
-        let left_foot_to_root = &bodies_to_root[6];
+        let left_foot_to_root = &bodies_to_root[left_foot_id];
         let cp1 = left_foot_to_root.trans()
             + left_foot_to_root.rot() * vector![w_foot / 2., l / 2., -h_foot / 2.];
         let cp2 = left_foot_to_root.trans()
@@ -318,7 +318,7 @@ impl Controller for BipedController {
             .copy_from(&DMatrix::identity(3, 3));
 
         let mut right_wrench_transform = DMatrix::zeros(6, dof_contact);
-        let right_foot_to_root = &bodies_to_root[11];
+        let right_foot_to_root = &bodies_to_root[right_foot_id];
         let cp5 = right_foot_to_root.trans()
             + right_foot_to_root.rot() * vector![w_foot / 2., l / 2., -h_foot / 2.];
         let cp6 = right_foot_to_root.trans()
@@ -363,13 +363,13 @@ impl Controller for BipedController {
             );
 
         // left foot contact wrench
-        for i in 1..=5 {
+        for i in 1..=left_foot_id - 1 {
             phi.view_mut((dof_offsets[i], 0), (joint_dofs[i], dof_contact))
                 .copy_from(&J_spatial_vs[i].tr_mul(&left_wrench_transform));
         }
 
         // right foot contact wrench
-        for i in 6..=10 {
+        for i in left_foot_id..=right_foot_id - 1 {
             phi.view_mut((dof_offsets[i], 0), (joint_dofs[i], dof_contact))
                 .copy_from(&J_spatial_vs[i].tr_mul(&right_wrench_transform));
         }
@@ -420,7 +420,7 @@ impl Controller for BipedController {
         A_friction_cone[(23, dof_robot + 22)] = -1.;
 
         let b_friction_cone = DVector::<Float>::zeros(dof_contact);
-        let cones_friction_cone = SecondOrderConeT(3);
+        let cones_friction_cone = SecondOrderConeT::<Float>(3);
 
         let A = CscMatrix::from(
             A_left_no_slip
@@ -431,6 +431,7 @@ impl Controller for BipedController {
         );
         let b = DVector::from_iterator(
             6 + 6 + 6 + dof_contact,
+            // 6 + 6 + 6,
             b_left_no_slip
                 .iter()
                 .chain(b_right_no_slip.iter())
@@ -452,7 +453,10 @@ impl Controller for BipedController {
             cones_friction_cone,
         ];
 
-        let settings = DefaultSettings::default();
+        let settings = DefaultSettingsBuilder::default()
+            .verbose(false)
+            .build()
+            .unwrap();
         let mut solver = DefaultSolver::new(
             &P_padded,
             &opt_q_padded.as_slice(),
@@ -465,7 +469,7 @@ impl Controller for BipedController {
         solver.solve();
         let sol = solver.solution.x;
 
-        let contact_forces = DMatrix::from_row_slice(8, 3, &sol[dof_robot..]);
+        let contact_forces = DMatrix::from_row_slice(n_contacts, 3, &sol[dof_robot..]);
         flog!("contact forces: {}", contact_forces);
 
         // Inverse-dynamics to compute torque
@@ -488,7 +492,8 @@ impl Controller for BipedController {
             if let Some(input) = input {
                 let force_x = input.floats[0] * 0.1;
                 let force_y = input.floats[1] * 0.1;
-                bodies_to_root[1].inv().rot() * vector![force_x, force_y, 0.]
+                let force_z = input.floats[2] * 0.1;
+                bodies_to_root[1].inv().rot() * vector![force_x, force_y, force_z]
             } else {
                 Vector3::zeros()
             }
@@ -514,6 +519,7 @@ mod biped_control_tests {
         contact::HalfSpace,
         control::{biped_control::BipedController, leg_control::LegController, Controller},
         joint::JointPosition,
+        plot::plot,
         simulate::step,
         spatial::pose::Pose,
         PI,
@@ -562,8 +568,9 @@ mod biped_control_tests {
         let mut controller = BipedController {};
 
         // Act
-        let final_time = 0.02;
-        let dt = 1. / 60.;
+        let mut data = vec![];
+        let final_time = 0.002;
+        let dt = 1. / 60. / 20.;
         let num_steps = (final_time / dt) as usize;
         for _ in 0..num_steps {
             let torque = controller.control(&mut state, None);
@@ -573,6 +580,10 @@ mod biped_control_tests {
                 &torque,
                 &crate::integrators::Integrator::VelocityStepping,
             );
+
+            data.push(state.poses()[0].translation.z);
         }
+
+        // plot(&data, final_time, dt, num_steps, "biped zmp");
     }
 }
