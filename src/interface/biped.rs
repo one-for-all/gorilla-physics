@@ -19,7 +19,8 @@ pub async fn createBiped() -> InterfaceMechanismState {
 
     let thigh_angle = -PI / 4.;
     let calf_angle = PI / 2.;
-    let foot_angle = -PI / 4.;
+    let ankle_angle = -PI / 4.;
+    let foot_angle = 0.;
     let q_init = vec![
         JointPosition::Pose(Pose {
             rotation: UnitQuaternion::identity(),
@@ -29,11 +30,13 @@ pub async fn createBiped() -> InterfaceMechanismState {
         JointPosition::Float(0.),
         JointPosition::Float(thigh_angle),
         JointPosition::Float(calf_angle),
+        JointPosition::Float(ankle_angle),
         JointPosition::Float(foot_angle),
         JointPosition::Float(0.),
         JointPosition::Float(0.),
         JointPosition::Float(thigh_angle),
         JointPosition::Float(calf_angle),
+        JointPosition::Float(ankle_angle),
         JointPosition::Float(foot_angle),
     ];
 

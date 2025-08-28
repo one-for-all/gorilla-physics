@@ -79,15 +79,25 @@ pub fn build_biped() -> MechanismState {
         RigidBody::new_cuboid_at(&calf_com, m_calf, w_calf, d_calf, h_calf, calf_left_frame);
     let calf_left_to_thigh_left = Transform3D::move_z(calf_left_frame, thigh_left_frame, -h_thigh);
 
+    let m_ankle = 0.1;
+    let w_ankle = l1;
+    let d_ankle = l2;
+    let h_ankle = l1;
+    let ankle_axis = Vector3::x_axis();
+    let ankle_left_frame = "ankle_left";
+    let ankle_left = RigidBody::new_cuboid(m_ankle, w_ankle, d_ankle, h_ankle, ankle_left_frame);
+    let ankle_left_to_calf_left = Transform3D::move_z(ankle_left_frame, calf_left_frame, -h_calf);
+
     let m_foot = 0.1;
     let w_foot = 0.2;
     let d_foot = l2;
     let h_foot = l1;
-    let foot_axis = Vector3::x_axis();
+    let foot_axis = -Vector3::y_axis();
     let foot_left_frame = "foot_left";
     let mut foot_left = RigidBody::new_cuboid(m_foot, w_foot, d_foot, h_foot, foot_left_frame);
     foot_left.add_cuboid_contacts(w_foot, d_foot, h_foot);
-    let foot_left_to_calf_left = Transform3D::move_z(foot_left_frame, calf_left_frame, -h_calf);
+    let foot_left_to_ankle_left =
+        Transform3D::move_z(foot_left_frame, ankle_left_frame, -(h_ankle + h_foot) / 2.);
 
     let pelvis_right_frame = "pelvis_right";
     let pelvis_right = RigidBody::new_cuboid_at(
@@ -130,10 +140,19 @@ pub fn build_biped() -> MechanismState {
     let calf_right_to_thigh_right =
         Transform3D::move_z(calf_right_frame, thigh_right_frame, -h_thigh);
 
+    let ankle_right_frame = "ankle_right";
+    let ankle_right = RigidBody::new_cuboid(m_ankle, w_ankle, d_ankle, h_ankle, ankle_right_frame);
+    let ankle_right_to_calf_right =
+        Transform3D::move_z(ankle_right_frame, calf_right_frame, -h_calf);
+
     let foot_right_frame = "foot_right";
     let mut foot_right = RigidBody::new_cuboid(m_foot, w_foot, d_foot, h_foot, foot_right_frame);
     foot_right.add_cuboid_contacts(w_foot, d_foot, h_foot);
-    let foot_right_to_calf_right = Transform3D::move_z(foot_right_frame, calf_right_frame, -h_calf);
+    let foot_right_to_ankle_right = Transform3D::move_z(
+        foot_right_frame,
+        ankle_right_frame,
+        -(h_ankle + h_foot) / 2.,
+    );
 
     let treejoints = vec![
         // Joint::FixedJoint(FixedJoint::new(base_to_world)),
@@ -142,12 +161,14 @@ pub fn build_biped() -> MechanismState {
         Joint::new_revolute(hip_left_to_pelvis_left, hip_axis),
         Joint::new_revolute(thigh_left_to_hip_left, thigh_axis),
         Joint::new_revolute(calf_left_to_thigh_left, calf_axis),
-        Joint::new_revolute(foot_left_to_calf_left, foot_axis),
+        Joint::new_revolute(ankle_left_to_calf_left, ankle_axis),
+        Joint::new_revolute(foot_left_to_ankle_left, foot_axis),
         Joint::new_revolute(pelvis_right_to_base, pelvis_axis),
         Joint::new_revolute(hip_right_to_pelvis_right, hip_axis),
         Joint::new_revolute(thigh_right_to_hip_right, thigh_axis),
         Joint::new_revolute(calf_right_to_thigh_right, calf_axis),
-        Joint::new_revolute(foot_right_to_calf_right, foot_axis),
+        Joint::new_revolute(ankle_right_to_calf_right, ankle_axis),
+        Joint::new_revolute(foot_right_to_ankle_right, foot_axis),
     ];
     let bodies = vec![
         base,
@@ -155,11 +176,13 @@ pub fn build_biped() -> MechanismState {
         hip_left,
         thigh_left,
         calf_left,
+        ankle_left,
         foot_left,
         pelvis_right,
         hip_right,
         thigh_right,
         calf_right,
+        ankle_right,
         foot_right,
     ];
     MechanismState::new(treejoints, bodies)

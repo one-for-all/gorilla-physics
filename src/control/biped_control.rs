@@ -48,12 +48,14 @@ impl Controller for BipedController {
             0.,
             -PI / 4.,
             PI / 2.,
-            -PI / 4.,
+            -PI / 4., // ankle
+            0.,       // foot
             0.,
             0.,
             -PI / 4.,
             PI / 2.,
-            -PI / 4.
+            -PI / 4.,
+            0.,
         ];
         let v_dot_des_actuated = (q_actuated_des - &q_actuated) - 1. * v_actuated;
         let mut v_dot_des = DVector::zeros(dof_robot);
@@ -190,7 +192,7 @@ impl Controller for BipedController {
 
         // No-slip constraint on left foot.
         // TODO: constrain only planar movement
-        let left_foot_id = 6;
+        let left_foot_id = 7;
         let mut J_left_foot: Matrix6xX<Float> = Matrix6xX::zeros(dof);
         let mut currentid = left_foot_id;
         while currentid != 0 {
@@ -227,7 +229,7 @@ impl Controller for BipedController {
 
         // No-slip constraint on right foot.
         // TODO: constrain only planar movement
-        let right_foot_id = 11;
+        let right_foot_id = 13;
         let mut J_right_foot: Matrix6xX<Float> = Matrix6xX::zeros(dof);
         let mut currentid = right_foot_id;
         while currentid != 0 {
