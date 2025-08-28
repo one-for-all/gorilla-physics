@@ -602,7 +602,7 @@ mod biped_control_tests {
         let left_foot_pose = poses[left_foot_index];
         let right_foot_pose = poses[right_foot_index];
         // TODO(ccd): use CCD so that tolerance can be smaller & timestep can
-        // be smaller. Currently the feet would sink into the ground.
+        // be larger. Currently the feet would sink into the ground.
         assert_vec_close!(
             left_foot_pose.translation,
             left_foot_init_pose.translation,
