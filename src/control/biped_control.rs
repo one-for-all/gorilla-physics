@@ -472,7 +472,7 @@ impl Controller for BipedController {
         let sol = solver.solution.x;
 
         let contact_forces = DMatrix::from_row_slice(n_contacts, 3, &sol[dof_robot..]);
-        flog!("contact forces: {}", contact_forces);
+        // flog!("contact forces: {}", contact_forces);
 
         // Inverse-dynamics to compute torque
         let v_dot = DVector::from_row_slice(&sol[0..dof_robot]);
@@ -481,12 +481,12 @@ impl Controller for BipedController {
         let lambda = DVector::from_column_slice(&sol[dof_robot..]);
         let tau = H_a * &v_dot + C_a - phi.rows(6, dof_actuated) * lambda;
 
-        flog!("tau: {:?}", tau);
-        flog!("angle diff: {}", q_actuated - q_actuated_des);
+        // flog!("tau: {:?}", tau);
+        // flog!("angle diff: {}", q_actuated - q_actuated_des);
 
         let u = J_dot_com * v_full + J_com * &v_dot;
         let zmp = vector![x_com, y_com] - z_com / GRAVITY * u;
-        flog!("zmp: {}", zmp);
+        // flog!("zmp: {}", zmp);
 
         let joint_torques: Vec<JointTorque> = tau.iter().map(|x| JointTorque::Float(*x)).collect();
 
@@ -517,9 +517,12 @@ mod biped_control_tests {
     use na::{vector, zero, UnitQuaternion, Vector3};
 
     use crate::{
+        assert_close, assert_vec_close,
         builders::{biped_builder::build_biped, leg_builder::build_leg},
         contact::HalfSpace,
-        control::{biped_control::BipedController, leg_control::LegController, Controller},
+        control::{
+            biped_control::BipedController, leg_control::LegController, ControlInput, Controller,
+        },
         joint::JointPosition,
         plot::plot,
         simulate::step,
@@ -532,11 +535,13 @@ mod biped_control_tests {
         // Arrange
         let mut state = build_biped();
 
-        state.add_halfspace(HalfSpace::new(Vector3::z_axis(), -0.05 / 2.));
+        let h_foot = 0.05;
+        state.add_halfspace(HalfSpace::new(Vector3::z_axis(), -h_foot / 2.));
 
         let thigh_angle = -PI / 4.;
         let calf_angle = PI / 2.;
-        let foot_angle = -PI / 4.;
+        let ankle_angle = -PI / 4.;
+        let foot_angle = 0.;
         let q_init = vec![
             JointPosition::Pose(Pose {
                 rotation: UnitQuaternion::identity(),
@@ -546,11 +551,13 @@ mod biped_control_tests {
             JointPosition::Float(0.),
             JointPosition::Float(thigh_angle),
             JointPosition::Float(calf_angle),
+            JointPosition::Float(ankle_angle),
             JointPosition::Float(foot_angle),
             JointPosition::Float(0.),
             JointPosition::Float(0.),
             JointPosition::Float(thigh_angle),
             JointPosition::Float(calf_angle),
+            JointPosition::Float(ankle_angle),
             JointPosition::Float(foot_angle),
         ];
 
@@ -567,25 +574,52 @@ mod biped_control_tests {
             }),
         );
 
+        let poses = state.poses();
+        let left_foot_index = 6;
+        let left_foot_init_pose = poses[left_foot_index];
+        let right_foot_index = 12;
+        let right_foot_init_pose = poses[right_foot_index];
+
         let mut controller = BipedController {};
 
         // Act
-        let mut data = vec![];
-        let final_time = 0.002;
-        let dt = 1. / 60. / 20.;
+        let final_time = 1.0;
+        let dt = 1. / 60. / 5.0;
         let num_steps = (final_time / dt) as usize;
+        let input = ControlInput::new(vec![1., 1., 1.]);
         for _ in 0..num_steps {
-            let torque = controller.control(&mut state, None);
+            let torque = controller.control(&mut state, Some(&input));
             let (_q, _v) = step(
                 &mut state,
                 dt,
                 &torque,
                 &crate::integrators::Integrator::VelocityStepping,
             );
-
-            data.push(state.poses()[0].translation.z);
         }
 
-        // plot(&data, final_time, dt, num_steps, "biped zmp");
+        // Assert
+        let poses = state.poses();
+        let left_foot_pose = poses[left_foot_index];
+        let right_foot_pose = poses[right_foot_index];
+        // TODO(ccd): use CCD so that tolerance can be smaller & timestep can
+        // be smaller. Currently the feet would sink into the ground.
+        assert_vec_close!(
+            left_foot_pose.translation,
+            left_foot_init_pose.translation,
+            1e-3
+        );
+        assert_vec_close!(
+            right_foot_pose.translation,
+            right_foot_init_pose.translation,
+            1e-3
+        );
+        let left_angle_diff = left_foot_pose
+            .rotation
+            .angle_to(&left_foot_init_pose.rotation);
+        assert!(left_angle_diff < 2e-3, "{}", left_angle_diff);
+        let right_angle_diff = right_foot_pose
+            .rotation
+            .angle_to(&right_foot_init_pose.rotation);
+        assert!(right_angle_diff < 2e-3, "{}", right_angle_diff);
     }
 }
