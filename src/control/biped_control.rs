@@ -64,7 +64,9 @@ impl Controller for BipedController {
             .copy_from(&v_dot_des_actuated);
 
         let l = 0.2;
-        let z_com = 0.21635445339293943;
+        let w_foot = 0.2;
+        let h_foot = 0.05;
+        let z_com = 0.22537684517864107;
 
         let com = state.center_of_mass();
         let y_com = com.y;
@@ -150,10 +152,10 @@ impl Controller for BipedController {
         // Fill in pre-computed Ricatti equation solution S
         #[rustfmt::skip]
         let S = Matrix4::new(
-            2.97015020e-01, -3.39018912e-18, 4.41089609e-02, 3.62283439e-18,
-            -3.39018912e-18, 2.97015020e-01, -4.79537426e-19, 4.41089609e-02,
-            4.41089609e-02, -4.79537426e-19, 6.55051195e-03, 7.20141151e-19,
-            3.62283439e-18,  4.41089609e-02,  7.20141151e-19,  6.55051195e-03,
+            3.03144812e-01, 5.97128858e-18, 4.59483884e-02, -4.12807977e-20,
+            5.97128858e-18, 3.03144812e-01, 7.61635976e-19, 4.59483884e-02,
+            4.59483884e-02, 7.61635976e-19, 6.96450778e-03, -4.24811204e-21,
+            -4.12807977e-20, 4.59483884e-02, -4.24811204e-21, 6.96450778e-03,
         );
         #[rustfmt::skip]
         let B = Matrix4x2::new(
@@ -280,8 +282,6 @@ impl Controller for BipedController {
 
         // Matrix that transforms contact force to wrench expressed in world frame
         let mut left_wrench_transform = DMatrix::zeros(6, dof_contact);
-        let w_foot = 0.2;
-        let h_foot = 0.05;
         let left_foot_to_root = &bodies_to_root[left_foot_id];
         let cp1 = left_foot_to_root.trans()
             + left_foot_to_root.rot() * vector![w_foot / 2., l / 2., -h_foot / 2.];

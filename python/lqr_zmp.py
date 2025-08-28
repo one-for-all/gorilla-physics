@@ -19,7 +19,7 @@ C = np.matrix(
 # z_com = 0.09428090415820636 # up to thigh
 # z_com = 0.18970562748477146 # up to pelvis
 # z_com = 0.23856180831641274; # one leg
-z_com = 0.21635445339293943; # whole biped
+z_com = 0.22537684517864107; # whole biped
 D = -z_com/9.81 * np.identity(2)
 
 Q = C.T * C
