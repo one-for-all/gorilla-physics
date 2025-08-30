@@ -1,4 +1,5 @@
-use gorilla_physics::contact::{ContactPoint, HalfSpace};
+use gorilla_physics::collision::halfspace::HalfSpace;
+use gorilla_physics::contact::ContactPoint;
 use gorilla_physics::control::{Controller, NullController};
 
 use gorilla_physics::joint::floating::FloatingJoint;

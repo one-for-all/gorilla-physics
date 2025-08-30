@@ -866,7 +866,7 @@ mod dynamics_tests {
 
     use crate::{
         assert_close, assert_vec_close,
-        contact::HalfSpace,
+        collision::halfspace::HalfSpace,
         integrators::Integrator,
         joint::{
             floating::FloatingJoint,

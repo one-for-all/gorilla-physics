@@ -71,7 +71,7 @@ mod constraint_revolute_tests {
         builders::kinematic_loop_builder::{
             build_four_bar_linkage, build_four_bar_linkage_with_base,
         },
-        contact::HalfSpace,
+        collision::halfspace::HalfSpace,
         joint::{JointPosition, JointVelocity, ToFloatDVec},
         simulate::step,
         types::Float,

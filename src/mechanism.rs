@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 
+use crate::collision::halfspace::HalfSpace;
 use crate::contact::ContactPoint;
-use crate::contact::HalfSpace;
 use crate::contact::SpringContact;
 use crate::energy::spring_elastic_energy;
 use crate::inertia::compute_inertias;

@@ -8,8 +8,8 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::ops::AddAssign;
 
+use crate::collision::halfspace::HalfSpace;
 use crate::collision::mesh::read_mesh;
-use crate::contact::HalfSpace;
 use crate::dynamics::solve_cone_complementarity;
 use crate::types::Float;
 use crate::util::read_file;

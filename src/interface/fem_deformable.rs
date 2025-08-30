@@ -3,8 +3,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use web_sys::js_sys::Uint32Array;
 
 use crate::{
-    collision::mesh::read_mesh,
-    contact::HalfSpace,
+    collision::{halfspace::HalfSpace, mesh::read_mesh},
     fem_deformable::FEMDeformable,
     types::{Float, FloatArray},
 };

@@ -1,5 +1,5 @@
 use gorilla_physics::{
-    contact::HalfSpace,
+    collision::halfspace::HalfSpace,
     control::{Controller, NullController},
     helpers::build_SLIP,
     joint::{JointPosition, JointVelocity},

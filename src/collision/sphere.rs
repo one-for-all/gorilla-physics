@@ -1,6 +1,6 @@
 use na::{zero, Isometry3, Vector3};
 
-use crate::{contact::HalfSpace, types::Float};
+use crate::{collision::halfspace::HalfSpace, types::Float};
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Sphere {
@@ -45,7 +45,7 @@ mod sphere_tests {
 
     use crate::{
         assert_close, assert_vec_close,
-        contact::HalfSpace,
+        collision::halfspace::HalfSpace,
         helpers::build_sphere,
         integrators::Integrator,
         joint::{JointPosition, JointTorque},

@@ -1,5 +1,5 @@
 use gorilla_physics::{
-    contact::HalfSpace,
+    collision::halfspace::HalfSpace,
     control::{pusher_control::PusherController, Controller},
     helpers::build_pusher,
     plot::plot,

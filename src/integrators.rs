@@ -302,7 +302,7 @@ mod integrators_tests {
 
     use crate::assert_close;
     use crate::assert_vec_close;
-    use crate::contact::HalfSpace;
+    use crate::collision::halfspace::HalfSpace;
     use crate::control::pusher_control::PusherController;
     use crate::control::Controller;
     use crate::helpers::build_pusher;

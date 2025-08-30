@@ -668,7 +668,7 @@ mod leg_control_tests {
 
     use crate::{
         builders::leg_builder::build_leg,
-        contact::HalfSpace,
+        collision::halfspace::HalfSpace,
         control::{leg_control::LegController, Controller},
         joint::JointPosition,
         simulate::step,

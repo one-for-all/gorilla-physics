@@ -1,19 +1,13 @@
+use gorilla_physics::collision::halfspace::HalfSpace;
 use gorilla_physics::control::Controller;
 use gorilla_physics::joint::floating::FloatingJoint;
 use gorilla_physics::joint::prismatic::PrismaticJoint;
 use gorilla_physics::joint::Joint;
 use gorilla_physics::WORLD_FRAME;
 use gorilla_physics::{
-    contact::{ContactPoint, HalfSpace},
-    control::energy_control::Hopper1DController,
-    energy::hopper_energy,
-    inertia::SpatialInertia,
-    mechanism::MechanismState,
-    plot::plot,
-    rigid_body::RigidBody,
-    simulate::step,
-    spatial::transform::Transform3D,
-    types::Float,
+    contact::ContactPoint, control::energy_control::Hopper1DController, energy::hopper_energy,
+    inertia::SpatialInertia, mechanism::MechanismState, plot::plot, rigid_body::RigidBody,
+    simulate::step, spatial::transform::Transform3D, types::Float,
 };
 use nalgebra::{vector, Isometry3, Matrix3, Vector3};
 

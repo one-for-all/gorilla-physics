@@ -519,7 +519,7 @@ mod biped_control_tests {
     use crate::{
         assert_close, assert_vec_close,
         builders::{biped_builder::build_biped, leg_builder::build_leg},
-        contact::HalfSpace,
+        collision::halfspace::HalfSpace,
         control::{
             biped_control::BipedController, leg_control::LegController, ControlInput, Controller,
         },

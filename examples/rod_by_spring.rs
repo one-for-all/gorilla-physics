@@ -1,6 +1,7 @@
 use gorilla_physics::{
     assert_close,
-    contact::{ContactPoint, HalfSpace},
+    collision::halfspace::HalfSpace,
+    contact::ContactPoint,
     control::{Controller, NullController},
     inertia::SpatialInertia,
     joint::{

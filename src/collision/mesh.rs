@@ -617,7 +617,7 @@ mod mesh_tests {
 
     use crate::{
         assert_close, assert_vec_close,
-        contact::HalfSpace,
+        collision::halfspace::HalfSpace,
         helpers::{
             build_rigid_mesh_box, build_tetrahedron, build_two_cubes, build_two_rigid_mesh_boxes,
             build_two_tetrahedron,

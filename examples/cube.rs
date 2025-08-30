@@ -1,11 +1,10 @@
 use gorilla_physics::{
-    contact::HalfSpace,
+    collision::halfspace::HalfSpace,
     helpers::build_cube,
     joint::{JointPosition, JointVelocity},
     plot::{plot, plot_trajectory},
     simulate::step,
-    spatial::pose::Pose,
-    spatial::spatial_vector::SpatialVector,
+    spatial::{pose::Pose, spatial_vector::SpatialVector},
     types::Float,
 };
 use nalgebra::{vector, UnitQuaternion, Vector3};

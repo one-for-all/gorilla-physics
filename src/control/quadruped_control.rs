@@ -316,7 +316,7 @@ mod quadruped_control_tests {
     use na::UnitQuaternion;
 
     use crate::{
-        assert_close, assert_vec_close, contact::HalfSpace, helpers::build_quadruped,
+        assert_close, assert_vec_close, collision::halfspace::HalfSpace, helpers::build_quadruped,
         integrators::Integrator, joint::JointPosition, simulate::step, spatial::pose::Pose,
     };
 

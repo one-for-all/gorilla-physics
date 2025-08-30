@@ -1,4 +1,5 @@
-use gorilla_physics::contact::{ContactPoint, HalfSpace};
+use gorilla_physics::collision::halfspace::HalfSpace;
+use gorilla_physics::contact::ContactPoint;
 use gorilla_physics::joint::floating::FloatingJoint;
 use gorilla_physics::joint::prismatic::{JointSpring, PrismaticJoint};
 use gorilla_physics::joint::{Joint, JointVelocity};

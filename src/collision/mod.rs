@@ -10,6 +10,7 @@ pub mod ccd;
 pub mod cuboid;
 pub mod epa;
 pub mod gjk;
+pub mod halfspace;
 pub mod mesh;
 pub mod polytope;
 pub mod sphere;

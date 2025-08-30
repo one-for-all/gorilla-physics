@@ -1,11 +1,10 @@
 use gorilla_physics::{
-    contact::HalfSpace,
+    collision::halfspace::HalfSpace,
     helpers::build_rimless_wheel,
     joint::{JointPosition, JointVelocity},
     plot::plot,
     simulate::step,
-    spatial::pose::Pose,
-    spatial::spatial_vector::SpatialVector,
+    spatial::{pose::Pose, spatial_vector::SpatialVector},
     types::Float,
     GRAVITY, PI,
 };

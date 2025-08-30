@@ -53,8 +53,8 @@ mod pusher_controller_tests {
     use na::Vector3;
 
     use crate::{
-        assert_close, contact::HalfSpace, helpers::build_pusher, integrators::Integrator,
-        simulate::step,
+        assert_close, collision::halfspace::HalfSpace, helpers::build_pusher,
+        integrators::Integrator, simulate::step,
     };
 
     use super::*;

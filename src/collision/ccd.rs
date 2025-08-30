@@ -5,7 +5,7 @@ mod ccd_tests {
 
     use crate::{
         assert_close,
-        contact::HalfSpace,
+        collision::halfspace::HalfSpace,
         helpers::{build_n_spheres, build_sphere},
         joint::{JointPosition, JointVelocity},
         simulate::step,

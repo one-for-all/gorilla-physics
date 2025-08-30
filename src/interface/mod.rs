@@ -1,3 +1,4 @@
+use crate::collision::halfspace::HalfSpace;
 use crate::contact::ContactPoint;
 use crate::control::ControlInput;
 use crate::helpers::build_n_spheres;
@@ -27,7 +28,6 @@ use web_sys::js_sys::Float32Array;
 use web_sys::js_sys::Uint32Array;
 
 use crate::{
-    contact::HalfSpace,
     helpers::build_double_pendulum,
     inertia::SpatialInertia,
     joint::{revolute::RevoluteJoint, Joint, JointPosition},

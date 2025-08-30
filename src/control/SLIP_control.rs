@@ -68,8 +68,8 @@ mod SLIP_control_tests {
     use na::{vector, UnitVector3, Vector3};
 
     use crate::{
-        assert_close, contact::HalfSpace, helpers::build_SLIP, integrators::Integrator,
-        simulate::step,
+        assert_close, collision::halfspace::HalfSpace, helpers::build_SLIP,
+        integrators::Integrator, simulate::step,
     };
 
     use super::*;

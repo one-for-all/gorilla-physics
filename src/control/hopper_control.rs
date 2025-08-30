@@ -7,7 +7,8 @@ mod hopper_control_tests {
 
     use crate::{
         assert_close,
-        contact::{ContactPoint, HalfSpace},
+        collision::halfspace::HalfSpace,
+        contact::ContactPoint,
         control::energy_control::mechanical_stop,
         helpers::build_hopper,
         integrators::Integrator,
@@ -21,9 +22,7 @@ mod hopper_control_tests {
         plot::plot,
         rigid_body::RigidBody,
         simulate::step,
-        spatial::pose::Pose,
-        spatial::spatial_vector::SpatialVector,
-        spatial::transform::Transform3D,
+        spatial::{pose::Pose, spatial_vector::SpatialVector, transform::Transform3D},
         types::Float,
         WORLD_FRAME,
     };
