@@ -1,6 +1,9 @@
 import {
   BoxGeometry,
   DoubleSide,
+  EdgesGeometry,
+  LineBasicMaterial,
+  LineSegments,
   Matrix4,
   Mesh,
   MeshPhongMaterial,
@@ -23,8 +26,16 @@ Simulator.prototype.addCube = function (length: number) {
     flatShading: true,
   });
   const cube = new Mesh(geometry, material);
-  this.meshes.set("cube", cube);
+
+  let name = "cube";
+  this.meshes.set(name, cube);
   this.graphics.scene.add(cube);
+
+  const edges = new EdgesGeometry(geometry);
+  const edgesMaterial = new LineBasicMaterial({ color: 0x000000 });
+  const edgesMesh = new LineSegments(edges, edgesMaterial);
+  this.edgesMeshes.set(name, edgesMesh);
+  this.graphics.scene.add(edgesMesh);
 };
 
 Simulator.prototype.updateCube = function (poses: FloatArrayType) {
