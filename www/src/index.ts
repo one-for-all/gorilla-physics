@@ -111,7 +111,7 @@ import("gorilla-physics").then((gorilla) => {
 
     // Important: Set initial camera position
     let cameraPosition = {
-      eye: { x: 0.0, y: -0.5, z: 0.0 },
+      eye: { x: 0.0, y: -2.0, z: 1.0 },
       target: { x: 0.0, y: 0, z: h_ground },
     };
     simulator.graphics.lookAt(cameraPosition);

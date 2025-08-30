@@ -932,6 +932,7 @@ export class Simulator {
     this.setPose("left_foot", left_foot_pose);
   }
 
+  /// Note: timestamp is in milliseconds
   async run(timestamp?: number) {
     this.graphics.render();
 
@@ -980,9 +981,17 @@ export class Simulator {
 
     // TODO: Currently some steps might take longer because of more computation.
     // This results in inconsistent frame refresh rate. Make it consistent.
-    let qs = this.simulator.step(dt, control_input as Float64Array);
+    let slow_motion_factor = 1; // create slow motion effect to better see the details of motion
+    if (timestamp - this.time >= slow_motion_factor * 1000 * dt) {
+      let qs = this.simulator.step(dt, control_input as Float64Array);
+
+      let poses = this.simulator.poses();
+      this.updateCube(poses);
+
+      this.time = timestamp;
+    }
     // console.log("time: %ss", this.time);
-    this.time += dt;
+    // this.time += dt;
 
     // let n_substep = 4;
     // for (let i = 0; i < n_substep; i++) {
@@ -1030,8 +1039,6 @@ export class Simulator {
     //   wheel_right_center[2],
     // );
 
-    let poses = this.simulator.poses();
-    this.updateCube(poses);
     // this.updateLeg(poses);
     // this.updateBiped(poses);
 
@@ -1049,6 +1056,6 @@ export class Simulator {
     // this.updateCube(poses);
     // this.updatePusher(poses);
 
-    requestAnimationFrame((t) => this.run(t + 1));
+    requestAnimationFrame((timestamp) => this.run(timestamp));
   }
 }
