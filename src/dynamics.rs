@@ -2,6 +2,7 @@ use crate::{
     collision::{mesh::mesh_mesh_collision, CollisionDetector},
     contact::contact_dynamics,
     control::energy_control::spring_force,
+    flog,
     inertia::compute_inertias,
     joint::{FromFloatDVec, Joint, JointAcceleration, JointTorque, JointVelocity, ToFloatDVec},
     mechanism::mass_matrix,
@@ -368,7 +369,6 @@ pub fn dynamics_discrete(
     state: &mut MechanismState,
     tau: &Vec<JointTorque>,
     dt: Float,
-    expected_contact: Option<(UnitVector3<Float>, Vector3<Float>, usize, Option<usize>)>,
 ) -> (
     Vec<JointVelocity>,
     Vec<(UnitVector3<Float>, Vector3<Float>, usize, Option<usize>)>,
@@ -403,16 +403,7 @@ pub fn dynamics_discrete(
         build_constraint_jacobians(&state, &jacobian_blocks, &bodies_to_root, v_free.len());
 
     // contacts is Vec of (contact normal, contact point, bodyid, other_bodyid)
-    let mut contacts = collision_detection(state, &bodies_to_root);
-    // remove the contact that has already been accounted for in expected_contact.
-    // TODO: note that this is not always valid, e.g. when there are multiple contact points between two bodies.
-    if let Some(expected_contact) = expected_contact {
-        let (_, _, expected_bodyid, expected_other_bodyid) = expected_contact;
-        contacts.retain(|(_, _, bodyid, other_bodyid)| {
-            !(*bodyid == expected_bodyid && *other_bodyid == expected_other_bodyid)
-        });
-        contacts.push(expected_contact);
-    }
+    let contacts = collision_detection(state, &bodies_to_root);
 
     // Vec of Jacobian rows, which will be assembled into the Jacobian
     let contact_Js: Vec<Matrix3xX<Float>> = contacts
@@ -568,7 +559,7 @@ pub fn collision_detection(
         for contact_point in &body.contact_points {
             let contact_point_world = contact_point.transform(body_to_root); // contact point in world frame
             for halfspace in &state.halfspaces {
-                if !contact_point_world.inside_halfspace(&halfspace) {
+                if !halfspace.has_inside(&contact_point_world.location) {
                     continue;
                 }
                 contacts.push((

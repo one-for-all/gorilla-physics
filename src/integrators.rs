@@ -3,6 +3,7 @@ use na::{UnitQuaternion, UnitVector3, Vector3};
 
 use crate::{
     dynamics::{dynamics_continuous, dynamics_discrete},
+    flog,
     joint::{JointAcceleration, JointPosition, JointTorque, JointVelocity},
     mechanism::MechanismState,
     rigid_body::CollisionGeometry,
@@ -44,7 +45,7 @@ pub fn velocity_stepping(
     dt: Float,
     tau: &Vec<JointTorque>,
 ) -> (Vec<JointPosition>, Vec<JointVelocity>) {
-    let (v_next, _contacts) = dynamics_discrete(state, &tau, dt, None);
+    let (v_next, _contacts) = dynamics_discrete(state, &tau, dt);
 
     (compute_new_q(&state.q, &v_next, dt), v_next)
 }
@@ -55,12 +56,9 @@ pub fn ccd_velocity_stepping(
     tau: &Vec<JointTorque>,
 ) -> (Vec<JointPosition>, Vec<JointVelocity>) {
     let mut t_remain = dt;
-    // expected contact from CCD step where time progressed to when this contact would happen
-    let mut expected_contact: Option<(UnitVector3<Float>, Vector3<Float>, usize, Option<usize>)> =
-        None;
 
     loop {
-        let (v_new, contacts) = dynamics_discrete(state, &tau, t_remain, expected_contact);
+        let (v_new, contacts) = dynamics_discrete(state, &tau, t_remain);
 
         let joint_new_twists: Vec<Twist> = izip!(state.treejoints.iter(), v_new.iter())
             .map(|(joint, v)| Twist::new(&joint, v))
@@ -72,12 +70,45 @@ pub fn ccd_velocity_stepping(
 
         // Continuous collision detection (CCD) step
         let mut earliest_collision_t = Float::INFINITY;
-        let mut earliest_collision: Option<(
-            UnitVector3<Float>,
-            Vector3<Float>,
-            usize,
-            Option<usize>,
-        )> = None;
+
+        // (contact point - halfspace) collision detection
+        for (bodyid, body) in izip!(state.treejointids.iter(), state.bodies.iter()) {
+            let body_to_root = &bodies_to_root[*bodyid];
+
+            for contact_point in &body.contact_points {
+                let contact_point = contact_point.transform(body_to_root).location;
+
+                // compute linear velocity of the contact point
+                let twist = &new_twists[*bodyid];
+                let v = twist.linear + twist.angular.cross(&contact_point);
+
+                for halfspace in &state.halfspaces {
+                    let n = halfspace.normal;
+                    let v_dot_n = v.dot(&n);
+
+                    // moving in parallel, early exit to avoid division by zero
+                    if v_dot_n == 0. {
+                        continue;
+                    }
+
+                    let distance = halfspace.distance(&contact_point);
+
+                    // if already in contact, should have already been handled in discrete collision checking step
+                    if distance <= 0. {
+                        // TODO(ccd): assert that contacts contain this point
+                        continue;
+                    }
+
+                    // compute collision time
+                    let t = distance / -v_dot_n;
+                    if t < earliest_collision_t && t > 0. {
+                        earliest_collision_t = t;
+                    }
+                }
+            }
+        }
+
+        // (body collider - halfspace) collision detection
         for (bodyid, body) in izip!(state.treejointids.iter(), state.bodies.iter()) {
             if let Some(collider) = &body.collider {
                 if !collider.enabled {
@@ -110,9 +141,11 @@ pub fn ccd_velocity_stepping(
                                 continue;
                             }
 
-                            // if already in contact, should have already been handled in discrete collision checking step
                             let distance = sphere.distance_halfspace(halfspace);
+
+                            // if already in contact, should have already been handled in discrete collision checking step
                             if distance <= 0. {
+                                // TODO(ccd): assert that contacts contain this sphere
                                 continue;
                             }
 
@@ -120,11 +153,6 @@ pub fn ccd_velocity_stepping(
                             let t = distance / -v_dot_n;
                             if t < earliest_collision_t && t > 0. {
                                 earliest_collision_t = t;
-
-                                // compute expected contact point
-                                let contact_point =
-                                    sphere.center() + t * v - n.scale(sphere.radius);
-                                earliest_collision = Some((n, contact_point, *bodyid, None))
                             }
                         }
                     }
@@ -132,8 +160,6 @@ pub fn ccd_velocity_stepping(
                 }
             }
         }
-
-        expected_contact = earliest_collision;
 
         let q_new;
         if earliest_collision_t < t_remain {

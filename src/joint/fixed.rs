@@ -53,7 +53,7 @@ mod fixed_joint_tests {
         let mut state = MechanismState::new(treejoints, bodies);
 
         // Act
-        let (v_next, _contacts) = dynamics_discrete(&mut state, &vec![], 1e-1, None);
+        let (v_next, _contacts) = dynamics_discrete(&mut state, &vec![], 1e-1);
 
         // Assert
         assert_eq!(v_next.len(), 1);

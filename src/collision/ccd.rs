@@ -2,17 +2,21 @@
 mod ccd_tests {
     use itertools::izip;
     use na::{vector, UnitQuaternion, UnitVector3, Vector3};
+    use rand::{rng, seq::IndexedRandom, Rng};
 
     use crate::{
         assert_close,
         collision::halfspace::HalfSpace,
-        helpers::{build_n_spheres, build_sphere},
+        helpers::{build_cube, build_n_spheres, build_sphere},
         joint::{JointPosition, JointVelocity},
         simulate::step,
         spatial::{pose::Pose, spatial_vector::SpatialVector},
         types::Float,
+        util::test_utils::random_vector,
+        PI,
     };
 
+    /// Test (sphere - halfspace) CCD
     #[test]
     fn ccd_sphere_ground() {
         // Arrange
@@ -201,5 +205,116 @@ mod ccd_tests {
 
         // max penetration
         assert!(max_penetration < 1e-8);
+    }
+
+    /// Test (contact point - halfspace) CCD in static situation
+    #[test]
+    fn ccd_cube_ground_stationary() {
+        let mut rng = rng();
+
+        let l = 0.1;
+        let mut state = build_cube(1.0, l);
+        state.add_halfspace(HalfSpace::new(Vector3::z_axis(), 0.));
+
+        let n_tests = 100;
+        let size = 100.;
+        let tol = 1e-6;
+        let angle_choices = [-1.0, -0.5, 0., 0.5, 1.0];
+        for _ in 0..n_tests {
+            // Arrange
+            let x = rng.random_range(-size..size);
+            let y = rng.random_range(-size..size);
+            let roll = angle_choices.choose(&mut rng).unwrap() * PI;
+            let pitch = angle_choices.choose(&mut rng).unwrap() * PI;
+            let yaw = angle_choices.choose(&mut rng).unwrap() * PI;
+            state.set_joint_q(
+                1,
+                JointPosition::Pose(Pose {
+                    rotation: UnitQuaternion::from_euler_angles(roll, pitch, yaw), // UnitQuaternion::identity(),
+                    translation: vector![x, y, l / 2.],
+                }),
+            );
+
+            // Act
+            let final_time = 1.0;
+            let dt = 1. / 60.;
+            let num_steps = (final_time / dt) as usize;
+            for _s in 0..num_steps {
+                let (_q, _v) = step(
+                    &mut state,
+                    dt,
+                    &vec![],
+                    &crate::integrators::Integrator::CCDVelocityStepping,
+                );
+            }
+
+            // Assert
+            let pos = state.poses()[0].translation;
+            let z = pos.z - l / 2.;
+            assert_close!(z, 0., tol);
+            assert_close!(pos.x, x, tol);
+            assert_close!(pos.y, y, tol);
+        }
+    }
+
+    /// Test (contact point - halfspace) CCD in dynamic situation
+    #[test]
+    fn ccd_cube_ground_dynamic() {
+        let mut rng = rng();
+
+        let l = 0.1;
+        let mut state = build_cube(1.0, l);
+        state.add_halfspace(HalfSpace::new(Vector3::z_axis(), 0.));
+
+        let n_tests = 100;
+        let size = 100.;
+        let speed = 1.0; // TODO: can fail when speed to high, or timestep too
+                         // large
+        let angular_speed = 5.0;
+        let tol = 1e-6;
+        for _ in 0..n_tests {
+            // Arrange
+            let x = rng.random_range(-size..size);
+            let y = rng.random_range(-size..size);
+            let z = rng.random_range(l..(2. * l));
+            let axis = UnitVector3::new_normalize(Vector3::new_random());
+            let angle = rng.random_range(0.0..(2. * PI));
+            state.set_joint_q(
+                1,
+                JointPosition::Pose(Pose {
+                    rotation: UnitQuaternion::from_axis_angle(&axis, angle),
+                    // rotation: UnitQuaternion::identity(),
+                    translation: vector![x, y, z],
+                }),
+            );
+
+            let vel = random_vector(&mut rng, speed);
+            let angular = random_vector(&mut rng, angular_speed);
+            state.set_joint_v(
+                1,
+                JointVelocity::Spatial(SpatialVector {
+                    angular,
+                    linear: vel,
+                }),
+            );
+
+            // Act
+            let final_time = 1.0;
+            let dt = 1. / 60. / 2.0; // TODO: need to have substep of 2, to remain stable w/ current speed limit
+            let num_steps = (final_time / dt) as usize;
+            for _s in 0..num_steps {
+                let (_q, _v) = step(
+                    &mut state,
+                    dt,
+                    &vec![],
+                    &crate::integrators::Integrator::CCDVelocityStepping,
+                );
+            }
+
+            // Assert
+            let pos = state.poses()[0].translation;
+            let z = pos.z - l / 2.;
+            assert_close!(z, 0., tol);
+        }
     }
 }

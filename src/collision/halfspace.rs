@@ -37,6 +37,13 @@ impl HalfSpace {
 
     // True if the point is inside the half-space
     pub fn has_inside(&self, point: &Vector3<Float>) -> bool {
-        (point - self.point).dot(&self.normal) <= 0.0
+        // needed for CCD to be stable
+        // TODO: make margin adjustable
+        let margin = 1e-8;
+        (point - self.point).dot(&self.normal) <= margin
+    }
+
+    pub fn distance(&self, point: &Vector3<Float>) -> Float {
+        (point - self.point).dot(&self.normal)
     }
 }
