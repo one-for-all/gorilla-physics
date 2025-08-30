@@ -385,18 +385,6 @@ export class Simulator {
     this.graphics.scene.add(this.rod);
   }
 
-  addCube(length: number) {
-    const cubeGeometry = new THREE.BoxGeometry(length, length, length);
-    const cubeMaterial = new THREE.MeshPhongMaterial({
-      color: 0x00ff00,
-      side: THREE.DoubleSide, // Render both sides of faces
-      flatShading: true,
-    });
-    const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
-    this.meshes.set("cube", cube);
-    this.graphics.scene.add(cube);
-  }
-
   addRimlessWheel(radius: number, n_foot: number) {
     // Add pivot at the center
     const pivotGeometry = new THREE.SphereGeometry(radius, 32, 32);
@@ -682,15 +670,6 @@ export class Simulator {
     let pos = [poses[3], poses[4], poses[5]];
 
     let body = this.meshes.get("sphere");
-    body.rotation.set(euler[0], euler[1], euler[2]);
-    body.position.set(pos[0], pos[1], pos[2]);
-  }
-
-  updateCube(poses: Float32Array) {
-    let euler = [poses[0], poses[1], poses[2]];
-    let pos = [poses[3], poses[4], poses[5]];
-
-    let body = this.meshes.get("cube");
     body.rotation.set(euler[0], euler[1], euler[2]);
     body.position.set(pos[0], pos[1], pos[2]);
   }
@@ -1052,8 +1031,9 @@ export class Simulator {
     // );
 
     let poses = this.simulator.poses();
+    this.updateCube(poses);
     // this.updateLeg(poses);
-    this.updateBiped(poses);
+    // this.updateBiped(poses);
 
     // this.setPose("sphere1", poses.subarray(0, 6));
     // this.setPose("sphere2", poses.subarray(6, 12));
