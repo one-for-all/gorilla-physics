@@ -584,6 +584,7 @@ mod biped_control_tests {
 
         // Act
         let final_time = 1.0;
+        // TODO: make biped stable with larger timestep. currently, it might turn unstable probably because its feet lose contact with ground under CCD
         let dt = 1. / 60. / 5.0;
         let num_steps = (final_time / dt) as usize;
         let input = ControlInput::new(vec![1., 1., 1.]);
@@ -593,7 +594,7 @@ mod biped_control_tests {
                 &mut state,
                 dt,
                 &torque,
-                &crate::integrators::Integrator::VelocityStepping,
+                &crate::integrators::Integrator::CCDVelocityStepping,
             );
         }
 
@@ -601,25 +602,25 @@ mod biped_control_tests {
         let poses = state.poses();
         let left_foot_pose = poses[left_foot_index];
         let right_foot_pose = poses[right_foot_index];
-        // TODO(ccd): use CCD so that tolerance can be smaller & timestep can
-        // be larger. Currently the feet would sink into the ground.
+        let tol = 1e-3;
+        let angle_tol = 1e-3;
         assert_vec_close!(
             left_foot_pose.translation,
             left_foot_init_pose.translation,
-            1e-3
+            tol
         );
         assert_vec_close!(
             right_foot_pose.translation,
             right_foot_init_pose.translation,
-            1e-3
+            tol
         );
         let left_angle_diff = left_foot_pose
             .rotation
             .angle_to(&left_foot_init_pose.rotation);
-        assert!(left_angle_diff < 2e-3, "{}", left_angle_diff);
+        assert!(left_angle_diff < angle_tol, "{}", left_angle_diff);
         let right_angle_diff = right_foot_pose
             .rotation
             .angle_to(&right_foot_init_pose.rotation);
-        assert!(right_angle_diff < 2e-3, "{}", right_angle_diff);
+        assert!(right_angle_diff < angle_tol, "{}", right_angle_diff);
     }
 }

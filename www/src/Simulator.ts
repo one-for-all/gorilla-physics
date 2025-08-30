@@ -986,7 +986,8 @@ export class Simulator {
       let qs = this.simulator.step(dt, control_input as Float64Array);
 
       let poses = this.simulator.poses();
-      this.updateCube(poses);
+      // this.updateCube(poses);
+      this.updateBiped(poses);
 
       this.time = timestamp;
     }
