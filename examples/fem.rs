@@ -1,4 +1,4 @@
-use gorilla_physics::{collision::mesh::Mesh, fem_deformable::read_fem_box, util::read_file};
+use gorilla_physics::{collision::mesh::Mesh, fem::fem_deformable::read_fem_box, util::read_file};
 use nalgebra::DVector;
 
 /// Read a bunny as a mass-spring model, and simulate it falling under gravity

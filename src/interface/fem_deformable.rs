@@ -4,7 +4,7 @@ use web_sys::js_sys::Uint32Array;
 
 use crate::{
     collision::{halfspace::HalfSpace, mesh::read_mesh},
-    fem_deformable::FEMDeformable,
+    fem::fem_deformable::FEMDeformable,
     types::{Float, FloatArray},
 };
 

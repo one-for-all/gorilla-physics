@@ -10,7 +10,7 @@ pub mod control;
 pub mod double_pendulum;
 pub mod dynamics;
 pub mod energy;
-pub mod fem_deformable;
+pub mod fem;
 pub mod fluid;
 pub mod inertia;
 pub mod integrators;
