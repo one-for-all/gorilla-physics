@@ -16,7 +16,7 @@ use crate::util::read_file;
 use crate::GRAVITY;
 
 #[cfg(any(feature = "gpu", rust_analyzer))]
-use crate::gpu::{
+use crate::fem::gpu::{
     async_initialize_gpu, compute_dH, setup_compute_dH_pipeline, Matrix3x3, WgpuContext,
 };
 

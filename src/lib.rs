@@ -31,9 +31,6 @@ pub mod plot;
 #[cfg(any(target_arch = "wasm32", rust_analyzer))]
 pub mod interface;
 
-#[cfg(any(feature = "gpu", rust_analyzer))]
-pub mod gpu;
-
 pub mod helpers;
 
 pub const GRAVITY: Float = 9.81;
