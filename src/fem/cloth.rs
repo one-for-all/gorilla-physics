@@ -92,7 +92,7 @@ impl Cloth {
         for i in 0..3 {
             for j in 0..3 {
                 let irow = 3 * i;
-                let icol = 3 * j;
+                let icol = i + 3 * j;
                 B.fixed_view_mut::<3, 1>(irow, icol)
                     .copy_from(&D.row(j).transpose());
             }
