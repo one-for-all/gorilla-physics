@@ -1,4 +1,5 @@
 import {
+  InterfaceCloth,
   InterfaceFEMDeformable,
   InterfaceFluid2D,
   InterfaceMassSpringDeformable,
@@ -20,6 +21,7 @@ export class Simulator {
   massSpringDeformable: InterfaceMassSpringDeformable;
   femDeformable: InterfaceFEMDeformable;
   fluid2D: InterfaceFluid2D;
+  cloth: InterfaceCloth;
 
   fluid2DMesh: THREE.InstancedMesh;
 
@@ -44,6 +46,7 @@ export class Simulator {
     this.femDeformable = null;
     this.fluid2D = null;
     this.fluid2DMesh = null;
+    this.cloth = null;
 
     this.graphics = new Graphics();
     this.meshes = new Map();
@@ -983,11 +986,12 @@ export class Simulator {
     // This results in inconsistent frame refresh rate. Make it consistent.
     let slow_motion_factor = 1; // create slow motion effect to better see the details of motion
     if (timestamp - this.time >= slow_motion_factor * 1000 * dt) {
-      let qs = this.simulator.step(dt, control_input as Float64Array);
+      // let qs = this.simulator.step(dt, control_input as Float64Array);
 
-      let poses = this.simulator.poses();
-      // this.updateCube(poses);
-      this.updateBiped(poses);
+      // let poses = this.simulator.poses();
+      // this.updateBiped(poses);
+      this.cloth.step(dt);
+      this.updateCloth();
 
       this.time = timestamp;
     }

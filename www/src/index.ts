@@ -11,10 +11,12 @@ import {
   createLeg,
   createLegFromFoot,
   createCube,
+  createCloth,
 } from "gorilla-physics";
 import { Simulator } from "./Simulator";
 import "./biped";
 import "./cube";
+import "./cloth";
 import { FloatArray } from "./type";
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader";
 import { Color, EquirectangularReflectionMapping } from "three";
@@ -43,28 +45,31 @@ import("gorilla-physics").then((gorilla) => {
   // });
 
   let radius = 0.1;
-  createBiped().then((state) => {
-    state.addHalfSpace(normal as Float64Array, h_ground);
+  createCloth().then((state) => {
+    // state.addHalfSpace(normal as Float64Array, h_ground);
 
     // let controller = gorilla.createNullController();
     // let controller = gorilla.createLegController();
-    let controller = gorilla.createBipedController();
+    // let controller = gorilla.createBipedController();
     // let controller = gorilla.createPusherController();
     // let controller = gorilla.createBalancingBotController();
     // let controller = gorilla.createFourBarLinkageController();
     // let controller = gorilla.createFourBarLinkageWithBaseController();
 
     // let controller = gorilla.createNavbotController(1.0 / 600.0);
-    let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
+    // let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
+    let interfaceSimulator = null;
     let simulator = new Simulator(interfaceSimulator);
+    simulator.addCloth(state);
+
     // simulator.addCube(0.1);
     // simulator.addLeg();
-    simulator.addBiped();
+    // simulator.addBiped();
 
-    let poses = simulator.simulator.poses();
+    // let poses = simulator.simulator.poses();
     // simulator.updateCube(poses);
     // simulator.updateLeg(poses);
-    simulator.updateBiped(poses);
+    // simulator.updateBiped(poses);
 
     // simulator.addSphere("sphere1", 0xff0000, radius);
     // simulator.addSphere("sphere2", 0x00ff00, radius);
@@ -81,7 +86,7 @@ import("gorilla-physics").then((gorilla) => {
     // let wheel_radius = 0.037 / 2.0;
     // simulator.addSphere("wheel_left", 0x00ff00, wheel_radius);
     // simulator.addSphere("wheel_right", 0x00ff00, wheel_radius);
-    simulator.addPlane(normal, h_ground, 10);
+    // simulator.addPlane(normal, h_ground, 10);
 
     // simulator.addFluid2D(state);
 
