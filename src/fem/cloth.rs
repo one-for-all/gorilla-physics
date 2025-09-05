@@ -2,7 +2,7 @@ use na::{
     vector, DMatrix, DVector, Matrix2, Matrix3, Matrix3x2, Matrix3x4, Matrix4x3, Vector2, Vector3,
 };
 
-use crate::{flog, types::Float, util::skew_symmetric};
+use crate::{flog, types::Float, util::skew_symmetric, GRAVITY};
 
 pub struct Cloth {
     pub vertices: Vec<Vector3<Float>>,
@@ -106,7 +106,7 @@ impl Cloth {
         }
 
         let dn_dn_tilda: Matrix3<Float> =
-            1. / (n_tilda.norm()) * (Matrix3::identity() - n * n.transpose());
+            1. / n_tilda.norm() * (Matrix3::identity() - n * n.transpose());
         let dn_tilda_ddx2 = skew_symmetric(&dx1_x0);
         let mut ddx2_dq = DMatrix::<Float>::zeros(3, 9);
         ddx2_dq
@@ -135,44 +135,47 @@ impl Cloth {
         }
 
         // TODO: use area
-        let mut dV_dq: DVector<Float> = dpsi_dF_flatten.tr_mul(&dF_dq).transpose();
+        let dV_dq: DVector<Float> = dpsi_dF_flatten.tr_mul(&dF_dq).transpose();
+
+        let mut gravity_force = DVector::zeros(self.q.len());
+        for i in 0..self.vertices.len() {
+            let index = 3 * i + 2;
+            gravity_force[index] += -GRAVITY;
+        }
+
+        let mut total_force = -&dV_dq + &gravity_force;
 
         // Filter out node's force, to simulate fixed node
-        for i in 0..3 {
-            dV_dq[i] = 0.;
+        for i in 0..6 {
+            total_force[i] = 0.;
         }
 
         // TODO: use mass
-        self.qdot += -dV_dq * dt;
+        self.qdot += total_force * dt;
         self.q += &self.qdot * dt;
     }
 }
 
 #[cfg(test)]
 mod cloth_tests {
-    use na::{vector, Vector3};
+    use na::{vector, DVector, Vector3};
 
-    use crate::fem::cloth::Cloth;
+    use crate::{assert_vec_close, fem::cloth::Cloth, types::Float};
 
+    // TODO: Account for fixed point
     #[test]
     fn minimal_cloth_test() {
         // Arrange
         let vertices = vec![
             vector![0., 0., 0.],
             vector![1., 0., 0.],
-            vector![0., 1., 0.],
-            // vector![1., 1., 0.],
+            vector![0., 0., -1.],
         ];
-        let triangles = vec![
-            vec![0, 1, 2],
-            // vec![1, 3, 2]
-        ];
-        let mut cloth = Cloth::new(vertices, triangles);
-        cloth.q[0] = 1e-3;
-        // cloth.q[2] = 1e-3;
+        let triangles = vec![vec![0, 1, 2]];
+        let mut cloth = Cloth::new(vertices.clone(), triangles);
 
         // Act
-        let final_time = 10.0;
+        let final_time = 1.0;
         let dt = 1e-3;
         let num_steps = (final_time / dt) as usize;
         for _s in 0..num_steps {
@@ -180,7 +183,16 @@ mod cloth_tests {
         }
 
         // Assert
-        println!("q: {}", cloth.q);
-        println!("qdot: {}", cloth.qdot);
+        let q = &cloth.q;
+        assert_eq!(q.fixed_rows::<3>(0), vertices[0]);
+        assert_eq!(q.fixed_rows::<3>(3), vertices[1]);
+        assert_ne!(q.fixed_rows::<3>(6), vertices[2]);
+        assert_vec_close!(q.fixed_rows::<3>(6), vertices[2], 1e-3);
+
+        let qdot = &cloth.qdot;
+        assert_eq!(qdot.fixed_rows::<3>(0), Vector3::zeros());
+        assert_eq!(qdot.fixed_rows::<3>(3), Vector3::zeros());
+        assert_ne!(qdot.fixed_rows::<3>(6), Vector3::zeros());
+        assert_vec_close!(qdot.fixed_rows::<3>(6), Vector3::<Float>::zeros(), 1e-2);
     }
 }
