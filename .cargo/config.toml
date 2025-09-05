@@ -1,5 +1,5 @@
 [target.wasm32-unknown-unknown]
 rustflags = ['--cfg', 'getrandom_backend="wasm_js"']
 
-[build]
+[check]
 rustflags = ["--cfg", "rust_analyzer"]
