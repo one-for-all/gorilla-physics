@@ -135,7 +135,12 @@ impl Cloth {
         }
 
         // TODO: use area
-        let dV_dq: DVector<Float> = dpsi_dF_flatten.tr_mul(&dF_dq).transpose();
+        let mut dV_dq: DVector<Float> = dpsi_dF_flatten.tr_mul(&dF_dq).transpose();
+
+        // Filter out node's force, to simulate fixed node
+        for i in 0..3 {
+            dV_dq[i] = 0.;
+        }
 
         // TODO: use mass
         self.qdot += -dV_dq * dt;
@@ -163,7 +168,8 @@ mod cloth_tests {
             // vec![1, 3, 2]
         ];
         let mut cloth = Cloth::new(vertices, triangles);
-        cloth.q[0] = 1e-4;
+        cloth.q[0] = 1e-3;
+        // cloth.q[2] = 1e-3;
 
         // Act
         let final_time = 10.0;
