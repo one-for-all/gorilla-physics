@@ -5,10 +5,9 @@ use web_sys::js_sys::Uint32Array;
 use crate::{
     collision::{halfspace::HalfSpace, mesh::read_mesh},
     fem::fem_deformable::FEMDeformable,
+    interface::util::read_web_file,
     types::{Float, FloatArray},
 };
-
-use super::util::read_web_file;
 
 #[wasm_bindgen]
 pub struct InterfaceFEMDeformable {

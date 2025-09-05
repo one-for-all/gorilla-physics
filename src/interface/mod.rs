@@ -45,7 +45,7 @@ pub mod cart_pole;
 pub mod controller;
 pub mod cube;
 pub mod double_pendulum;
-pub mod fem_deformable;
+pub mod fem;
 pub mod fluid;
 pub mod hopper;
 pub mod kinematic_loop;
