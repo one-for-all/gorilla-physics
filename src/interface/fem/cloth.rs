@@ -51,6 +51,8 @@ pub async fn createCloth() -> InterfaceCloth {
         vector![1., 0., 0.],
         vector![0., 1., 0.],
         vector![1., 1., 0.],
+        // vector![0., 0., -1.],
+        // vector![1., 0., -1.],
     ];
     #[rustfmt::skip]
     let triangles = vec![

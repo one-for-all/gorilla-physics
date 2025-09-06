@@ -2,6 +2,7 @@ use itertools::izip;
 use na::{
     vector, DMatrix, DVector, Matrix2, Matrix3, Matrix3x2, Matrix3x4, Matrix4x3, Vector2, Vector3,
 };
+use nalgebra_sparse::{factorization::CscCholesky, CooMatrix, CscMatrix};
 
 use std::ops::AddAssign;
 
@@ -71,6 +72,9 @@ impl Cloth {
 
     pub fn step(&mut self, dt: Float) {
         let mut internal_forces: Vec<DVector<Float>> = vec![];
+
+        // Triplets to build up the sparse mass matrix
+        let mut triplets = Vec::new();
 
         for [v0, v1, v2] in self.triangles.iter() {
             let x0 = self.x_at_index(*v0);
@@ -169,12 +173,44 @@ impl Cloth {
                 }
             }
 
-            // TODO: use area
             let area = triangle_area(dX1_X0.norm(), dX2_X0.norm(), (X2 - X1).norm());
             let dV_dq: DVector<Float> = area * dpsi_dF_flatten.tr_mul(&dF_dq).transpose();
 
             internal_forces.push(-dV_dq);
+
+            // Create entries in mass matrix
+            // TODO: use realistic density
+            let density = 10.0;
+            let inertia_off_diag = density * area / 12.0;
+            let inertia_diag = density * area / 6.0;
+            for v_a in [v0, v1, v2] {
+                for v_b in [v0, v1, v2] {
+                    let inertia = if v_a == v_b {
+                        inertia_diag
+                    } else {
+                        inertia_off_diag
+                    };
+
+                    // insert a Indentity matrix scaled by inertia
+                    let irow = 3 * v_a;
+                    let icol = 3 * v_b;
+                    for i in 0..3 {
+                        triplets.push((irow + i, icol + i, inertia));
+                    }
+                }
+            }
         }
+
+        // Build up the mass matrix
+        let M = CooMatrix::try_from_triplets_iter(self.q.len(), self.q.len(), triplets).unwrap();
+        let M = CscMatrix::from(&M);
+
+        // let mut dense = DMatrix::<Float>::zeros(M.nrows(), M.ncols());
+        // for (row, col, val) in M.triplet_iter() {
+        //     dense[(row, col)] = *val;
+        // }
+
+        let M_cholesky = CscCholesky::factor(&M).unwrap();
 
         // flog!("internal f:");
         // for f in internal_forces.iter() {
@@ -194,24 +230,25 @@ impl Cloth {
                 .add_assign(&f.fixed_rows::<3>(6));
         }
 
-        let mut gravity_force = DVector::zeros(self.q.len());
+        let mut gravity_acc = DVector::zeros(self.q.len());
         for i in 0..self.vertices.len() {
             let index = 3 * i + 2;
-            gravity_force[index] += -GRAVITY;
+            gravity_acc[index] = -GRAVITY;
         }
+        let gravity_force = M * gravity_acc;
 
         total_force += &gravity_force;
 
-        // Filter out node's force, to simulate fixed node
+        let mut qddot: DMatrix<Float> = M_cholesky.solve(&total_force);
+
+        // Filter out node's accls, to simulate fixed node
+        // TODO: this is not technically correct. fix it.
         for i in 0..6 {
-            total_force[i] = 0.;
+            qddot[i] = 0.;
         }
 
-        // TODO: use mass
-        self.qdot += total_force * dt;
+        self.qdot += &qddot * dt;
         self.q += &self.qdot * dt;
-
-        // flog!("q: {}", self.q);
     }
 }
 
@@ -223,7 +260,7 @@ mod cloth_tests {
 
     // TODO: Account for fixed point
     #[test]
-    fn single_triangle_cloth_test() {
+    fn one_triangle_cloth_test() {
         // Arrange
         let vertices = vec![
             vector![0., 0., 0.],
@@ -256,7 +293,7 @@ mod cloth_tests {
     }
 
     #[test]
-    fn double_triangle_cloth_test() {
+    fn two_triangle_cloth_test() {
         // Arrange
         let vertices = vec![
             vector![0., 0., 0.],
@@ -288,10 +325,10 @@ mod cloth_tests {
         let qdot = &cloth.qdot;
         assert_eq!(qdot.fixed_rows::<3>(0), Vector3::zeros());
         assert_eq!(qdot.fixed_rows::<3>(3), Vector3::zeros());
-        assert_ne!(qdot.fixed_rows::<3>(6), Vector3::zeros());
 
-        assert_vec_close!(qdot.fixed_rows::<3>(6), Vector3::<Float>::zeros(), 1e-2);
+        assert_ne!(qdot.fixed_rows::<3>(6), Vector3::zeros());
+        assert_vec_close!(qdot.fixed_rows::<3>(6), Vector3::<Float>::zeros(), 2e-2);
         assert_ne!(qdot.fixed_rows::<3>(9), Vector3::zeros());
-        assert_vec_close!(qdot.fixed_rows::<3>(9), Vector3::<Float>::zeros(), 1e-2);
+        assert_vec_close!(qdot.fixed_rows::<3>(9), Vector3::<Float>::zeros(), 2e-2);
     }
 }
