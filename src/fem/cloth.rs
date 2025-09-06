@@ -170,7 +170,8 @@ impl Cloth {
             }
 
             // TODO: use area
-            let dV_dq: DVector<Float> = dpsi_dF_flatten.tr_mul(&dF_dq).transpose();
+            let area = triangle_area(dX1_X0.norm(), dX2_X0.norm(), (X2 - X1).norm());
+            let dV_dq: DVector<Float> = area * dpsi_dF_flatten.tr_mul(&dF_dq).transpose();
 
             internal_forces.push(-dV_dq);
         }

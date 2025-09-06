@@ -59,8 +59,8 @@ pub async fn createCloth() -> InterfaceCloth {
         // [0, 2, 1]
     ];
     let mut cloth = Cloth::new(vertices, triangles);
-    // cloth.q[0] = -1e-2;
-    // cloth.q[2] = 1e-2;
+    // cloth.q[2 * 3 + 2] = -1.01;
+    // cloth.q[3 * 3 + 2] = -1.01;
 
     InterfaceCloth { inner: cloth }
 }
