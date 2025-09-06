@@ -7,6 +7,38 @@ use std::ops::AddAssign;
 
 use crate::{flog, types::Float, util::skew_symmetric, GRAVITY};
 
+/// Compute the area of a triangle, given the lengths of three sides
+/// Ref: Heron's formula. https://en.wikipedia.org/wiki/Heron%27s_formula
+fn triangle_area(a: Float, b: Float, c: Float) -> Float {
+    let s = (a + b + c) / 2.;
+    return (s * (s - a) * (s - b) * (s - c)).sqrt();
+}
+
+#[cfg(test)]
+mod triangle_area_tests {
+    use crate::{assert_close, fem::cloth::triangle_area, types::Float};
+
+    #[test]
+    fn triangle_area_test1() {
+        let a = 1.;
+        let b = 1.;
+        let c = (2. as Float).sqrt();
+        let area = 0.5;
+
+        assert_close!(triangle_area(a, b, c), area, 1e-8);
+    }
+
+    #[test]
+    fn triangle_area_test2() {
+        let a = 1.;
+        let b = 1.;
+        let c = 1.;
+        let area = (3. as Float).sqrt() / 4.;
+
+        assert_close!(triangle_area(a, b, c), area, 1e-8);
+    }
+}
+
 pub struct Cloth {
     pub vertices: Vec<Vector3<Float>>,
     pub triangles: Vec<[usize; 3]>,
