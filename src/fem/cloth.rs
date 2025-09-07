@@ -237,12 +237,21 @@ impl Cloth {
 
         total_force += &gravity_force;
 
+        let m = 2;
+        let fixed_nodes = Vec::from_iter(0..m);
+
         // Create free node selection matrix
-        let m = 6;
-        let dof = self.q.len() - m * 3;
+        let dof = self.q.len() - fixed_nodes.len() * 3;
         let mut P = CooMatrix::zeros(dof, self.q.len());
-        for (i, j) in izip!(0..dof, m * 3..self.q.len()) {
-            P.push(i, j, 1.);
+        let mut irow = 0;
+        for v in 0..self.vertices.len() {
+            if !fixed_nodes.contains(&v) {
+                let icol = 3 * v;
+                P.push(irow, icol, 1.);
+                P.push(irow + 1, icol + 1, 1.);
+                P.push(irow + 2, icol + 2, 1.);
+                irow += 3;
+            }
         }
         let P = CscMatrix::from(&P);
 
@@ -265,7 +274,7 @@ impl Cloth {
 mod cloth_tests {
     use na::{vector, DVector, Vector3};
 
-    use crate::{assert_vec_close, fem::cloth::Cloth, types::Float};
+    use crate::{assert_vec_close, fem::cloth::Cloth, plot::plot, types::Float};
 
     // TODO: Account for fixed point
     #[test]
@@ -336,8 +345,8 @@ mod cloth_tests {
         assert_eq!(qdot.fixed_rows::<3>(3), Vector3::zeros());
 
         assert_ne!(qdot.fixed_rows::<3>(6), Vector3::zeros());
-        assert_vec_close!(qdot.fixed_rows::<3>(6), Vector3::<Float>::zeros(), 2e-2);
+        assert_vec_close!(qdot.fixed_rows::<3>(6), Vector3::<Float>::zeros(), 6e-2);
         assert_ne!(qdot.fixed_rows::<3>(9), Vector3::zeros());
-        assert_vec_close!(qdot.fixed_rows::<3>(9), Vector3::<Float>::zeros(), 2e-2);
+        assert_vec_close!(qdot.fixed_rows::<3>(9), Vector3::<Float>::zeros(), 6e-2);
     }
 }
