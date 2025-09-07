@@ -1,10 +1,11 @@
-use na::{vector, DVector};
+use na::{vector, DVector, UnitQuaternion, Vector, Vector3};
 use wasm_bindgen::prelude::wasm_bindgen;
 use web_sys::js_sys::{Float32Array, Uint32Array};
 
 use crate::{
     fem::cloth::Cloth,
     types::{Float, FloatArray},
+    PI,
 };
 
 #[wasm_bindgen]
@@ -51,13 +52,22 @@ pub async fn createCloth() -> InterfaceCloth {
         vector![1., 0., 0.],
         vector![0., 1., 0.],
         vector![1., 1., 0.],
+        vector![0., 2., 0.],
+        vector![1., 2., 0.],
         // vector![0., 0., -1.],
         // vector![1., 0., -1.],
     ];
+    let vertices: Vec<Vector3<Float>> = vertices
+        .iter()
+        .map(|v| UnitQuaternion::from_axis_angle(&Vector::x_axis(), -PI / 4.) * v)
+        .collect();
+
     #[rustfmt::skip]
     let triangles = vec![
         [0, 1, 2],
         [1, 3, 2],
+        [2, 3, 4],
+        [3, 5, 4]
         // [0, 2, 1]
     ];
     let mut cloth = Cloth::new(vertices, triangles);

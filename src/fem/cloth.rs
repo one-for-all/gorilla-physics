@@ -210,8 +210,6 @@ impl Cloth {
         //     dense[(row, col)] = *val;
         // }
 
-        let M_cholesky = CscCholesky::factor(&M).unwrap();
-
         // flog!("internal f:");
         // for f in internal_forces.iter() {
         //     flog!("{}", f);
@@ -235,17 +233,27 @@ impl Cloth {
             let index = 3 * i + 2;
             gravity_acc[index] = -GRAVITY;
         }
-        let gravity_force = M * gravity_acc;
+        let gravity_force = &M * gravity_acc;
 
         total_force += &gravity_force;
 
-        let mut qddot: DMatrix<Float> = M_cholesky.solve(&total_force);
-
-        // Filter out node's accls, to simulate fixed node
-        // TODO: this is not technically correct. fix it.
-        for i in 0..6 {
-            qddot[i] = 0.;
+        // Create free node selection matrix
+        let dof = self.q.len() - 6;
+        let mut P = CooMatrix::zeros(dof, self.q.len());
+        for (i, j) in izip!(0..dof, 6..self.q.len()) {
+            P.push(i, j, 1.);
         }
+        let P = CscMatrix::from(&P);
+
+        // Modified M and force to take into account of fixed nodes
+        let M = &P * &M * &P.transpose();
+        let total_force = &P * total_force;
+
+        let M_cholesky = CscCholesky::factor(&M).unwrap();
+        let qddot: DMatrix<Float> = M_cholesky.solve(&total_force);
+
+        // Transform qddot back to origial generalized coordinates space
+        let qddot = &P.transpose() * &qddot;
 
         self.qdot += &qddot * dt;
         self.q += &self.qdot * dt;
