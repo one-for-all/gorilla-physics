@@ -126,8 +126,7 @@ impl Cloth {
 
         // Build up the mass matrix
         let M = CooMatrix::try_from_triplets_iter(self.q.len(), self.q.len(), triplets).unwrap();
-        let M = CscMatrix::from(&M);
-        self.M = M;
+        self.M = CscMatrix::from(&M);
     }
 
     /// Fix the positions of the input vertices
