@@ -47,10 +47,14 @@ pub struct Cloth {
     pub q: DVector<Float>,
     pub qdot: DVector<Float>,
 
-    areas: Vec<Float>,              // area of each triangle
-    M: CscMatrix<Float>,            // mass matrix
-    M_cholesky: CscCholesky<Float>, // Cholesky factorization of mass matrix
-    P: Option<CscMatrix<Float>>,    // Free vertex selection matrix, of size (dof-fixed_dof, dof)
+    areas: Vec<Float>,                      // area of each triangle
+    M: CscMatrix<Float>,                    // mass matrix
+    M_cholesky: CscCholesky<Float>,         // Cholesky factorization of mass matrix
+    F_right_factors: Vec<Matrix4x3<Float>>, // the right factor of deformation matrix F
+    Bs: Vec<DMatrix<Float>>,
+    Ns_stacked: Vec<DMatrix<Float>>,
+
+    P: Option<CscMatrix<Float>>, // Free vertex selection matrix, of size (dof-fixed_dof, dof)
 }
 
 impl Cloth {
@@ -72,10 +76,14 @@ impl Cloth {
             areas: vec![],
             M: M_placeholder,
             M_cholesky,
+            F_right_factors: vec![],
+            Bs: vec![],
+            Ns_stacked: vec![],
             P: None,
         };
         cloth.compute_triangle_areas();
         cloth.compute_mass_matrix();
+        cloth.compute_deformation_constants();
         cloth
     }
 
@@ -134,6 +142,58 @@ impl Cloth {
         self.M_cholesky = CscCholesky::factor(&self.M).unwrap();
     }
 
+    /// Pre-compute and store several constant matrices related to deformation.
+    /// 1. the right factor of the deformation matrix F
+    ///     where F = dx/dX = left * right
+    /// 2. B, D matrix rows stacked across
+    /// 3. N_stacked, which is normal N stacked diagonally into 3 columns
+    fn compute_deformation_constants(&mut self) {
+        for [v0, v1, v2] in self.triangles.iter() {
+            let X0 = self.vertices[*v0];
+            let X1 = self.vertices[*v1];
+            let X2 = self.vertices[*v2];
+            let dX1_X0 = X1 - X0;
+            let dX2_X0 = X2 - X0;
+            let N = (dX1_X0).cross(&dX2_X0).normalize();
+
+            let T = Matrix3x2::from_columns(&[dX1_X0, dX2_X0]);
+            let T_tr_T = T.tr_mul(&T);
+            let tmp = T_tr_T.try_inverse().unwrap() * T.transpose();
+            let mut D: Matrix3<Float> = Matrix3::zeros();
+            let ones = Vector2::repeat(1.0);
+            D.fixed_view_mut::<1, 3>(0, 0)
+                .copy_from(&-ones.tr_mul(&tmp));
+            D.fixed_view_mut::<2, 3>(1, 0).copy_from(&tmp);
+
+            // compute F right factor
+            let mut right = Matrix4x3::zeros();
+            right.fixed_view_mut::<3, 3>(0, 0).copy_from(&D);
+            right.fixed_view_mut::<1, 3>(3, 0).copy_from(&N.transpose());
+            self.F_right_factors.push(right);
+
+            // compute B
+            let mut B = DMatrix::zeros(9, 9);
+            for i in 0..3 {
+                for j in 0..3 {
+                    let irow = 3 * i;
+                    let icol = i + 3 * j;
+                    B.fixed_view_mut::<3, 1>(irow, icol)
+                        .copy_from(&D.row(j).transpose());
+                }
+            }
+            self.Bs.push(B);
+
+            // compute N_stacked
+            let mut N_stacked = DMatrix::zeros(9, 3);
+            for i in 0..3 {
+                let irow = i * 3;
+                let icol = i;
+                N_stacked.fixed_view_mut::<3, 1>(irow, icol).copy_from(&N);
+            }
+            self.Ns_stacked.push(N_stacked);
+        }
+    }
+
     /// Fix the positions of the input vertices
     pub fn fix_vertices(&mut self, fixed_vertices: Vec<usize>) {
         // Create free vertex selection matrix
@@ -158,7 +218,13 @@ impl Cloth {
     pub fn step(&mut self, dt: Float) {
         let mut internal_forces: Vec<DVector<Float>> = vec![];
 
-        for ([v0, v1, v2], area) in izip!(self.triangles.iter(), self.areas.iter()) {
+        for ([v0, v1, v2], area, F_right_factor, B, N_stacked) in izip!(
+            self.triangles.iter(),
+            self.areas.iter(),
+            self.F_right_factors.iter(),
+            self.Bs.iter(),
+            self.Ns_stacked.iter(),
+        ) {
             let x0 = self.x_at_index(*v0);
             let x1 = self.x_at_index(*v1);
             let x2 = self.x_at_index(*v2);
@@ -169,27 +235,7 @@ impl Cloth {
 
             let left = Matrix3x4::from_columns(&[x0, x1, x2, n]);
 
-            let X0 = self.vertices[*v0];
-            let X1 = self.vertices[*v1];
-            let X2 = self.vertices[*v2];
-            let dX1_X0 = X1 - X0;
-            let dX2_X0 = X2 - X0;
-            let N = (dX1_X0).cross(&dX2_X0).normalize();
-
-            let T = Matrix3x2::from_columns(&[dX1_X0, dX2_X0]);
-            let T_tr_T = T.tr_mul(&T);
-            let tmp = T_tr_T.try_inverse().unwrap() * T.transpose();
-            let mut D: Matrix3<Float> = Matrix3::zeros();
-            let ones = Vector2::repeat(1.0);
-            D.fixed_view_mut::<1, 3>(0, 0)
-                .copy_from(&-ones.tr_mul(&tmp));
-            D.fixed_view_mut::<2, 3>(1, 0).copy_from(&tmp);
-
-            let mut right = Matrix4x3::zeros();
-            right.fixed_view_mut::<3, 3>(0, 0).copy_from(&D);
-            right.fixed_view_mut::<1, 3>(3, 0).copy_from(&N.transpose());
-
-            let F: Matrix3<Float> = left * right;
+            let F: Matrix3<Float> = left * F_right_factor;
             let svd = F.svd(true, true);
             let U = svd.u.unwrap();
             let V_T = svd.v_t.unwrap();
@@ -209,23 +255,6 @@ impl Cloth {
             let dpsi_dF = U * dpsi_dS * V_T;
 
             // Next, compute dF_dq
-            let mut B = DMatrix::zeros(9, 9);
-            for i in 0..3 {
-                for j in 0..3 {
-                    let irow = 3 * i;
-                    let icol = i + 3 * j;
-                    B.fixed_view_mut::<3, 1>(irow, icol)
-                        .copy_from(&D.row(j).transpose());
-                }
-            }
-
-            let mut N_ = DMatrix::zeros(9, 3);
-            for i in 0..3 {
-                let irow = i * 3;
-                let icol = i;
-                N_.fixed_view_mut::<3, 1>(irow, icol).copy_from(&N);
-            }
-
             let dn_dn_tilda: Matrix3<Float> =
                 1. / n_tilda.norm() * (Matrix3::identity() - n * n.transpose());
             let dn_tilda_ddx2 = skew_symmetric(&dx1_x0);
@@ -246,7 +275,7 @@ impl Cloth {
                 .copy_from(&Matrix3::identity());
             let dn_tilda_dq = dn_tilda_ddx2 * ddx2_dq + dn_tilda_ddx1 * ddx1_dq;
             let dn_dq = dn_dn_tilda * dn_tilda_dq;
-            let dF_dq = B + N_ * dn_dq;
+            let dF_dq = B + N_stacked * dn_dq;
 
             let mut dpsi_dF_flatten = DVector::<Float>::zeros(9);
             for i in 0..3 {
