@@ -47,6 +47,7 @@ pub struct Cloth {
     pub q: DVector<Float>,
     pub qdot: DVector<Float>,
 
+    areas: Vec<Float>,           // area of each triangle
     P: Option<CscMatrix<Float>>, // Free vertex selection matrix, of size (dof-fixed_dof, dof)
 }
 
@@ -59,18 +60,36 @@ impl Cloth {
         );
         let qdot = DVector::zeros(n_vertices * 3);
 
-        Self {
+        let mut cloth = Self {
             vertices,
             triangles,
             q,
             qdot,
+            areas: vec![],
             P: None,
-        }
+        };
+        cloth.compute_triangle_areas();
+        cloth
     }
 
     fn x_at_index(&self, index: usize) -> Vector3<Float> {
         let i = index * 3;
         Vector3::new(self.q[i], self.q[i + 1], self.q[i + 2])
+    }
+
+    /// Pre-compute and store the areas of each triangle
+    fn compute_triangle_areas(&mut self) {
+        assert!(self.areas.is_empty());
+        for [v0, v1, v2] in self.triangles.iter() {
+            let X0 = self.vertices[*v0];
+            let X1 = self.vertices[*v1];
+            let X2 = self.vertices[*v2];
+            let dX1_X0 = X1 - X0;
+            let dX2_X0 = X2 - X0;
+            let dX2_X1 = X2 - X1;
+            let area = triangle_area(dX1_X0.norm(), dX2_X0.norm(), dX2_X1.norm());
+            self.areas.push(area);
+        }
     }
 
     /// Fix the positions of the input vertices
@@ -98,7 +117,7 @@ impl Cloth {
         // Triplets to build up the sparse mass matrix
         let mut triplets = Vec::new();
 
-        for [v0, v1, v2] in self.triangles.iter() {
+        for ([v0, v1, v2], area) in izip!(self.triangles.iter(), self.areas.iter()) {
             let x0 = self.x_at_index(*v0);
             let x1 = self.x_at_index(*v1);
             let x2 = self.x_at_index(*v2);
@@ -195,8 +214,7 @@ impl Cloth {
                 }
             }
 
-            let area = triangle_area(dX1_X0.norm(), dX2_X0.norm(), (X2 - X1).norm());
-            let dV_dq: DVector<Float> = area * dpsi_dF_flatten.tr_mul(&dF_dq).transpose();
+            let dV_dq: DVector<Float> = *area * dpsi_dF_flatten.tr_mul(&dF_dq).transpose();
 
             internal_forces.push(-dV_dq);
 
@@ -283,11 +301,9 @@ mod cloth_tests {
     use na::{vector, DVector, UnitQuaternion, Vector3};
 
     use crate::{
-        assert_vec_close, builders::cloth_builder::build_cloth, fem::cloth::Cloth, plot::plot,
-        types::Float, PI,
+        assert_vec_close, builders::cloth_builder::build_cloth, fem::cloth::Cloth, types::Float, PI,
     };
 
-    // TODO: Account for fixed point
     #[test]
     fn one_triangle_cloth_test() {
         // Arrange
