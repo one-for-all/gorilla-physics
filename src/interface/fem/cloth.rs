@@ -3,6 +3,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use web_sys::js_sys::{Float32Array, Uint32Array};
 
 use crate::{
+    builders::cloth_builder::build_cloth,
     fem::cloth::Cloth,
     types::{Float, FloatArray},
     PI,
@@ -38,7 +39,7 @@ impl InterfaceCloth {
     }
 
     pub fn step(&mut self, dt: Float) {
-        let n_substep = 10;
+        let n_substep = 20;
         for _ in 0..n_substep {
             self.inner.step(dt / (n_substep as Float));
         }
@@ -73,6 +74,13 @@ pub async fn createCloth() -> InterfaceCloth {
     let mut cloth = Cloth::new(vertices, triangles);
     // cloth.q[2 * 3 + 2] = -1.01;
     // cloth.q[3 * 3 + 2] = -1.01;
+
+    let mut cloth = build_cloth(
+        6,
+        6,
+        0.5,
+        UnitQuaternion::from_axis_angle(&Vector::x_axis(), -PI / 4.),
+    );
 
     InterfaceCloth { inner: cloth }
 }

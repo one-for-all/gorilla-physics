@@ -238,9 +238,10 @@ impl Cloth {
         total_force += &gravity_force;
 
         // Create free node selection matrix
-        let dof = self.q.len() - 6;
+        let m = 6;
+        let dof = self.q.len() - m * 3;
         let mut P = CooMatrix::zeros(dof, self.q.len());
-        for (i, j) in izip!(0..dof, 6..self.q.len()) {
+        for (i, j) in izip!(0..dof, m * 3..self.q.len()) {
             P.push(i, j, 1.);
         }
         let P = CscMatrix::from(&P);
