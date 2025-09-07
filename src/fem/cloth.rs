@@ -47,9 +47,10 @@ pub struct Cloth {
     pub q: DVector<Float>,
     pub qdot: DVector<Float>,
 
-    areas: Vec<Float>,           // area of each triangle
-    M: CscMatrix<Float>,         // mass matrix
-    P: Option<CscMatrix<Float>>, // Free vertex selection matrix, of size (dof-fixed_dof, dof)
+    areas: Vec<Float>,              // area of each triangle
+    M: CscMatrix<Float>,            // mass matrix
+    M_cholesky: CscCholesky<Float>, // Cholesky factorization of mass matrix
+    P: Option<CscMatrix<Float>>,    // Free vertex selection matrix, of size (dof-fixed_dof, dof)
 }
 
 impl Cloth {
@@ -61,13 +62,16 @@ impl Cloth {
         );
         let qdot = DVector::zeros(n_vertices * 3);
 
+        let M_placeholder = CscMatrix::identity(1);
+        let M_cholesky = CscCholesky::factor(&M_placeholder).unwrap();
         let mut cloth = Self {
             vertices,
             triangles,
             q,
             qdot,
             areas: vec![],
-            M: CscMatrix::zeros(0, 0),
+            M: M_placeholder,
+            M_cholesky,
             P: None,
         };
         cloth.compute_triangle_areas();
@@ -127,6 +131,7 @@ impl Cloth {
         // Build up the mass matrix
         let M = CooMatrix::try_from_triplets_iter(self.q.len(), self.q.len(), triplets).unwrap();
         self.M = CscMatrix::from(&M);
+        self.M_cholesky = CscCholesky::factor(&self.M).unwrap();
     }
 
     /// Fix the positions of the input vertices
@@ -146,6 +151,7 @@ impl Cloth {
         }
         let P = CscMatrix::from(&P);
         self.M = &P * &self.M * P.transpose();
+        self.M_cholesky = CscCholesky::factor(&self.M).unwrap();
         self.P = Some(P);
     }
 
@@ -279,7 +285,6 @@ impl Cloth {
 
         // Modified M and force to take into account of fixed nodes
         if let Some(P) = &self.P {
-            // M = P * M * P.transpose();
             total_force = P * total_force;
         }
 
@@ -294,8 +299,7 @@ impl Cloth {
         let gravity_force = &self.M * gravity_acc;
         total_force += &gravity_force;
 
-        let M_cholesky = CscCholesky::factor(&self.M).unwrap();
-        let mut qddot: DMatrix<Float> = M_cholesky.solve(&total_force);
+        let mut qddot: DMatrix<Float> = self.M_cholesky.solve(&total_force);
 
         // Transform qddot back to origial generalized coordinates space
         if let Some(P) = &self.P {
