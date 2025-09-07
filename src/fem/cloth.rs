@@ -46,6 +46,8 @@ pub struct Cloth {
 
     pub q: DVector<Float>,
     pub qdot: DVector<Float>,
+
+    P: Option<CscMatrix<Float>>, // Free vertex selection matrix, of size (dof-fixed_dof, dof)
 }
 
 impl Cloth {
@@ -62,12 +64,32 @@ impl Cloth {
             triangles,
             q,
             qdot,
+            P: None,
         }
     }
 
     fn x_at_index(&self, index: usize) -> Vector3<Float> {
         let i = index * 3;
         Vector3::new(self.q[i], self.q[i + 1], self.q[i + 2])
+    }
+
+    /// Fix the positions of the input vertices
+    pub fn fix_vertices(&mut self, fixed_vertices: Vec<usize>) {
+        // Create free vertex selection matrix
+        let dof = self.q.len() - fixed_vertices.len() * 3;
+        let mut P = CooMatrix::zeros(dof, self.q.len());
+        let mut irow = 0;
+        for v in 0..self.vertices.len() {
+            if !fixed_vertices.contains(&v) {
+                let icol = 3 * v;
+                P.push(irow, icol, 1.);
+                P.push(irow + 1, icol + 1, 1.);
+                P.push(irow + 2, icol + 2, 1.);
+                irow += 3;
+            }
+        }
+        let P = CscMatrix::from(&P);
+        self.P = Some(P);
     }
 
     pub fn step(&mut self, dt: Float) {
@@ -203,7 +225,7 @@ impl Cloth {
 
         // Build up the mass matrix
         let M = CooMatrix::try_from_triplets_iter(self.q.len(), self.q.len(), triplets).unwrap();
-        let M = CscMatrix::from(&M);
+        let mut M = CscMatrix::from(&M);
 
         // let mut dense = DMatrix::<Float>::zeros(M.nrows(), M.ncols());
         // for (row, col, val) in M.triplet_iter() {
@@ -237,33 +259,19 @@ impl Cloth {
 
         total_force += &gravity_force;
 
-        let m = 2;
-        let fixed_nodes = Vec::from_iter(0..m);
-
-        // Create free node selection matrix
-        let dof = self.q.len() - fixed_nodes.len() * 3;
-        let mut P = CooMatrix::zeros(dof, self.q.len());
-        let mut irow = 0;
-        for v in 0..self.vertices.len() {
-            if !fixed_nodes.contains(&v) {
-                let icol = 3 * v;
-                P.push(irow, icol, 1.);
-                P.push(irow + 1, icol + 1, 1.);
-                P.push(irow + 2, icol + 2, 1.);
-                irow += 3;
-            }
-        }
-        let P = CscMatrix::from(&P);
-
         // Modified M and force to take into account of fixed nodes
-        let M = &P * &M * &P.transpose();
-        let total_force = &P * total_force;
+        if let Some(P) = &self.P {
+            M = P * &M * P.transpose();
+            total_force = P * total_force;
+        }
 
         let M_cholesky = CscCholesky::factor(&M).unwrap();
-        let qddot: DMatrix<Float> = M_cholesky.solve(&total_force);
+        let mut qddot: DMatrix<Float> = M_cholesky.solve(&total_force);
 
         // Transform qddot back to origial generalized coordinates space
-        let qddot = &P.transpose() * &qddot;
+        if let Some(P) = &self.P {
+            qddot = P.transpose() * &qddot;
+        }
 
         self.qdot += &qddot * dt;
         self.q += &self.qdot * dt;
@@ -287,6 +295,7 @@ mod cloth_tests {
         ];
         let triangles = vec![[0, 1, 2]];
         let mut cloth = Cloth::new(vertices.clone(), triangles);
+        cloth.fix_vertices(vec![0, 1]);
 
         // Act
         let final_time = 1.0;
@@ -321,6 +330,7 @@ mod cloth_tests {
         ];
         let triangles = vec![[0, 1, 2], [1, 3, 2]];
         let mut cloth = Cloth::new(vertices.clone(), triangles);
+        cloth.fix_vertices(vec![0, 1]);
 
         // Act
         let final_time = 1.0;

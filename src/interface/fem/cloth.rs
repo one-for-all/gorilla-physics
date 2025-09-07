@@ -75,12 +75,15 @@ pub async fn createCloth() -> InterfaceCloth {
     // cloth.q[2 * 3 + 2] = -1.01;
     // cloth.q[3 * 3 + 2] = -1.01;
 
+    let m = 6;
+    let n = 3;
     let mut cloth = build_cloth(
-        6,
-        6,
+        m,
+        n,
         0.5,
         UnitQuaternion::from_axis_angle(&Vector::x_axis(), -PI / 4.),
     );
+    cloth.fix_vertices(Vec::from_iter(0..m));
 
     InterfaceCloth { inner: cloth }
 }
