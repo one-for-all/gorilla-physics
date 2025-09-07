@@ -76,7 +76,7 @@ pub async fn createCloth() -> InterfaceCloth {
     // cloth.q[3 * 3 + 2] = -1.01;
 
     let m = 6;
-    let n = 3;
+    let n = 6;
     let mut cloth = build_cloth(
         m,
         n,

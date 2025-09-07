@@ -280,9 +280,12 @@ impl Cloth {
 
 #[cfg(test)]
 mod cloth_tests {
-    use na::{vector, DVector, Vector3};
+    use na::{vector, DVector, UnitQuaternion, Vector3};
 
-    use crate::{assert_vec_close, fem::cloth::Cloth, plot::plot, types::Float};
+    use crate::{
+        assert_vec_close, builders::cloth_builder::build_cloth, fem::cloth::Cloth, plot::plot,
+        types::Float, PI,
+    };
 
     // TODO: Account for fixed point
     #[test]
@@ -358,5 +361,37 @@ mod cloth_tests {
         assert_vec_close!(qdot.fixed_rows::<3>(6), Vector3::<Float>::zeros(), 6e-2);
         assert_ne!(qdot.fixed_rows::<3>(9), Vector3::zeros());
         assert_vec_close!(qdot.fixed_rows::<3>(9), Vector3::<Float>::zeros(), 6e-2);
+    }
+
+    #[test]
+    fn swing_cloth_test() {
+        // Arrange
+        let m = 6;
+        let n = 6;
+        let mut cloth = build_cloth(
+            m,
+            n,
+            0.5,
+            UnitQuaternion::from_axis_angle(&Vector3::x_axis(), -PI / 4.),
+        );
+        cloth.fix_vertices(Vec::from_iter(0..m));
+
+        // Act
+        let final_time = 1.;
+        let dt = 1e-3;
+        let num_steps = (final_time / dt) as usize;
+        for _s in 0..num_steps {
+            cloth.step(dt);
+        }
+
+        // Assert
+        for i in 0..m {
+            let z = cloth.q[3 * i + 2];
+            assert!(z == 0.);
+        }
+        for i in m..cloth.vertices.len() {
+            let z = cloth.q[3 * i + 2];
+            assert!(z < 0.);
+        }
     }
 }
