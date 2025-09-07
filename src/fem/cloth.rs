@@ -48,6 +48,7 @@ pub struct Cloth {
     pub qdot: DVector<Float>,
 
     areas: Vec<Float>,           // area of each triangle
+    M: CscMatrix<Float>,         // mass matrix
     P: Option<CscMatrix<Float>>, // Free vertex selection matrix, of size (dof-fixed_dof, dof)
 }
 
@@ -66,9 +67,11 @@ impl Cloth {
             q,
             qdot,
             areas: vec![],
+            M: CscMatrix::zeros(0, 0),
             P: None,
         };
         cloth.compute_triangle_areas();
+        cloth.compute_mass_matrix();
         cloth
     }
 
@@ -92,6 +95,41 @@ impl Cloth {
         }
     }
 
+    /// Pre-compute and store the mass matrix of the cloth
+    fn compute_mass_matrix(&mut self) {
+        // Triplets to build up the sparse mass matrix
+        let mut triplets = Vec::new();
+
+        for ([v0, v1, v2], area) in izip!(self.triangles.iter(), self.areas.iter()) {
+            // Create entries in mass matrix
+            // TODO: use realistic density
+            let density = 10.0;
+            let inertia_off_diag = density * area / 12.0;
+            let inertia_diag = density * area / 6.0;
+            for v_a in [v0, v1, v2] {
+                for v_b in [v0, v1, v2] {
+                    let inertia = if v_a == v_b {
+                        inertia_diag
+                    } else {
+                        inertia_off_diag
+                    };
+
+                    // insert a Indentity matrix scaled by inertia
+                    let irow = 3 * v_a;
+                    let icol = 3 * v_b;
+                    for i in 0..3 {
+                        triplets.push((irow + i, icol + i, inertia));
+                    }
+                }
+            }
+        }
+
+        // Build up the mass matrix
+        let M = CooMatrix::try_from_triplets_iter(self.q.len(), self.q.len(), triplets).unwrap();
+        let M = CscMatrix::from(&M);
+        self.M = M;
+    }
+
     /// Fix the positions of the input vertices
     pub fn fix_vertices(&mut self, fixed_vertices: Vec<usize>) {
         // Create free vertex selection matrix
@@ -108,14 +146,12 @@ impl Cloth {
             }
         }
         let P = CscMatrix::from(&P);
+        self.M = &P * &self.M * P.transpose();
         self.P = Some(P);
     }
 
     pub fn step(&mut self, dt: Float) {
         let mut internal_forces: Vec<DVector<Float>> = vec![];
-
-        // Triplets to build up the sparse mass matrix
-        let mut triplets = Vec::new();
 
         for ([v0, v1, v2], area) in izip!(self.triangles.iter(), self.areas.iter()) {
             let x0 = self.x_at_index(*v0);
@@ -217,33 +253,7 @@ impl Cloth {
             let dV_dq: DVector<Float> = *area * dpsi_dF_flatten.tr_mul(&dF_dq).transpose();
 
             internal_forces.push(-dV_dq);
-
-            // Create entries in mass matrix
-            // TODO: use realistic density
-            let density = 10.0;
-            let inertia_off_diag = density * area / 12.0;
-            let inertia_diag = density * area / 6.0;
-            for v_a in [v0, v1, v2] {
-                for v_b in [v0, v1, v2] {
-                    let inertia = if v_a == v_b {
-                        inertia_diag
-                    } else {
-                        inertia_off_diag
-                    };
-
-                    // insert a Indentity matrix scaled by inertia
-                    let irow = 3 * v_a;
-                    let icol = 3 * v_b;
-                    for i in 0..3 {
-                        triplets.push((irow + i, icol + i, inertia));
-                    }
-                }
-            }
         }
-
-        // Build up the mass matrix
-        let M = CooMatrix::try_from_triplets_iter(self.q.len(), self.q.len(), triplets).unwrap();
-        let mut M = CscMatrix::from(&M);
 
         // let mut dense = DMatrix::<Float>::zeros(M.nrows(), M.ncols());
         // for (row, col, val) in M.triplet_iter() {
@@ -268,22 +278,24 @@ impl Cloth {
                 .add_assign(&f.fixed_rows::<3>(6));
         }
 
+        // Modified M and force to take into account of fixed nodes
+        if let Some(P) = &self.P {
+            // M = P * M * P.transpose();
+            total_force = P * total_force;
+        }
+
         let mut gravity_acc = DVector::zeros(self.q.len());
         for i in 0..self.vertices.len() {
             let index = 3 * i + 2;
             gravity_acc[index] = -GRAVITY;
         }
-        let gravity_force = &M * gravity_acc;
-
+        if let Some(P) = &self.P {
+            gravity_acc = P * gravity_acc;
+        }
+        let gravity_force = &self.M * gravity_acc;
         total_force += &gravity_force;
 
-        // Modified M and force to take into account of fixed nodes
-        if let Some(P) = &self.P {
-            M = P * &M * P.transpose();
-            total_force = P * total_force;
-        }
-
-        let M_cholesky = CscCholesky::factor(&M).unwrap();
+        let M_cholesky = CscCholesky::factor(&self.M).unwrap();
         let mut qddot: DMatrix<Float> = M_cholesky.solve(&total_force);
 
         // Transform qddot back to origial generalized coordinates space
