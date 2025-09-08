@@ -275,7 +275,7 @@ impl Cloth {
                 .copy_from(&Matrix3::identity());
             let dn_tilda_dq = dn_tilda_ddx2 * ddx2_dq + dn_tilda_ddx1 * ddx1_dq;
             let dn_dq = dn_dn_tilda * dn_tilda_dq;
-            let dF_dq = B + N_stacked * dn_dq;
+            let dF_dq: DMatrix<Float> = B + N_stacked * dn_dq;
 
             let mut dpsi_dF_flatten = DVector::<Float>::zeros(9);
             for i in 0..3 {
@@ -284,7 +284,7 @@ impl Cloth {
                 }
             }
 
-            let dV_dq: DVector<Float> = *area * dpsi_dF_flatten.tr_mul(&dF_dq).transpose();
+            let dV_dq: DVector<Float> = *area * dF_dq.tr_mul(&dpsi_dF_flatten);
 
             internal_forces.push(-dV_dq);
         }
