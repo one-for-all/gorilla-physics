@@ -1,12 +1,13 @@
 use itertools::izip;
 use na::{
-    vector, DMatrix, DVector, Matrix2, Matrix3, Matrix3x2, Matrix3x4, Matrix4x3, Vector2, Vector3,
+    vector, DMatrix, DVector, Matrix2, Matrix3, Matrix3x2, Matrix3x4, Matrix4x3, RowVector,
+    RowVector3, Vector2, Vector3,
 };
 use nalgebra_sparse::{factorization::CscCholesky, CooMatrix, CscMatrix};
 
 use std::ops::AddAssign;
 
-use crate::{flog, types::Float, util::skew_symmetric, GRAVITY};
+use crate::{flog, types::Float, util::skew_symmetric, GRAVITY, PI};
 
 /// Compute the area of a triangle, given the lengths of three sides
 /// Ref: Heron's formula. https://en.wikipedia.org/wiki/Heron%27s_formula
@@ -217,6 +218,7 @@ impl Cloth {
 
     pub fn step(&mut self, dt: Float) {
         let mut internal_forces: Vec<DVector<Float>> = vec![];
+        let mut Hs: Vec<DMatrix<Float>> = vec![]; // Hessians, i.e. d2psi_dq2
 
         for ([v0, v1, v2], area, F_right_factor, B, N_stacked) in izip!(
             self.triangles.iter(),
@@ -238,8 +240,8 @@ impl Cloth {
             let F: Matrix3<Float> = left * F_right_factor;
             let svd = F.svd(true, true);
             let U = svd.u.unwrap();
-            let V_T = svd.v_t.unwrap();
             let S = svd.singular_values;
+            let V_T = svd.v_t.unwrap();
 
             let YM = 1e5; //young's modulus
             let PR = 0.4; //poissons ratio
@@ -284,9 +286,97 @@ impl Cloth {
                 }
             }
 
-            let dV_dq: DVector<Float> = *area * dF_dq.tr_mul(&dpsi_dF_flatten);
+            let dpsi_dq: DVector<Float> = *area * dF_dq.tr_mul(&dpsi_dF_flatten);
+            internal_forces.push(-dpsi_dq);
 
-            internal_forces.push(-dV_dq);
+            // Compute second derivative of energy w/ respect to q
+            // from: dpsi/dq = dF/dq.T * dpsi/dF
+            // => d2psi/dq2 = d(dpsi/dq)/dq = dF/dq.T * d2psi/dF2 * dF/dq + d2F/dq2.T * dpsi/dF
+            // Note, we ignore the d2F/dq2 part, which is from F's dependence on normal n, and assumed to be negligible.
+            let mut d2psi_dF2: DMatrix<Float> = DMatrix::zeros(9, 9);
+
+            let d2psi_ds02 = 2. * mu + lambda;
+            let d2psi_ds0ds1 = lambda;
+            #[rustfmt::skip]
+            let d2psi_dS2 = Matrix3::new(
+                d2psi_ds02, d2psi_ds0ds1, d2psi_ds0ds1,
+                d2psi_ds0ds1, d2psi_ds02, d2psi_ds0ds1,
+                d2psi_ds0ds1, d2psi_ds0ds1, d2psi_ds02
+            );
+
+            // Compute jacobian of SVD w/ respect to F
+            // [i][j] entries are the jacobians w/ respect to F[i][j]
+            let mut dS: Vec<Vec<Vector3<Float>>> = vec![vec![Vector3::zeros(); 3]; 3];
+            let mut dV_T: Vec<Vec<Matrix3<Float>>> = vec![vec![Matrix3::zeros(); 3]; 3];
+            let mut dU: Vec<Vec<Matrix3<Float>>> = vec![vec![Matrix3::zeros(); 3]; 3];
+            let mut d01 = 1. / (S[1] * S[1] - S[0] * S[0]);
+            let mut d02 = 1. / (S[2] * S[2] - S[0] * S[0]);
+            let mut d12 = 1. / (S[2] * S[2] - S[1] * S[1]);
+            // corresponding to conservative solution --- if singularity is detected no angular velocity
+            if d01.is_infinite() {
+                d01 = 0.;
+            }
+            if d02.is_infinite() {
+                d02 = 0.;
+            }
+            if d12.is_infinite() {
+                d12 = 0.;
+            }
+            for irow in 0..3 {
+                for icol in 0..3 {
+                    // Compute dS/dF
+                    let U_irow = U.row(irow);
+                    let V_T_icol = V_T.column(icol);
+                    let mut UVT = U_irow.transpose() * V_T_icol.transpose();
+                    dS[irow][icol] = UVT.diagonal();
+
+                    // Compute dV/dF
+                    let dS_mat = Matrix3::from_diagonal(&UVT.diagonal());
+                    UVT -= dS_mat;
+                    let S_mat = Matrix3::from_diagonal(&S);
+                    let tmp = S_mat * UVT + UVT.transpose() * S_mat;
+                    let w01 = tmp[(0, 1)] * d01;
+                    let w02 = tmp[(0, 2)] * d02;
+                    let w12 = tmp[(1, 2)] * d12;
+                    #[rustfmt::skip]
+                    let tmp = Matrix3::new(
+                        0.0,    w01,   w02,
+                        -w01,    0.0,    w12,
+                        -w02,   -w12,    0.0
+                    );
+                    dV_T[irow][icol] = tmp.tr_mul(&V_T);
+
+                    // Compute dU/dF
+                    let tmp = UVT * S_mat + S_mat * UVT.transpose();
+                    let w01 = tmp[(0, 1)] * d01;
+                    let w02 = tmp[(0, 2)] * d02;
+                    let w12 = tmp[(1, 2)] * d12;
+                    #[rustfmt::skip]
+                    let tmp = Matrix3::new(
+                        0.0,    w01,   w02,
+                        -w01,    0.0,    w12,
+                        -w02,   -w12,    0.0
+                    );
+                    dU[irow][icol] = U * tmp;
+
+                    // Compute d2psi_dF2
+                    let d2psi_dSdF = d2psi_dS2 * dS[irow][icol];
+                    let d2psi_dFij = dU[irow][icol] * dpsi_dS * V_T
+                        + U * Matrix3::from_diagonal(&d2psi_dSdF) * V_T
+                        + U * dpsi_dS * dV_T[irow][icol];
+                    let mut d2psi_dFij_flatten = DVector::<Float>::zeros(9);
+                    for i in 0..3 {
+                        for j in 0..3 {
+                            d2psi_dFij_flatten[i * 3 + j] = d2psi_dFij[(i, j)];
+                        }
+                    }
+                    d2psi_dF2
+                        .row_mut(irow * 3 + icol)
+                        .copy_from(&d2psi_dFij_flatten.transpose());
+                }
+            }
+
+            Hs.push(dF_dq.transpose() * d2psi_dF2 * dF_dq);
         }
 
         // let mut dense = DMatrix::<Float>::zeros(M.nrows(), M.ncols());
@@ -298,6 +388,27 @@ impl Cloth {
         // for f in internal_forces.iter() {
         //     flog!("{}", f);
         // }
+
+        // Assemble stiffness matrix, K = -Hessian
+        let mut K = CooMatrix::new(self.q.len(), self.q.len());
+        for ([v0, v1, v2], H) in izip!(self.triangles.iter(), Hs.iter()) {
+            for (i, v_a) in [v0, v1, v2].iter().enumerate() {
+                for (j, v_b) in [v0, v1, v2].iter().enumerate() {
+                    let irow = 3 * *v_a;
+                    let icol = 3 * *v_b;
+                    // copy the sub 3x3 matrix in Hs
+                    for row in 0..3 {
+                        for col in 0..3 {
+                            K.push(irow + row, icol + col, -H[(3 * i + row, 3 * j + col)]);
+                        }
+                    }
+                }
+            }
+        }
+        let mut K = CscMatrix::from(&K);
+        if let Some(P) = &self.P {
+            K = P * K * P.transpose();
+        }
 
         let mut total_force = DVector::zeros(self.q.len());
         for ([v0, v1, v2], f) in izip!(self.triangles.iter(), internal_forces.iter()) {
@@ -328,14 +439,30 @@ impl Cloth {
         let gravity_force = &self.M * gravity_acc;
         total_force += &gravity_force;
 
-        let mut qddot: DMatrix<Float> = self.M_cholesky.solve(&total_force);
+        // let mut qddot: DMatrix<Float> = self.M_cholesky.solve(&total_force);
+        // // Transform qddot back to origial generalized coordinates space
+        // if let Some(P) = &self.P {
+        //     qddot = P.transpose() * &qddot;
+        // }
+        // self.qdot += &qddot * dt;
 
-        // Transform qddot back to origial generalized coordinates space
-        if let Some(P) = &self.P {
-            qddot = P.transpose() * &qddot;
-        }
+        let qdot = if let Some(P) = &self.P {
+            P * &self.qdot
+        } else {
+            self.qdot.clone()
+        };
 
-        self.qdot += &qddot * dt;
+        let A = &self.M - dt * dt * &K;
+        let A_cholesky = CscCholesky::factor(&A).unwrap();
+        let b = &self.M * qdot + total_force * dt;
+        let qdot_new = A_cholesky.solve(&b);
+        let qdot_new: DVector<Float> = DVector::from_column_slice(qdot_new.data.as_slice());
+        self.qdot = if let Some(P) = &self.P {
+            P.transpose() * &qdot_new
+        } else {
+            qdot_new
+        };
+
         self.q += &self.qdot * dt;
     }
 }
@@ -362,7 +489,7 @@ mod cloth_tests {
 
         // Act
         let final_time = 1.0;
-        let dt = 1e-3;
+        let dt = 1e-2;
         let num_steps = (final_time / dt) as usize;
         for _s in 0..num_steps {
             cloth.step(dt);
@@ -397,7 +524,7 @@ mod cloth_tests {
 
         // Act
         let final_time = 1.0;
-        let dt = 1e-3;
+        let dt = 1e-2;
         let num_steps = (final_time / dt) as usize;
         for _s in 0..num_steps {
             cloth.step(dt);
@@ -438,7 +565,7 @@ mod cloth_tests {
 
         // Act
         let final_time = 1.;
-        let dt = 1e-3;
+        let dt = 1e-2;
         let num_steps = (final_time / dt) as usize;
         for _s in 0..num_steps {
             cloth.step(dt);

@@ -39,7 +39,7 @@ impl InterfaceCloth {
     }
 
     pub fn step(&mut self, dt: Float) {
-        let n_substep = 20;
+        let n_substep = 2;
         for _ in 0..n_substep {
             self.inner.step(dt / (n_substep as Float));
         }
@@ -77,12 +77,9 @@ pub async fn createCloth() -> InterfaceCloth {
 
     let m = 6;
     let n = 6;
-    let mut cloth = build_cloth(
-        m,
-        n,
-        0.5,
-        UnitQuaternion::from_axis_angle(&Vector::x_axis(), -PI / 4.),
-    );
+    let rotation = UnitQuaternion::from_axis_angle(&Vector::x_axis(), -PI / 4.);
+    let rotation = UnitQuaternion::identity();
+    let mut cloth = build_cloth(m, n, 0.5, rotation);
     cloth.fix_vertices(Vec::from_iter(0..m));
 
     InterfaceCloth { inner: cloth }
