@@ -35,8 +35,9 @@ import("gorilla-physics").then((gorilla) => {
   let default_z = 0.8;
 
   let angle: number = (0.0 * Math.PI) / 180.0;
-  let normal = new FloatArray([Math.sin(angle), 0.0, Math.cos(angle)]);
-  let h_ground = 0.0; // -0.05 / 2; //
+  // let normal = new FloatArray([Math.sin(angle), 0.0, Math.cos(angle)]);
+  let normal = new FloatArray([0.0, Math.sin(angle), Math.cos(angle)]);
+  let h_ground = -1.0; // -0.05 / 2; //
   let alpha = 1.0;
   let mu = 1.0;
 

@@ -1,9 +1,10 @@
-use na::{vector, DVector, UnitQuaternion, Vector, Vector3};
+use na::{vector, DVector, UnitQuaternion, UnitVector3, Vector, Vector3};
 use wasm_bindgen::prelude::wasm_bindgen;
 use web_sys::js_sys::{Float32Array, Uint32Array};
 
 use crate::{
     builders::cloth_builder::build_cloth,
+    collision::halfspace::HalfSpace,
     fem::cloth::Cloth,
     types::{Float, FloatArray},
     PI,
@@ -39,7 +40,7 @@ impl InterfaceCloth {
     }
 
     pub fn step(&mut self, dt: Float) {
-        let n_substep = 2;
+        let n_substep = 10;
         for _ in 0..n_substep {
             self.inner.step(dt / (n_substep as Float));
         }
@@ -75,13 +76,18 @@ pub async fn createCloth() -> InterfaceCloth {
     // cloth.q[2 * 3 + 2] = -1.01;
     // cloth.q[3 * 3 + 2] = -1.01;
 
-    let m = 6;
-    let n = 6;
+    let m = 3;
+    let n = 2;
     let rotation = UnitQuaternion::from_axis_angle(&Vector::x_axis(), -PI / 4.);
-    let rotation: UnitQuaternion<Float> = UnitQuaternion::identity();
+    // let rotation: UnitQuaternion<Float> = UnitQuaternion::identity();
     // let rotation = UnitQuaternion::from_axis_angle(&Vector::x_axis(), PI / 2. - 0.1);
     let mut cloth = build_cloth(m, n, 0.5, rotation);
-    cloth.fix_vertices(Vec::from_iter(0..m));
+    // cloth.fix_vertices(Vec::from_iter(0..m));
+
+    let angle = Float::to_radians(0.0);
+    let normal = UnitVector3::new_normalize(vector![0.0, angle.sin(), angle.cos()]);
+    let ground = HalfSpace::new(normal, -1.0);
+    cloth.add_halfspace(ground);
 
     InterfaceCloth { inner: cloth }
 }

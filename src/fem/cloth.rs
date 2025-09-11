@@ -1,13 +1,21 @@
+use clarabel::algebra::CscMatrix as ClarabelCscMatrix;
 use itertools::izip;
 use na::{
     vector, DMatrix, DVector, Matrix2, Matrix3, Matrix3x2, Matrix3x4, Matrix4x3, RowVector,
-    RowVector3, Vector2, Vector3,
+    RowVector3, SymmetricEigen, UnitVector3, Vector2, Vector3,
 };
 use nalgebra_sparse::{factorization::CscCholesky, CooMatrix, CscMatrix};
 
 use std::ops::AddAssign;
 
-use crate::{flog, types::Float, util::skew_symmetric, GRAVITY, PI};
+use crate::{
+    collision::halfspace::{self, HalfSpace},
+    dynamics::solve_cone_complementarity,
+    flog,
+    types::Float,
+    util::skew_symmetric,
+    GRAVITY, PI,
+};
 
 /// Compute the area of a triangle, given the lengths of three sides
 /// Ref: Heron's formula. https://en.wikipedia.org/wiki/Heron%27s_formula
@@ -56,6 +64,8 @@ pub struct Cloth {
     Ns_stacked: Vec<DMatrix<Float>>,
 
     P: Option<CscMatrix<Float>>, // Free vertex selection matrix, of size (dof-fixed_dof, dof)
+
+    halfspaces: Vec<HalfSpace>,
 }
 
 impl Cloth {
@@ -81,6 +91,7 @@ impl Cloth {
             Bs: vec![],
             Ns_stacked: vec![],
             P: None,
+            halfspaces: vec![],
         };
         cloth.compute_triangle_areas();
         cloth.compute_mass_matrix();
@@ -214,6 +225,10 @@ impl Cloth {
         self.M = &P * &self.M * P.transpose();
         self.M_cholesky = CscCholesky::factor(&self.M).unwrap();
         self.P = Some(P);
+    }
+
+    pub fn add_halfspace(&mut self, halfspace: HalfSpace) {
+        self.halfspaces.push(halfspace);
     }
 
     pub fn step(&mut self, dt: Float) {
@@ -452,11 +467,73 @@ impl Cloth {
             self.qdot.clone()
         };
 
-        let A = &self.M - dt * dt * &K;
-        let A_cholesky = CscCholesky::factor(&A).unwrap();
+        let mut A = &self.M - dt * dt * &K;
+        let mut A_cholesky = CscCholesky::factor(&A);
+
+        // TODO(cloth): fix this hack
+        let mut regularization = 1e-4;
+        while A_cholesky.is_err() {
+            A = A + CscMatrix::identity(self.M.nrows()) * regularization;
+            A_cholesky = CscCholesky::factor(&A);
+            regularization *= 10.;
+        }
+        let A_cholesky = A_cholesky.unwrap();
+
         let b = &self.M * qdot + total_force * dt;
         let qdot_new = A_cholesky.solve(&b);
         let mut qdot_new: DVector<Float> = DVector::from_column_slice(qdot_new.data.as_slice());
+
+        // Assemble contact Jacobian, and formulate contact cone problem
+        // Ref: Contact and Friction Simulation for Computer Graphics, 2022,
+        //      Section 4.1 Equations of Motion for a Collection of Soft Bodies
+        let mut Js: Vec<CscMatrix<Float>> = vec![];
+        for i in 0..self.vertices.len() {
+            let index = i * 3;
+            let q = vector![self.q[index], self.q[index + 1], self.q[index + 2]];
+            for halfspace in self.halfspaces.iter() {
+                if halfspace.has_inside(&q) {
+                    let n = halfspace.normal;
+                    let t = {
+                        let candidate = n.cross(&Vector3::x_axis());
+                        if candidate.norm() != 0.0 {
+                            UnitVector3::new_normalize(candidate)
+                        } else {
+                            UnitVector3::new_normalize(n.cross(&Vector3::y_axis()))
+                        }
+                    };
+                    let b = UnitVector3::new_normalize(n.cross(&t));
+                    let C = Matrix3::from_rows(&[n.transpose(), t.transpose(), b.transpose()]);
+                    let mut coo = CooMatrix::new(3, self.vertices.len() * 3);
+                    for i in 0..3 {
+                        for j in 0..3 {
+                            coo.push(i, index + j, C[(i, j)]);
+                        }
+                    }
+                    Js.push(CscMatrix::from(&coo));
+                }
+            }
+        }
+
+        if Js.len() > 0 {
+            let mut J: CooMatrix<Float> = CooMatrix::new(3 * Js.len(), self.vertices.len() * 3);
+            for (index, m) in Js.iter().enumerate() {
+                for (i, j, v) in m.triplet_iter() {
+                    J.push(index * 3 + i, j, *v);
+                }
+            }
+            let mut J = CscMatrix::from(&J);
+            if let Some(P) = &self.P {
+                J = &J * &P.transpose();
+            }
+            let M_dense = DMatrix::from(&self.M);
+            let M_inv = M_dense.try_inverse().unwrap();
+            let G = &J * M_inv * DMatrix::from(&J.transpose());
+            let P = ClarabelCscMatrix::from(G.row_iter());
+            let g = &J * &qdot_new;
+            let lambda = solve_cone_complementarity(&P, &g);
+            qdot_new += self.M_cholesky.solve(&(J.transpose() * lambda));
+        }
+
         if let Some(P) = &self.P {
             qdot_new = P.transpose() * qdot_new;
         }
@@ -471,7 +548,8 @@ mod cloth_tests {
     use na::{vector, DVector, UnitQuaternion, Vector3};
 
     use crate::{
-        assert_vec_close, builders::cloth_builder::build_cloth, fem::cloth::Cloth, types::Float, PI,
+        assert_close, assert_vec_close, builders::cloth_builder::build_cloth,
+        collision::halfspace::HalfSpace, fem::cloth::Cloth, types::Float, PI,
     };
 
     #[test]
@@ -578,6 +656,34 @@ mod cloth_tests {
         for i in m..cloth.vertices.len() {
             let z = cloth.q[3 * i + 2];
             assert!(z < 0.);
+        }
+    }
+
+    #[test]
+    fn drop_cloth_on_ground() {
+        // Arrange
+        let m = 6;
+        let n = 6;
+        let rotation: UnitQuaternion<Float> = UnitQuaternion::identity();
+        let mut cloth = build_cloth(m, n, 0.5, rotation);
+        let h = -0.1;
+        cloth.add_halfspace(HalfSpace::new(Vector3::z_axis(), h));
+
+        // Act
+        let final_time = 1.;
+        let dt = 1e-2;
+        let num_steps = (final_time / dt) as usize;
+        for _s in 0..num_steps {
+            cloth.step(dt);
+        }
+
+        // Assert
+        for i in 0..cloth.vertices.len() {
+            let index = 3 * i;
+            assert_close!(cloth.q[index + 2], h, 1e-2);
+
+            let v = vector![cloth.qdot[index], cloth.qdot[index], cloth.qdot[index]];
+            assert_vec_close!(v, Vector3::<Float>::zeros(), 1e-3);
         }
     }
 }
