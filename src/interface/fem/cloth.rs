@@ -78,7 +78,8 @@ pub async fn createCloth() -> InterfaceCloth {
     let m = 6;
     let n = 6;
     let rotation = UnitQuaternion::from_axis_angle(&Vector::x_axis(), -PI / 4.);
-    let rotation = UnitQuaternion::identity();
+    let rotation: UnitQuaternion<Float> = UnitQuaternion::identity();
+    // let rotation = UnitQuaternion::from_axis_angle(&Vector::x_axis(), PI / 2. - 0.1);
     let mut cloth = build_cloth(m, n, 0.5, rotation);
     cloth.fix_vertices(Vec::from_iter(0..m));
 

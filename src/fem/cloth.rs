@@ -456,13 +456,12 @@ impl Cloth {
         let A_cholesky = CscCholesky::factor(&A).unwrap();
         let b = &self.M * qdot + total_force * dt;
         let qdot_new = A_cholesky.solve(&b);
-        let qdot_new: DVector<Float> = DVector::from_column_slice(qdot_new.data.as_slice());
-        self.qdot = if let Some(P) = &self.P {
-            P.transpose() * &qdot_new
-        } else {
-            qdot_new
-        };
+        let mut qdot_new: DVector<Float> = DVector::from_column_slice(qdot_new.data.as_slice());
+        if let Some(P) = &self.P {
+            qdot_new = P.transpose() * qdot_new;
+        }
 
+        self.qdot = qdot_new;
         self.q += &self.qdot * dt;
     }
 }
