@@ -327,15 +327,16 @@ impl Cloth {
             let mut d01 = 1. / (S[1] * S[1] - S[0] * S[0]);
             let mut d02 = 1. / (S[2] * S[2] - S[0] * S[0]);
             let mut d12 = 1. / (S[2] * S[2] - S[1] * S[1]);
-            // corresponding to conservative solution --- if singularity is detected no angular velocity
+            // TODO(cloth) fix the following hack, which assigns a default value if is infinite
+            let d_default = 1e5; // 0. would correspond to conservative solution --- if singularity is detected no angular velocity
             if d01.is_infinite() {
-                d01 = 0.;
+                d01 = d_default;
             }
             if d02.is_infinite() {
-                d02 = 0.;
+                d02 = d_default;
             }
             if d12.is_infinite() {
-                d12 = 0.;
+                d12 = d_default;
             }
             for irow in 0..3 {
                 for icol in 0..3 {
