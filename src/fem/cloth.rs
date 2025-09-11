@@ -486,6 +486,7 @@ impl Cloth {
         // Assemble contact Jacobian, and formulate contact cone problem
         // Ref: Contact and Friction Simulation for Computer Graphics, 2022,
         //      Section 4.1 Equations of Motion for a Collection of Soft Bodies
+        // TODO(cloth): It is now giving rather unrealistic behavior under most contact situations with not-extremely-small timesteps. It might be due to that the contact solver does not take into account of cloth internal energy
         let mut Js: Vec<CscMatrix<Float>> = vec![];
         for i in 0..self.vertices.len() {
             let index = i * 3;
