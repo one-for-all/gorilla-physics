@@ -10,3 +10,5 @@ pkg/
 dist/
 
 profile.json.gz
+
+www2/
