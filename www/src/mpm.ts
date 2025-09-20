@@ -25,7 +25,7 @@ Simulator.prototype.addMPMDeformable = function (
 ) {
   this.mpmDeformable = deformable;
 
-  let radius = 5e-1;
+  let radius = 1e-2;
   const geometry = new SphereGeometry(radius, 8, 8);
   const material = new MeshPhysicalMaterial({
     color: 0x3366ff,

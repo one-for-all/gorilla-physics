@@ -39,7 +39,7 @@ import("gorilla-physics").then((gorilla) => {
   let angle: number = (0.0 * Math.PI) / 180.0;
   // let normal = new FloatArray([Math.sin(angle), 0.0, Math.cos(angle)]);
   let normal = new FloatArray([0.0, Math.sin(angle), Math.cos(angle)]);
-  let h_ground = -1.0; // -0.05 / 2; //
+  let h_ground = 0; //  -1.0; // -0.05 / 2; //
   let alpha = 1.0;
   let mu = 1.0;
 
@@ -120,7 +120,7 @@ import("gorilla-physics").then((gorilla) => {
 
     // Important: Set initial camera position
     let cameraPosition = {
-      eye: { x: 0.0, y: -100.0, z: 1.0 },
+      eye: { x: 0.0, y: -5.0, z: h_ground },
       target: { x: 0.0, y: 0, z: h_ground },
     };
     simulator.graphics.lookAt(cameraPosition);

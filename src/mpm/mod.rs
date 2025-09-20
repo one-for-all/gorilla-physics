@@ -1,11 +1,36 @@
-use na::{vector, zero, Matrix2, Vector2};
+use na::{vector, zero, Matrix2, Vector2, SVD};
+use rand::{rng, Rng};
 
 use crate::{types::Float, GRAVITY};
+
+// Material properties
+const VOL: Float = 1.; // particle volume
+const HARDENING: Float = 10.0; // Snow hardening factor
+const E: Float = 1e4; // Young's modulus
+const NU: Float = 0.2; // Poisson ratio
+
+// Initial Lame parameters
+const MU_0: Float = E / (2. * (1. + NU));
+const LAMBDA_0: Float = E * NU / ((1. + NU) * (1. - 2. * NU));
+
+fn polar_decomposition(F: &Matrix2<f64>) -> (Matrix2<f64>, Matrix2<f64>) {
+    let svd = SVD::new(F.clone(), true, true);
+    let (u, sigma, v_t) = (svd.u.unwrap(), svd.singular_values, svd.v_t.unwrap());
+
+    let r = &u * &v_t;
+    let s = &v_t.transpose() * Matrix2::from_diagonal(&sigma) * &v_t;
+
+    (r, s)
+}
 
 pub struct Particle {
     pub pos: Vector2<Float>,
     pub vel: Vector2<Float>,
+
+    pub F: Matrix2<Float>, // deformation gradient
     pub C: Matrix2<Float>, // affine momentum matrix
+
+    pub Jp: Float, // determinant of F, i.e. volume ratio
 
     pub mass: Float,
 }
@@ -26,22 +51,34 @@ pub struct MPMDeformable {
 impl MPMDeformable {
     pub fn new() -> Self {
         let n_grid = 64;
-        let spacing = 1.0;
+        let spacing = 2.0 / n_grid as Float;
 
         // create a square of particles
+        let mut rng = rng();
         let mut particles = vec![];
         let x_mid = n_grid / 2;
-        let x_halfwdith = 10;
+        let x_halfwdith = 20;
+        let y_halfwidth = 5;
         for i in (x_mid - x_halfwdith)..(x_mid + x_halfwdith) {
-            for j in (x_mid - x_halfwdith)..(x_mid + x_halfwdith) {
+            for j in (x_mid - y_halfwidth)..(x_mid + y_halfwidth) {
                 let x = i as Float * spacing;
                 let y = j as Float * spacing;
-                particles.push(Particle {
-                    pos: vector![x, y],
-                    vel: vector![0., 0.], // initial speed
-                    C: zero(),
-                    mass: 1.,
-                });
+
+                let half_s = spacing / 2.;
+                for _ in 0..10 {
+                    let disturb = vector![
+                        rng.random_range(-half_s..half_s),
+                        rng.random_range(-half_s..half_s)
+                    ];
+                    particles.push(Particle {
+                        pos: vector![x, y] + disturb,
+                        vel: vector![0., 0.], // initial speed
+                        F: Matrix2::identity(),
+                        C: zero(),
+                        Jp: 1.,
+                        mass: 1.,
+                    });
+                }
             }
         }
 
@@ -90,19 +127,42 @@ impl MPMDeformable {
                 vector2_0d5.component_mul(&(fx - vector2_0d5).map(|x| x.powi(2))),
             ];
 
-            let base_int_coord: Vector2<usize> = base_coord.map(|x| x as usize);
+            // Compute current Lame parameters
+            // ref: MPM course - Eqn. 86
+            let e = (HARDENING * (1. - particle.Jp)).exp();
+            let mu = MU_0 * e;
+            let lambda = LAMBDA_0 * e;
 
+            // Current volume
+            let J = particle.F.determinant();
+
+            // Polar decomposition for fixed corotated model
+            let (r, s) = polar_decomposition(&particle.F);
+
+            // Compute inverse of D
+            // ref: MPM course, paragraph after Eqn. 176
+            let D_inv = (4. / self.spacing) / self.spacing;
+            // ref: MPM course, Eqn. 52
+            let PF = 2. * mu * (particle.F - r) * particle.F.transpose()
+                + Matrix2::from_diagonal_element(lambda * (J - 1.) * J); // TODO: verify this step
+
+            // Cauchy stress times dt and divided by spacing
+            let stress = -(dt * VOL) * (D_inv * PF);
+
+            // Fused APIC momentum + MLS-MPM stress contribution
+            // ref: MLS-MPM, Eqn. 29
+            let affine = stress + particle.mass * particle.C;
+
+            let base_int_coord: Vector2<usize> = base_coord.map(|x| x as usize);
             for i in 0..3 {
                 for j in 0..3 {
                     let weight = weights[i].x * weights[j].y;
                     let dpos = (vector![i as Float, j as Float] - fx).scale(self.spacing);
-                    let Q = particle.C * dpos; // TODO: figure out this APIC step
 
                     let mass_contrib = weight * particle.mass;
-                    let grid_int_coord = base_int_coord + vector![i, j];
-                    let node = &mut self.grid[grid_int_coord.x][grid_int_coord.y];
+                    let node = &mut self.grid[base_int_coord.x + i][base_int_coord.y + j];
                     node.mass += mass_contrib;
-                    node.vel += mass_contrib * (particle.vel + Q);
+                    node.vel += mass_contrib * (particle.vel + affine * dpos);
                     // Note: at this point, vel is momentum, not velocity. It will be corrected in the grid update step.
                 }
             }
@@ -117,7 +177,7 @@ impl MPMDeformable {
                     node.vel /= node.mass;
 
                     // apply gravity
-                    node.vel += dt * vector![0., -GRAVITY];
+                    node.vel += dt * vector![0., -GRAVITY]; // TODO: change back to GRAVITY
 
                     // boundary condition
                     if i <= 1 || i >= self.n_grid - 2 {
@@ -125,6 +185,13 @@ impl MPMDeformable {
                     }
                     if j <= 1 || j >= self.n_grid - 2 {
                         node.vel.y = 0.;
+                    }
+
+                    // A needle in the middle
+                    if i == self.n_grid / 2 {
+                        if j <= 5 {
+                            node.vel.y = 0.;
+                        }
                     }
                 }
             }
@@ -150,8 +217,7 @@ impl MPMDeformable {
                     let weight = weights[i].x * weights[j].y;
                     let dpos = vector![i as Float, j as Float] - fx;
 
-                    let grid_int_coord = base_int_coord + vector![i, j];
-                    let node_v = self.grid[grid_int_coord.x][grid_int_coord.y].vel;
+                    let node_v = self.grid[base_int_coord.x + i][base_int_coord.y + j].vel;
 
                     let vel_contrib = node_v * weight;
                     particle.vel += vel_contrib;
@@ -161,6 +227,25 @@ impl MPMDeformable {
 
             // advect particles
             particle.pos += particle.vel * dt;
+
+            // MLS-MPM F-update
+            let mut F = (Matrix2::identity() + dt * particle.C) * particle.F;
+
+            let svd = SVD::new(F, true, true);
+            let (u, mut sigma, v_t) = (svd.u.unwrap(), svd.singular_values, svd.v_t.unwrap());
+
+            // Snow plasticity
+            for i in 0..2 {
+                sigma[i] = sigma[i].clamp(1. - 2.5e-2, 1. + 7.5e-3);
+            }
+
+            let J_old = F.determinant();
+            F = u * Matrix2::from_diagonal(&sigma) * &v_t;
+
+            let Jp_new = (particle.Jp * J_old / F.determinant()).clamp(0.6, 20.);
+
+            particle.Jp = Jp_new;
+            particle.F = F;
 
             // safety clamp
             particle.pos = particle

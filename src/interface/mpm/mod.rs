@@ -25,7 +25,7 @@ impl InterfaceMPMDeformable {
     }
 
     pub fn step(&mut self, dt: Float) {
-        let n_substeps = 1;
+        let n_substeps = 100;
         let dt = dt / n_substeps as Float;
         for _ in 0..n_substeps {
             self.inner.step(dt);
