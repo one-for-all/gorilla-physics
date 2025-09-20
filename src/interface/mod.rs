@@ -51,6 +51,7 @@ pub mod hopper;
 pub mod kinematic_loop;
 pub mod mass_spring_deformable;
 pub mod mesh;
+pub mod mpm;
 pub mod navbot;
 pub mod pendulum;
 pub mod quadruped;

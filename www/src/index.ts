@@ -12,11 +12,13 @@ import {
   createLegFromFoot,
   createCube,
   createCloth,
+  createMPMDeformable,
 } from "gorilla-physics";
 import { Simulator } from "./Simulator";
 import "./biped";
 import "./cube";
 import "./cloth";
+import "./mpm";
 import { FloatArray } from "./type";
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader";
 import { Color, EquirectangularReflectionMapping } from "three";
@@ -46,7 +48,7 @@ import("gorilla-physics").then((gorilla) => {
   // });
 
   let radius = 0.1;
-  createCloth().then((state) => {
+  createMPMDeformable().then((state) => {
     // state.addHalfSpace(normal as Float64Array, h_ground);
 
     // let controller = gorilla.createNullController();
@@ -61,7 +63,8 @@ import("gorilla-physics").then((gorilla) => {
     // let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
     let interfaceSimulator = null;
     let simulator = new Simulator(interfaceSimulator);
-    simulator.addCloth(state);
+    simulator.addMPMDeformable(state);
+    // simulator.addCloth(state);
 
     // simulator.addCube(0.1);
     // simulator.addLeg();
@@ -117,7 +120,7 @@ import("gorilla-physics").then((gorilla) => {
 
     // Important: Set initial camera position
     let cameraPosition = {
-      eye: { x: 0.0, y: -2.0, z: 1.0 },
+      eye: { x: 0.0, y: -100.0, z: 1.0 },
       target: { x: 0.0, y: 0, z: h_ground },
     };
     simulator.graphics.lookAt(cameraPosition);

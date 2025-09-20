@@ -18,6 +18,7 @@ pub mod joint;
 pub mod mass_spring_deformable;
 pub mod mechanism;
 pub mod momentum;
+pub mod mpm;
 pub mod rigid_body;
 pub mod simulate;
 pub mod spatial;

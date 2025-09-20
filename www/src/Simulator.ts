@@ -3,6 +3,7 @@ import {
   InterfaceFEMDeformable,
   InterfaceFluid2D,
   InterfaceMassSpringDeformable,
+  InterfaceMPMDeformable,
   InterfaceSimulator,
 } from "gorilla-physics";
 import * as THREE from "three";
@@ -24,6 +25,9 @@ export class Simulator {
   cloth: InterfaceCloth;
 
   fluid2DMesh: THREE.InstancedMesh;
+
+  mpmDeformable: InterfaceMPMDeformable;
+  mpm2DMesh: THREE.InstancedMesh;
 
   graphics: Graphics;
   length: number;
@@ -47,6 +51,8 @@ export class Simulator {
     this.fluid2D = null;
     this.fluid2DMesh = null;
     this.cloth = null;
+    this.mpmDeformable = null;
+    this.mpm2DMesh = null;
 
     this.graphics = new Graphics();
     this.meshes = new Map();
@@ -75,6 +81,7 @@ export class Simulator {
     let count = particles.length / 2;
     const fluid2DMesh = new THREE.InstancedMesh(geometry, material, count);
     fluid2DMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    fluid2DMesh.frustumCulled = false;
     this.fluid2DMesh = fluid2DMesh;
     this.graphics.scene.add(fluid2DMesh);
 
@@ -990,8 +997,12 @@ export class Simulator {
 
       // let poses = this.simulator.poses();
       // this.updateBiped(poses);
-      this.cloth.step(dt);
-      this.updateCloth();
+
+      this.mpmDeformable.step(dt);
+      this.updateMPMDeformable();
+
+      // this.cloth.step(dt);
+      // this.updateCloth();
 
       this.time = timestamp;
     }
