@@ -45,9 +45,12 @@ const webpackConfig = {
     }),
   ],
   // To disable warning on screen
-  // stats: {
-  //   warnings: false,
-  // },
+  stats: {
+    warnings: false,
+  },
+  performance: {
+    hints: false,
+  },
 };
 
 module.exports = webpackConfig;
