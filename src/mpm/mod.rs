@@ -38,7 +38,7 @@ impl MPMDeformable {
                 let y = j as Float * spacing;
                 particles.push(Particle {
                     pos: vector![x, y],
-                    vel: zero(),
+                    vel: vector![0., 0.], // initial speed
                     C: zero(),
                     mass: 1.,
                 });
@@ -50,7 +50,7 @@ impl MPMDeformable {
                 (0..n_grid)
                     .map(|_| Node {
                         vel: zero(),
-                        mass: 1.,
+                        mass: 0.,
                     })
                     .collect()
             })
@@ -70,7 +70,7 @@ impl MPMDeformable {
             for j in 0..self.n_grid {
                 let node = &mut self.grid[i][j];
                 node.mass = 0.;
-                node.vel = vector![0., 0.];
+                node.vel = zero();
             }
         }
 
