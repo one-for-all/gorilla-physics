@@ -1,5 +1,5 @@
 pub mod cloth;
-pub mod fem_deformable;
+pub mod deformable;
 
 #[cfg(any(feature = "gpu", rust_analyzer))]
 pub mod gpu;
