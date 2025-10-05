@@ -1,4 +1,3 @@
-
 use itertools::izip;
 use na::{vector, DVector, Vector3};
 use nalgebra_sparse::{CooMatrix, CscMatrix, CsrMatrix};

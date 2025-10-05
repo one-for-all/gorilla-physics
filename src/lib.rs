@@ -15,6 +15,7 @@ pub mod fluid;
 pub mod inertia;
 pub mod integrators;
 pub mod joint;
+pub mod mass_spring;
 pub mod mass_spring_deformable;
 pub mod mechanism;
 pub mod momentum;
