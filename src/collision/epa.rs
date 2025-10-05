@@ -29,8 +29,8 @@ fn solve_closest_point_lambda_matrix_method(
 
     #[rustfmt::skip]
     let A = Matrix3::new(
-        1.,             1.,             1., 
-        v1.dot(&v1v2),  v2.dot(&v1v2),  v3.dot(&v1v2), 
+        1.,             1.,             1.,
+        v1.dot(&v1v2),  v2.dot(&v1v2),  v3.dot(&v1v2),
         v1.dot(&v1v3),  v2.dot(&v1v3),  v3.dot(&v1v3)
     );
     let b = Matrix3x1::new(1.0, 0., 0.);
@@ -274,7 +274,7 @@ mod epa_tests {
     use crate::{
         assert_close,
         collision::{gjk::gjk, CollisionDetector},
-        util::test_utils::{random_quaternion, random_vector},
+        util::test_utils::{random_quaternion, random_vector3},
         PI,
     };
 
@@ -301,9 +301,9 @@ mod epa_tests {
         let mut direction_success_count = 0;
         let mut coplanar_success_count = 0;
         for _case in 0..total_count {
-            let v1 = random_vector(&mut rng, 1e-3);
-            let mut v2 = random_vector(&mut rng, 1.0);
-            let mut v3 = random_vector(&mut rng, 1.0);
+            let v1 = random_vector3(&mut rng, 1e-3);
+            let mut v2 = random_vector3(&mut rng, 1.0);
+            let mut v3 = random_vector3(&mut rng, 1.0);
 
             if (v2 - v1).cross(&(v3 - v1)).dot(&v1) < 0.0 {
                 let tmp = v2;
@@ -371,13 +371,13 @@ mod epa_tests {
         let mut collision_success = 0;
         for _case in 0..total {
             // Arrange
-            let center = random_vector(&mut rng, 100.0);
+            let center = random_vector3(&mut rng, 100.0);
             let l_a = rng.random_range(0.5..2.0);
             let mut A = Cuboid::new_cube(center, UnitQuaternion::identity(), l_a);
 
             // move B in either x, y or z direction, to make it touch A
             let l_b = rng.random_range(0.5..2.0);
-            let mut b_center = center + random_vector(&mut rng, 1e-2);
+            let mut b_center = center + random_vector3(&mut rng, 1e-2);
             let move_axis = rng.random_range(0..2);
             let move_dir = {
                 if rng.random_bool(0.5) {

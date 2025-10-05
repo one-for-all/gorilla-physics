@@ -12,7 +12,7 @@ mod ccd_tests {
         simulate::step,
         spatial::{pose::Pose, spatial_vector::SpatialVector},
         types::Float,
-        util::test_utils::random_vector,
+        util::test_utils::random_vector3,
         PI,
     };
 
@@ -288,8 +288,8 @@ mod ccd_tests {
                 }),
             );
 
-            let vel = random_vector(&mut rng, speed);
-            let angular = random_vector(&mut rng, angular_speed);
+            let vel = random_vector3(&mut rng, speed);
+            let angular = random_vector3(&mut rng, angular_speed);
             state.set_joint_v(
                 1,
                 JointVelocity::Spatial(SpatialVector {

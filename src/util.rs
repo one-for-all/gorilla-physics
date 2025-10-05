@@ -178,7 +178,7 @@ pub mod test_utils {
     use crate::types::Float;
 
     /// Build a Vector3 where each element is random between (-range, range)
-    pub fn random_vector(rng: &mut ThreadRng, range: Float) -> Vector3<Float> {
+    pub fn random_vector3(rng: &mut ThreadRng, range: Float) -> Vector3<Float> {
         vector![
             rng.random_range(-range..range),
             rng.random_range(-range..range),

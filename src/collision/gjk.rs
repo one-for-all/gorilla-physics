@@ -135,7 +135,7 @@ mod gjk_tests {
     use na::UnitQuaternion;
     use rand::{rng, Rng};
 
-    use crate::{util::test_utils::random_vector, PI};
+    use crate::{util::test_utils::random_vector3, PI};
 
     use super::*;
 
@@ -205,7 +205,7 @@ mod gjk_tests {
 
         for _ in 0..5000 {
             // Arrange
-            let center = random_vector(&mut rng, 1.0);
+            let center = random_vector3(&mut rng, 1.0);
             let l_a = rng.random_range(0.5..2.0);
             let mut A = Cuboid::new_cube(center, UnitQuaternion::identity(), l_a);
             let l_b = rng.random_range(0.5..2.0);
@@ -256,7 +256,7 @@ mod gjk_tests {
 
         for _ in 0..5000 {
             // Arrange
-            let center = random_vector(&mut rng, 1.0);
+            let center = random_vector3(&mut rng, 1.0);
             let l_a = rng.random_range(0.5..2.0);
             let mut A = Cuboid::new_cube(center, UnitQuaternion::identity(), l_a);
             let l_b = rng.random_range(0.5..2.0);
@@ -304,7 +304,7 @@ mod gjk_tests {
 
         for _ in 0..5000 {
             // Arrange
-            let center = random_vector(&mut rng, 1.0);
+            let center = random_vector3(&mut rng, 1.0);
             let l_a = rng.random_range(0.5..2.0);
             let mut A = Cuboid::new_cube(center, UnitQuaternion::identity(), l_a);
             let l_b = rng.random_range(0.5..2.0);
