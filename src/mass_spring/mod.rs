@@ -73,6 +73,10 @@ impl MassSpring {
         v
     }
 
+    pub fn set_positions(&mut self, p: Vec<Vector3<Float>>) {
+        self.q = DVector::from_iterator(self.dof, p.iter().flat_map(|x| x.iter().copied()));
+    }
+
     pub fn get_positions(&self) -> Vec<Vector3<Float>> {
         let mut p = vec![];
         let mut i = 0;
