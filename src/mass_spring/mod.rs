@@ -10,6 +10,8 @@ pub struct MassSpring {
 
     pub dof: usize, // degree of freedom of system. dof == q.len() == qdot.len().
 
+    pub faces: Vec<[usize; 3]>,
+
     pub q: DVector<Float>,
     pub qdot: DVector<Float>,
 }
@@ -20,10 +22,13 @@ impl MassSpring {
         let q = DVector::from_iterator(dof, nodes.iter().flat_map(|x| x.iter().copied()));
         let qdot = DVector::zeros(q.len());
 
+        let faces = MassSpring::compute_boundary_facets(&tetrahedra);
+
         MassSpring {
             nodes,
             tetrahedra,
             dof,
+            faces,
             q,
             qdot,
         }
@@ -42,10 +47,13 @@ impl MassSpring {
         let q = DVector::from_iterator(dof, nodes.iter().flat_map(|x| x.iter().copied()));
         let qdot = DVector::zeros(q.len());
 
+        let faces = MassSpring::compute_boundary_facets(&tetrahedra);
+
         MassSpring {
             nodes,
             tetrahedra,
             dof,
+            faces,
             q,
             qdot,
         }
@@ -179,6 +187,69 @@ impl MassSpring {
 
         self.qdot = v_star;
         self.q += &self.qdot * dt;
+    }
+
+    /// Extract the boundary facets, for better visualization
+    pub fn compute_boundary_facets(tetrahedra: &Vec<Vec<usize>>) -> Vec<[usize; 3]> {
+        let mut facets = vec![];
+        for tetrahedron in tetrahedra.iter() {
+            let v0 = tetrahedron[0];
+            let v1 = tetrahedron[1];
+            let v2 = tetrahedron[2];
+            let v3 = tetrahedron[3];
+
+            facets.push({
+                let v = [v1, v2, v3];
+                v
+            });
+            facets.push({
+                let v = [v0, v3, v2];
+                v
+            });
+            facets.push({
+                let v = [v0, v1, v3];
+                v
+            });
+            facets.push({
+                let v = [v0, v2, v1];
+                v
+            });
+        }
+        facets.sort_by(|a, b| {
+            let mut a_clone = a.clone();
+            a_clone.sort();
+            let mut b_clone = b.clone();
+            b_clone.sort();
+
+            a_clone.cmp(&b_clone)
+        });
+
+        // Get the faces that only appear once. They are the boundary faces.
+        let mut boundary_facets = vec![];
+        for i in 0..facets.len() {
+            let cur = facets[i];
+            let mut cur_sort = cur.clone();
+            cur_sort.sort();
+
+            if i > 0 {
+                let mut prev_sort = facets[i - 1].clone();
+                prev_sort.sort();
+                if cur_sort == prev_sort {
+                    continue;
+                }
+            }
+
+            if i < facets.len() - 1 {
+                let mut next_sort = facets[i + 1].clone();
+                next_sort.sort();
+                if cur_sort == next_sort {
+                    continue;
+                }
+            }
+            boundary_facets.push(cur);
+        }
+
+        boundary_facets
     }
 }
 

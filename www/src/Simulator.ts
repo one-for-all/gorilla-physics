@@ -2,6 +2,7 @@ import {
   InterfaceCloth,
   InterfaceFEMDeformable,
   InterfaceFluid2D,
+  InterfaceMassSpring,
   InterfaceMassSpringDeformable,
   InterfaceMPMDeformable,
   InterfaceSimulator,
@@ -29,6 +30,8 @@ export class Simulator {
   mpmDeformable: InterfaceMPMDeformable;
   mpm2DMesh: THREE.InstancedMesh;
 
+  massSpring: InterfaceMassSpring;
+
   graphics: Graphics;
   length: number;
   rod: THREE.Mesh;
@@ -53,6 +56,7 @@ export class Simulator {
     this.cloth = null;
     this.mpmDeformable = null;
     this.mpm2DMesh = null;
+    this.massSpring = null;
 
     this.graphics = new Graphics();
     this.meshes = new Map();
@@ -998,8 +1002,8 @@ export class Simulator {
       // let poses = this.simulator.poses();
       // this.updateBiped(poses);
 
-      this.mpmDeformable.step(dt);
-      this.updateMPMDeformable();
+      this.massSpring.step(dt);
+      this.updateMassSpring();
 
       // this.cloth.step(dt);
       // this.updateCloth();
