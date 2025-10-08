@@ -48,12 +48,13 @@ impl InterfaceMassSpring {
 pub async fn createMassSpringTetrahedron() -> InterfaceMassSpring {
     let mut deformable = MassSpring::unit_tetrahedron();
 
-    let omega = vector![0., 0., 1.]; // angular velocity around com
+    let v_linear = vector![0., 0., 5.]; // linear velocity
+    let omega = vector![0., 0., 0.]; // angular velocity around com
     let com = deformable.com();
     let v: Vec<Vector3<Float>> = deformable
         .nodes
         .iter()
-        .map(|n| omega.cross(&(n - com)))
+        .map(|n| omega.cross(&(n - com)) + v_linear)
         .collect();
     deformable.set_velocity(v);
 
