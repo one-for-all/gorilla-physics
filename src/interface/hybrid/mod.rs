@@ -3,7 +3,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use web_sys::js_sys::{Float32Array, Uint32Array};
 
 use crate::flog;
-use crate::hybrid::Deformable;
+use crate::hybrid::{Deformable, Rigid};
 use crate::na::vector;
 use crate::types::Float;
 use crate::{hybrid::Hybrid, spatial::pose::Pose, toJsFloat32Array};
@@ -92,7 +92,7 @@ impl InterfaceHybrid {
 }
 
 #[wasm_bindgen]
-pub async fn createHybrid() -> InterfaceHybrid {
+pub async fn createHybridSphereAndTetra() -> InterfaceHybrid {
     let mut state = Hybrid::new_canonical();
     state.set_rigid_poses(vec![Pose::translation(vector![2.5, 0., 0.])]);
     let v_rigid = vector![-1., 0., 0.];
@@ -100,6 +100,22 @@ pub async fn createHybrid() -> InterfaceHybrid {
 
     let v = vector![0.25, 0., 0.];
     let v = vec![v, v, v, v];
+    state.set_deformable_velocities(vec![v]);
+
+    InterfaceHybrid { inner: state }
+}
+
+#[wasm_bindgen]
+pub async fn createHybridCube() -> InterfaceHybrid {
+    let mut state = Hybrid::empty();
+    state.add_rigid(Rigid::new_sphere());
+    state.set_rigid_poses(vec![Pose::translation(vector![2.5, 0., 0.])]);
+    let v_rigid = vector![-1., 0., 0.];
+    state.set_rigid_velocities(vec![v_rigid]);
+
+    state.add_deformable(Deformable::new_octahedron());
+    let v = vector![1. / 7., 0., 0.];
+    let v = vec![v; 7];
     state.set_deformable_velocities(vec![v]);
 
     InterfaceHybrid { inner: state }

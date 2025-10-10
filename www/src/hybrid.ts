@@ -3,8 +3,14 @@ import {
   BufferAttribute,
   BufferGeometry,
   DoubleSide,
+  EdgesGeometry,
+  LineBasicMaterial,
+  LineSegments,
   Mesh,
   MeshPhongMaterial,
+  Points,
+  PointsMaterial,
+  WireframeGeometry,
 } from "three";
 import { Simulator } from "./Simulator";
 
@@ -67,6 +73,22 @@ Simulator.prototype.addHybrid = function (state: InterfaceHybrid) {
     mesh.frustumCulled = false; // prevent mesh disappearing
     this.meshes.set("deformable " + i, mesh);
     this.graphics.scene.add(mesh);
+
+    // --- Add vertex points ---
+    const pointMaterial = new PointsMaterial({
+      color: 0xff0000, // red
+      size: 0.1, // adjust for your scale
+    });
+    const points = new Points(geometry, pointMaterial);
+    this.graphics.scene.add(points);
+
+    // // --- Add edges overlay ---
+    // const wireframeGeometry = new WireframeGeometry(geometry);
+    // const wireframe = new LineSegments(
+    //   wireframeGeometry,
+    //   new LineBasicMaterial({ color: 0x000000 }),
+    // );
+    // this.graphics.scene.add(wireframe);
   }
 };
 

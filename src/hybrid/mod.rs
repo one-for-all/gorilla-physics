@@ -88,6 +88,65 @@ impl Deformable {
         }
     }
 
+    pub fn new_pyramid() -> Self {
+        let nodes = vec![
+            vector![0., 0., 0.],
+            vector![1., 0., 0.],
+            vector![0., 1., 0.],
+            vector![0., 0., 1.],
+            vector![-1., 0., 0.], // right point
+            vector![0., -1., 0.], // front point
+        ];
+        let tetrahedra = vec![
+            vec![0, 1, 2, 3],
+            vec![0, 2, 4, 3],
+            vec![0, 1, 3, 5],
+            vec![0, 3, 4, 5],
+        ];
+        Self::new(nodes, tetrahedra)
+    }
+
+    pub fn new_octahedron() -> Self {
+        let nodes = vec![
+            vector![0., 0., 0.],
+            vector![1., 0., 0.],
+            vector![0., 1., 0.],
+            vector![0., 0., 1.],
+            vector![-1., 0., 0.], // left point
+            vector![0., -1., 0.], // front point
+            vector![0., 0., -1.], // bottom point
+        ];
+        let tetrahedra = vec![
+            // top half
+            vec![0, 1, 2, 3],
+            vec![0, 2, 4, 3],
+            vec![0, 1, 3, 5],
+            vec![0, 3, 4, 5],
+            // bottom half
+            vec![0, 2, 1, 6],
+            vec![0, 4, 2, 6],
+            vec![0, 1, 5, 6],
+            vec![0, 5, 4, 6],
+        ];
+        Self::new(nodes, tetrahedra)
+    }
+
+    pub fn new(nodes: Vec<Vector3<Float>>, tetrahedra: Vec<Vec<usize>>) -> Self {
+        let dof = nodes.len() * 3;
+        let q = DVector::from_iterator(dof, nodes.iter().flat_map(|x| x.iter().copied()));
+        let qdot = DVector::zeros(q.len());
+
+        let faces = Self::compute_boundary_facets(&tetrahedra);
+
+        Deformable {
+            nodes,
+            tetrahedra,
+            faces,
+            q,
+            qdot,
+        }
+    }
+
     pub fn get_positions(&self) -> Vec<Vector3<Float>> {
         let mut p = vec![];
         let mut i = 0;
@@ -153,7 +212,7 @@ impl Deformable {
             let q0q1 = q1 - q0;
             let l = q0q1.norm();
 
-            let k = 1e3;
+            let k = 1e5;
             let f_n0 = k * (l - r) * q0q1 / l;
             let f_n1 = -f_n0;
 
@@ -281,6 +340,21 @@ impl Hybrid {
             rigid_bodies: vec![rigid],
             deformables: vec![deformable],
         }
+    }
+
+    pub fn empty() -> Self {
+        Hybrid {
+            rigid_bodies: vec![],
+            deformables: vec![],
+        }
+    }
+
+    pub fn add_rigid(&mut self, rigid: Rigid) {
+        self.rigid_bodies.push(rigid);
+    }
+
+    pub fn add_deformable(&mut self, deformable: Deformable) {
+        self.deformables.push(deformable);
     }
 
     pub fn step(&mut self, dt: Float) {

@@ -14,7 +14,8 @@ import {
   createCloth,
   createMPMDeformable,
   createMassSpringTetrahedron,
-  createHybrid,
+  createHybridSphereAndTetra,
+  createHybridCube,
 } from "gorilla-physics";
 import { Simulator } from "./Simulator";
 import "./biped";
@@ -52,7 +53,7 @@ import("gorilla-physics").then((gorilla) => {
   // });
 
   let radius = 0.1;
-  createHybrid().then((state) => {
+  createHybridCube().then((state) => {
     // state.addHalfSpace(normal as Float64Array, h_ground);
 
     // let controller = gorilla.createNullController();
