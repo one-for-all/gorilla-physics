@@ -25,3 +25,15 @@ pub async fn read_web_file(file_path: &str) -> String {
 
     buf
 }
+
+#[macro_export]
+macro_rules! toJsFloat32Array {
+    ($q:expr) => {
+        Float32Array::from(
+            $q.iter()
+                .map(|qi| *qi as f32)
+                .collect::<Vec<f32>>()
+                .as_slice(),
+        )
+    };
+}

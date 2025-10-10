@@ -187,14 +187,14 @@ impl MassSpring {
         //     }
         // }
 
-        // let mut f_gravity = DVector::zeros(self.dof);
+        let mut f_gravity: DVector<Float> = DVector::zeros(self.dof);
         // let mut i = 0;
         // while i < self.dof {
         //     f_gravity[i + 2] = -9.8;
         //     i += 3;
         // }
 
-        let f_total = f_elastic; // TODO: make damping and gravity configurable and put it into f_total. And then pass the existing unit tests.
+        let f_total = f_elastic + f_gravity; // TODO: make damping and gravity configurable and put it into f_total. And then pass the existing unit tests.
         let m_v0 = -dt * f_total; // momentum residual with velocity at t0
 
         let n_dim = self.q.len();

@@ -4,6 +4,7 @@ use web_sys::js_sys::{Float32Array, Uint32Array};
 
 use crate::{
     mass_spring::MassSpring,
+    toJsFloat32Array,
     types::{Float, FloatArray},
 };
 
@@ -15,14 +16,7 @@ pub struct InterfaceMassSpring {
 #[wasm_bindgen]
 impl InterfaceMassSpring {
     pub fn nodes(&self) -> Float32Array {
-        Float32Array::from(
-            self.inner
-                .q
-                .iter()
-                .map(|qi| *qi as f32)
-                .collect::<Vec<f32>>()
-                .as_slice(),
-        ) // TODO: util function that does this tranformation
+        toJsFloat32Array!(self.inner.q)
     }
 
     pub fn facets(&self) -> Uint32Array {
