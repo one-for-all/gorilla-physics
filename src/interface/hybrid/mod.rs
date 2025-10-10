@@ -15,6 +15,10 @@ pub struct InterfaceHybrid {
 
 #[wasm_bindgen]
 impl InterfaceHybrid {
+    pub fn n_rigid_bodies(&self) -> usize {
+        self.inner.rigid_bodies.len()
+    }
+
     pub fn rigid_body_poses(&self) -> Float32Array {
         let mut q = vec![];
         for rigid in self.inner.rigid_bodies.iter() {
@@ -93,6 +97,10 @@ pub async fn createHybrid() -> InterfaceHybrid {
     state.set_rigid_poses(vec![Pose::translation(vector![2.5, 0., 0.])]);
     let v_rigid = vector![-1., 0., 0.];
     state.set_rigid_velocities(vec![v_rigid]);
+
+    let v = vector![0.25, 0., 0.];
+    let v = vec![v, v, v, v];
+    state.set_deformable_velocities(vec![v]);
 
     InterfaceHybrid { inner: state }
 }

@@ -18,8 +18,12 @@ declare module "./Simulator" {
 Simulator.prototype.addHybrid = function (state: InterfaceHybrid) {
   this.hybrid = state;
   // add rigid body
-  this.addSphere("sphere", 0xff0000, 1.0);
+  let n_rigid_bodies = state.n_rigid_bodies();
+  for (let i = 0; i < n_rigid_bodies; i++) {
+    this.addSphere("sphere " + i, 0xff0000, 1.0);
+  }
 
+  // add deformables
   let all_nodes = state.deformable_nodes();
   let dofs = state.deformable_dofs();
 
@@ -69,7 +73,10 @@ Simulator.prototype.addHybrid = function (state: InterfaceHybrid) {
 Simulator.prototype.updateHybrid = function () {
   let state = this.hybrid;
   let poses = state.rigid_body_poses();
-  this.setPose("sphere", poses);
+  let n_rigid_bodies = state.n_rigid_bodies();
+  for (let i = 0; i < n_rigid_bodies; i++) {
+    this.setPose("sphere " + i, poses.subarray(i * 7, 7));
+  }
 
   // update deformable positions
   let all_nodes = state.deformable_nodes();
