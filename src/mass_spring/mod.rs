@@ -161,40 +161,40 @@ impl MassSpring {
             }
         }
 
-        let mut f_damping: DVector<Float> = DVector::zeros(self.dof);
-        for edge in edges.iter() {
-            let (n0, n1) = edge;
-            let i_n0 = n0 * 3;
-            let i_n1 = n1 * 3;
-            let q0 = vector![self.q[i_n0], self.q[i_n0 + 1], self.q[i_n0 + 2]];
-            let q1 = vector![self.q[i_n1], self.q[i_n1 + 1], self.q[i_n1 + 2]];
+        // let mut f_damping: DVector<Float> = DVector::zeros(self.dof);
+        // for edge in edges.iter() {
+        //     let (n0, n1) = edge;
+        //     let i_n0 = n0 * 3;
+        //     let i_n1 = n1 * 3;
+        //     let q0 = vector![self.q[i_n0], self.q[i_n0 + 1], self.q[i_n0 + 2]];
+        //     let q1 = vector![self.q[i_n1], self.q[i_n1 + 1], self.q[i_n1 + 2]];
 
-            let q0q1 = q1 - q0;
-            let l = q0q1.norm();
-            let unit_q0q1 = q0q1 / l;
+        //     let q0q1 = q1 - q0;
+        //     let l = q0q1.norm();
+        //     let unit_q0q1 = q0q1 / l;
 
-            let qdot0 = vector![self.qdot[i_n0], self.qdot[i_n0 + 1], self.qdot[i_n0 + 2]];
-            let qdot1 = vector![self.qdot[i_n1], self.qdot[i_n1 + 1], self.qdot[i_n1 + 2]];
-            let qdot0qdot1 = qdot1 - qdot0;
+        //     let qdot0 = vector![self.qdot[i_n0], self.qdot[i_n0 + 1], self.qdot[i_n0 + 2]];
+        //     let qdot1 = vector![self.qdot[i_n1], self.qdot[i_n1 + 1], self.qdot[i_n1 + 2]];
+        //     let qdot0qdot1 = qdot1 - qdot0;
 
-            let b = 20.;
-            let f_n0 = b * qdot0qdot1.dot(&unit_q0q1) * unit_q0q1;
-            let f_n1 = -f_n0;
+        //     let b = 20.;
+        //     let f_n0 = b * qdot0qdot1.dot(&unit_q0q1) * unit_q0q1;
+        //     let f_n1 = -f_n0;
 
-            for i in 0..3 {
-                f_damping[i_n0 + i] += f_n0[i];
-                f_damping[i_n1 + i] += f_n1[i];
-            }
-        }
+        //     for i in 0..3 {
+        //         f_damping[i_n0 + i] += f_n0[i];
+        //         f_damping[i_n1 + i] += f_n1[i];
+        //     }
+        // }
 
-        let mut f_gravity = DVector::zeros(self.dof);
-        let mut i = 0;
-        while i < self.dof {
-            f_gravity[i + 2] = -9.8;
-            i += 3;
-        }
+        // let mut f_gravity = DVector::zeros(self.dof);
+        // let mut i = 0;
+        // while i < self.dof {
+        //     f_gravity[i + 2] = -9.8;
+        //     i += 3;
+        // }
 
-        let f_total = f_elastic + f_damping + f_gravity;
+        let f_total = f_elastic; // TODO: make damping and gravity configurable and put it into f_total. And then pass the existing unit tests.
         let m_v0 = -dt * f_total; // momentum residual with velocity at t0
 
         let n_dim = self.q.len();
@@ -209,17 +209,20 @@ impl MassSpring {
         let q: Vec<Float> = Vec::from(g.as_slice());
 
         let mut Js: Vec<Matrix1xX<Float>> = vec![];
-        let n = vector![0., 0., 1.];
-        for (i, pos) in self.get_positions().iter().enumerate() {
-            if pos.z <= 0. {
-                // collision
-                let icol = i * 3;
-                let mut S = DMatrix::zeros(3, self.dof);
-                S.fixed_view_mut::<3, 3>(0, icol)
-                    .copy_from(&Matrix3::identity());
-                Js.push(n.transpose() * S);
-            }
-        }
+
+        // collision detection
+        // TODO: do not hard-code the half-spaces
+        // let n = vector![0., 0., 1.];
+        // for (i, pos) in self.get_positions().iter().enumerate() {
+        //     if pos.z <= 0. {
+        //         // collision
+        //         let icol = i * 3;
+        //         let mut S = DMatrix::zeros(3, self.dof);
+        //         S.fixed_view_mut::<3, 3>(0, icol)
+        //             .copy_from(&Matrix3::identity());
+        //         Js.push(n.transpose() * S);
+        //     }
+        // }
 
         let A_ = if Js.len() > 0 {
             let J = DMatrix::from_rows(&Js);
