@@ -50,6 +50,13 @@ impl Rigid {
         v_free.extend(self.vel.linear.iter().cloned());
         v_free
     }
+
+    /// Computes linear momentum in world frame
+    pub fn linear_momentum(&self) -> Vector3<Float> {
+        let linear =
+            self.inertia.mass * self.vel.linear - self.inertia.cross_part.cross(&self.vel.angular);
+        self.pose.rotation * linear
+    }
 }
 
 /// Mass-spring modeled deformable
@@ -64,6 +71,22 @@ pub struct Deformable {
 }
 
 impl Deformable {
+    pub fn new(nodes: Vec<Vector3<Float>>, tetrahedra: Vec<Vec<usize>>) -> Self {
+        let dof = nodes.len() * 3;
+        let q = DVector::from_iterator(dof, nodes.iter().flat_map(|x| x.iter().copied()));
+        let qdot = DVector::zeros(q.len());
+
+        let faces = Self::compute_boundary_facets(&tetrahedra);
+
+        Deformable {
+            nodes,
+            tetrahedra,
+            faces,
+            q,
+            qdot,
+        }
+    }
+
     pub fn new_tetrahedron() -> Self {
         let nodes = vec![
             vector![0., 0., 0.],
@@ -131,20 +154,11 @@ impl Deformable {
         Self::new(nodes, tetrahedra)
     }
 
-    pub fn new(nodes: Vec<Vector3<Float>>, tetrahedra: Vec<Vec<usize>>) -> Self {
-        let dof = nodes.len() * 3;
-        let q = DVector::from_iterator(dof, nodes.iter().flat_map(|x| x.iter().copied()));
-        let qdot = DVector::zeros(q.len());
-
-        let faces = Self::compute_boundary_facets(&tetrahedra);
-
-        Deformable {
-            nodes,
-            tetrahedra,
-            faces,
-            q,
-            qdot,
-        }
+    /// Linear momentum assuming mass = 1
+    pub fn linear_momentum(&self) -> Vector3<Float> {
+        self.get_velocities()
+            .iter()
+            .fold(Vector3::<Float>::zeros(), |acc, v| acc + v)
     }
 
     pub fn get_positions(&self) -> Vec<Vector3<Float>> {
@@ -466,13 +480,30 @@ impl Hybrid {
             rigid.vel.linear = *v;
         }
     }
+
+    /// Computes total linear momentum
+    pub fn linear_momentum(&self) -> Vector3<Float> {
+        self.rigid_bodies
+            .iter()
+            .map(|b| b.linear_momentum())
+            .sum::<Vector3<Float>>()
+            + self
+                .deformables
+                .iter()
+                .map(|b| b.linear_momentum())
+                .sum::<Vector3<Float>>()
+    }
 }
 
 #[cfg(test)]
 mod hybrid_tests {
     use na::{vector, DVector};
 
-    use crate::{assert_vec_close, hybrid::Hybrid, spatial::pose::Pose};
+    use crate::{
+        assert_vec_close, flog,
+        hybrid::{Deformable, Hybrid, Rigid},
+        spatial::pose::Pose,
+    };
 
     #[test]
     fn no_collision() {
@@ -510,10 +541,18 @@ mod hybrid_tests {
     #[test]
     fn collision() {
         // Arrange
-        let mut state = Hybrid::new_canonical();
+        let mut state = Hybrid::empty();
+        state.add_rigid(Rigid::new_sphere());
         state.set_rigid_poses(vec![Pose::translation(vector![2.5, 0., 0.])]);
         let v_rigid = vector![-1., 0., 0.];
         state.set_rigid_velocities(vec![v_rigid]);
+
+        state.add_deformable(Deformable::new_octahedron());
+        let v_deformable = vector![1. / 7., 0., 0.];
+        let v = vec![v_deformable; 7];
+        state.set_deformable_velocities(vec![v]);
+
+        let linear_momentum = state.linear_momentum();
 
         // Act
         let final_time = 1.0;
@@ -529,7 +568,9 @@ mod hybrid_tests {
 
         let deformable = &state.deformables[0];
         for vel in deformable.get_velocities() {
-            assert!(vel.x < 0.);
+            assert!((vel - v_deformable).x < 0.);
         }
+
+        assert_vec_close!(state.linear_momentum(), linear_momentum, 1e-3);
     }
 }
