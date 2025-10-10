@@ -48,6 +48,7 @@ pub mod double_pendulum;
 pub mod fem;
 pub mod fluid;
 pub mod hopper;
+pub mod hybrid;
 pub mod kinematic_loop;
 pub mod mass_spring;
 pub mod mass_spring_deformable;

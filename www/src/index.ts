@@ -14,6 +14,7 @@ import {
   createCloth,
   createMPMDeformable,
   createMassSpringTetrahedron,
+  createHybrid,
 } from "gorilla-physics";
 import { Simulator } from "./Simulator";
 import "./biped";
@@ -21,6 +22,7 @@ import "./cube";
 import "./cloth";
 import "./mpm";
 import "./mass_spring";
+import "./hybrid";
 import { FloatArray } from "./type";
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader";
 import { Color, EquirectangularReflectionMapping } from "three";
@@ -50,7 +52,7 @@ import("gorilla-physics").then((gorilla) => {
   // });
 
   let radius = 0.1;
-  createMassSpringTetrahedron().then((state) => {
+  createHybrid().then((state) => {
     // state.addHalfSpace(normal as Float64Array, h_ground);
 
     // let controller = gorilla.createNullController();
@@ -65,7 +67,8 @@ import("gorilla-physics").then((gorilla) => {
     // let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
     let interfaceSimulator = null;
     let simulator = new Simulator(interfaceSimulator);
-    simulator.addMassSpring(state);
+    simulator.addHybrid(state);
+    // simulator.addMassSpring(state);
     // simulator.addMPMDeformable(state);
     // simulator.addCloth(state);
 

@@ -38,4 +38,20 @@ impl Pose {
             translation: trans,
         }
     }
+
+    /// returns rotation as quaternion, and translation as vector, in a single 7-element array
+    pub fn to_array(&self) -> [Float; 7] {
+        let translation = self.translation;
+        let quaternion = self.rotation.quaternion();
+
+        [
+            quaternion.i,
+            quaternion.j,
+            quaternion.k,
+            quaternion.w,
+            translation[0],
+            translation[1],
+            translation[2],
+        ]
+    }
 }
