@@ -453,7 +453,6 @@ mod mass_spring_tests {
         let num_steps = (final_time / dt) as usize;
         for _s in 0..num_steps {
             deformable.step(dt);
-            // flog!("v: {:?}", deformable.get_velocity());
         }
 
         // Assert

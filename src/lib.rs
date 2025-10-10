@@ -12,6 +12,7 @@ pub mod dynamics;
 pub mod energy;
 pub mod fem;
 pub mod fluid;
+pub mod hybrid;
 pub mod inertia;
 pub mod integrators;
 pub mod joint;

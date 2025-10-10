@@ -31,4 +31,11 @@ impl Pose {
         let translation = Translation3::from(self.translation);
         Isometry3::from_parts(translation, self.rotation)
     }
+
+    pub fn translation(trans: Vector3<Float>) -> Self {
+        Pose {
+            rotation: UnitQuaternion::identity(),
+            translation: trans,
+        }
+    }
 }

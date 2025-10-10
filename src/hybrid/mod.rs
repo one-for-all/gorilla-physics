@@ -1,0 +1,392 @@
+use clarabel::{
+    algebra::{CscMatrix, MatrixMathMut},
+    solver::{
+        DefaultSettingsBuilder, DefaultSolver, IPSolver,
+        SupportedConeT::{self, NonnegativeConeT},
+    },
+};
+use itertools::izip;
+use na::{
+    dvector, vector, DMatrix, DVector, Matrix1xX, Matrix3, Matrix3x6, UnitQuaternion, UnitVector3,
+    Vector3,
+};
+use nalgebra_sparse::{CooMatrix, CsrMatrix};
+
+use crate::{
+    inertia::SpatialInertia,
+    spatial::{
+        pose::Pose, spatial_vector::SpatialVector, twist::compute_twist_transformation_matrix,
+    },
+    types::Float,
+    util::{quaternion_derivative, skew_symmetric},
+};
+
+/// Rigid body
+pub struct Rigid {
+    pub inertia: SpatialInertia,
+    pub pose: Pose,
+    pub vel: SpatialVector,
+}
+
+impl Rigid {
+    pub fn new_sphere() -> Self {
+        let m = 1.0;
+        let r = 1.0;
+        let moment = 2. / 5. * m * r * r;
+        let moment = Matrix3::from_diagonal_element(moment);
+        let cross = Vector3::zeros();
+        let inertia = SpatialInertia::new(moment, cross, m, "sphere");
+        Rigid {
+            inertia,
+            pose: Pose::identity(),
+            vel: SpatialVector::zero(),
+        }
+    }
+
+    /// free-motion velocity in body frame
+    pub fn free_velocity(&self, dt: Float) -> DVector<Float> {
+        let mut v_free = dvector![];
+        v_free.extend(self.vel.angular.iter().cloned());
+        v_free.extend(self.vel.linear.iter().cloned());
+        v_free
+    }
+}
+
+/// Mass-spring modeled deformable
+pub struct Deformable {
+    pub nodes: Vec<Vector3<Float>>,
+    pub tetrahedra: Vec<Vec<usize>>,
+
+    pub q: DVector<Float>,
+    pub qdot: DVector<Float>,
+}
+
+impl Deformable {
+    pub fn new_tetrahedron() -> Self {
+        let nodes = vec![
+            vector![0., 0., 0.],
+            vector![1., 0., 0.],
+            vector![0., 1., 0.],
+            vector![0., 0., 1.],
+        ];
+        let tetrahedra = vec![vec![0, 1, 2, 3]];
+
+        let dof = nodes.len() * 3;
+        let q = DVector::from_iterator(dof, nodes.iter().flat_map(|x| x.iter().copied()));
+        let qdot = DVector::zeros(q.len());
+
+        Deformable {
+            nodes,
+            tetrahedra,
+            q,
+            qdot,
+        }
+    }
+
+    pub fn get_positions(&self) -> Vec<Vector3<Float>> {
+        let mut p = vec![];
+        let mut i = 0;
+        while i < self.q.len() {
+            p.push(vector![self.q[i], self.q[i + 1], self.q[i + 2]]);
+            i += 3;
+        }
+        p
+    }
+
+    pub fn get_velocities(&self) -> Vec<Vector3<Float>> {
+        let mut v = vec![];
+        let mut i = 0;
+        while i < self.q.len() {
+            v.push(vector![self.qdot[i], self.qdot[i + 1], self.qdot[i + 2]]);
+            i += 3;
+        }
+        v
+    }
+
+    pub fn set_velocity(&mut self, v: Vec<Vector3<Float>>) {
+        self.qdot = DVector::from_iterator(self.q.len(), v.iter().flat_map(|x| x.iter().copied()));
+    }
+
+    /// free-motion velocity after timestep
+    pub fn free_velocity(&self, dt: Float) -> DVector<Float> {
+        let n_nodes = self.nodes.len();
+        let mut adj: CooMatrix<u8> = CooMatrix::new(n_nodes, n_nodes);
+        for tetrahedron in self.tetrahedra.iter() {
+            for i in 0..tetrahedron.len() - 1 {
+                for j in (i + 1)..tetrahedron.len() {
+                    let v0 = tetrahedron[i];
+                    let v1 = tetrahedron[j];
+                    adj.push(v0, v1, 1);
+                    adj.push(v1, v0, 1);
+                }
+            }
+        }
+        let adj = CsrMatrix::from(&adj);
+
+        let mut edges: Vec<(usize, usize)> = vec![];
+        let mut rs: Vec<Float> = vec![]; // rest lengths
+        for irow in 0..n_nodes {
+            let row = adj.row(irow);
+            for icol in row.col_indices() {
+                let icol = *icol;
+                if irow < icol {
+                    edges.push((irow, icol));
+                    rs.push((self.nodes[irow] - self.nodes[icol]).norm());
+                }
+            }
+        }
+
+        let dof = self.q.len();
+        let mut f_elastic: DVector<Float> = DVector::zeros(dof);
+        for (edge, r) in izip!(edges.iter(), rs.iter()) {
+            let (n0, n1) = edge;
+            let i_n0 = n0 * 3;
+            let i_n1 = n1 * 3;
+            let q0 = vector![self.q[i_n0], self.q[i_n0 + 1], self.q[i_n0 + 2]];
+            let q1 = vector![self.q[i_n1], self.q[i_n1 + 1], self.q[i_n1 + 2]];
+
+            let q0q1 = q1 - q0;
+            let l = q0q1.norm();
+
+            let k = 1e3;
+            let f_n0 = k * (l - r) * q0q1 / l;
+            let f_n1 = -f_n0;
+
+            for i in 0..3 {
+                f_elastic[i_n0 + i] += f_n0[i];
+                f_elastic[i_n1 + i] += f_n1[i];
+            }
+        }
+
+        let mut f_damping: DVector<Float> = DVector::zeros(dof);
+        for edge in edges.iter() {
+            let (n0, n1) = edge;
+            let i_n0 = n0 * 3;
+            let i_n1 = n1 * 3;
+            let q0 = vector![self.q[i_n0], self.q[i_n0 + 1], self.q[i_n0 + 2]];
+            let q1 = vector![self.q[i_n1], self.q[i_n1 + 1], self.q[i_n1 + 2]];
+
+            let q0q1 = q1 - q0;
+            let l = q0q1.norm();
+            let unit_q0q1 = q0q1 / l;
+
+            let qdot0 = vector![self.qdot[i_n0], self.qdot[i_n0 + 1], self.qdot[i_n0 + 2]];
+            let qdot1 = vector![self.qdot[i_n1], self.qdot[i_n1 + 1], self.qdot[i_n1 + 2]];
+            let qdot0qdot1 = qdot1 - qdot0;
+
+            let b = 20.;
+            let f_n0 = b * qdot0qdot1.dot(&unit_q0q1) * unit_q0q1;
+            let f_n1 = -f_n0;
+
+            for i in 0..3 {
+                f_damping[i_n0 + i] += f_n0[i];
+                f_damping[i_n1 + i] += f_n1[i];
+            }
+        }
+
+        let f_total = f_elastic + f_damping;
+        let m_v0 = -dt * f_total; // momentum residual with velocity at t0
+
+        let n_dim = self.q.len();
+        let M: DMatrix<Float> = DMatrix::identity(n_dim, n_dim); // mass matrix
+        let A = M;
+        let v0 = &self.qdot;
+        let v_star = v0 - A.clone().try_inverse().unwrap() * m_v0;
+
+        v_star
+    }
+}
+
+pub struct Hybrid {
+    pub rigid_bodies: Vec<Rigid>,
+    pub deformables: Vec<Deformable>,
+}
+
+impl Hybrid {
+    /// A canonical hybrid system with 1 sphere rigid-body and 1 tetrahedron deformable
+    pub fn new_canonical() -> Self {
+        let rigid = Rigid::new_sphere();
+        let deformable = Deformable::new_tetrahedron();
+
+        Hybrid {
+            rigid_bodies: vec![rigid],
+            deformables: vec![deformable],
+        }
+    }
+
+    pub fn step(&mut self, dt: Float) {
+        let rigid = &self.rigid_bodies[0];
+        let deformable = &self.deformables[0];
+        let v_rigid = rigid.free_velocity(dt);
+        let v_deformable = deformable.free_velocity(dt);
+
+        let v_star =
+            DVector::from_vec(v_rigid.iter().chain(v_deformable.iter()).copied().collect());
+        let iso = rigid.pose.to_isometry();
+        let T = compute_twist_transformation_matrix(&iso);
+
+        let mut Js: Vec<Matrix1xX<Float>> = vec![];
+
+        // point-sphere collision detection
+        for (i, pos) in deformable.get_positions().iter().enumerate() {
+            if (pos - rigid.pose.translation).norm() <= 1.0 {
+                let n = pos - rigid.pose.translation;
+                let n = UnitVector3::new_normalize(n);
+                let cp = pos;
+
+                let icol = 6 + i * 3;
+                let mut J = Matrix1xX::zeros(6 + deformable.q.len());
+                J.fixed_view_mut::<1, 3>(0, icol).copy_from(&n.transpose());
+
+                let mut X = Matrix3x6::zeros();
+                let r = cp;
+                X.columns_mut(0, 3).copy_from(&-skew_symmetric(&r));
+                X.columns_mut(3, 3).copy_from(&Matrix3::identity());
+                J.fixed_view_mut::<1, 6>(0, 0)
+                    .copy_from(&(-n.transpose() * X * T));
+                Js.push(J);
+
+                break;
+            }
+        }
+
+        let deformable_dof = deformable.q.len();
+        let dof = 6 + deformable_dof;
+        let mut A: DMatrix<Float> = DMatrix::zeros(dof, dof);
+        A.view_mut((6, 6), (deformable_dof, deformable_dof))
+            .copy_from(&DMatrix::identity(deformable_dof, deformable_dof));
+        A.view_mut((0, 0), (6, 6))
+            .copy_from(&rigid.inertia.to_matrix());
+
+        // Solve convex optimization to resolve contact
+        let P = CscMatrix::from(A.row_iter());
+        let g = -v_star.transpose() * A;
+        let q: Vec<Float> = Vec::from(g.as_slice());
+
+        let A_ = if Js.len() > 0 {
+            let J = DMatrix::from_rows(&Js);
+            let mut J = CscMatrix::from(J.row_iter());
+            J.scale(-1.);
+            J
+        } else {
+            CscMatrix::zeros((0, dof))
+        };
+        let b = vec![0.; Js.len()];
+        let cones: Vec<SupportedConeT<Float>> = vec![NonnegativeConeT(Js.len())];
+
+        let settings = DefaultSettingsBuilder::default()
+            .verbose(false)
+            .build()
+            .unwrap();
+        let mut solver = DefaultSolver::new(&P, &q, &A_, &b, &cones, settings);
+        solver.solve();
+        let v_sol = DVector::from(solver.solution.x);
+
+        // Update rigid body velocities and poses
+        let v_rigid = SpatialVector {
+            angular: vector![v_sol[0], v_sol[1], v_sol[2]],
+            linear: vector![v_sol[3], v_sol[4], v_sol[5]],
+        };
+        let rigid = &mut self.rigid_bodies[0];
+        rigid.vel = v_rigid;
+        let qi = rigid.pose;
+        let quaternion_dot = quaternion_derivative(&qi.rotation, &v_rigid.angular);
+        let translation_dot = qi.rotation * v_rigid.linear;
+        rigid.pose = Pose {
+            translation: qi.translation + translation_dot * dt,
+            rotation: UnitQuaternion::from_quaternion(
+                qi.rotation.quaternion() + quaternion_dot * dt,
+            ),
+        };
+
+        // Update deformable qdot and q
+        let v_deformable = v_sol.rows(6, deformable_dof).into_owned();
+        let deformable = &mut self.deformables[0];
+        deformable.q += &v_deformable * dt;
+        deformable.qdot = v_deformable;
+    }
+
+    pub fn set_rigid_poses(&mut self, poses: Vec<Pose>) {
+        for (rigid, pose) in izip!(self.rigid_bodies.iter_mut(), poses.iter()) {
+            rigid.pose = *pose;
+        }
+    }
+
+    pub fn set_deformable_velocities(&mut self, vel: Vec<Vec<Vector3<Float>>>) {
+        for (v, deformable) in izip!(vel.iter(), self.deformables.iter_mut()) {
+            deformable.set_velocity(v.clone());
+        }
+    }
+
+    pub fn set_rigid_velocities(&mut self, vel: Vec<Vector3<Float>>) {
+        for (v, rigid) in izip!(vel.iter(), self.rigid_bodies.iter_mut()) {
+            rigid.vel.linear = *v;
+        }
+    }
+}
+
+#[cfg(test)]
+mod hybrid_tests {
+    use na::{vector, DVector};
+
+    use crate::{assert_vec_close, hybrid::Hybrid, spatial::pose::Pose};
+
+    #[test]
+    fn no_collision() {
+        // Arrange
+        let mut state = Hybrid::new_canonical();
+        state.set_rigid_poses(vec![Pose::translation(vector![2.1, 0., 0.])]);
+        let v_rigid = vector![1., 0., 0.];
+        state.set_rigid_velocities(vec![v_rigid]);
+
+        let v = vector![-1., 0., 0.];
+        let v = vec![v, v, v, v];
+        let qdot0 = DVector::from_iterator(
+            state.deformables[0].q.len(),
+            v.iter().flat_map(|x| x.iter().copied()),
+        ); // TODO: add a util fn that flattens a Vec<Vector3>
+        state.set_deformable_velocities(vec![v]);
+
+        // Act
+        let final_time = 1.0;
+        let dt = 1e-3;
+        let num_steps = (final_time / dt) as usize;
+        for _s in 0..num_steps {
+            state.step(dt);
+        }
+
+        // Assert
+        let rigid = &state.rigid_bodies[0];
+        assert_vec_close!(rigid.vel.linear, v_rigid, 1e-3);
+        assert_vec_close!(rigid.vel.angular, vector![0., 0., 0.], 1e-3);
+
+        let deformable = &state.deformables[0];
+        assert_vec_close!(&deformable.qdot, qdot0, 1e-3);
+    }
+
+    #[test]
+    fn collision() {
+        // Arrange
+        let mut state = Hybrid::new_canonical();
+        state.set_rigid_poses(vec![Pose::translation(vector![2.5, 0., 0.])]);
+        let v_rigid = vector![-1., 0., 0.];
+        state.set_rigid_velocities(vec![v_rigid]);
+
+        // Act
+        let final_time = 1.0;
+        let dt = 1e-3;
+        let num_steps = (final_time / dt) as usize;
+        for _s in 0..num_steps {
+            state.step(dt);
+        }
+
+        // Assert
+        let rigid = &state.rigid_bodies[0];
+        assert!((rigid.vel.linear - v_rigid).x > 0.);
+
+        let deformable = &state.deformables[0];
+        for vel in deformable.get_velocities() {
+            assert!(vel.x < 0.);
+        }
+    }
+}

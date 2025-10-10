@@ -1,11 +1,12 @@
 use std::ops::{Add, AddAssign};
 
-use na::{DMatrix, SMatrix, Vector3};
+use na::{DMatrix, Matrix6, SMatrix, Vector3};
 use nalgebra::{vector, Matrix3};
 
 use crate::{
     spatial::{transform::Transform3D, twist::Twist},
     types::Float,
+    util::skew_symmetric,
     WORLD_FRAME,
 };
 use itertools::izip;
@@ -49,6 +50,21 @@ impl SpatialInertia {
             cross_part,
             mass,
         }
+    }
+
+    /// Returns the spatial inertia as a 6X6 matrix:
+    /// I^i = | J         c_hat |
+    ///       | c_hat^T     mI  |
+    pub fn to_matrix(&self) -> Matrix6<Float> {
+        let mut mat = Matrix6::zeros();
+        mat.fixed_view_mut::<3, 3>(0, 0).copy_from(&self.moment);
+        let c_hat = skew_symmetric(&self.cross_part);
+        mat.fixed_view_mut::<3, 3>(0, 3).copy_from(&c_hat);
+        mat.fixed_view_mut::<3, 3>(3, 0)
+            .copy_from(&c_hat.transpose());
+        mat.fixed_view_mut::<3, 3>(3, 3)
+            .copy_from(&DMatrix::from_diagonal_element(3, 3, self.mass));
+        mat
     }
 
     pub fn center_of_mass(&self) -> Vector3<Float> {
