@@ -25,7 +25,7 @@ use crate::{
 pub struct Rigid {
     pub inertia: SpatialInertia,
     pub pose: Pose,
-    pub vel: SpatialVector,
+    pub twist: SpatialVector,
 }
 
 impl Rigid {
@@ -39,23 +39,23 @@ impl Rigid {
         Rigid {
             inertia,
             pose: Pose::identity(),
-            vel: SpatialVector::zero(),
+            twist: SpatialVector::zero(),
         }
     }
 
     /// free-motion velocity in body frame
     pub fn free_velocity(&self, dt: Float) -> DVector<Float> {
         let mut v_free = dvector![];
-        v_free.extend(self.vel.angular.iter().cloned());
-        v_free.extend(self.vel.linear.iter().cloned());
+        v_free.extend(self.twist.angular.iter().cloned());
+        v_free.extend(self.twist.linear.iter().cloned());
         assert_eq!(v_free.len(), 6);
         v_free
     }
 
     /// Computes linear momentum in world frame
     pub fn linear_momentum(&self) -> Vector3<Float> {
-        let linear =
-            self.inertia.mass * self.vel.linear - self.inertia.cross_part.cross(&self.vel.angular);
+        let linear = self.inertia.mass * self.twist.linear
+            - self.inertia.cross_part.cross(&self.twist.angular);
         self.pose.rotation * linear
     }
 }
@@ -493,7 +493,7 @@ impl Hybrid {
                 angular: vector![v_sol[i], v_sol[i + 1], v_sol[i + 2]],
                 linear: vector![v_sol[i + 3], v_sol[i + 4], v_sol[i + 5]],
             };
-            rigid.vel = v_rigid;
+            rigid.twist = v_rigid;
             let qi = rigid.pose;
             let quaternion_dot = quaternion_derivative(&qi.rotation, &v_rigid.angular);
             let translation_dot = qi.rotation * v_rigid.linear;
@@ -527,7 +527,7 @@ impl Hybrid {
 
     pub fn set_rigid_velocities(&mut self, vel: Vec<Vector3<Float>>) {
         for (v, rigid) in izip!(vel.iter(), self.rigid_bodies.iter_mut()) {
-            rigid.vel.linear = *v;
+            rigid.twist.linear = *v;
         }
     }
 
@@ -581,8 +581,8 @@ mod hybrid_tests {
 
         // Assert
         let rigid = &state.rigid_bodies[0];
-        assert_vec_close!(rigid.vel.linear, v_rigid, 1e-3);
-        assert_vec_close!(rigid.vel.angular, vector![0., 0., 0.], 1e-3);
+        assert_vec_close!(rigid.twist.linear, v_rigid, 1e-3);
+        assert_vec_close!(rigid.twist.angular, vector![0., 0., 0.], 1e-3);
 
         let deformable = &state.deformables[0];
         assert_vec_close!(&deformable.qdot, qdot0, 1e-3);
@@ -614,7 +614,7 @@ mod hybrid_tests {
 
         // Assert
         let rigid = &state.rigid_bodies[0];
-        assert!((rigid.vel.linear - v_rigid).x > 0.);
+        assert!((rigid.twist.linear - v_rigid).x > 0.);
 
         let deformable = &state.deformables[0];
         for vel in deformable.get_velocities() {
