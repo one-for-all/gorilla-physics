@@ -112,11 +112,11 @@ pub async fn createHybridCube() -> InterfaceHybrid {
     state.add_rigid(Rigid::new_sphere());
     state.set_rigid_poses(vec![
         Pose::translation(vector![2.5, 0., 0.]),
-        Pose::translation(vector![-2.5, 0., 0.]),
+        Pose::translation(vector![-1.5, 0., 0.]),
     ]);
     state.set_rigid_velocities(vec![vector![-1., 0., 0.], vector![1., 0., 0.]]);
 
-    state.add_deformable(Deformable::new_octahedron());
+    state.add_deformable(Deformable::new_cube());
     // let v = vector![1. / 7., 0., 0.];
     // let v = vec![v; 7];
     // state.set_deformable_velocities(vec![v]);

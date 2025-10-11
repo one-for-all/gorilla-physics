@@ -67,6 +67,8 @@ Simulator.prototype.addHybrid = function (state: InterfaceHybrid) {
       color: 0x2194ce,
       side: DoubleSide, // Render both sides of faces
       flatShading: true,
+      transparent: true,
+      opacity: 0.5,
     });
     const mesh = new Mesh(geometry, material);
 

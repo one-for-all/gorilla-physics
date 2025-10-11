@@ -155,6 +155,27 @@ impl Deformable {
         Self::new(nodes, tetrahedra)
     }
 
+    pub fn new_cube() -> Self {
+        let nodes = vec![
+            vector![0., 0., 0.],
+            vector![1., 0., 0.],
+            vector![0., 1., 0.],
+            vector![0., 0., 1.],
+            vector![1., 1., 0.], // base back-right
+            vector![1., 1., 1.], // top back-right
+            vector![1., 0., 1.], // top front-right
+            vector![0., 1., 1.], // top back-left
+        ];
+        let tetrahedra = vec![
+            vec![0, 1, 2, 3], // bottom front
+            vec![4, 2, 1, 5], // bottom back
+            vec![3, 6, 1, 5], // front right
+            vec![7, 3, 2, 5], // back left
+            vec![3, 5, 1, 2], // center tetra
+        ];
+        Self::new(nodes, tetrahedra)
+    }
+
     /// Linear momentum assuming mass = 1
     pub fn linear_momentum(&self) -> Vector3<Float> {
         self.get_velocities()
@@ -209,6 +230,7 @@ impl Deformable {
             for icol in row.col_indices() {
                 let icol = *icol;
                 if irow < icol {
+                    assert!(!edges.contains(&(irow, icol)));
                     edges.push((irow, icol));
                     rs.push((self.nodes[irow] - self.nodes[icol]).norm());
                 }
