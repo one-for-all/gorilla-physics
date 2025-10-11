@@ -109,14 +109,17 @@ pub async fn createHybridSphereAndTetra() -> InterfaceHybrid {
 pub async fn createHybridCube() -> InterfaceHybrid {
     let mut state = Hybrid::empty();
     state.add_rigid(Rigid::new_sphere());
-    state.set_rigid_poses(vec![Pose::translation(vector![2.5, 0., 0.])]);
-    let v_rigid = vector![-1., 0., 0.];
-    state.set_rigid_velocities(vec![v_rigid]);
+    state.add_rigid(Rigid::new_sphere());
+    state.set_rigid_poses(vec![
+        Pose::translation(vector![2.5, 0., 0.]),
+        Pose::translation(vector![-2.5, 0., 0.]),
+    ]);
+    state.set_rigid_velocities(vec![vector![-1., 0., 0.], vector![1., 0., 0.]]);
 
     state.add_deformable(Deformable::new_octahedron());
-    let v = vector![1. / 7., 0., 0.];
-    let v = vec![v; 7];
-    state.set_deformable_velocities(vec![v]);
+    // let v = vector![1. / 7., 0., 0.];
+    // let v = vec![v; 7];
+    // state.set_deformable_velocities(vec![v]);
 
     InterfaceHybrid { inner: state }
 }

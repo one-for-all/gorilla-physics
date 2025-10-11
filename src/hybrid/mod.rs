@@ -48,6 +48,7 @@ impl Rigid {
         let mut v_free = dvector![];
         v_free.extend(self.vel.angular.iter().cloned());
         v_free.extend(self.vel.linear.iter().cloned());
+        assert_eq!(v_free.len(), 6);
         v_free
     }
 
@@ -372,48 +373,72 @@ impl Hybrid {
     }
 
     pub fn step(&mut self, dt: Float) {
-        let rigid = &self.rigid_bodies[0];
         let deformable = &self.deformables[0];
-        let v_rigid = rigid.free_velocity(dt);
-        let v_deformable = deformable.free_velocity(dt);
 
-        let v_star =
-            DVector::from_vec(v_rigid.iter().chain(v_deformable.iter()).copied().collect());
-        let iso = rigid.pose.to_isometry();
-        let T = compute_twist_transformation_matrix(&iso);
+        let v_rigids: Vec<DVector<Float>> = self
+            .rigid_bodies
+            .iter()
+            .map(|b| b.free_velocity(dt))
+            .collect();
+        let v_deformables: Vec<DVector<Float>> = self
+            .deformables
+            .iter()
+            .map(|b| b.free_velocity(dt))
+            .collect();
+        let total_len = v_rigids.iter().map(|v| v.len()).sum::<usize>()
+            + v_deformables.iter().map(|v| v.len()).sum::<usize>();
+        let v_star: DVector<Float> = DVector::from_iterator(
+            total_len,
+            v_rigids
+                .iter()
+                .chain(v_deformables.iter())
+                .flat_map(|v| v.data.as_vec().clone()),
+        );
 
+        let offset_deformable = self.rigid_bodies.len() * 6; // starting offset for deformable velocity within stacked total velocity vector
+
+        // rigid-deformable point-sphere collision detection
         let mut Js: Vec<Matrix1xX<Float>> = vec![];
+        for (i_rigid, rigid) in self.rigid_bodies.iter().enumerate() {
+            let iso = rigid.pose.to_isometry();
+            let translation = rigid.pose.translation;
+            let T = compute_twist_transformation_matrix(&iso);
 
-        // point-sphere collision detection
-        for (i, pos) in deformable.get_positions().iter().enumerate() {
-            if (pos - rigid.pose.translation).norm() <= 1.0 {
-                let n = pos - rigid.pose.translation;
-                let n = UnitVector3::new_normalize(n);
-                let cp = pos;
+            for (i_node, pos) in deformable.get_positions().iter().enumerate() {
+                if (pos - translation).norm() <= 1.0 {
+                    let n = UnitVector3::new_normalize(pos - translation);
+                    let cp = pos;
 
-                let icol = 6 + i * 3;
-                let mut J = Matrix1xX::zeros(6 + deformable.q.len());
-                J.fixed_view_mut::<1, 3>(0, icol).copy_from(&n.transpose());
+                    let icol = offset_deformable + i_node * 3;
+                    let mut J = Matrix1xX::zeros(offset_deformable + deformable.q.len());
+                    J.fixed_view_mut::<1, 3>(0, icol).copy_from(&n.transpose());
 
-                let mut X = Matrix3x6::zeros();
-                let r = cp;
-                X.columns_mut(0, 3).copy_from(&-skew_symmetric(&r));
-                X.columns_mut(3, 3).copy_from(&Matrix3::identity());
-                J.fixed_view_mut::<1, 6>(0, 0)
-                    .copy_from(&(-n.transpose() * X * T));
-                Js.push(J);
-
-                break;
+                    let mut X = Matrix3x6::zeros();
+                    let r = cp;
+                    X.columns_mut(0, 3).copy_from(&-skew_symmetric(&r));
+                    X.columns_mut(3, 3).copy_from(&Matrix3::identity());
+                    J.fixed_view_mut::<1, 6>(0, i_rigid * 6)
+                        .copy_from(&(-n.transpose() * X * T));
+                    Js.push(J);
+                }
             }
         }
 
         let deformable_dof = deformable.q.len();
-        let dof = 6 + deformable_dof;
+        let dof = offset_deformable + deformable_dof;
         let mut A: DMatrix<Float> = DMatrix::zeros(dof, dof);
-        A.view_mut((6, 6), (deformable_dof, deformable_dof))
-            .copy_from(&DMatrix::identity(deformable_dof, deformable_dof));
-        A.view_mut((0, 0), (6, 6))
-            .copy_from(&rigid.inertia.to_matrix());
+        A.view_mut(
+            (offset_deformable, offset_deformable),
+            (deformable_dof, deformable_dof),
+        )
+        .copy_from(&DMatrix::identity(deformable_dof, deformable_dof));
+
+        let mut i = 0;
+        for rigid in self.rigid_bodies.iter() {
+            A.view_mut((i, i), (6, 6))
+                .copy_from(&rigid.inertia.to_matrix());
+            i += 6;
+        }
 
         // Solve convex optimization to resolve contact
         let P = CscMatrix::from(A.row_iter());
@@ -440,24 +465,27 @@ impl Hybrid {
         let v_sol = DVector::from(solver.solution.x);
 
         // Update rigid body velocities and poses
-        let v_rigid = SpatialVector {
-            angular: vector![v_sol[0], v_sol[1], v_sol[2]],
-            linear: vector![v_sol[3], v_sol[4], v_sol[5]],
-        };
-        let rigid = &mut self.rigid_bodies[0];
-        rigid.vel = v_rigid;
-        let qi = rigid.pose;
-        let quaternion_dot = quaternion_derivative(&qi.rotation, &v_rigid.angular);
-        let translation_dot = qi.rotation * v_rigid.linear;
-        rigid.pose = Pose {
-            translation: qi.translation + translation_dot * dt,
-            rotation: UnitQuaternion::from_quaternion(
-                qi.rotation.quaternion() + quaternion_dot * dt,
-            ),
-        };
+        let mut i = 0;
+        for rigid in self.rigid_bodies.iter_mut() {
+            let v_rigid = SpatialVector {
+                angular: vector![v_sol[i], v_sol[i + 1], v_sol[i + 2]],
+                linear: vector![v_sol[i + 3], v_sol[i + 4], v_sol[i + 5]],
+            };
+            rigid.vel = v_rigid;
+            let qi = rigid.pose;
+            let quaternion_dot = quaternion_derivative(&qi.rotation, &v_rigid.angular);
+            let translation_dot = qi.rotation * v_rigid.linear;
+            rigid.pose = Pose {
+                translation: qi.translation + translation_dot * dt,
+                rotation: UnitQuaternion::from_quaternion(
+                    qi.rotation.quaternion() + quaternion_dot * dt,
+                ),
+            };
+            i += 6;
+        }
 
         // Update deformable qdot and q
-        let v_deformable = v_sol.rows(6, deformable_dof).into_owned();
+        let v_deformable = v_sol.rows(offset_deformable, deformable_dof).into_owned();
         let deformable = &mut self.deformables[0];
         deformable.q += &v_deformable * dt;
         deformable.qdot = v_deformable;

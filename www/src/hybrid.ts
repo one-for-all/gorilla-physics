@@ -97,7 +97,7 @@ Simulator.prototype.updateHybrid = function () {
   let poses = state.rigid_body_poses();
   let n_rigid_bodies = state.n_rigid_bodies();
   for (let i = 0; i < n_rigid_bodies; i++) {
-    this.setPose("sphere " + i, poses.subarray(i * 7, 7));
+    this.setPose("sphere " + i, poses.subarray(i * 7, i * 7 + 7));
   }
 
   // update deformable positions
