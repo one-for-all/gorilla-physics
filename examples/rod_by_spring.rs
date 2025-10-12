@@ -85,10 +85,7 @@ pub fn main() {
         l: l_rest_spring,
     };
     let treejoints = vec![
-        Joint::FloatingJoint(FloatingJoint {
-            init_iso: body_to_world.iso,
-            transform: body_to_world,
-        }),
+        Joint::FloatingJoint(FloatingJoint::new(body_to_world)),
         Joint::PrismaticJoint(PrismaticJoint::new_with_spring(
             leg_to_body,
             axis_leg,

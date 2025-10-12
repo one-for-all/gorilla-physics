@@ -88,10 +88,7 @@ mod floating_joint_tests {
             mass: m,
         });
 
-        let treejoints = vec![Joint::FloatingJoint(FloatingJoint {
-            init_iso: ball_to_world.iso,
-            transform: ball_to_world,
-        })];
+        let treejoints = vec![Joint::FloatingJoint(FloatingJoint::new(ball_to_world))];
         let bodies = vec![ball];
         let mut state = MechanismState::new(treejoints, bodies);
 
@@ -142,10 +139,7 @@ mod floating_joint_tests {
             mass: m,
         });
 
-        let treejoints = vec![Joint::FloatingJoint(FloatingJoint {
-            init_iso: ball_to_world.iso,
-            transform: ball_to_world,
-        })];
+        let treejoints = vec![Joint::FloatingJoint(FloatingJoint::new(ball_to_world))];
         let bodies = vec![ball];
         let mut state = MechanismState::new(treejoints, bodies);
 

@@ -762,10 +762,7 @@ mod mechanism_tests {
         });
 
         let treejoints = vec![
-            Joint::FloatingJoint(FloatingJoint {
-                init_iso: body_to_world.iso,
-                transform: body_to_world,
-            }),
+            Joint::FloatingJoint(FloatingJoint::new(body_to_world)),
             Joint::RevoluteJoint(RevoluteJoint::new(leg_to_body, axis_leg)),
             Joint::RevoluteJoint(RevoluteJoint::new(leg2_to_leg, axis_leg)),
         ];

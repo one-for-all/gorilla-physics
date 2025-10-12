@@ -291,10 +291,7 @@ pub fn build_2d_hopper(
 
     // Create the hopper
     let treejoints = vec![
-        Joint::FloatingJoint(FloatingJoint {
-            init_iso: body_to_world.iso,
-            transform: body_to_world,
-        }),
+        Joint::FloatingJoint(FloatingJoint::new(body_to_world)),
         Joint::RevoluteJoint(RevoluteJoint::new(hip_to_body, axis_hip)),
         Joint::PrismaticJoint(PrismaticJoint::new(piston_to_hip, axis_piston)),
         Joint::PrismaticJoint(PrismaticJoint::new(leg_to_piston, axis_leg)),
@@ -329,10 +326,7 @@ pub fn build_SLIP(
         mass: m,
     });
 
-    let treejoints = vec![Joint::FloatingJoint(FloatingJoint {
-        init_iso: body_to_world.iso,
-        transform: body_to_world,
-    })];
+    let treejoints = vec![Joint::FloatingJoint(FloatingJoint::new(body_to_world))];
     let bodies = vec![body];
     let mut state = MechanismState::new(treejoints, bodies);
 
