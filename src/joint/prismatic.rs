@@ -1,4 +1,4 @@
-use na::{zero, Isometry3, Matrix3xX, Translation3};
+use na::{zero, Isometry3, Matrix3xX, Translation3, UnitVector3};
 use nalgebra::Vector3;
 
 use crate::{
@@ -21,7 +21,7 @@ pub struct JointSpring {
 pub struct PrismaticJoint {
     pub init_iso: Isometry3<Float>,
     pub transform: Transform3D,
-    pub axis: Vector3<Float>, // axis expressed in successor body frame
+    pub axis: UnitVector3<Float>, // axis expressed in successor body frame
 
     pub v: Float,
 
@@ -29,7 +29,7 @@ pub struct PrismaticJoint {
 }
 
 impl PrismaticJoint {
-    pub fn new(transform: Transform3D, axis: Vector3<Float>) -> Self {
+    pub fn new(transform: Transform3D, axis: UnitVector3<Float>) -> Self {
         Self {
             init_iso: transform.iso,
             transform,
@@ -41,7 +41,7 @@ impl PrismaticJoint {
 
     pub fn new_with_spring(
         transform: Transform3D,
-        axis: Vector3<Float>,
+        axis: UnitVector3<Float>,
         spring: JointSpring,
     ) -> Self {
         Self {
@@ -61,7 +61,7 @@ impl PrismaticJoint {
             base: self.transform.to.clone(),
             frame: self.transform.from.clone(),
             angular: zero(),
-            linear: self.axis * vdot,
+            linear: self.axis.scale(vdot),
         }
     }
 

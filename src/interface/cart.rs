@@ -2,6 +2,7 @@ use super::InterfaceMechanismState;
 use crate::helpers::build_cart;
 use crate::joint::ToJointPositionVec;
 use crate::joint::ToJointVelocityVec;
+use na::Vector3;
 use nalgebra::{vector, Matrix3};
 use wasm_bindgen::prelude::*;
 
@@ -17,7 +18,7 @@ pub fn createCart(length: Float) -> InterfaceMechanismState {
     let moment_z = m * l * l / 12.0;
     let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
     let cross_part = vector![0.0, 0.0, 0.0];
-    let axis = vector![1.0, 0.0, 0.0];
+    let axis = Vector3::x_axis();
 
     let mut state = build_cart(m, &moment, &cross_part, &axis);
 

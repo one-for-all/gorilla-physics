@@ -1,6 +1,6 @@
 use gorilla_physics::helpers::build_cart;
 use gorilla_physics::plot::plot;
-use nalgebra::{vector, Matrix3};
+use nalgebra::{vector, Matrix3, Vector3};
 
 use gorilla_physics::joint::{JointVelocity, ToJointTorqueVec};
 use gorilla_physics::{simulate::simulate, types::Float};
@@ -21,7 +21,7 @@ pub fn main() {
     let moment_z = m * l * l / 12.0;
     let moment = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
     let cross_part = vector![0.0, 0.0, 0.0];
-    let axis = vector![1.0, 0.0, 0.0];
+    let axis = Vector3::x_axis();
 
     let mut state = build_cart(m, &moment, &cross_part, &axis);
     state.set_joint_v(1, JointVelocity::Float(1.0));

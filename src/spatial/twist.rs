@@ -47,7 +47,7 @@ impl Twist {
                 base: joint.transform.to.clone(),
                 frame: joint.transform.from.clone(),
                 angular: zero(),
-                linear: joint.axis * v.float(),
+                linear: joint.axis.scale(v.float()),
             },
             Joint::FloatingJoint(joint) => Twist {
                 body: joint.transform.from.clone(),

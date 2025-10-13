@@ -926,7 +926,7 @@ mod contact_tests {
             to: body_frame.to_string(),
             iso: Isometry3::translation(0., 0., -l_leg),
         };
-        let axis_leg = vector![0.0, 0.0, -1.0];
+        let axis_leg = -Vector3::z_axis();
 
         let spring = JointSpring {
             k: k_spring,
@@ -1009,7 +1009,7 @@ mod contact_tests {
             to: body_frame.to_string(),
             iso: Isometry3::translation(0., 0., -l_leg),
         };
-        let axis_leg = vector![0.0, 0.0, -1.0];
+        let axis_leg = -Vector3::z_axis();
 
         let spring = JointSpring {
             k: k_spring,

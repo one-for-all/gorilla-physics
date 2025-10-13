@@ -52,7 +52,7 @@ mod hopper_control_tests {
         let body = RigidBody::new_sphere(m_body, r_body, &body_frame);
         let body_to_ankle = Transform3D::move_z(&body_frame, &ankle_frame, l_ankle_to_body);
 
-        let leg_axis = vector![0., 0., 1.0];
+        let leg_axis = Vector3::z_axis();
         let leg_spring = JointSpring { k: 1e3, l: 0.0 };
 
         let treejoints = vec![

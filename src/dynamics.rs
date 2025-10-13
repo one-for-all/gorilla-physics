@@ -1151,7 +1151,7 @@ mod dynamics_tests {
             Joint::FloatingJoint(FloatingJoint::new(A_to_world)),
             Joint::PrismaticJoint(PrismaticJoint::new_with_spring(
                 B_to_A,
-                vector![1., 0., 0.],
+                Vector3::x_axis(),
                 JointSpring { k: 50.0, l: l_rest },
             )),
         ];

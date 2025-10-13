@@ -87,7 +87,7 @@ pub fn build_cart(
     mass: Float,
     moment: &Matrix3<Float>,
     cross_part: &Vector3<Float>,
-    axis: &Vector3<Float>,
+    axis: &UnitVector3<Float>,
 ) -> MechanismState {
     let cart_frame = "cart";
 
@@ -121,7 +121,7 @@ pub fn build_cart_pole(
     let pole_frame = "pole";
 
     let cart_to_world = Transform3D::identity(cart_frame, WORLD_FRAME);
-    let axis_cart = vector![1.0, 0.0, 0.0];
+    let axis_cart = Vector3::x_axis();
 
     let pole_to_cart = Transform3D::identity(pole_frame, cart_frame);
 
@@ -253,7 +253,7 @@ pub fn build_2d_hopper(
     let moment_x = 2.0 / 5.0 * m_piston * r_piston * r_piston;
     let moment_piston = Matrix3::from_diagonal(&vector![moment_x, moment_x, moment_x]);
     let cross_part_piston = vector![0.0, 0.0, 0.0];
-    let axis_piston = vector![0.0, 0.0, -1.0];
+    let axis_piston = -Vector3::z_axis();
 
     let piston_frame = "piston";
     let piston_to_hip = Transform3D {
@@ -274,7 +274,7 @@ pub fn build_2d_hopper(
     let moment_z = 0.0;
     let moment_leg = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
     let cross_part_leg = vector![0.0, 0.0, m_leg * l_leg / 2.0];
-    let axis_leg = vector![0.0, 0.0, -1.0];
+    let axis_leg = -Vector3::z_axis();
 
     let leg_frame = "leg";
     let leg_to_piston = Transform3D {
@@ -364,7 +364,7 @@ pub fn build_hopper(
     let body_to_hip = Transform3D::identity(&body_frame, &hip_frame);
     let hip_axis = Vector3::y_axis();
 
-    let leg_axis = vector![0., 0., 1.0];
+    let leg_axis = Vector3::z_axis();
     let leg_spring = JointSpring { k: 1e3, l: 0.0 };
 
     let treejoints = vec![
@@ -596,7 +596,7 @@ pub fn build_pusher() -> MechanismState {
     let bodies = vec![base_link, pusher_link, cube];
     let treejoints = vec![
         Joint::RevoluteJoint(RevoluteJoint::new(base_to_world, Vector3::z_axis())),
-        Joint::PrismaticJoint(PrismaticJoint::new(pusher_to_base, vector![1.0, 0.0, 0.0])),
+        Joint::PrismaticJoint(PrismaticJoint::new(pusher_to_base, Vector3::x_axis())),
         Joint::FloatingJoint(FloatingJoint::new(cube_to_world)),
     ];
     let mut state = MechanismState::new(treejoints, bodies);
@@ -662,14 +662,14 @@ pub fn build_gripper() -> MechanismState {
 
     let bodies = vec![lift, gripper_left, gripper_right, cube];
     let treejoints = vec![
-        Joint::PrismaticJoint(PrismaticJoint::new(lift_to_world, vector![0.0, 0.0, -1.0])),
+        Joint::PrismaticJoint(PrismaticJoint::new(lift_to_world, -Vector3::z_axis())),
         Joint::PrismaticJoint(PrismaticJoint::new(
             gripper_left_to_lift,
-            vector![-1.0, 0.0, 0.0],
+            -Vector3::x_axis(),
         )),
         Joint::PrismaticJoint(PrismaticJoint::new(
             gripper_right_to_lift,
-            vector![1.0, 0.0, 0.0],
+            Vector3::x_axis(),
         )),
         Joint::FloatingJoint(FloatingJoint::new(cube_to_world)),
     ];
