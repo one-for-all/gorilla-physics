@@ -1,7 +1,62 @@
-use na::{Matrix3xX, Matrix6xX};
+use na::{DMatrix, Isometry3, Matrix3xX, Matrix6xX};
 use std::ops::Mul;
 
-use crate::{spatial::transform::Transform3D, types::Float, util::colwise_cross};
+use crate::{
+    inertia::SpatialInertia,
+    spatial::{pose::Pose, transform::Transform3D},
+    types::Float,
+    util::colwise_cross,
+};
+
+pub struct Momentum {
+    pub angular: Matrix3xX<Float>,
+    pub linear: Matrix3xX<Float>,
+}
+
+impl Momentum {
+    pub fn mul(inertia: &SpatialInertia, motion_subspace: &MotionSubspace) -> Self {
+        let Jw = &motion_subspace.angular;
+        let Jv = &motion_subspace.linear;
+        let J = inertia.moment;
+        let m = inertia.mass;
+        let c = inertia.cross_part;
+
+        let ang = J * Jw + colwise_cross(&c, &Jv);
+        let lin = m * Jv - colwise_cross(&c, &Jw);
+
+        Self {
+            angular: ang,
+            linear: lin,
+        }
+    }
+
+    /// The result should be a joint-space inertia matrix
+    pub fn transpose_mul(&self, motion_subspace: &MotionSubspace) -> DMatrix<Float> {
+        let result = self.angular.transpose() * &motion_subspace.angular
+            + self.linear.transpose() * &motion_subspace.linear;
+        result
+    }
+}
+
+pub struct MotionSubspace {
+    pub angular: Matrix3xX<Float>,
+    pub linear: Matrix3xX<Float>,
+}
+
+impl MotionSubspace {
+    pub fn new(angular: Matrix3xX<Float>, linear: Matrix3xX<Float>) -> Self {
+        Self { angular, linear }
+    }
+
+    pub fn transform(&self, pose: &Pose) -> Self {
+        let rot = pose.rotation.to_rotation_matrix();
+        let trans = pose.translation;
+        let angular = rot * &self.angular;
+        let linear = rot * &self.linear + colwise_cross(&trans, &angular);
+
+        Self { angular, linear }
+    }
+}
 
 /// A geometric Jacobian maps a vector of joint velocities to a twist.
 #[derive(PartialEq, Debug)]
@@ -14,6 +69,10 @@ pub struct GeometricJacobian {
 }
 
 impl GeometricJacobian {
+    pub fn as_s(&self) -> MotionSubspace {
+        MotionSubspace::new(self.angular.clone(), self.linear.clone())
+    }
+
     /// Transform the twist to be expressed in the "to" frame of transform
     pub fn transform(&self, transform: &Transform3D) -> GeometricJacobian {
         if self.frame != transform.from {

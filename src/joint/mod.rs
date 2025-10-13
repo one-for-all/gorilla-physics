@@ -2,7 +2,7 @@ use std::ops::{Add, Div, Mul};
 
 use fixed::FixedJoint;
 use floating::FloatingJoint;
-use na::{dvector, vector, DVector, UnitVector3, Vector3};
+use na::{dvector, vector, DVector, UnitVector3, Vector3, Vector6};
 use prismatic::PrismaticJoint;
 use revolute::RevoluteJoint;
 
@@ -27,6 +27,25 @@ pub enum Joint {
 }
 
 impl Joint {
+    /// twist of each joint expressed in each joint (successor) frame
+    pub fn twist(&self) -> SpatialVector {
+        match self {
+            Joint::FixedJoint(_) => SpatialVector::zero(),
+            Joint::RevoluteJoint(joint) => SpatialVector::angular(joint.axis.scale(joint.v)),
+            Joint::PrismaticJoint(joint) => SpatialVector::linear(joint.axis.scale(joint.v)),
+            Joint::FloatingJoint(joint) => joint.v,
+        }
+    }
+
+    pub fn v(&self) -> DVector<Float> {
+        match self {
+            Joint::FixedJoint(_) => dvector![],
+            Joint::RevoluteJoint(j) => dvector![j.v],
+            Joint::PrismaticJoint(j) => dvector![j.v],
+            Joint::FloatingJoint(j) => j.v.as_dvector(),
+        }
+    }
+
     pub fn transform(&self) -> &Transform3D {
         match self {
             Joint::FixedJoint(joint) => &joint.transform,

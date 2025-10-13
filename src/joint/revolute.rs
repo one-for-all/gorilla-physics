@@ -5,7 +5,7 @@ use std::ops::Mul;
 use crate::{
     spatial::{
         geometric_jacobian::GeometricJacobian, spatial_acceleration::SpatialAcceleration,
-        transform::Transform3D,
+        spatial_vector::SpatialVector, transform::Transform3D,
     },
     types::Float,
 };
@@ -17,6 +17,8 @@ pub struct RevoluteJoint {
     pub init_iso: Isometry3<Float>, // initial transform from successor frame to predecessor frame
     pub transform: Transform3D,     // transform from successor frame to predecessor frame
     pub axis: UnitVector3<Float>,   // axis of rotation expressed in successor body frame
+
+    pub v: Float, // velocity of this joint
 }
 
 impl RevoluteJoint {
@@ -25,6 +27,7 @@ impl RevoluteJoint {
             init_iso: Isometry3::identity(),
             transform: Transform3D::default(),
             axis: Vector3::z_axis(),
+            v: 0.,
         }
     }
 
@@ -33,6 +36,7 @@ impl RevoluteJoint {
             init_iso: transform.iso,
             transform,
             axis,
+            v: 0.,
         }
     }
 

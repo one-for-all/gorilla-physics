@@ -23,6 +23,8 @@ pub struct PrismaticJoint {
     pub transform: Transform3D,
     pub axis: Vector3<Float>, // axis expressed in successor body frame
 
+    pub v: Float,
+
     pub spring: Option<JointSpring>,
 }
 
@@ -32,6 +34,7 @@ impl PrismaticJoint {
             init_iso: transform.iso,
             transform,
             axis,
+            v: 0.,
             spring: None,
         }
     }
@@ -45,6 +48,7 @@ impl PrismaticJoint {
             init_iso: transform.iso,
             transform,
             axis,
+            v: 0.,
             spring: Some(spring),
         }
     }

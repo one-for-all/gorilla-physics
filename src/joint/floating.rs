@@ -1,11 +1,14 @@
-use na::{Isometry3, Matrix3, Matrix3xX};
+use na::{zero, Isometry3, Matrix3, Matrix3xX};
 
+use crate::spatial::spatial_vector::SpatialVector;
 use crate::spatial::{geometric_jacobian::GeometricJacobian, pose::Pose, transform::Transform3D};
 use crate::types::Float;
 
 pub struct FloatingJoint {
     pub init_iso: Isometry3<Float>, // initial transform from successor frame to predecessor frame
     pub transform: Transform3D,     // transform from successor frame to predecessor frame
+
+    pub v: SpatialVector,
 }
 
 impl FloatingJoint {
@@ -13,6 +16,7 @@ impl FloatingJoint {
         Self {
             init_iso: transform.iso,
             transform,
+            v: SpatialVector::zero(),
         }
     }
 

@@ -7,7 +7,7 @@ use na::{DMatrix, DVector, Matrix3xX, Matrix4x3, Quaternion, SymmetricEigen, Uni
 use nalgebra::{Matrix3, Vector3};
 use web_sys::{self};
 
-use crate::types::Float;
+use crate::{inertia::SpatialInertia, spatial::spatial_vector::SpatialVector, types::Float};
 
 /// Mulitiply a spatial momentum with a spatial vector
 /// | J         c_hat | | w |   | Jw        + c_hat v |
@@ -24,7 +24,19 @@ pub fn mul_inertia(
     (angular, linear)
 }
 
+pub fn inertia_mul(inertia: &SpatialInertia, vector: &SpatialVector) -> SpatialVector {
+    let (angular, linear) = mul_inertia(
+        &inertia.moment,
+        &inertia.cross_part,
+        inertia.mass,
+        &vector.angular,
+        &vector.linear,
+    );
+    SpatialVector::new(angular, linear)
+}
+
 /// Also known as spatial motion cross product
+/// cross product between two motion vectors
 /// Reference: Chapter 2.9 Spatial Cross Products in "Robot Dynamics Algorithms" by Roy Featherstone
 pub fn se3_commutator(
     xw: &Vector3<Float>,
@@ -35,6 +47,19 @@ pub fn se3_commutator(
     let anguar = xw.cross(yw);
     let linear = xw.cross(yv) + xv.cross(yw);
     (anguar, linear)
+}
+
+pub fn spatial_motion_cross(x: &SpatialVector, y: &SpatialVector) -> SpatialVector {
+    let (angular, linear) = se3_commutator(&x.angular, &x.linear, &y.angular, &y.linear);
+    SpatialVector::new(angular, linear)
+}
+
+/// cross product between a motion vector and a force vector
+/// reference: equation (2.34) in Featherstone
+pub fn spatial_force_cross(v: &SpatialVector, f: &SpatialVector) -> SpatialVector {
+    let angular = v.angular.cross(&f.angular) + v.linear.cross(&f.linear);
+    let linear = v.angular.cross(&f.linear);
+    SpatialVector::new(angular, linear)
 }
 
 /// Perform column-wise cross product

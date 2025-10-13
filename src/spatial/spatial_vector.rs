@@ -1,7 +1,10 @@
 use std::ops::{Add, Div, Mul};
 
-use crate::{spatial::transform::Transform3D, types::Float};
-use na::{zero, Vector3};
+use crate::{
+    spatial::{pose::Pose, transform::Transform3D},
+    types::Float,
+};
+use na::{dvector, zero, DVector, Vector3};
 
 #[derive(Clone, Debug, Copy)]
 pub struct SpatialVector {
@@ -17,9 +20,9 @@ impl SpatialVector {
         }
     }
 
-    pub fn transform(&self, transform: &Transform3D) -> SpatialVector {
-        let rot = transform.rot();
-        let trans = transform.trans();
+    pub fn transform(&self, pose: &Pose) -> SpatialVector {
+        let rot = pose.rotation;
+        let trans = pose.translation;
 
         let angular = rot.mul(self.angular);
         let linear = rot.mul(self.linear) + trans.cross(&angular);
@@ -27,6 +30,35 @@ impl SpatialVector {
         let result = SpatialVector { angular, linear };
 
         result
+    }
+
+    pub fn new(angular: Vector3<Float>, linear: Vector3<Float>) -> Self {
+        SpatialVector { angular, linear }
+    }
+
+    pub fn angular(angular: Vector3<Float>) -> Self {
+        SpatialVector {
+            angular,
+            linear: zero(),
+        }
+    }
+
+    pub fn linear(linear: Vector3<Float>) -> Self {
+        SpatialVector {
+            angular: zero(),
+            linear,
+        }
+    }
+
+    pub fn as_dvector(&self) -> DVector<Float> {
+        dvector![
+            self.angular.x,
+            self.angular.y,
+            self.angular.z,
+            self.linear.x,
+            self.linear.y,
+            self.linear.z
+        ]
     }
 }
 
@@ -53,6 +85,17 @@ impl Div<Float> for &SpatialVector {
 }
 
 impl Add for &SpatialVector {
+    type Output = SpatialVector;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        SpatialVector {
+            angular: self.angular + rhs.angular,
+            linear: self.linear + rhs.linear,
+        }
+    }
+}
+
+impl Add for SpatialVector {
     type Output = SpatialVector;
 
     fn add(self, rhs: Self) -> Self::Output {

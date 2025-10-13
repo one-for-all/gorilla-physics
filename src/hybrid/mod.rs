@@ -361,6 +361,7 @@ impl Deformable {
         boundary_facets
     }
 }
+pub mod articulated;
 
 pub struct Hybrid {
     pub rigid_bodies: Vec<Rigid>,
