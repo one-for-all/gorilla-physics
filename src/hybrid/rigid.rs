@@ -1,4 +1,4 @@
-use na::{dvector, DMatrix, DVector, Matrix3, Vector3};
+use na::{dvector, vector, DMatrix, DVector, Matrix3, Vector3};
 
 use crate::{
     inertia::SpatialInertia,
@@ -47,6 +47,50 @@ impl Rigid {
         let moment = Matrix3::from_diagonal_element(moment);
         let cross = Vector3::zeros();
         let inertia = SpatialInertia::new(moment, cross, m, "sphere");
+        Rigid {
+            inertia,
+            pose: Pose::identity(),
+            twist: SpatialVector::zero(),
+        }
+    }
+
+    pub fn new_sphere_at(com: &Vector3<Float>, m: Float, r: Float, frame: &str) -> Self {
+        let moment = 2. / 5. * m * r * r;
+        let moment_com = Matrix3::from_diagonal_element(moment);
+
+        // generalized parallel axis theorem
+        let moment =
+            moment_com + m * (com.norm_squared() * Matrix3::identity() - com * com.transpose());
+        let cross_part = m * com;
+        let inertia = SpatialInertia::new(moment, cross_part, m, frame);
+
+        Rigid {
+            inertia,
+            pose: Pose::identity(),
+            twist: SpatialVector::zero(),
+        }
+    }
+
+    /// Create a uniform cuboid, whose center of mass is not at the origin of frame
+    pub fn new_cuboid_at(
+        com: &Vector3<Float>,
+        m: Float,
+        w: Float,
+        d: Float,
+        h: Float,
+        frame: &str,
+    ) -> Rigid {
+        let moment_x = m * (d * d + h * h) / 12.0;
+        let moment_y = m * (w * w + h * h) / 12.0;
+        let moment_z = m * (w * w + d * d) / 12.0;
+        let moment_com = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
+
+        // generalized parallel axis theorem
+        let moment =
+            moment_com + m * (com.norm_squared() * Matrix3::identity() - com * com.transpose());
+        let cross_part = m * com;
+        let inertia = SpatialInertia::new(moment, cross_part, m, frame);
+
         Rigid {
             inertia,
             pose: Pose::identity(),

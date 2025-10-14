@@ -46,6 +46,15 @@ impl Joint {
         }
     }
 
+    pub fn q(&self) -> DVector<Float> {
+        match self {
+            Joint::FixedJoint(_) => dvector![],
+            Joint::RevoluteJoint(j) => dvector![j.q],
+            Joint::PrismaticJoint(j) => dvector![j.q],
+            Joint::FloatingJoint(j) => j.q.as_dvec(),
+        }
+    }
+
     pub fn transform(&self) -> &Transform3D {
         match self {
             Joint::FixedJoint(joint) => &joint.transform,
@@ -92,6 +101,10 @@ impl Joint {
 
     pub fn new_fixed(transform: Transform3D) -> Self {
         Self::FixedJoint(FixedJoint::new(transform))
+    }
+
+    pub fn new_prismatic(transform: Transform3D, axis: UnitVector3<Float>) -> Self {
+        Self::PrismaticJoint(PrismaticJoint::new(transform, axis))
     }
 }
 

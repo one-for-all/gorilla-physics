@@ -8,7 +8,8 @@ pub struct FloatingJoint {
     pub init_iso: Isometry3<Float>, // initial transform from successor frame to predecessor frame
     pub transform: Transform3D,     // transform from successor frame to predecessor frame
 
-    pub v: SpatialVector,
+    pub v: SpatialVector, // velocity of this joint
+    pub q: Pose,          // position of this joint
 }
 
 impl FloatingJoint {
@@ -17,6 +18,7 @@ impl FloatingJoint {
             init_iso: transform.iso,
             transform,
             v: SpatialVector::zero(),
+            q: Pose::identity(),
         }
     }
 

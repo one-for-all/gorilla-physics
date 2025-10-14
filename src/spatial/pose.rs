@@ -1,4 +1,4 @@
-use na::{Isometry3, Matrix4, Translation3, UnitQuaternion, Vector3};
+use na::{dvector, DVector, Isometry3, Matrix4, Translation3, UnitQuaternion, Vector3};
 
 use crate::types::Float;
 
@@ -45,6 +45,22 @@ impl Pose {
         let quaternion = self.rotation.quaternion();
 
         [
+            quaternion.i,
+            quaternion.j,
+            quaternion.k,
+            quaternion.w,
+            translation[0],
+            translation[1],
+            translation[2],
+        ]
+    }
+
+    /// returns rotation as quaternion, and translation as vector, in a single 7-element DVector
+    pub fn as_dvec(&self) -> DVector<Float> {
+        let translation = self.translation;
+        let quaternion = self.rotation.quaternion();
+
+        dvector![
             quaternion.i,
             quaternion.j,
             quaternion.k,

@@ -1,21 +1,21 @@
+use std::collections::HashMap;
+
 use itertools::izip;
-use na::{dvector, vector, DMatrix, DVector, Vector3};
+use na::Vector3;
+use na::{vector, DMatrix, DVector, UnitQuaternion};
 
 use crate::{
     hybrid::rigid::Rigid,
     inertia::SpatialInertia,
-    joint::{Joint, JointPosition, JointVelocity, ToFloatDVec},
-    momentum::MomentumMatrix,
+    joint::{Joint, JointVelocity},
     spatial::{
         geometric_jacobian::{Momentum, MotionSubspace},
         pose::Pose,
         spatial_vector::SpatialVector,
-        transform::Transform3D,
-        wrench,
     },
     types::Float,
-    util::{inertia_mul, se3_commutator, spatial_force_cross, spatial_motion_cross},
-    GRAVITY,
+    util::{inertia_mul, quaternion_derivative, spatial_force_cross, spatial_motion_cross},
+    GRAVITY, WORLD_FRAME,
 };
 
 /// bodies connected to each other through joints
@@ -27,42 +27,30 @@ pub struct Articulated {
 }
 
 impl Articulated {
-    pub fn free_velocity(&mut self, dt: Float) -> DVector<Float> {
-        // Note: assuming joint iso are up-to-date
-
-        // update body poses
-        for (i, joint) in self.joints.iter().enumerate() {
-            let parent = self.parents[i];
-            assert!(parent <= i); // parents must come before children
-            let joint_iso = joint.transform().iso;
-            let body_iso = if parent == i {
-                // parent is world
-                joint_iso
+    pub fn new(bodies: Vec<Rigid>, joints: Vec<Joint>) -> Self {
+        let mut frame_to_id = HashMap::new();
+        for (i, body) in bodies.iter().enumerate() {
+            frame_to_id.insert(body.inertia.frame.clone(), i);
+        }
+        let mut parents = vec![0; bodies.len()];
+        for joint in joints.iter() {
+            let parent = &joint.transform().to;
+            let child = &joint.transform().from;
+            if parent == WORLD_FRAME {
+                parents[frame_to_id[child]] = frame_to_id[child];
             } else {
-                self.bodies[parent].pose.to_isometry() * joint_iso
-            };
-            self.bodies[i].pose = Pose {
-                rotation: body_iso.rotation,
-                translation: body_iso.translation.vector,
+                parents[frame_to_id[child]] = frame_to_id[parent];
             }
         }
 
-        // Note: assuming joint twist are up-to-date
-
-        // update body twists
-        for (i, joint) in self.joints.iter().enumerate() {
-            let parent = self.parents[i];
-            let pose = self.bodies[i].pose;
-            let joint_twist = joint.twist().transform(&pose);
-            let body_twist = if parent == i {
-                // parent is world
-                joint_twist
-            } else {
-                self.bodies[parent].twist + joint_twist
-            };
-            self.bodies[i].twist = body_twist
+        Self {
+            bodies: bodies,
+            joints: joints,
+            parents: parents,
         }
+    }
 
+    pub fn free_velocity(&mut self, dt: Float) -> DVector<Float> {
         // Compute dynamics bias c(q, v)
         // First, compute bias accelerations, i.e. acceleration of each body when no external force,  and no joint acceleration
         let mut bias_accels: Vec<SpatialVector> = vec![];
@@ -186,7 +174,7 @@ impl Articulated {
     }
 
     /// Total degrees of freedom
-    fn dof(&self) -> usize {
+    pub fn dof(&self) -> usize {
         self.joints.iter().map(|j| j.dof()).sum()
     }
 
@@ -197,5 +185,176 @@ impl Articulated {
             v.extend(joint.v().iter());
         }
         DVector::from_vec(v)
+    }
+
+    /// position vector of the system
+    pub fn q(&self) -> DVector<Float> {
+        let mut q = vec![];
+        for joint in self.joints.iter() {
+            q.extend(joint.q().iter());
+        }
+        DVector::from_vec(q)
+    }
+
+    /// Update joint velocities, and integrate joint positions through dt
+    pub fn integrate(&mut self, v: DVector<Float>, dt: Float) {
+        let mut i = 0;
+        for joint in self.joints.iter_mut() {
+            match joint {
+                Joint::FixedJoint(_) => {}
+                Joint::RevoluteJoint(j) => {
+                    j.v = v[i];
+                    j.q += j.v * dt;
+                    j.update(j.q);
+                }
+                Joint::PrismaticJoint(j) => {
+                    j.v = v[i];
+                    j.q += j.v * dt;
+                    j.update(j.q);
+                }
+                Joint::FloatingJoint(j) => {
+                    j.v = SpatialVector::new(
+                        vector![v[i], v[i + 1], v[i + 2]],
+                        vector![v[i + 3], v[i + 4], v[i + 5]],
+                    );
+                    let quaternion_dot = quaternion_derivative(&j.q.rotation, &j.v.angular);
+                    let translation_dot = j.q.rotation * j.v.linear;
+                    let new_q = Pose {
+                        translation: j.q.translation + translation_dot * dt,
+                        rotation: UnitQuaternion::from_quaternion(
+                            j.q.rotation.quaternion() + quaternion_dot * dt,
+                        ),
+                    };
+                    j.q = new_q;
+                    j.update(&new_q);
+                }
+            }
+
+            let dof = joint.dof();
+            i += dof;
+        }
+
+        // Note: assuming joint iso are up-to-date
+
+        // update body poses
+        for (i, joint) in self.joints.iter().enumerate() {
+            let parent = self.parents[i];
+            assert!(parent <= i); // parents must come before children
+            let joint_iso = joint.transform().iso;
+            let body_iso = if parent == i {
+                // parent is world
+                joint_iso
+            } else {
+                self.bodies[parent].pose.to_isometry() * joint_iso
+            };
+            self.bodies[i].pose = Pose {
+                rotation: body_iso.rotation,
+                translation: body_iso.translation.vector,
+            }
+        }
+
+        // Note: assuming joint twist are up-to-date
+
+        // update body twists
+        for (i, joint) in self.joints.iter().enumerate() {
+            let parent = self.parents[i];
+            let pose = self.bodies[i].pose;
+            let joint_twist = joint.twist().transform(&pose);
+            let body_twist = if parent == i {
+                // parent is world
+                joint_twist
+            } else {
+                self.bodies[parent].twist + joint_twist
+            };
+            self.bodies[i].twist = body_twist
+        }
+    }
+
+    pub fn step(&mut self, dt: Float) {
+        let v = self.free_velocity(dt);
+        self.integrate(v, dt);
+    }
+
+    pub fn set_joint_v(&mut self, i: usize, v: JointVelocity) {
+        match &mut self.joints[i] {
+            Joint::FixedJoint(_) => panic!("can't set fixed joint v"),
+            Joint::RevoluteJoint(j) => j.v = v.float(),
+            Joint::PrismaticJoint(j) => j.v = v.float(),
+            Joint::FloatingJoint(j) => j.v = *v.spatial(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod articulated_tests {
+    use na::{vector, Vector3};
+
+    use crate::{
+        assert_close, assert_vec_close,
+        hybrid::{articulated::Articulated, rigid::Rigid},
+        joint::{Joint, JointVelocity},
+        spatial::transform::Transform3D,
+        PI, WORLD_FRAME,
+    };
+
+    #[test]
+    fn cart() {
+        // Arrange
+        let bodies = vec![Rigid::new_cuboid_at(
+            &vector![0., 0., 0.],
+            1.,
+            1.,
+            0.1,
+            0.1,
+            "cart",
+        )];
+        let cart_to_world = Transform3D::identity("cart", WORLD_FRAME);
+        let joints = vec![Joint::new_prismatic(cart_to_world, Vector3::x_axis())];
+        let mut state = Articulated::new(bodies, joints);
+        let v = 1.0;
+        state.set_joint_v(0, JointVelocity::Float(v));
+
+        // Act
+        let final_time = 2.0;
+        let dt = 1e-3;
+        let num_steps = (final_time / dt) as usize;
+        for _s in 0..num_steps {
+            state.step(dt);
+        }
+
+        // Assert
+        assert_vec_close!(state.v(), vec![v], 1e-3);
+        assert_vec_close!(state.q(), vec![final_time * v], 1e-3);
+    }
+
+    #[test]
+    fn pendulum() {
+        // Arrange
+        let l = 1.0;
+        let bodies = vec![Rigid::new_sphere_at(
+            &vector![l, 0., 0.],
+            1.,
+            1.,
+            "pendulum",
+        )];
+        let sphere_to_world = Transform3D::identity("pendulum", WORLD_FRAME);
+        let joints = vec![Joint::new_revolute(sphere_to_world, Vector3::y_axis())];
+        let mut state = Articulated::new(bodies, joints);
+
+        // Act
+        let mut max_angle = 0.;
+        let final_time = 2.0;
+        let dt = 1e-3;
+        let num_steps = (final_time / dt) as usize;
+        for _s in 0..num_steps {
+            state.step(dt);
+            let angle = state.q()[0];
+            if angle > max_angle {
+                max_angle = angle;
+            }
+        }
+
+        // Assert
+        assert_close!(max_angle, PI, 1e-3);
     }
 }

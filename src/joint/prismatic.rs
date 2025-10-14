@@ -23,7 +23,8 @@ pub struct PrismaticJoint {
     pub transform: Transform3D,
     pub axis: UnitVector3<Float>, // axis expressed in successor body frame
 
-    pub v: Float,
+    pub v: Float, // velocity of this joint
+    pub q: Float, // position of this joint
 
     pub spring: Option<JointSpring>,
 }
@@ -35,6 +36,7 @@ impl PrismaticJoint {
             transform,
             axis,
             v: 0.,
+            q: 0.,
             spring: None,
         }
     }
@@ -49,6 +51,7 @@ impl PrismaticJoint {
             transform,
             axis,
             v: 0.,
+            q: 0.,
             spring: Some(spring),
         }
     }

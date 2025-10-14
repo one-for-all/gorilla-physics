@@ -19,6 +19,7 @@ pub struct RevoluteJoint {
     pub axis: UnitVector3<Float>,   // axis of rotation expressed in successor body frame
 
     pub v: Float, // velocity of this joint
+    pub q: Float, // position of this joint
 }
 
 impl RevoluteJoint {
@@ -28,6 +29,7 @@ impl RevoluteJoint {
             transform: Transform3D::default(),
             axis: Vector3::z_axis(),
             v: 0.,
+            q: 0.,
         }
     }
 
@@ -37,6 +39,7 @@ impl RevoluteJoint {
             transform,
             axis,
             v: 0.,
+            q: 0.,
         }
     }
 
