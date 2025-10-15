@@ -17,6 +17,7 @@ import {
   createHybridSphereAndTetra,
   createHybridCube,
   createPendulum,
+  createSphereCart,
 } from "gorilla-physics";
 import { Simulator } from "./Simulator";
 import "./biped";
@@ -54,7 +55,7 @@ import("gorilla-physics").then((gorilla) => {
   // });
 
   let radius = 0.1;
-  createPendulum().then((state) => {
+  createSphereCart().then((state) => {
     // state.addHalfSpace(normal as Float64Array, h_ground);
 
     // let controller = gorilla.createNullController();

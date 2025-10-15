@@ -5,7 +5,8 @@ use web_sys::js_sys::{Float32Array, Uint32Array};
 use crate::hybrid::articulated::Articulated;
 use crate::hybrid::visual::Visual;
 use crate::hybrid::{Deformable, Rigid};
-use crate::joint::Joint;
+use crate::interface::cart;
+use crate::joint::{Joint, JointVelocity};
 use crate::na::vector;
 use crate::spatial::transform::Transform3D;
 use crate::types::Float;
@@ -189,6 +190,30 @@ pub async fn createPendulum() -> InterfaceHybrid {
         Joint::new_revolute(pendulum2_to_pendulum, Vector3::y_axis()),
     ];
     state.add_articulated(Articulated::new(bodies, joints));
+
+    state.add_deformable(Deformable::new_cube());
+
+    InterfaceHybrid { inner: state }
+}
+
+#[wasm_bindgen]
+pub async fn createSphereCart() -> InterfaceHybrid {
+    let mut state = Hybrid::empty();
+
+    let r = 1.0;
+    let cart_frame = "cart";
+    let bodies = vec![Rigid::new_sphere_at(
+        &vector![0., 0., 0.],
+        1.,
+        r,
+        cart_frame,
+    )];
+    let cart_to_world = Transform3D::move_x(cart_frame, WORLD_FRAME, 2.5);
+    let joints = vec![Joint::new_prismatic(cart_to_world, Vector3::x_axis())];
+    let mut articulated = Articulated::new(bodies, joints);
+    articulated.set_joint_v(0, JointVelocity::Float(-1.));
+
+    state.add_articulated(articulated);
 
     state.add_deformable(Deformable::new_cube());
 
