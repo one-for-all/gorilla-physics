@@ -362,6 +362,7 @@ mod articulated_tests {
         let sphere_to_world = Transform3D::identity("pendulum", WORLD_FRAME);
         let joints = vec![Joint::new_revolute(sphere_to_world, Vector3::y_axis())];
         let mut state = Articulated::new(bodies, joints);
+        let total_energy = state.total_energy();
 
         // Act
         let mut max_angle = 0.;
