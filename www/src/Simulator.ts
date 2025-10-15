@@ -239,12 +239,14 @@ export class Simulator {
     offset: THREE.Matrix4 = new THREE.Matrix4(),
   ) {
     const geometry = new THREE.BoxGeometry(w, d, h);
+    geometry.applyMatrix4(offset);
+
     const material = new THREE.MeshPhongMaterial({
       color: color,
       side: THREE.DoubleSide, // Render both sides of faces
       flatShading: true,
     });
-    geometry.applyMatrix4(offset);
+
     const box = new THREE.Mesh(geometry, material);
     this.meshes.set(name, box);
     this.graphics.scene.add(box);
@@ -256,8 +258,15 @@ export class Simulator {
     this.graphics.scene.add(edgesMesh);
   }
 
-  addSphere(name: string, color: number, radius: number) {
+  addSphere(
+    name: string,
+    color: number,
+    radius: number,
+    offset: THREE.Matrix4 = new THREE.Matrix4(),
+  ) {
     const geometry = new THREE.SphereGeometry(radius, 32, 32);
+    geometry.applyMatrix4(offset);
+
     const material = new THREE.MeshPhongMaterial({
       color: color,
       side: THREE.DoubleSide, // Render both sides of faces
@@ -265,6 +274,7 @@ export class Simulator {
       opacity: 0.5,
       transparent: true,
     });
+
     const sphere = new THREE.Mesh(geometry, material);
     this.meshes.set(name, sphere);
     this.graphics.scene.add(sphere);

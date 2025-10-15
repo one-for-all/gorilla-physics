@@ -1,11 +1,19 @@
-use na::dvector;
+use std::any::Any;
+
+use na::{dvector, Transform3, Vector3};
 use wasm_bindgen::prelude::wasm_bindgen;
 use web_sys::js_sys::{Float32Array, Uint32Array};
+use wgpu::wgc::validation::Interface;
 
-use crate::flog;
+use crate::collision::sphere::Sphere;
+use crate::hybrid::articulated::Articulated;
+use crate::hybrid::visual::Visual;
 use crate::hybrid::{Deformable, Rigid};
+use crate::joint::Joint;
 use crate::na::vector;
+use crate::spatial::transform::Transform3D;
 use crate::types::Float;
+use crate::{flog, WORLD_FRAME};
 use crate::{hybrid::Hybrid, spatial::pose::Pose, toJsFloat32Array};
 
 #[wasm_bindgen]
@@ -17,6 +25,50 @@ pub struct InterfaceHybrid {
 impl InterfaceHybrid {
     pub fn n_rigid_bodies(&self) -> usize {
         self.inner.rigid_bodies.len()
+    }
+
+    pub fn n_articulated(&self) -> usize {
+        self.inner.articulated.len()
+    }
+
+    /// number of bodies in articulated i
+    pub fn n_bodies_articulated(&self, i: usize) -> usize {
+        self.inner.articulated[i].bodies.len()
+    }
+
+    pub fn n_visuals_articulated_body(&self, i: usize, j: usize) -> usize {
+        self.inner.articulated[i].bodies[j].visual.len()
+    }
+
+    pub fn visual_type(&self, i: usize, j: usize, k: usize) -> usize {
+        let visual = &self.inner.articulated[i].bodies[j].visual[k].0;
+        return match visual {
+            Visual::Sphere(_) => 0,
+        };
+    }
+
+    pub fn visual_sphere_r(&self, i: usize, j: usize, k: usize) -> Float {
+        let visual = &self.inner.articulated[i].bodies[j].visual[k].0;
+        return match visual {
+            Visual::Sphere(sphere) => sphere.r,
+        };
+    }
+
+    pub fn iso_visual_to_body(&self, i: usize, j: usize, k: usize) -> Float32Array {
+        let iso = &self.inner.articulated[i].bodies[j].visual[k].1;
+        let mut q: Vec<Float> = vec![];
+        q.extend(iso.rotation.coords.iter());
+        q.extend(iso.translation.vector.iter());
+        toJsFloat32Array!(q)
+    }
+
+    pub fn frame_articulated_body(&self, i: usize, j: usize) -> String {
+        self.inner.articulated[i].bodies[j].inertia.frame.clone()
+    }
+
+    pub fn pose_articulated_body(&self, i: usize, j: usize) -> Float32Array {
+        let body = &self.inner.articulated[i].bodies[j];
+        toJsFloat32Array!(body.pose.to_array())
     }
 
     pub fn rigid_body_poses(&self) -> Float32Array {
@@ -120,6 +172,29 @@ pub async fn createHybridCube() -> InterfaceHybrid {
     // let v = vector![1. / 7., 0., 0.];
     // let v = vec![v; 7];
     // state.set_deformable_velocities(vec![v]);
+
+    InterfaceHybrid { inner: state }
+}
+
+#[wasm_bindgen]
+pub async fn createPendulum() -> InterfaceHybrid {
+    let mut state = Hybrid::empty();
+    let l = 1.0;
+    let r = 0.1;
+    let bodies = vec![
+        Rigid::new_sphere_at(&vector![l, 0., 0.], 1., r, "pendulum"),
+        Rigid::new_sphere_at(&vector![0., 0., l], 1., r, "pendulum2"),
+    ];
+    let pendulum_to_world = Transform3D::identity("pendulum", WORLD_FRAME);
+    let pendulum2_to_pendulum = Transform3D::move_x("pendulum2", "pendulum", l);
+
+    let joints = vec![
+        Joint::new_revolute(pendulum_to_world, Vector3::y_axis()),
+        Joint::new_revolute(pendulum2_to_pendulum, Vector3::y_axis()),
+    ];
+    state.add_articulated(Articulated::new(bodies, joints));
+
+    state.add_deformable(Deformable::new_cube());
 
     InterfaceHybrid { inner: state }
 }

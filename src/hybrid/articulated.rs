@@ -108,6 +108,19 @@ impl Articulated {
         }
         let c = DVector::from_vec(torques); // dynamics bias
 
+        let mass_matrix = self.mass_matrix();
+
+        let vdot = mass_matrix.cholesky().unwrap().solve(&-c);
+
+        self.v() + vdot * dt
+    }
+
+    pub fn mass_matrix(&self) -> DMatrix<Float> {
+        // Compute and store motion subspaces, expressed in world frame
+        let motion_subspaces: Vec<MotionSubspace> = izip!(self.joints.iter(), self.bodies.iter())
+            .map(|(j, b)| j.motion_subspace().as_s().transform(&b.pose))
+            .collect();
+
         // Compute mass matrix
         let dof = self.dof();
         // compute inertias of each body, expressed in world frame
@@ -167,10 +180,7 @@ impl Articulated {
                 parent = self.parents[j];
             }
         }
-
-        let vdot = mass_matrix.cholesky().unwrap().solve(&-c);
-
-        self.v() + vdot * dt
+        mass_matrix
     }
 
     /// Total degrees of freedom

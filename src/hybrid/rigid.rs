@@ -1,7 +1,9 @@
-use na::{dvector, vector, DMatrix, DVector, Matrix3, Vector3};
+use na::{dvector, vector, DMatrix, DVector, Isometry3, Matrix3, Vector3};
 
 use crate::{
+    hybrid::visual::{SphereGeometry, Visual},
     inertia::SpatialInertia,
+    rigid_body::{Collider, CollisionGeometry},
     spatial::{pose::Pose, spatial_vector::SpatialVector},
     types::Float,
     WORLD_FRAME,
@@ -12,6 +14,8 @@ pub struct Rigid {
     pub inertia: SpatialInertia,
     pub pose: Pose,           // TODO: use Iso instead of Pose?
     pub twist: SpatialVector, // body velocity expressed in world frame
+
+    pub visual: Vec<(Visual, Isometry3<Float>)>, // geometry and the isometry from geometry frame to body frame
 }
 
 impl Rigid {
@@ -40,6 +44,15 @@ impl Rigid {
         }
     }
 
+    pub fn new(inertia: SpatialInertia) -> Self {
+        Rigid {
+            inertia,
+            pose: Pose::identity(),
+            twist: SpatialVector::zero(),
+            visual: vec![],
+        }
+    }
+
     pub fn new_sphere() -> Self {
         let m = 1.0;
         let r = 1.0;
@@ -47,11 +60,7 @@ impl Rigid {
         let moment = Matrix3::from_diagonal_element(moment);
         let cross = Vector3::zeros();
         let inertia = SpatialInertia::new(moment, cross, m, "sphere");
-        Rigid {
-            inertia,
-            pose: Pose::identity(),
-            twist: SpatialVector::zero(),
-        }
+        Rigid::new(inertia)
     }
 
     pub fn new_sphere_at(com: &Vector3<Float>, m: Float, r: Float, frame: &str) -> Self {
@@ -64,11 +73,12 @@ impl Rigid {
         let cross_part = m * com;
         let inertia = SpatialInertia::new(moment, cross_part, m, frame);
 
-        Rigid {
-            inertia,
-            pose: Pose::identity(),
-            twist: SpatialVector::zero(),
-        }
+        let mut rigid = Rigid::new(inertia);
+        let iso = Isometry3::translation(com.x, com.y, com.z);
+        rigid
+            .visual
+            .push((Visual::Sphere(SphereGeometry { r }), iso));
+        rigid
     }
 
     /// Create a uniform cuboid, whose center of mass is not at the origin of frame
@@ -91,11 +101,7 @@ impl Rigid {
         let cross_part = m * com;
         let inertia = SpatialInertia::new(moment, cross_part, m, frame);
 
-        Rigid {
-            inertia,
-            pose: Pose::identity(),
-            twist: SpatialVector::zero(),
-        }
+        Rigid::new(inertia)
     }
 
     /// free-motion velocity in body frame

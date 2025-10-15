@@ -13,7 +13,8 @@ use na::{
 use nalgebra_sparse::{CooMatrix, CsrMatrix};
 
 use crate::{
-    hybrid::{deformable::Deformable, rigid::Rigid},
+    flog,
+    hybrid::articulated::Articulated,
     inertia::SpatialInertia,
     spatial::{
         pose::Pose, spatial_vector::SpatialVector, twist::compute_twist_transformation_matrix,
@@ -23,12 +24,17 @@ use crate::{
     WORLD_FRAME,
 };
 
+pub use deformable::Deformable;
+pub use rigid::Rigid;
+
 pub mod articulated;
 pub mod deformable;
 pub mod rigid;
+pub mod visual;
 
 pub struct Hybrid {
     pub rigid_bodies: Vec<Rigid>,
+    pub articulated: Vec<Articulated>,
     pub deformables: Vec<Deformable>,
 }
 
@@ -40,6 +46,7 @@ impl Hybrid {
 
         Hybrid {
             rigid_bodies: vec![rigid],
+            articulated: vec![],
             deformables: vec![deformable],
         }
     }
@@ -47,12 +54,17 @@ impl Hybrid {
     pub fn empty() -> Self {
         Hybrid {
             rigid_bodies: vec![],
+            articulated: vec![],
             deformables: vec![],
         }
     }
 
     pub fn add_rigid(&mut self, rigid: Rigid) {
         self.rigid_bodies.push(rigid);
+    }
+
+    pub fn add_articulated(&mut self, articulated: Articulated) {
+        self.articulated.push(articulated);
     }
 
     pub fn add_deformable(&mut self, deformable: Deformable) {
@@ -67,22 +79,31 @@ impl Hybrid {
             .iter()
             .map(|b| b.free_velocity(dt))
             .collect();
+        let v_articulated: Vec<DVector<Float>> = self
+            .articulated
+            .iter_mut()
+            .map(|a| a.free_velocity(dt))
+            .collect();
         let v_deformables: Vec<DVector<Float>> = self
             .deformables
             .iter()
             .map(|b| b.free_velocity(dt))
             .collect();
         let total_len = v_rigids.iter().map(|v| v.len()).sum::<usize>()
+            + v_articulated.iter().map(|v| v.len()).sum::<usize>()
             + v_deformables.iter().map(|v| v.len()).sum::<usize>();
         let v_star: DVector<Float> = DVector::from_iterator(
             total_len,
             v_rigids
                 .iter()
+                .chain(v_articulated.iter())
                 .chain(v_deformables.iter())
                 .flat_map(|v| v.data.as_vec().clone()),
         );
 
-        let offset_deformable = self.rigid_bodies.len() * 6; // starting offset for deformable velocity within stacked total velocity vector
+        let offset_articulated = self.rigid_bodies.len() * 6; // starting offset for deformable velocity within stacked total velocity vector
+        let dof_articulated: usize = self.articulated.iter().map(|a| a.dof()).sum();
+        let offset_deformable = offset_articulated + dof_articulated;
 
         // rigid-deformable point-sphere collision detection
         let mut Js: Vec<Matrix1xX<Float>> = vec![];
@@ -111,21 +132,35 @@ impl Hybrid {
             }
         }
 
-        let deformable_dof = deformable.q.len();
-        let dof = offset_deformable + deformable_dof;
-        let mut A: DMatrix<Float> = DMatrix::zeros(dof, dof);
-        A.view_mut(
-            (offset_deformable, offset_deformable),
-            (deformable_dof, deformable_dof),
-        )
-        .copy_from(&DMatrix::identity(deformable_dof, deformable_dof));
+        // articulated-deformable collision detection
 
+        let deformable_dof = deformable.q.len();
+        let total_dof = offset_deformable + deformable_dof;
+        let mut A: DMatrix<Float> = DMatrix::zeros(total_dof, total_dof);
+
+        // Assemble A for rigid bodies
         let mut i = 0;
         for rigid in self.rigid_bodies.iter() {
             A.view_mut((i, i), (6, 6))
                 .copy_from(&rigid.inertia.to_matrix());
             i += 6;
         }
+
+        // Assemble A for articulated bodies
+        let mut i = offset_articulated;
+        for articulated in self.articulated.iter() {
+            let dof = articulated.dof();
+            A.view_mut((i, i), (dof, dof))
+                .copy_from(&articulated.mass_matrix());
+            i += dof;
+        }
+
+        // Assemble A for deformables
+        A.view_mut(
+            (offset_deformable, offset_deformable),
+            (deformable_dof, deformable_dof),
+        )
+        .copy_from(&DMatrix::identity(deformable_dof, deformable_dof));
 
         // Solve convex optimization to resolve contact
         let P = CscMatrix::from(A.row_iter());
@@ -138,7 +173,7 @@ impl Hybrid {
             J.scale(-1.);
             J
         } else {
-            CscMatrix::zeros((0, dof))
+            CscMatrix::zeros((0, total_dof))
         };
         let b = vec![0.; Js.len()];
         let cones: Vec<SupportedConeT<Float>> = vec![NonnegativeConeT(Js.len())];
@@ -169,6 +204,15 @@ impl Hybrid {
                 ),
             };
             i += 6;
+        }
+
+        // Update articulated velocities and poses
+        let mut i = offset_articulated;
+        for articulated in self.articulated.iter_mut() {
+            let dof = articulated.dof();
+            let v = v_sol.rows(i, dof).into_owned();
+            articulated.integrate(v, dt);
+            i += dof;
         }
 
         // Update deformable qdot and q

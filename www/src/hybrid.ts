@@ -6,6 +6,7 @@ import {
   EdgesGeometry,
   LineBasicMaterial,
   LineSegments,
+  Matrix4,
   Mesh,
   MeshPhongMaterial,
   Points,
@@ -27,6 +28,28 @@ Simulator.prototype.addHybrid = function (state: InterfaceHybrid) {
   let n_rigid_bodies = state.n_rigid_bodies();
   for (let i = 0; i < n_rigid_bodies; i++) {
     this.addSphere("sphere " + i, 0xff0000, 1.0);
+  }
+
+  // add articulated
+  let n_articulated = state.n_articulated();
+  for (let i = 0; i < n_articulated; i++) {
+    let n_bodies = state.n_bodies_articulated(i);
+    for (let j = 0; j < n_bodies; j++) {
+      let frame = state.frame_articulated_body(i, j);
+      let n_visuals = state.n_visuals_articulated_body(i, j);
+      for (let k = 0; k < n_visuals; k++) {
+        if (state.visual_type(i, j, k) == 0) {
+          let r = state.visual_sphere_r(i, j, k);
+          let iso = state.iso_visual_to_body(i, j, k);
+          let visual_offset = new Matrix4().makeTranslation(
+            iso[4],
+            iso[5],
+            iso[6],
+          );
+          this.addSphere(frame + "-" + k, 0xff0000, r, visual_offset);
+        }
+      }
+    }
   }
 
   // add deformables
@@ -96,10 +119,26 @@ Simulator.prototype.addHybrid = function (state: InterfaceHybrid) {
 
 Simulator.prototype.updateHybrid = function () {
   let state = this.hybrid;
+
+  // update rigid body poses
   let poses = state.rigid_body_poses();
   let n_rigid_bodies = state.n_rigid_bodies();
   for (let i = 0; i < n_rigid_bodies; i++) {
     this.setPose("sphere " + i, poses.subarray(i * 7, i * 7 + 7));
+  }
+
+  // update articulated bodies poses
+  let n_articulated = state.n_articulated();
+  for (let i = 0; i < n_articulated; i++) {
+    let n_bodies = state.n_bodies_articulated(i);
+    for (let j = 0; j < n_bodies; j++) {
+      let frame = state.frame_articulated_body(i, j);
+      let pose = state.pose_articulated_body(i, j);
+      let n_visuals = state.n_visuals_articulated_body(i, j);
+      for (let k = 0; k < n_visuals; k++) {
+        this.setPose(frame + "-" + k, pose);
+      }
+    }
   }
 
   // update deformable positions
