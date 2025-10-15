@@ -1,11 +1,7 @@
-use std::any::Any;
-
-use na::{dvector, Transform3, Vector3};
+use na::Vector3;
 use wasm_bindgen::prelude::wasm_bindgen;
 use web_sys::js_sys::{Float32Array, Uint32Array};
-use wgpu::wgc::validation::Interface;
 
-use crate::collision::sphere::Sphere;
 use crate::hybrid::articulated::Articulated;
 use crate::hybrid::visual::Visual;
 use crate::hybrid::{Deformable, Rigid};
@@ -13,7 +9,7 @@ use crate::joint::Joint;
 use crate::na::vector;
 use crate::spatial::transform::Transform3D;
 use crate::types::Float;
-use crate::{flog, WORLD_FRAME};
+use crate::WORLD_FRAME;
 use crate::{hybrid::Hybrid, spatial::pose::Pose, toJsFloat32Array};
 
 #[wasm_bindgen]

@@ -701,7 +701,13 @@ mod mechanism_tests {
 
     use na::{vector, DVector, Isometry3, Matrix3, Vector3};
 
-    use crate::joint::{floating::FloatingJoint, revolute::RevoluteJoint};
+    use crate::{
+        flog,
+        hybrid::Rigid,
+        joint::{floating::FloatingJoint, revolute::RevoluteJoint, ToFloatDVec},
+        plot::plot,
+        simulate::step,
+    };
 
     use super::*;
 
@@ -827,6 +833,45 @@ mod mechanism_tests {
                 HashSet::from([5])
             ]
         )
+    }
+
+    #[ignore]
+    #[test]
+    fn double_pendulum() {
+        // Arrange
+        let l = 1.0;
+        let r = 0.1;
+        let pendulum_frame = "pendulum";
+        let pendulum = RigidBody::new_sphere_at(&vector![l, 0., 0.], 1.0, r, pendulum_frame);
+        let pendulum_to_world = Transform3D::identity(pendulum_frame, WORLD_FRAME);
+
+        let pendulum2_frame = "pendulum2";
+        let pendulum2 = RigidBody::new_sphere_at(&vector![l, 0., 0.], 1.0, r, pendulum2_frame);
+        let pendulum2_to_pendulum = Transform3D::move_x(pendulum2_frame, pendulum_frame, l);
+
+        let bodies = vec![pendulum, pendulum2];
+        let treejoints = vec![
+            Joint::new_revolute(pendulum_to_world, Vector3::y_axis()),
+            Joint::new_revolute(pendulum2_to_pendulum, Vector3::y_axis()),
+        ];
+
+        let mut state = MechanismState::new(treejoints, bodies);
+
+        // Act
+        let final_time = 2.0;
+        let dt = 1e-3;
+        let num_steps = (final_time / dt) as usize;
+        for _s in 0..num_steps {
+            step(
+                &mut state,
+                dt,
+                &vec![],
+                &crate::integrators::Integrator::VelocityStepping,
+            );
+        }
+
+        // Assert
+        // TODO: test for conservation of energy
     }
 
     /// Ensure that poses() fn works correctly for a floating box

@@ -127,6 +127,23 @@ impl RigidBody {
         body
     }
 
+    pub fn new_sphere_at(com: &Vector3<Float>, m: Float, r: Float, frame: &str) -> RigidBody {
+        let moment = 2. / 5. * m * r * r;
+        let moment_com = Matrix3::from_diagonal_element(moment);
+
+        // generalized parallel axis theorem
+        let moment =
+            moment_com + m * (com.norm_squared() * Matrix3::identity() - com * com.transpose());
+        let cross_part = m * com;
+        let inertia = SpatialInertia::new(moment, cross_part, m, frame);
+
+        let body = RigidBody::new(inertia);
+
+        // Add collider
+
+        body
+    }
+
     pub fn new_cube(m: Float, l: Float, frame: &str) -> RigidBody {
         let moment_x = m * l * l / 6.0;
         let moment = Matrix3::from_diagonal(&vector![moment_x, moment_x, moment_x]);

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::iter::Sum;
 
 use itertools::izip;
 use na::Vector3;
@@ -60,13 +61,12 @@ impl Articulated {
             let joint_twist = joint.twist().transform(&pose);
             let body_twist = self.bodies[i].twist;
             let coriolis_accel = spatial_motion_cross(&body_twist, &joint_twist);
-            let mut bias_accel = if parent == i {
-                coriolis_accel
+            let bias_accel = if parent == i {
+                // add inv gravity accel to base to simulate gravity force
+                SpatialVector::linear(vector![0., 0., GRAVITY]) + coriolis_accel
             } else {
                 bias_accels[parent] + coriolis_accel
             };
-            // add inv gravity accel to simulate gravity force
-            bias_accel = bias_accel + SpatialVector::linear(vector![0., 0., GRAVITY]);
             bias_accels.push(bias_accel);
         }
 
@@ -293,6 +293,18 @@ impl Articulated {
             Joint::FloatingJoint(j) => j.v = *v.spatial(),
         }
     }
+
+    pub fn potential_energy(&self) -> Float {
+        self.bodies.iter().map(|b| b.potential_energy()).sum()
+    }
+
+    pub fn kinetic_energy(&self) -> Float {
+        self.bodies.iter().map(|b| b.kinetic_energy()).sum()
+    }
+
+    pub fn total_energy(&self) -> Float {
+        self.potential_energy() + self.kinetic_energy()
+    }
 }
 
 #[cfg(test)]
@@ -366,5 +378,36 @@ mod articulated_tests {
 
         // Assert
         assert_close!(max_angle, PI, 1e-3);
+        assert_close!(total_energy, state.total_energy(), 1e-2);
+    }
+
+    #[test]
+    fn double_pendulum() {
+        // Arrange
+        let l = 1.0;
+        let r = 0.1;
+        let bodies = vec![
+            Rigid::new_sphere_at(&vector![l, 0., 0.], 1.0, r, "pendulum"),
+            Rigid::new_sphere_at(&vector![l, 0., 0.], 1.0, r, "pendulum2"),
+        ];
+        let pendulum_to_world = Transform3D::identity("pendulum", WORLD_FRAME);
+        let pendulum2_to_pendulum = Transform3D::move_x("pendulum2", "pendulum", l);
+        let joints = vec![
+            Joint::new_revolute(pendulum_to_world, Vector3::y_axis()),
+            Joint::new_revolute(pendulum2_to_pendulum, Vector3::y_axis()),
+        ];
+        let mut state = Articulated::new(bodies, joints);
+        let total_energy = state.total_energy();
+
+        // Act
+        let final_time = 2.0;
+        let dt = 1e-3;
+        let num_steps = (final_time / dt) as usize;
+        for _s in 0..num_steps {
+            state.step(dt);
+        }
+
+        // Assert
+        assert_close!(total_energy, state.total_energy(), 1e-1);
     }
 }

@@ -6,7 +6,7 @@ use crate::{
     rigid_body::{Collider, CollisionGeometry},
     spatial::{pose::Pose, spatial_vector::SpatialVector},
     types::Float,
-    WORLD_FRAME,
+    GRAVITY, WORLD_FRAME,
 };
 
 /// Rigid body
@@ -118,5 +118,26 @@ impl Rigid {
         let linear = self.inertia.mass * self.twist.linear
             - self.inertia.cross_part.cross(&self.twist.angular);
         self.pose.rotation * linear
+    }
+
+    pub fn potential_energy(&self) -> Float {
+        let R = self.pose.rotation;
+        let p = self.pose.translation;
+        let cross = self.inertia.cross_part; // mass * com
+        let mass = self.inertia.mass;
+        GRAVITY * (mass * p.z + (R * cross).z)
+    }
+
+    pub fn kinetic_energy(&self) -> Float {
+        let inertia = self.inertia_in_world_frame();
+        let twist = self.twist;
+
+        let w = twist.angular;
+        let v = twist.linear;
+        let J = inertia.moment;
+        let c = inertia.cross_part;
+        let m = inertia.mass;
+
+        (w.dot(&(J * w)) + v.dot(&(m * v + 2.0 * w.cross(&c)))) / 2.0
     }
 }
