@@ -57,7 +57,7 @@ pub fn create1DHopper(
     let moment_z = 2.0 / 5.0 * m_leg * r_leg * r_leg;
     let moment_leg = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
     let cross_part_leg = vector![0.0, 0.0, 0.0];
-    let axis_leg = vector![0.0, 0.0, -1.0];
+    let axis_leg = -Vector3::z_axis();
 
     let leg_frame = "leg";
     let leg_to_body = Transform3D {
@@ -80,7 +80,7 @@ pub fn create1DHopper(
     let moment_z = 2.0 / 5.0 * m_foot * r_foot * r_foot;
     let moment_foot = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
     let cross_part_foot = vector![0.0, 0.0, 0.0];
-    let axis_foot = vector![0.0, 0.0, -1.0];
+    let axis_foot = -Vector3::z_axis();
 
     let foot_frame = "foot";
     let foot_to_leg = Transform3D {
@@ -97,10 +97,7 @@ pub fn create1DHopper(
 
     // Create the hopper
     let treejoints = vec![
-        Joint::FloatingJoint(FloatingJoint {
-            init_iso: body_to_world.iso,
-            transform: body_to_world,
-        }),
+        Joint::FloatingJoint(FloatingJoint::new(body_to_world)),
         Joint::PrismaticJoint(PrismaticJoint::new(leg_to_body, axis_leg)),
         Joint::PrismaticJoint(PrismaticJoint::new(foot_to_leg, axis_foot)),
     ];
@@ -195,7 +192,7 @@ pub fn createActuatedAnkleHopper() -> InterfaceMechanismState {
     let body = RigidBody::new_sphere(m_body, r_body, &body_frame);
     let body_to_ankle = Transform3D::move_z(&body_frame, &ankle_frame, l_ankle_to_body);
 
-    let leg_axis = vector![0., 0., 1.0];
+    let leg_axis = Vector3::z_axis();
     let leg_spring = JointSpring { k: 1e3, l: 0.0 };
 
     let treejoints = vec![
