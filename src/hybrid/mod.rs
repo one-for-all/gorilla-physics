@@ -7,21 +7,16 @@ use clarabel::{
 };
 use itertools::izip;
 use na::{
-    dvector, vector, DMatrix, DVector, Matrix1xX, Matrix3, Matrix3x6, UnitQuaternion, UnitVector3,
-    Vector3,
+    vector, DMatrix, DVector, Matrix1xX, Matrix3, Matrix3x6, UnitQuaternion, UnitVector3, Vector3,
 };
-use nalgebra_sparse::{CooMatrix, CsrMatrix};
 
 use crate::{
-    flog,
     hybrid::articulated::Articulated,
-    inertia::SpatialInertia,
     spatial::{
         pose::Pose, spatial_vector::SpatialVector, twist::compute_twist_transformation_matrix,
     },
     types::Float,
     util::{quaternion_derivative, skew_symmetric},
-    WORLD_FRAME,
 };
 
 pub use deformable::Deformable;
@@ -259,7 +254,7 @@ mod hybrid_tests {
     use na::{vector, DVector};
 
     use crate::{
-        assert_vec_close, flog,
+        assert_vec_close,
         hybrid::{Deformable, Hybrid, Rigid},
         spatial::pose::Pose,
     };

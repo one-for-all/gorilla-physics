@@ -3,7 +3,6 @@ use na::{dvector, vector, DMatrix, DVector, Isometry3, Matrix3, Vector3};
 use crate::{
     hybrid::visual::{SphereGeometry, Visual},
     inertia::SpatialInertia,
-    rigid_body::{Collider, CollisionGeometry},
     spatial::{pose::Pose, spatial_vector::SpatialVector},
     types::Float,
     GRAVITY, WORLD_FRAME,
@@ -105,7 +104,7 @@ impl Rigid {
     }
 
     /// free-motion velocity in body frame
-    pub fn free_velocity(&self, dt: Float) -> DVector<Float> {
+    pub fn free_velocity(&self, _dt: Float) -> DVector<Float> {
         let mut v_free = dvector![];
         v_free.extend(self.twist.angular.iter().cloned());
         v_free.extend(self.twist.linear.iter().cloned());

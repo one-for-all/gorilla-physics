@@ -137,7 +137,7 @@ impl MPMDeformable {
             let J = particle.F.determinant();
 
             // Polar decomposition for fixed corotated model
-            let (r, s) = polar_decomposition(&particle.F);
+            let (r, _s) = polar_decomposition(&particle.F);
 
             // Compute inverse of D
             // ref: MPM course, paragraph after Eqn. 176

@@ -28,7 +28,6 @@ use crate::GRAVITY;
 use crate::WORLD_FRAME;
 use itertools::izip;
 use na::DMatrix;
-use na::DVector;
 use na::Matrix3;
 use na::Matrix3x6;
 use na::Matrix6;
@@ -702,10 +701,7 @@ mod mechanism_tests {
     use na::{vector, DVector, Isometry3, Matrix3, Vector3};
 
     use crate::{
-        flog,
-        hybrid::Rigid,
-        joint::{floating::FloatingJoint, revolute::RevoluteJoint, ToFloatDVec},
-        plot::plot,
+        joint::{floating::FloatingJoint, revolute::RevoluteJoint},
         simulate::step,
     };
 

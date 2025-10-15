@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use clarabel::{
     algebra::CscMatrix,
     solver::{
-        DefaultSettings, DefaultSettingsBuilder, DefaultSolver, IPSolver,
+        DefaultSettingsBuilder, DefaultSolver, IPSolver,
         SupportedConeT::{SecondOrderConeT, ZeroConeT},
     },
 };
@@ -16,7 +16,6 @@ use na::{
 use crate::{
     control::Controller,
     dynamics::dynamics_bias,
-    flog,
     joint::{JointTorque, ToFloatDVec},
     mechanism::mass_matrix,
     spatial::{spatial_vector::SpatialVector, twist::compute_joint_twists},
@@ -471,7 +470,7 @@ impl Controller for BipedController {
         solver.solve();
         let sol = solver.solution.x;
 
-        let contact_forces = DMatrix::from_row_slice(n_contacts, 3, &sol[dof_robot..]);
+        let _contact_forces = DMatrix::from_row_slice(n_contacts, 3, &sol[dof_robot..]);
         // flog!("contact forces: {}", contact_forces);
 
         // Inverse-dynamics to compute torque
@@ -485,7 +484,7 @@ impl Controller for BipedController {
         // flog!("angle diff: {}", q_actuated - q_actuated_des);
 
         let u = J_dot_com * v_full + J_com * &v_dot;
-        let zmp = vector![x_com, y_com] - z_com / GRAVITY * u;
+        let _zmp = vector![x_com, y_com] - z_com / GRAVITY * u;
         // flog!("zmp: {}", zmp);
 
         let joint_torques: Vec<JointTorque> = tau.iter().map(|x| JointTorque::Float(*x)).collect();
@@ -517,14 +516,11 @@ mod biped_control_tests {
     use na::{vector, zero, UnitQuaternion, Vector3};
 
     use crate::{
-        assert_close, assert_vec_close,
-        builders::{biped_builder::build_biped, leg_builder::build_leg},
+        assert_vec_close,
+        builders::biped_builder::build_biped,
         collision::halfspace::HalfSpace,
-        control::{
-            biped_control::BipedController, leg_control::LegController, ControlInput, Controller,
-        },
+        control::{biped_control::BipedController, ControlInput, Controller},
         joint::JointPosition,
-        plot::plot,
         simulate::step,
         spatial::pose::Pose,
         PI,

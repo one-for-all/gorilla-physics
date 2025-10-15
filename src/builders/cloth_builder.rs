@@ -1,4 +1,4 @@
-use na::{vector, UnitQuaternion, Vector3};
+use na::{vector, UnitQuaternion};
 
 use crate::{fem::cloth::Cloth, types::Float};
 

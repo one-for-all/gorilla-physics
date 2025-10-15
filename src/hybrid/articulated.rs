@@ -1,8 +1,6 @@
 use std::collections::HashMap;
-use std::iter::Sum;
 
 use itertools::izip;
-use na::Vector3;
 use na::{vector, DMatrix, DVector, UnitQuaternion};
 
 use crate::{

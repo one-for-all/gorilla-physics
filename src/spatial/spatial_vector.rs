@@ -1,7 +1,7 @@
 use std::ops::{Add, Div, Mul};
 
 use crate::{
-    spatial::{pose::Pose, transform::Transform3D},
+    spatial::pose::Pose,
     types::Float,
 };
 use na::{dvector, zero, DVector, Vector3};

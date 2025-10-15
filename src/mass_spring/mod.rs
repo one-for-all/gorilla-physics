@@ -1,15 +1,15 @@
 use clarabel::{
     algebra::{CscMatrix, MatrixMathMut},
     solver::{
-        DefaultSettingsBuilder, DefaultSolution, DefaultSolver, IPSolver,
+        DefaultSettingsBuilder, DefaultSolver, IPSolver,
         SupportedConeT::{self, NonnegativeConeT},
     },
 };
 use itertools::izip;
-use na::{vector, DMatrix, DVector, Matrix1xX, Matrix3, UnitVector3, Vector3};
+use na::{vector, DMatrix, DVector, Matrix1xX, Vector3};
 use nalgebra_sparse::{CooMatrix, CsrMatrix};
 
-use crate::{flog, types::Float};
+use crate::types::Float;
 
 pub struct MassSpring {
     pub nodes: Vec<Vector3<Float>>,
@@ -187,7 +187,7 @@ impl MassSpring {
         //     }
         // }
 
-        let mut f_gravity: DVector<Float> = DVector::zeros(self.dof);
+        let f_gravity: DVector<Float> = DVector::zeros(self.dof);
         // let mut i = 0;
         // while i < self.dof {
         //     f_gravity[i + 2] = -9.8;
@@ -208,7 +208,7 @@ impl MassSpring {
         let g = -v_star.transpose() * A;
         let q: Vec<Float> = Vec::from(g.as_slice());
 
-        let mut Js: Vec<Matrix1xX<Float>> = vec![];
+        let Js: Vec<Matrix1xX<Float>> = vec![];
 
         // collision detection
         // TODO: do not hard-code the half-spaces
@@ -313,14 +313,10 @@ impl MassSpring {
 
 #[cfg(test)]
 mod mass_spring_tests {
-    use itertools::izip;
-    use na::{dvector, vector, DVector, Vector3};
-    use rand::rng;
 
-    use crate::{
-        assert_vec_close, flog, mass_spring::MassSpring, types::Float,
-        util::test_utils::random_vector3,
-    };
+    use na::{vector, DVector, Vector3};
+
+    use crate::{assert_vec_close, flog, mass_spring::MassSpring, types::Float};
 
     #[test]
     fn stationary() {
@@ -440,7 +436,7 @@ mod mass_spring_tests {
         let nodes = vec![vector![0., 0., 0.], vector![1., 0., 0.]];
         let tetrahedra = vec![vec![0, 1]];
         let mut deformable = MassSpring::new(nodes, tetrahedra);
-        let q0 = deformable.q.clone();
+        let _q0 = deformable.q.clone();
 
         // let mut rng = rng();
         // let v = random_vector3(&mut rng, 1.0);

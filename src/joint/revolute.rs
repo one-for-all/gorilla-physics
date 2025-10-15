@@ -4,8 +4,7 @@ use std::ops::Mul;
 
 use crate::{
     spatial::{
-        geometric_jacobian::GeometricJacobian, spatial_acceleration::SpatialAcceleration,
-        spatial_vector::SpatialVector, transform::Transform3D,
+        geometric_jacobian::GeometricJacobian, spatial_acceleration::SpatialAcceleration, transform::Transform3D,
     },
     types::Float,
 };

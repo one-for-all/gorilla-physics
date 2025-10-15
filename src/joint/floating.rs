@@ -1,4 +1,4 @@
-use na::{zero, Isometry3, Matrix3, Matrix3xX};
+use na::{Isometry3, Matrix3, Matrix3xX};
 
 use crate::spatial::spatial_vector::SpatialVector;
 use crate::spatial::{geometric_jacobian::GeometricJacobian, pose::Pose, transform::Transform3D};

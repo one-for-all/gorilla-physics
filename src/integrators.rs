@@ -1,9 +1,8 @@
 use itertools::izip;
-use na::{UnitQuaternion, UnitVector3, Vector3};
+use na::UnitQuaternion;
 
 use crate::{
     dynamics::{dynamics_continuous, dynamics_discrete},
-    flog,
     joint::{JointAcceleration, JointPosition, JointTorque, JointVelocity},
     mechanism::MechanismState,
     rigid_body::CollisionGeometry,

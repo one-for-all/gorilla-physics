@@ -1,11 +1,6 @@
-use crate::{
-    inertia::SpatialInertia,
-    spatial::{pose::Pose, spatial_vector::SpatialVector},
-    types::Float,
-    WORLD_FRAME,
-};
+use crate::types::Float;
 use itertools::izip;
-use na::{dvector, vector, DMatrix, DVector, Matrix3, Vector3};
+use na::{vector, DMatrix, DVector, Vector3};
 use nalgebra_sparse::{CooMatrix, CsrMatrix};
 
 /// Mass-spring modeled deformable

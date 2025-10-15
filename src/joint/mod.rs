@@ -2,7 +2,7 @@ use std::ops::{Add, Div, Mul};
 
 use fixed::FixedJoint;
 use floating::FloatingJoint;
-use na::{dvector, vector, DVector, UnitVector3, Vector3, Vector6};
+use na::{dvector, vector, DVector, UnitVector3, Vector3};
 use prismatic::PrismaticJoint;
 use revolute::RevoluteJoint;
 

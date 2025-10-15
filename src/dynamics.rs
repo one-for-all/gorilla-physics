@@ -2,7 +2,6 @@ use crate::{
     collision::{mesh::mesh_mesh_collision, CollisionDetector},
     contact::contact_dynamics,
     control::energy_control::spring_force,
-    flog,
     inertia::compute_inertias,
     joint::{FromFloatDVec, Joint, JointAcceleration, JointTorque, JointVelocity, ToFloatDVec},
     mechanism::mass_matrix,

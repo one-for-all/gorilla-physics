@@ -1,5 +1,4 @@
 use na::{zero, Isometry3, Matrix3xX, Translation3, UnitVector3};
-use nalgebra::Vector3;
 
 use crate::{
     spatial::{

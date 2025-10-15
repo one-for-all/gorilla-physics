@@ -9,7 +9,7 @@ use clarabel::{
 };
 use itertools::izip;
 use na::{
-    vector, zero, DMatrix, DVector, Matrix, Matrix1xX, Matrix2, Matrix2x3, Matrix2xX, Matrix4,
+    vector, zero, DMatrix, DVector, Matrix1xX, Matrix2x3, Matrix2xX, Matrix4,
     Matrix4x2, Matrix6xX, Vector6,
 };
 use na::{Matrix4x3, Vector3};
@@ -20,7 +20,7 @@ use crate::{
     flog,
     joint::{JointTorque, ToFloatDVec},
     mechanism::mass_matrix,
-    spatial::{spatial_vector::SpatialVector, twist::compute_joint_twists, wrench},
+    spatial::{spatial_vector::SpatialVector, twist::compute_joint_twists},
     types::Float,
     util::skew_symmetric,
     GRAVITY, PI,
@@ -664,7 +664,7 @@ impl Controller for LegController {
 
 #[cfg(test)]
 mod leg_control_tests {
-    use na::{vector, zero, UnitQuaternion, Vector3};
+    use na::{zero, UnitQuaternion, Vector3};
 
     use crate::{
         builders::leg_builder::build_leg,

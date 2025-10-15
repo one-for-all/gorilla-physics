@@ -1,4 +1,4 @@
-use na::{DMatrix, Isometry3, Matrix3xX, Matrix6xX};
+use na::{DMatrix, Matrix3xX, Matrix6xX};
 use std::ops::Mul;
 
 use crate::{

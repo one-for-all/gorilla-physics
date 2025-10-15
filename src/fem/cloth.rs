@@ -1,20 +1,18 @@
 use clarabel::algebra::CscMatrix as ClarabelCscMatrix;
 use itertools::izip;
 use na::{
-    vector, DMatrix, DVector, Matrix2, Matrix3, Matrix3x2, Matrix3x4, Matrix4x3, RowVector,
-    RowVector3, SymmetricEigen, UnitVector3, Vector2, Vector3,
+    vector, DMatrix, DVector, Matrix3, Matrix3x2, Matrix3x4, Matrix4x3, UnitVector3, Vector2, Vector3,
 };
 use nalgebra_sparse::{factorization::CscCholesky, CooMatrix, CscMatrix};
 
 use std::ops::AddAssign;
 
 use crate::{
-    collision::halfspace::{self, HalfSpace},
+    collision::halfspace::{HalfSpace},
     dynamics::solve_cone_complementarity,
-    flog,
     types::Float,
     util::skew_symmetric,
-    GRAVITY, PI,
+    GRAVITY,
 };
 
 /// Compute the area of a triangle, given the lengths of three sides
@@ -547,7 +545,7 @@ impl Cloth {
 
 #[cfg(test)]
 mod cloth_tests {
-    use na::{vector, DVector, UnitQuaternion, Vector3};
+    use na::{vector, UnitQuaternion, Vector3};
 
     use crate::{
         assert_close, assert_vec_close, builders::cloth_builder::build_cloth,
