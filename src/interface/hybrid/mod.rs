@@ -178,12 +178,35 @@ pub async fn createPendulum() -> InterfaceHybrid {
     let mut state = Hybrid::empty();
     let l = 1.0;
     let r = 0.1;
+    let bodies = vec![Rigid::new_sphere_at(
+        &vector![-l, 0., 0.],
+        1.,
+        r,
+        "pendulum",
+    )];
+    let pendulum_to_world = Transform3D::move_x("pendulum", WORLD_FRAME, -1.0);
+
+    let joints = vec![Joint::new_revolute(pendulum_to_world, Vector3::y_axis())];
+    state.add_articulated(Articulated::new(bodies, joints));
+
+    state.add_deformable(Deformable::new_cube());
+
+    InterfaceHybrid { inner: state }
+}
+
+#[wasm_bindgen]
+pub async fn createDoublePendulumAndCube() -> InterfaceHybrid {
+    let mut state = Hybrid::empty();
+    let l = 1.0;
+    let r = 0.1;
+    let pendulum_frame = "pendulum";
+    let pendulum2_frame = "pendulum2";
     let bodies = vec![
-        Rigid::new_sphere_at(&vector![l, 0., 0.], 1., r, "pendulum"),
-        Rigid::new_sphere_at(&vector![0., 0., l], 1., r, "pendulum2"),
+        Rigid::new_sphere_at(&vector![-l, 0., 0.], 1., r, pendulum_frame),
+        Rigid::new_sphere_at(&vector![0., 0., l], 1., r, pendulum2_frame),
     ];
-    let pendulum_to_world = Transform3D::identity("pendulum", WORLD_FRAME);
-    let pendulum2_to_pendulum = Transform3D::move_x("pendulum2", "pendulum", l);
+    let pendulum_to_world = Transform3D::move_x(pendulum_frame, WORLD_FRAME, -l);
+    let pendulum2_to_pendulum = Transform3D::move_x(pendulum2_frame, pendulum_frame, -l);
 
     let joints = vec![
         Joint::new_revolute(pendulum_to_world, Vector3::y_axis()),
@@ -216,6 +239,9 @@ pub async fn createSphereCart() -> InterfaceHybrid {
     state.add_articulated(articulated);
 
     state.add_deformable(Deformable::new_cube());
+    let v = vector![1. / 8., 0., 0.];
+    let v = vec![v; 8];
+    state.set_deformable_velocities(vec![v]);
 
     InterfaceHybrid { inner: state }
 }

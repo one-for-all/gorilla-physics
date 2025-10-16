@@ -7,11 +7,13 @@ use clarabel::{
 };
 use itertools::izip;
 use na::{
-    vector, DMatrix, DVector, Matrix1xX, Matrix3, Matrix3x6, UnitQuaternion, UnitVector3, Vector3,
+    vector, DMatrix, DVector, Matrix1xX, Matrix3, Matrix3x6, Matrix6xX, UnitQuaternion,
+    UnitVector3, Vector3,
 };
 
 use crate::{
-    hybrid::articulated::Articulated,
+    flog,
+    hybrid::{articulated::Articulated, visual::Visual},
     spatial::{
         pose::Pose, spatial_vector::SpatialVector, twist::compute_twist_transformation_matrix,
     },
@@ -100,8 +102,12 @@ impl Hybrid {
         let dof_articulated: usize = self.articulated.iter().map(|a| a.dof()).sum();
         let offset_deformable = offset_articulated + dof_articulated;
 
-        // rigid-deformable point-sphere collision detection
+        let deformable_dof = deformable.q.len();
+        let total_dof = offset_deformable + deformable_dof;
+
         let mut Js: Vec<Matrix1xX<Float>> = vec![];
+
+        // rigid-deformable point-sphere collision detection
         for (i_rigid, rigid) in self.rigid_bodies.iter().enumerate() {
             let iso = rigid.pose.to_isometry();
             let translation = rigid.pose.translation;
@@ -112,10 +118,12 @@ impl Hybrid {
                     let n = UnitVector3::new_normalize(pos - translation);
                     let cp = pos;
 
+                    // set jacobian for deformable part
                     let icol = offset_deformable + i_node * 3;
                     let mut J = Matrix1xX::zeros(offset_deformable + deformable.q.len());
                     J.fixed_view_mut::<1, 3>(0, icol).copy_from(&n.transpose());
 
+                    // set jacobian for rigid body part
                     let mut X = Matrix3x6::zeros();
                     let r = cp;
                     X.columns_mut(0, 3).copy_from(&-skew_symmetric(&r));
@@ -128,9 +136,62 @@ impl Hybrid {
         }
 
         // articulated-deformable collision detection
+        let mut icol_arti = offset_articulated;
+        for (i_articulated, articulated) in self.articulated.iter().enumerate() {
+            let dof = articulated.dof();
+            let offsets = articulated.offsets();
+            let jacobians = articulated.jacobians();
+            for (i_joint, (body, joint)) in
+                izip!(articulated.bodies.iter(), articulated.joints.iter()).enumerate()
+            {
+                for (collider, iso_collider_to_body) in body.visual.iter() {
+                    let iso = body.pose.to_isometry() * iso_collider_to_body;
+                    let collider_pos = iso.translation.vector;
 
-        let deformable_dof = deformable.q.len();
-        let total_dof = offset_deformable + deformable_dof;
+                    for (i_node, node_pos) in deformable.get_positions().iter().enumerate() {
+                        match collider {
+                            Visual::Sphere(sphere) => {
+                                if (node_pos - collider_pos).norm() < sphere.r {
+                                    let n = UnitVector3::new_normalize(collider_pos - node_pos);
+                                    let cp = node_pos;
+
+                                    let mut J = Matrix1xX::zeros(total_dof);
+
+                                    // set jacobian for deformable part
+                                    let icol = offset_deformable + i_node * 3;
+                                    J.fixed_view_mut::<1, 3>(0, icol).copy_from(&-n.transpose());
+
+                                    // set jacobian for articulated body
+                                    let mut H = Matrix6xX::zeros(dof);
+                                    H.view_mut((0, offsets[i_joint]), (6, joint.dof()))
+                                        .copy_from(&jacobians[i_joint]);
+                                    let mut parent = i_joint;
+                                    while articulated.parents[parent] != parent {
+                                        parent = articulated.parents[parent];
+                                        H.view_mut(
+                                            (0, offsets[parent]),
+                                            (6, articulated.joints[parent].dof()),
+                                        )
+                                        .copy_from(&jacobians[parent]);
+                                    }
+
+                                    let mut X = Matrix3x6::zeros();
+                                    let r = cp;
+                                    X.columns_mut(0, 3).copy_from(&-skew_symmetric(&r));
+                                    X.columns_mut(3, 3).copy_from(&Matrix3::identity());
+
+                                    J.view_mut((0, icol_arti), (1, dof))
+                                        .copy_from(&(n.transpose() * X * H));
+                                    Js.push(J);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            icol_arti += dof;
+        }
+
         let mut A: DMatrix<Float> = DMatrix::zeros(total_dof, total_dof);
 
         // Assemble A for rigid bodies
@@ -251,12 +312,14 @@ impl Hybrid {
 
 #[cfg(test)]
 mod hybrid_tests {
-    use na::{vector, DVector};
+    use na::{vector, DVector, Vector3};
 
     use crate::{
         assert_vec_close,
-        hybrid::{Deformable, Hybrid, Rigid},
-        spatial::pose::Pose,
+        hybrid::{articulated::Articulated, Deformable, Hybrid, Rigid},
+        joint::Joint,
+        spatial::{pose::Pose, transform::Transform3D},
+        WORLD_FRAME,
     };
 
     #[test]
@@ -326,5 +389,40 @@ mod hybrid_tests {
         }
 
         assert_vec_close!(state.linear_momentum(), linear_momentum, 1e-3);
+    }
+
+    #[ignore] // TODO: complete this test
+    #[test]
+    fn double_pendulum_and_cube() {
+        // Arrange
+        let mut state = Hybrid::empty();
+        let l = 1.0;
+        let r = 0.1;
+        let pendulum_frame = "pendulum";
+        let pendulum2_frame = "pendulum2";
+        let bodies = vec![
+            Rigid::new_sphere_at(&vector![-l, 0., 0.], 1., r, pendulum_frame),
+            Rigid::new_sphere_at(&vector![0., 0., l], 1., r, pendulum2_frame),
+        ];
+        let pendulum_to_world = Transform3D::move_x(pendulum_frame, WORLD_FRAME, -l);
+        let pendulum2_to_pendulum = Transform3D::move_x(pendulum2_frame, pendulum_frame, -l);
+
+        let joints = vec![
+            Joint::new_revolute(pendulum_to_world, Vector3::y_axis()),
+            Joint::new_revolute(pendulum2_to_pendulum, Vector3::y_axis()),
+        ];
+        state.add_articulated(Articulated::new(bodies, joints));
+
+        state.add_deformable(Deformable::new_cube());
+
+        // Act
+        let final_time = 1.4;
+        let dt = 1e-3;
+        let num_steps = (final_time / dt) as usize;
+        for _s in 0..num_steps {
+            state.step(dt);
+        }
+
+        // Assert
     }
 }

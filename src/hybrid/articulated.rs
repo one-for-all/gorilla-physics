@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use itertools::izip;
-use na::{vector, DMatrix, DVector, UnitQuaternion};
+use na::{vector, DMatrix, DVector, Matrix6xX, UnitQuaternion};
 
 use crate::{
     hybrid::rigid::Rigid,
@@ -42,10 +42,50 @@ impl Articulated {
             }
         }
 
-        Self {
+        let mut state = Self {
             bodies: bodies,
             joints: joints,
             parents: parents,
+        };
+
+        state.update_body_states();
+        state
+    }
+
+    fn update_body_states(&mut self) {
+        // Note: assuming joint iso are up-to-date
+
+        // update body poses
+        for (i, joint) in self.joints.iter().enumerate() {
+            let parent = self.parents[i];
+            assert!(parent <= i); // parents must come before children
+            let joint_iso = joint.transform().iso;
+            let body_iso = if parent == i {
+                // parent is world
+                joint_iso
+            } else {
+                self.bodies[parent].pose.to_isometry() * joint_iso
+            };
+            self.bodies[i].pose = Pose {
+                rotation: body_iso.rotation,
+                translation: body_iso.translation.vector,
+            }
+        }
+
+        // Note: assuming joint twist are up-to-date
+
+        // update body twists
+        for (i, joint) in self.joints.iter().enumerate() {
+            let parent = self.parents[i];
+            let pose = self.bodies[i].pose;
+            let joint_twist = joint.twist().transform(&pose);
+            let body_twist = if parent == i {
+                // parent is world
+                joint_twist
+            } else {
+                self.bodies[parent].twist + joint_twist
+            };
+            self.bodies[i].twist = body_twist
         }
     }
 
@@ -186,6 +226,17 @@ impl Articulated {
         self.joints.iter().map(|j| j.dof()).sum()
     }
 
+    /// Offset index of each joint
+    pub fn offsets(&self) -> Vec<usize> {
+        let mut offset = 0;
+        let mut offsets = vec![];
+        for joint in self.joints.iter() {
+            offsets.push(offset);
+            offset += joint.dof();
+        }
+        offsets
+    }
+
     /// Velocity vector of the system
     pub fn v(&self) -> DVector<Float> {
         let mut v = vec![];
@@ -242,40 +293,14 @@ impl Articulated {
             i += dof;
         }
 
-        // Note: assuming joint iso are up-to-date
+        self.update_body_states();
+    }
 
-        // update body poses
-        for (i, joint) in self.joints.iter().enumerate() {
-            let parent = self.parents[i];
-            assert!(parent <= i); // parents must come before children
-            let joint_iso = joint.transform().iso;
-            let body_iso = if parent == i {
-                // parent is world
-                joint_iso
-            } else {
-                self.bodies[parent].pose.to_isometry() * joint_iso
-            };
-            self.bodies[i].pose = Pose {
-                rotation: body_iso.rotation,
-                translation: body_iso.translation.vector,
-            }
-        }
-
-        // Note: assuming joint twist are up-to-date
-
-        // update body twists
-        for (i, joint) in self.joints.iter().enumerate() {
-            let parent = self.parents[i];
-            let pose = self.bodies[i].pose;
-            let joint_twist = joint.twist().transform(&pose);
-            let body_twist = if parent == i {
-                // parent is world
-                joint_twist
-            } else {
-                self.bodies[parent].twist + joint_twist
-            };
-            self.bodies[i].twist = body_twist
-        }
+    /// Jacobian from each joint v to body spatial twist expressed in world frame
+    pub fn jacobians(&self) -> Vec<Matrix6xX<Float>> {
+        izip!(self.joints.iter(), self.bodies.iter())
+            .map(|(j, b)| j.motion_subspace().as_s().transform(&b.pose).as_matrix())
+            .collect()
     }
 
     pub fn step(&mut self, dt: Float) {
