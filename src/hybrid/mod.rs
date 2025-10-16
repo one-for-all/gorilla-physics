@@ -145,12 +145,15 @@ impl Hybrid {
                 izip!(articulated.bodies.iter(), articulated.joints.iter()).enumerate()
             {
                 let contacts = rigid_deformable_cd(body, deformable);
-                for (cp, n, i_node) in contacts.iter() {
+                for (cp, n, node_weights) in contacts.iter() {
                     let mut J = Matrix1xX::zeros(total_dof);
 
                     // set jacobian for deformable part
-                    let icol = offset_deformable + i_node * 3;
-                    J.fixed_view_mut::<1, 3>(0, icol).copy_from(&-n.transpose());
+                    for (i_node, weight) in node_weights.iter() {
+                        let icol = offset_deformable + i_node * 3;
+                        J.fixed_view_mut::<1, 3>(0, icol)
+                            .copy_from(&(-weight * n.transpose()));
+                    }
 
                     // set jacobian for articulated body
                     let mut H = Matrix6xX::zeros(dof);

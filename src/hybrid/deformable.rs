@@ -8,7 +8,7 @@ pub struct Deformable {
     pub nodes: Vec<Vector3<Float>>,
     pub tetrahedra: Vec<Vec<usize>>,
 
-    pub faces: Vec<[usize; 3]>,
+    pub faces: Vec<[usize; 3]>, // face normal should be outwards
 
     pub q: DVector<Float>,
     pub qdot: DVector<Float>,

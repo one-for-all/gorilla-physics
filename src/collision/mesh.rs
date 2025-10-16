@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use itertools::Itertools;
 use na::{vector, Isometry3, Matrix2, Matrix2x1, Point3, UnitVector3, Vector3};
 
-use crate::types::Float;
+use crate::{flog, types::Float};
 
 /// Mesh collider
 #[derive(Clone, PartialEq, Debug)]
@@ -331,12 +331,12 @@ fn projected_barycentric_coord(
     (w1, w2, w3)
 }
 
-/// Returns (contact point, contact normal) if vertex collides with face.
+/// Returns (contact point, contact normal, barycentric coords) if vertex collides with face.
 pub fn vertex_face_collision(
     vertex: &Vector3<Float>,
     face: &[Vector3<Float>; 3],
     tol: Float,
-) -> Option<(Vector3<Float>, UnitVector3<Float>)> {
+) -> Option<(Vector3<Float>, UnitVector3<Float>, [Float; 3])> {
     let v4 = vertex;
     let v1 = face[0];
     let v2 = face[1];
@@ -352,7 +352,7 @@ pub fn vertex_face_collision(
 
     let (w1, w2, w3) = projected_barycentric_coord(v4, &v1, &x12, &x13);
     if w1.min(w2).min(w3) >= 0.0 && w1.max(w2).max(w3) <= 1.0 {
-        return Some((v4.clone(), normal));
+        return Some((v4.clone(), normal, [w1, w2, w3]));
     }
 
     None
@@ -533,7 +533,8 @@ pub fn mesh_mesh_collision(
                 other_vertices[face[1]],
                 other_vertices[face[2]],
             ];
-            if let Some((contact_point, contact_normal)) = vertex_face_collision(vertex, &face, tol)
+            if let Some((contact_point, contact_normal, _)) =
+                vertex_face_collision(vertex, &face, tol)
             {
                 contacts.push((contact_point, contact_normal));
                 // vertex not allowed to collide with more than one face
@@ -546,7 +547,8 @@ pub fn mesh_mesh_collision(
     for vertex in other_vertices.iter() {
         for face in mesh.faces.iter() {
             let face = [vertices[face[0]], vertices[face[1]], vertices[face[2]]];
-            if let Some((contact_point, contact_normal)) = vertex_face_collision(vertex, &face, tol)
+            if let Some((contact_point, contact_normal, _)) =
+                vertex_face_collision(vertex, &face, tol)
             {
                 // flip the normal direction, since the face is on mesh not other_mesh
                 contacts.push((contact_point, -contact_normal));

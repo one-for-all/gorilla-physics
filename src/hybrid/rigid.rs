@@ -1,6 +1,8 @@
 use na::{dvector, vector, DMatrix, DVector, Isometry3, Matrix3, UnitVector3, Vector3};
 
 use crate::{
+    collision::mesh::vertex_face_collision,
+    flog,
     hybrid::{
         visual::{SphereGeometry, Visual},
         Deformable,
@@ -103,7 +105,10 @@ impl Rigid {
         let cross_part = m * com;
         let inertia = SpatialInertia::new(moment, cross_part, m, frame);
 
-        Rigid::new(inertia)
+        let mut rigid = Rigid::new(inertia);
+        let iso = Isometry3::translation(com.x, com.y, com.z);
+        rigid.visual.push((Visual::new_cuboid(w, d, h), iso));
+        rigid
     }
 
     /// free-motion velocity in body frame
@@ -145,12 +150,13 @@ impl Rigid {
 }
 
 /// Perform collision detection between a rigid body and a deformable
-/// Returns a vec of (contact point, contact normal, deformable node index)
+/// Returns a vec of (contact point, contact normal, deformable node weights)
+/// deformable node weights is a vec of involved node indices and their weights
 /// Note: contact normal point towars the rigid body
 pub fn rigid_deformable_cd(
     rigid: &Rigid,
     deformable: &Deformable,
-) -> Vec<(Vector3<Float>, UnitVector3<Float>, usize)> {
+) -> Vec<(Vector3<Float>, UnitVector3<Float>, Vec<(usize, Float)>)> {
     let mut result = vec![];
     for (collider, iso_collider_to_body) in rigid.visual.iter() {
         let iso = rigid.pose.to_isometry() * iso_collider_to_body;
@@ -162,7 +168,24 @@ pub fn rigid_deformable_cd(
                     if (node_pos - collider_pos).norm() < sphere.r {
                         let n = UnitVector3::new_normalize(collider_pos - node_pos);
                         let cp = node_pos;
-                        result.push((*cp, n, i_node));
+                        result.push((*cp, n, vec![(i_node, 1.)]));
+                    }
+                }
+            }
+            Visual::Cuboid(cuboid) => {
+                let cuboid_points = cuboid.points(&iso);
+                let deformable_faces: &Vec<[usize; 3]> = &deformable.faces;
+                let nodes = deformable.get_positions();
+                for point in cuboid_points.iter() {
+                    for face in deformable_faces.iter() {
+                        let face_coords: [Vector3<Float>; 3] = face.map(|f| nodes[f]);
+                        if let Some((cp, n, ws)) = vertex_face_collision(point, &face_coords, 1e-3)
+                        {
+                            let node_weights =
+                                vec![(face[0], ws[0]), (face[1], ws[1]), (face[2], ws[2])];
+                            result.push((cp, n, node_weights));
+                            break; // each point can have collision w/ only one face
+                        }
                     }
                 }
             }

@@ -38,15 +38,25 @@ Simulator.prototype.addHybrid = function (state: InterfaceHybrid) {
       let frame = state.frame_articulated_body(i, j);
       let n_visuals = state.n_visuals_articulated_body(i, j);
       for (let k = 0; k < n_visuals; k++) {
+        let iso = state.iso_visual_to_body(i, j, k);
+        let visual_offset = new Matrix4().makeTranslation(
+          iso[4],
+          iso[5],
+          iso[6],
+        );
         if (state.visual_type(i, j, k) == 0) {
           let r = state.visual_sphere_r(i, j, k);
-          let iso = state.iso_visual_to_body(i, j, k);
-          let visual_offset = new Matrix4().makeTranslation(
-            iso[4],
-            iso[5],
-            iso[6],
-          );
           this.addSphere(frame + "-" + k, 0xff0000, r, visual_offset);
+        } else if (state.visual_type(i, j, k) == 1) {
+          let wdh = state.visual_cuboid_wdh(i, j, k);
+          this.addCuboid(
+            frame + "-" + k,
+            0xff0000,
+            wdh[0],
+            wdh[1],
+            wdh[2],
+            visual_offset,
+          );
         }
       }
     }

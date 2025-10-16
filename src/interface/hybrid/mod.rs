@@ -41,6 +41,7 @@ impl InterfaceHybrid {
         let visual = &self.inner.articulated[i].bodies[j].visual[k].0;
         return match visual {
             Visual::Sphere(_) => 0,
+            Visual::Cuboid(_) => 1,
         };
     }
 
@@ -48,6 +49,15 @@ impl InterfaceHybrid {
         let visual = &self.inner.articulated[i].bodies[j].visual[k].0;
         return match visual {
             Visual::Sphere(sphere) => sphere.r,
+            Visual::Cuboid(_) => panic!("visual is not a sphere"),
+        };
+    }
+
+    pub fn visual_cuboid_wdh(&self, i: usize, j: usize, k: usize) -> Float32Array {
+        let visual = &self.inner.articulated[i].bodies[j].visual[k].0;
+        return match visual {
+            Visual::Sphere(_) => panic!("visual is not a cuboid"),
+            Visual::Cuboid(cuboid) => toJsFloat32Array!([cuboid.w, cuboid.d, cuboid.h]),
         };
     }
 
@@ -223,7 +233,7 @@ pub async fn createDoublePendulumAndCube() -> InterfaceHybrid {
 pub async fn createSphereCart() -> InterfaceHybrid {
     let mut state = Hybrid::empty();
 
-    let r = 1.0;
+    let r = 0.1;
     let cart_frame = "cart";
     let bodies = vec![Rigid::new_sphere_at(
         &vector![0., 0., 0.],
@@ -239,9 +249,38 @@ pub async fn createSphereCart() -> InterfaceHybrid {
     state.add_articulated(articulated);
 
     state.add_deformable(Deformable::new_cube());
-    let v = vector![1. / 8., 0., 0.];
-    let v = vec![v; 8];
-    state.set_deformable_velocities(vec![v]);
+    // let v = vector![1. / 8., 0., 0.];
+    // let v = vec![v; 8];
+    // state.set_deformable_velocities(vec![v]);
+
+    InterfaceHybrid { inner: state }
+}
+
+#[wasm_bindgen]
+pub async fn createCuboidCart() -> InterfaceHybrid {
+    let mut state = Hybrid::empty();
+
+    let w = 0.1;
+    let cart_frame = "cart";
+    let bodies = vec![Rigid::new_cuboid_at(
+        &vector![0., 0., 0.],
+        1.,
+        0.1,
+        w,
+        w,
+        cart_frame,
+    )];
+    let cart_to_world = Transform3D::move_xyz(cart_frame, WORLD_FRAME, 2.0, 0.0, 0.0);
+    let joints = vec![Joint::new_prismatic(cart_to_world, Vector3::x_axis())];
+    let mut articulated = Articulated::new(bodies, joints);
+    articulated.set_joint_v(0, JointVelocity::Float(-2.));
+
+    state.add_articulated(articulated);
+
+    state.add_deformable(Deformable::new_cube());
+    // let v = vector![1. / 8., 0., 0.];
+    // let v = vec![v; 8];
+    // state.set_deformable_velocities(vec![v]);
 
     InterfaceHybrid { inner: state }
 }
