@@ -1,7 +1,10 @@
-use na::{dvector, vector, DMatrix, DVector, Isometry3, Matrix3, Vector3};
+use na::{dvector, vector, DMatrix, DVector, Isometry3, Matrix3, UnitVector3, Vector3};
 
 use crate::{
-    hybrid::visual::{SphereGeometry, Visual},
+    hybrid::{
+        visual::{SphereGeometry, Visual},
+        Deformable,
+    },
     inertia::SpatialInertia,
     spatial::{pose::Pose, spatial_vector::SpatialVector},
     types::Float,
@@ -139,4 +142,31 @@ impl Rigid {
 
         (w.dot(&(J * w)) + v.dot(&(m * v + 2.0 * w.cross(&c)))) / 2.0
     }
+}
+
+/// Perform collision detection between a rigid body and a deformable
+/// Returns a vec of (contact point, contact normal, deformable node index)
+/// Note: contact normal point towars the rigid body
+pub fn rigid_deformable_cd(
+    rigid: &Rigid,
+    deformable: &Deformable,
+) -> Vec<(Vector3<Float>, UnitVector3<Float>, usize)> {
+    let mut result = vec![];
+    for (collider, iso_collider_to_body) in rigid.visual.iter() {
+        let iso = rigid.pose.to_isometry() * iso_collider_to_body;
+        let collider_pos = iso.translation.vector;
+
+        match collider {
+            Visual::Sphere(sphere) => {
+                for (i_node, node_pos) in deformable.get_positions().iter().enumerate() {
+                    if (node_pos - collider_pos).norm() < sphere.r {
+                        let n = UnitVector3::new_normalize(collider_pos - node_pos);
+                        let cp = node_pos;
+                        result.push((*cp, n, i_node));
+                    }
+                }
+            }
+        }
+    }
+    result
 }

@@ -13,7 +13,7 @@ use na::{
 
 use crate::{
     flog,
-    hybrid::{articulated::Articulated, visual::Visual},
+    hybrid::{articulated::Articulated, rigid::rigid_deformable_cd, visual::Visual},
     spatial::{
         pose::Pose, spatial_vector::SpatialVector, twist::compute_twist_transformation_matrix,
     },
@@ -144,49 +144,33 @@ impl Hybrid {
             for (i_joint, (body, joint)) in
                 izip!(articulated.bodies.iter(), articulated.joints.iter()).enumerate()
             {
-                for (collider, iso_collider_to_body) in body.visual.iter() {
-                    let iso = body.pose.to_isometry() * iso_collider_to_body;
-                    let collider_pos = iso.translation.vector;
+                let contacts = rigid_deformable_cd(body, deformable);
+                for (cp, n, i_node) in contacts.iter() {
+                    let mut J = Matrix1xX::zeros(total_dof);
 
-                    for (i_node, node_pos) in deformable.get_positions().iter().enumerate() {
-                        match collider {
-                            Visual::Sphere(sphere) => {
-                                if (node_pos - collider_pos).norm() < sphere.r {
-                                    let n = UnitVector3::new_normalize(collider_pos - node_pos);
-                                    let cp = node_pos;
+                    // set jacobian for deformable part
+                    let icol = offset_deformable + i_node * 3;
+                    J.fixed_view_mut::<1, 3>(0, icol).copy_from(&-n.transpose());
 
-                                    let mut J = Matrix1xX::zeros(total_dof);
-
-                                    // set jacobian for deformable part
-                                    let icol = offset_deformable + i_node * 3;
-                                    J.fixed_view_mut::<1, 3>(0, icol).copy_from(&-n.transpose());
-
-                                    // set jacobian for articulated body
-                                    let mut H = Matrix6xX::zeros(dof);
-                                    H.view_mut((0, offsets[i_joint]), (6, joint.dof()))
-                                        .copy_from(&jacobians[i_joint]);
-                                    let mut parent = i_joint;
-                                    while articulated.parents[parent] != parent {
-                                        parent = articulated.parents[parent];
-                                        H.view_mut(
-                                            (0, offsets[parent]),
-                                            (6, articulated.joints[parent].dof()),
-                                        )
-                                        .copy_from(&jacobians[parent]);
-                                    }
-
-                                    let mut X = Matrix3x6::zeros();
-                                    let r = cp;
-                                    X.columns_mut(0, 3).copy_from(&-skew_symmetric(&r));
-                                    X.columns_mut(3, 3).copy_from(&Matrix3::identity());
-
-                                    J.view_mut((0, icol_arti), (1, dof))
-                                        .copy_from(&(n.transpose() * X * H));
-                                    Js.push(J);
-                                }
-                            }
-                        }
+                    // set jacobian for articulated body
+                    let mut H = Matrix6xX::zeros(dof);
+                    H.view_mut((0, offsets[i_joint]), (6, joint.dof()))
+                        .copy_from(&jacobians[i_joint]);
+                    let mut parent = i_joint;
+                    while articulated.parents[parent] != parent {
+                        parent = articulated.parents[parent];
+                        H.view_mut((0, offsets[parent]), (6, articulated.joints[parent].dof()))
+                            .copy_from(&jacobians[parent]);
                     }
+
+                    let mut X = Matrix3x6::zeros();
+                    let r = cp;
+                    X.columns_mut(0, 3).copy_from(&-skew_symmetric(&r));
+                    X.columns_mut(3, 3).copy_from(&Matrix3::identity());
+
+                    J.view_mut((0, icol_arti), (1, dof))
+                        .copy_from(&(n.transpose() * X * H));
+                    Js.push(J);
                 }
             }
             icol_arti += dof;
