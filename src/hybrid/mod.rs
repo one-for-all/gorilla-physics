@@ -299,13 +299,18 @@ impl Hybrid {
 
 #[cfg(test)]
 mod hybrid_tests {
-    use na::{vector, DVector, Vector3};
+    use na::{vector, DVector, UnitVector3, Vector3};
 
     use crate::{
-        assert_vec_close,
+        assert_close, assert_vec_close,
+        collision::mesh::projected_barycentric_coord,
+        flog,
         hybrid::{articulated::Articulated, Deformable, Hybrid, Rigid},
-        joint::Joint,
+        interface::hybrid::InterfaceHybrid,
+        joint::{Joint, JointVelocity},
+        plot::plot,
         spatial::{pose::Pose, transform::Transform3D},
+        types::Float,
         WORLD_FRAME,
     };
 
@@ -376,6 +381,64 @@ mod hybrid_tests {
         }
 
         assert_vec_close!(state.linear_momentum(), linear_momentum, 1e-3);
+    }
+
+    #[test]
+    fn two_carts_squashing_cube() {
+        // Arrange
+        let mut state = Hybrid::empty();
+
+        let l_cube = 1.0;
+        let cart_offset = 0.01; // Note: this is important to make sure contact point is not on mesh edge. Collision-handling is not exactly penetration free because satisfying the contact constraint for contact point and normal at current step, does not ensure no penetration after velocity integration, because nearest point and normal could change.
+                                // TODO(contact): make the test work without offset
+
+        let m = 1.0;
+        let w = 1.0;
+        let d = 0.1;
+        let cart_frame = "cart";
+        let cart = Rigid::new_cuboid_at(&vector![0., 0., 0.], m, w, d, d, cart_frame);
+        let cart_to_world = Transform3D::move_xyz(
+            cart_frame,
+            WORLD_FRAME,
+            l_cube + 0.5 + w / 2.,
+            cart_offset,
+            0.0,
+        );
+
+        let bodies = vec![cart];
+        let joints = vec![Joint::new_prismatic(cart_to_world, Vector3::x_axis())];
+        let mut articulated = Articulated::new(bodies, joints);
+        articulated.set_joint_v(0, JointVelocity::Float(-1.0));
+        state.add_articulated(articulated);
+
+        let cart2_frame = "cart2";
+        let cart2 = Rigid::new_cuboid_at(&vector![0., 0., 0.], m, w, d, d, cart2_frame);
+        let cart2_to_world =
+            Transform3D::move_xyz(cart2_frame, WORLD_FRAME, -0.5 - w / 2., cart_offset, 0.0);
+        let bodies = vec![cart2];
+        let joints = vec![Joint::new_prismatic(cart2_to_world, Vector3::x_axis())];
+        let mut articulated = Articulated::new(bodies, joints);
+        articulated.set_joint_v(0, JointVelocity::Float(1.0));
+        state.add_articulated(articulated);
+
+        state.add_deformable(Deformable::new_cube()); // k = 1e2
+
+        // Act
+        let final_time = 2.0;
+        let dt = 1e-3;
+        let num_steps = (final_time / dt) as usize;
+        for _s in 0..num_steps {
+            state.step(dt);
+        }
+
+        // Assert
+        let v_cart = state.articulated[0].v()[0];
+        let v_cart2 = state.articulated[1].v()[0];
+        assert_close!(v_cart, -v_cart2, 1e-3);
+        let vs = state.deformables[0].get_velocities();
+        for v in vs.iter() {
+            assert_vec_close!(v, [0.; 3], 1e-2);
+        }
     }
 
     #[ignore] // TODO: complete this test

@@ -316,7 +316,7 @@ pub fn read_mesh(content: &str) -> (Vec<Vector3<Float>>, Vec<Vec<usize>>) {
 /// by (p, p + u, p + v).
 /// Ref: Computing the Barycentric Coordinates of a Projected Point, by Wolfgang
 /// Heidrich, 2005
-fn projected_barycentric_coord(
+pub fn projected_barycentric_coord(
     p: &Vector3<Float>,
     q: &Vector3<Float>,
     u: &Vector3<Float>,
@@ -352,7 +352,8 @@ pub fn vertex_face_collision(
 
     let (w1, w2, w3) = projected_barycentric_coord(v4, &v1, &x12, &x13);
     if w1.min(w2).min(w3) >= 0.0 && w1.max(w2).max(w3) <= 1.0 {
-        return Some((v4.clone(), normal, [w1, w2, w3]));
+        let cp = w1 * v1 + w2 * v2 + w3 * v3;
+        return Some((cp, normal, [w1, w2, w3]));
     }
 
     None

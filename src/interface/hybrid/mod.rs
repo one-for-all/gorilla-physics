@@ -260,21 +260,36 @@ pub async fn createSphereCart() -> InterfaceHybrid {
 pub async fn createCuboidCart() -> InterfaceHybrid {
     let mut state = Hybrid::empty();
 
-    let w = 0.1;
+    let l_cube = 1.0;
+    let cart_offset = 0.01;
+
+    let m = 1.0;
+    let w = 1.0;
+    let d = 0.1;
     let cart_frame = "cart";
-    let bodies = vec![Rigid::new_cuboid_at(
-        &vector![0., 0., 0.],
-        1.,
-        0.1,
-        w,
-        w,
+    let cart = Rigid::new_cuboid_at(&vector![0., 0., 0.], m, w, d, d, cart_frame);
+    let cart_to_world = Transform3D::move_xyz(
         cart_frame,
-    )];
-    let cart_to_world = Transform3D::move_xyz(cart_frame, WORLD_FRAME, 2.0, 0.0, 0.0);
+        WORLD_FRAME,
+        l_cube + 0.5 + w / 2.,
+        cart_offset,
+        0.0,
+    );
+
+    let bodies = vec![cart];
     let joints = vec![Joint::new_prismatic(cart_to_world, Vector3::x_axis())];
     let mut articulated = Articulated::new(bodies, joints);
-    articulated.set_joint_v(0, JointVelocity::Float(-2.));
+    articulated.set_joint_v(0, JointVelocity::Float(-1.0));
+    state.add_articulated(articulated);
 
+    let cart2_frame = "cart2";
+    let cart2 = Rigid::new_cuboid_at(&vector![0., 0., 0.], m, w, d, d, cart2_frame);
+    let cart2_to_world =
+        Transform3D::move_xyz(cart2_frame, WORLD_FRAME, -0.5 - w / 2., cart_offset, 0.0);
+    let bodies = vec![cart2];
+    let joints = vec![Joint::new_prismatic(cart2_to_world, Vector3::x_axis())];
+    let mut articulated = Articulated::new(bodies, joints);
+    articulated.set_joint_v(0, JointVelocity::Float(1.0));
     state.add_articulated(articulated);
 
     state.add_deformable(Deformable::new_cube());

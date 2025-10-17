@@ -152,7 +152,7 @@ impl Rigid {
 /// Perform collision detection between a rigid body and a deformable
 /// Returns a vec of (contact point, contact normal, deformable node weights)
 /// deformable node weights is a vec of involved node indices and their weights
-/// Note: contact normal point towars the rigid body
+/// Note: contact normal point outwards of the deformable
 pub fn rigid_deformable_cd(
     rigid: &Rigid,
     deformable: &Deformable,
@@ -184,7 +184,7 @@ pub fn rigid_deformable_cd(
                             let node_weights =
                                 vec![(face[0], ws[0]), (face[1], ws[1]), (face[2], ws[2])];
                             result.push((cp, n, node_weights));
-                            break; // each point can have collision w/ only one face
+                            // break; // each point can have collision w/ only one face
                         }
                     }
                 }

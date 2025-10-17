@@ -192,7 +192,7 @@ impl Deformable {
             let q0q1 = q1 - q0;
             let l = q0q1.norm();
 
-            let k = 1e5;
+            let k = 1e2;
             let f_n0 = k * (l - r) * q0q1 / l;
             let f_n1 = -f_n0;
 

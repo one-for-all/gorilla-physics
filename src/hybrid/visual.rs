@@ -1,6 +1,6 @@
 use na::{vector, Isometry, Isometry3, Point3, Vector3};
 
-use crate::types::Float;
+use crate::{collision::cuboid, types::Float};
 
 pub struct SphereGeometry {
     pub r: Float,
@@ -40,5 +40,12 @@ pub enum Visual {
 impl Visual {
     pub fn new_cuboid(w: Float, d: Float, h: Float) -> Visual {
         Visual::Cuboid(CuboidGeometry { w, d, h })
+    }
+
+    pub fn cuboid(&self) -> &CuboidGeometry {
+        match self {
+            Self::Cuboid(cuboid) => cuboid,
+            _ => panic!("not cuboid"),
+        }
     }
 }
