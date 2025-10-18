@@ -359,11 +359,13 @@ pub fn vertex_face_collision(
     None
 }
 
+/// Returns (contact point on edgeA, contact normal, barycentric coords of cp on edgeA)
+/// contact normal is from edgeA to edgeB
 pub fn edge_edge_collision(
     edgeA: &[Vector3<Float>; 2],
     edgeB: &[Vector3<Float>; 2],
     tol: Float,
-) -> Option<(Vector3<Float>, UnitVector3<Float>)> {
+) -> Option<(Vector3<Float>, UnitVector3<Float>, [Float; 2])> {
     let v1 = edgeA[0];
     let v2 = edgeA[1];
     let v3 = edgeB[0];
@@ -377,11 +379,11 @@ pub fn edge_edge_collision(
     if n.norm() / (x12.norm() * x34.norm()) < 1e-3 {
         return None;
     }
-    let contact_normal = UnitVector3::new_normalize(n);
+    let mut n = UnitVector3::new_normalize(n);
     let x13 = v3 - v1;
 
     // No collision if two edges are far away
-    let distance = x13.dot(&contact_normal);
+    let distance = x13.dot(&n);
     if distance.abs() > tol {
         return None;
     }
@@ -412,11 +414,16 @@ pub fn edge_edge_collision(
     }
 
     // Pick the point on one segment as the contact point
-    let contact_point = v1 + w1 * x12;
+    let cp = v1 + w1 * x12;
 
-    // Note: this contact normal is not final. Need to be validated and
-    // corrected with face information by correct_contact_normal_direction.
-    Some((contact_point, contact_normal))
+    // Flip normal direction to point from edgeA to edgeB
+    if (v3 - cp).dot(&n) < 0. {
+        n = -n;
+    }
+
+    // Note: for mesh-mesh collision, this contact normal might not be final. Need to be validated and corrected with face information by correct_contact_normal_direction.
+    // because the meshes might have passed through each other already
+    Some((cp, n, [1. - w1, w1]))
 }
 
 /// Given candidate contact normal, flip the direction if opposite, or report
@@ -471,7 +478,7 @@ mod edge_edge_collision_tests {
         let collision = edge_edge_collision(&A, &B, 1e-3);
 
         // Assert
-        let (cp, n) = collision.expect("should detect collision");
+        let (cp, n, _) = collision.expect("should detect collision");
         assert_eq!(cp, vector![0., 0., 0.]); // collide at origin
         assert_align(&n, &Vector3::z_axis());
     }
@@ -486,7 +493,7 @@ mod edge_edge_collision_tests {
         let collision = edge_edge_collision(&A, &B, 1e-3);
 
         // Assert
-        let (cp, n) = collision.expect("should detect collision");
+        let (cp, n, _) = collision.expect("should detect collision");
         assert_eq!(cp, vector![0.5, 0., 0.5]);
         let n_expect = UnitVector3::new_normalize(vector![1., 0., 1.]);
         assert_align(&n, &n_expect);
@@ -567,7 +574,8 @@ pub fn mesh_mesh_collision(
                 other_vertices[other_edge.0[0]],
                 other_vertices[other_edge.0[1]],
             ];
-            if let Some((contact_point, contact_normal)) = edge_edge_collision(&e, &other_e, tol) {
+            if let Some((contact_point, contact_normal, _)) = edge_edge_collision(&e, &other_e, tol)
+            {
                 let other_faces = &other_mesh.faces;
                 let f_A = other_faces[other_edge.1];
                 let f_B = other_faces[other_edge.2];

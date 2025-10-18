@@ -1,5 +1,7 @@
+use std::collections::HashSet;
+
 use crate::types::Float;
-use itertools::izip;
+use itertools::{izip, Itertools};
 use na::{vector, DMatrix, DVector, Vector3};
 use nalgebra_sparse::{CooMatrix, CsrMatrix};
 
@@ -9,6 +11,7 @@ pub struct Deformable {
     pub tetrahedra: Vec<Vec<usize>>,
 
     pub faces: Vec<[usize; 3]>, // face normal should be outwards
+    pub edges: Vec<[usize; 2]>, // boundary edges
 
     pub q: DVector<Float>,
     pub qdot: DVector<Float>,
@@ -20,12 +23,13 @@ impl Deformable {
         let q = DVector::from_iterator(dof, nodes.iter().flat_map(|x| x.iter().copied()));
         let qdot = DVector::zeros(q.len());
 
-        let faces = Self::compute_boundary_facets(&tetrahedra);
+        let (faces, edges) = Self::compute_boundary_faces_and_edges(&tetrahedra);
 
         Deformable {
             nodes,
             tetrahedra,
             faces,
+            edges,
             q,
             qdot,
         }
@@ -40,19 +44,7 @@ impl Deformable {
         ];
         let tetrahedra = vec![vec![0, 1, 2, 3]];
 
-        let dof = nodes.len() * 3;
-        let q = DVector::from_iterator(dof, nodes.iter().flat_map(|x| x.iter().copied()));
-        let qdot = DVector::zeros(q.len());
-
-        let faces = Self::compute_boundary_facets(&tetrahedra);
-
-        Deformable {
-            nodes,
-            tetrahedra,
-            faces,
-            q,
-            qdot,
-        }
+        Deformable::new(nodes, tetrahedra)
     }
 
     pub fn new_pyramid() -> Self {
@@ -242,7 +234,9 @@ impl Deformable {
 
     /// Extract the boundary facets, for better visualization
     /// TODO: extract into a global function
-    pub fn compute_boundary_facets(tetrahedra: &Vec<Vec<usize>>) -> Vec<[usize; 3]> {
+    pub fn compute_boundary_faces_and_edges(
+        tetrahedra: &Vec<Vec<usize>>,
+    ) -> (Vec<[usize; 3]>, Vec<[usize; 2]>) {
         let mut facets = vec![];
         for tetrahedron in tetrahedra.iter() {
             let v0 = tetrahedron[0];
@@ -301,6 +295,29 @@ impl Deformable {
             boundary_facets.push(cur);
         }
 
-        boundary_facets
+        // Compute edges
+        let mut edges: HashSet<(usize, usize)> = HashSet::new();
+        for face in boundary_facets.iter() {
+            let i = face[0];
+            let j = face[1];
+            let k = face[2];
+            let e1 = [i, j];
+            let e2 = [j, k];
+            let e3 = [k, i];
+            for e_candidate in [e1, e2, e3].iter() {
+                if edges.contains(&(e_candidate[0], e_candidate[1])) {
+                    panic!(
+                        "edge cannot be shared by two faces in its same direction: {:?}",
+                        e_candidate
+                    );
+                }
+
+                edges.insert((e_candidate[0], e_candidate[1]));
+            }
+        }
+
+        let edges: Vec<[usize; 2]> = edges.iter().sorted().map(|e| [e.0, e.1]).collect();
+
+        (boundary_facets, edges)
     }
 }

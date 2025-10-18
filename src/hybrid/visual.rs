@@ -14,6 +14,7 @@ pub struct CuboidGeometry {
 
 impl CuboidGeometry {
     /// Returns all the corner points of the cuboid
+    /// Ordered as left-front-bottom, left-front-top, left-back-bottom, left-back-top, right-[]
     pub fn points(&self, iso: &Isometry3<Float>) -> Vec<Vector3<Float>> {
         let mut points = vec![];
         let multipliers = [-0.5, 0.5];
@@ -29,6 +30,32 @@ impl CuboidGeometry {
             .iter()
             .map(|p| iso.transform_point(&Point3::from(*p)).coords)
             .collect()
+    }
+
+    /// Returns all the edges of the cuboid
+    pub fn edges(&self, iso: &Isometry3<Float>) -> Vec<[Vector3<Float>; 2]> {
+        let points = self.points(iso);
+        let edges = vec![
+            // left face
+            [0, 1],
+            [1, 3],
+            [3, 2],
+            [2, 0],
+            // front face
+            [0, 4],
+            [4, 5],
+            [5, 1],
+            // top face
+            [5, 7],
+            [7, 3],
+            // back face
+            [7, 6],
+            [6, 2],
+            // right face
+            [6, 4],
+        ];
+        assert_eq!(edges.len(), 12);
+        edges.iter().map(|e| [points[e[0]], points[e[1]]]).collect()
     }
 }
 

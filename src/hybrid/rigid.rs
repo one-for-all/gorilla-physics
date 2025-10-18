@@ -1,7 +1,8 @@
+use itertools::izip;
 use na::{dvector, vector, DMatrix, DVector, Isometry3, Matrix3, UnitVector3, Vector3};
 
 use crate::{
-    collision::mesh::vertex_face_collision,
+    collision::mesh::{edge_edge_collision, vertex_face_collision},
     flog,
     hybrid::{
         visual::{SphereGeometry, Visual},
@@ -174,17 +175,46 @@ pub fn rigid_deformable_cd(
             }
             Visual::Cuboid(cuboid) => {
                 let cuboid_points = cuboid.points(&iso);
-                let deformable_faces: &Vec<[usize; 3]> = &deformable.faces;
                 let nodes = deformable.get_positions();
+                let deformable_faces: &Vec<[usize; 3]> = &deformable.faces;
+                let deformable_face_coords: Vec<[Vector3<Float>; 3]> = deformable_faces
+                    .iter()
+                    .map(|f| f.map(|fi| nodes[fi]))
+                    .collect();
+
+                let deformable_edges = &deformable.edges;
+                let deformable_edge_coords: Vec<[Vector3<Float>; 2]> = deformable_edges
+                    .iter()
+                    .map(|e| e.map(|ei| nodes[ei]))
+                    .collect();
+
+                // cube point - deformable face
                 for point in cuboid_points.iter() {
-                    for face in deformable_faces.iter() {
-                        let face_coords: [Vector3<Float>; 3] = face.map(|f| nodes[f]);
+                    for (face, face_coords) in
+                        izip!(deformable_faces.iter(), deformable_face_coords.iter())
+                    {
                         if let Some((cp, n, ws)) = vertex_face_collision(point, &face_coords, 1e-3)
                         {
                             let node_weights =
                                 vec![(face[0], ws[0]), (face[1], ws[1]), (face[2], ws[2])];
                             result.push((cp, n, node_weights));
                             // break; // each point can have collision w/ only one face
+                        }
+                    }
+                }
+
+                // edge - edge
+                let cuboid_edges = cuboid.edges(&iso);
+                for cuboid_edge in cuboid_edges.iter() {
+                    for (i_edge, deformable_e_coords) in deformable_edge_coords.iter().enumerate() {
+                        let e1 = cuboid_edge;
+                        let e2 = deformable_e_coords;
+                        if let Some((cp, n, ws)) = edge_edge_collision(e2, e1, 1e-2) {
+                            // Note: if edges have passed through each other already, normal would be opposite.
+                            // TODO(contact): Fix it? or maybe do CCD.
+                            let edge = deformable_edges[i_edge];
+                            let node_weights = vec![(edge[0], ws[0]), (edge[1], ws[1])];
+                            result.push((cp, n, node_weights));
                         }
                     }
                 }

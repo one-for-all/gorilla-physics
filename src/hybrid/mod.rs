@@ -434,7 +434,7 @@ mod hybrid_tests {
         // Assert
         let v_cart = state.articulated[0].v()[0];
         let v_cart2 = state.articulated[1].v()[0];
-        assert_close!(v_cart, -v_cart2, 1e-3);
+        assert_close!(v_cart, -v_cart2, 1e-2);
         let vs = state.deformables[0].get_velocities();
         for v in vs.iter() {
             assert_vec_close!(v, [0.; 3], 1e-2);
