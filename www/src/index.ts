@@ -20,6 +20,8 @@ import {
   createSphereCart,
   createDoublePendulumAndCube,
   createCuboidCart,
+  createGripper,
+  createGripperHybrid,
 } from "gorilla-physics";
 import { Simulator } from "./Simulator";
 import "./biped";
@@ -57,7 +59,7 @@ import("gorilla-physics").then((gorilla) => {
   // });
 
   let radius = 0.1;
-  createCuboidCart().then((state) => {
+  createGripperHybrid().then((state) => {
     // state.addHalfSpace(normal as Float64Array, h_ground);
 
     // let controller = gorilla.createNullController();
@@ -73,6 +75,8 @@ import("gorilla-physics").then((gorilla) => {
     let interfaceSimulator = null;
     let simulator = new Simulator(interfaceSimulator);
     simulator.addHybrid(state);
+    simulator.updateHybrid();
+
     // simulator.addMassSpring(state);
     // simulator.addMPMDeformable(state);
     // simulator.addCloth(state);
@@ -131,7 +135,7 @@ import("gorilla-physics").then((gorilla) => {
 
     // Important: Set initial camera position
     let cameraPosition = {
-      eye: { x: 0.0, y: -2.0, z: 2 },
+      eye: { x: 0.0, y: -5.0, z: 5 },
       target: { x: 0.0, y: 0, z: h_ground },
     };
     simulator.graphics.lookAt(cameraPosition);

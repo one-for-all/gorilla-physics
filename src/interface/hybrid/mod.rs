@@ -3,9 +3,11 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use web_sys::js_sys::{Float32Array, Uint32Array};
 
 use crate::hybrid::articulated::Articulated;
+use crate::hybrid::builders::build_gripper;
 use crate::hybrid::visual::Visual;
 use crate::hybrid::{Deformable, Rigid};
 use crate::interface::cart;
+use crate::joint::floating::FloatingJoint;
 use crate::joint::{Joint, JointVelocity};
 use crate::na::vector;
 use crate::spatial::transform::Transform3D;
@@ -296,6 +298,13 @@ pub async fn createCuboidCart() -> InterfaceHybrid {
     // let v = vector![1. / 8., 0., 0.];
     // let v = vec![v; 8];
     // state.set_deformable_velocities(vec![v]);
+
+    InterfaceHybrid { inner: state }
+}
+
+#[wasm_bindgen]
+pub async fn createGripperHybrid() -> InterfaceHybrid {
+    let state = build_gripper();
 
     InterfaceHybrid { inner: state }
 }

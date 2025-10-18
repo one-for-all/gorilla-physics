@@ -52,6 +52,27 @@ impl SpatialInertia {
         }
     }
 
+    /// returns the spatial inertia of a cuboid at center-of-mass (com), relative to frame, and w/ specified params.
+    pub fn cuboid_at(
+        com: &Vector3<Float>,
+        m: Float,
+        w: Float,
+        d: Float,
+        h: Float,
+        frame: &str,
+    ) -> Self {
+        let moment_x = m * (d * d + h * h) / 12.0;
+        let moment_y = m * (w * w + h * h) / 12.0;
+        let moment_z = m * (w * w + d * d) / 12.0;
+        let moment_com = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
+
+        // generalized parallel axis theorem
+        let moment =
+            moment_com + m * (com.norm_squared() * Matrix3::identity() - com * com.transpose());
+        let cross_part = m * com;
+        Self::new(moment, cross_part, m, frame)
+    }
+
     /// Returns the spatial inertia as a 6X6 matrix:
     /// I^i = | J         c_hat |
     ///       | c_hat^T     mI  |

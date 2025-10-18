@@ -95,21 +95,24 @@ impl Rigid {
         h: Float,
         frame: &str,
     ) -> Rigid {
-        let moment_x = m * (d * d + h * h) / 12.0;
-        let moment_y = m * (w * w + h * h) / 12.0;
-        let moment_z = m * (w * w + d * d) / 12.0;
-        let moment_com = Matrix3::from_diagonal(&vector![moment_x, moment_y, moment_z]);
-
-        // generalized parallel axis theorem
-        let moment =
-            moment_com + m * (com.norm_squared() * Matrix3::identity() - com * com.transpose());
-        let cross_part = m * com;
-        let inertia = SpatialInertia::new(moment, cross_part, m, frame);
+        let inertia = SpatialInertia::cuboid_at(com, m, w, d, h, frame);
 
         let mut rigid = Rigid::new(inertia);
         let iso = Isometry3::translation(com.x, com.y, com.z);
         rigid.visual.push((Visual::new_cuboid(w, d, h), iso));
         rigid
+    }
+
+    pub fn new_cuboid(m: Float, w: Float, d: Float, h: Float, frame: &str) -> Rigid {
+        Self::new_cuboid_at(&vector![0., 0., 0.], m, w, d, h, frame)
+    }
+
+    pub fn add_cuboid_at(&mut self, com: &Vector3<Float>, m: Float, w: Float, d: Float, h: Float) {
+        let inertia = SpatialInertia::cuboid_at(&com, m, w, d, h, &self.inertia.frame);
+        self.inertia += &inertia;
+
+        let iso = Isometry3::translation(com.x, com.y, com.z);
+        self.visual.push((Visual::new_cuboid(w, d, h), iso));
     }
 
     /// free-motion velocity in body frame
