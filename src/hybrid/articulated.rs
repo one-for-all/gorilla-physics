@@ -181,10 +181,9 @@ impl Articulated {
         let dofs: Vec<usize> = self.joints.iter().map(|j| j.dof()).collect();
         let mut indices = vec![];
         let mut i = 0;
-        while i < dof {
+        for dof in dofs.iter() {
             indices.push(i);
-            let idof = dofs[i]; // ith joint dof
-            i += idof;
+            i += dof;
         }
 
         // Fill in the mass matrix
