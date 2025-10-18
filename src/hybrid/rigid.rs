@@ -5,7 +5,7 @@ use crate::{
     collision::mesh::{edge_edge_collision, vertex_face_collision},
     flog,
     hybrid::{
-        visual::{SphereGeometry, Visual},
+        visual::{vertex_rect_face_collision, SphereGeometry, Visual},
         Deformable,
     },
     inertia::SpatialInertia,
@@ -196,12 +196,22 @@ pub fn rigid_deformable_cd(
                     for (face, face_coords) in
                         izip!(deformable_faces.iter(), deformable_face_coords.iter())
                     {
-                        if let Some((cp, n, ws)) = vertex_face_collision(point, &face_coords, 1e-3)
+                        if let Some((cp, n, ws)) = vertex_face_collision(point, &face_coords, 1e-2)
                         {
                             let node_weights =
                                 vec![(face[0], ws[0]), (face[1], ws[1]), (face[2], ws[2])];
                             result.push((cp, n, node_weights));
                             // break; // each point can have collision w/ only one face
+                        }
+                    }
+                }
+
+                // cube face - deformable point
+                let cuboid_faces = cuboid.faces(&iso);
+                for face in cuboid_faces.iter() {
+                    for (i, point) in nodes.iter().enumerate() {
+                        if let Some((cp, n)) = vertex_rect_face_collision(point, face, 1e-2) {
+                            result.push((cp, -n, vec![(i, 1.)])); // reverse normal to point outwards deformable
                         }
                     }
                 }

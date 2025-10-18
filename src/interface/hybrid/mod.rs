@@ -12,8 +12,8 @@ use crate::joint::{Joint, JointVelocity};
 use crate::na::vector;
 use crate::spatial::transform::Transform3D;
 use crate::types::Float;
-use crate::WORLD_FRAME;
 use crate::{hybrid::Hybrid, spatial::pose::Pose, toJsFloat32Array};
+use crate::{PI, WORLD_FRAME};
 
 #[wasm_bindgen]
 pub struct InterfaceHybrid {
