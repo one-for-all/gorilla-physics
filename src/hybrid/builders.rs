@@ -1,6 +1,7 @@
 use na::{vector, Vector3};
 
 use crate::{
+    collision::halfspace::HalfSpace,
     flog,
     hybrid::{articulated::Articulated, Deformable, Hybrid, Rigid},
     joint::Joint,
@@ -77,7 +78,13 @@ pub fn build_gripper() -> Hybrid {
     state.add_articulated(articulated);
 
     // state.add_deformable(Deformable::new_cube());
-    state.add_deformable(Deformable::new_dense_cube(1., 2));
+    state.add_deformable(Deformable::new_dense_cube(1., 2, 1e3));
+    let n_nodes = state.deformables[0].nodes.len();
+    let v = vector![3., 0., 0.];
+    let v = vec![v; n_nodes];
+    state.set_deformable_velocities(vec![v]);
+
+    state.add_halfspace(HalfSpace::new(Vector3::z_axis(), -0.5));
 
     state
 }

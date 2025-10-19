@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::{flog, types::Float};
+use crate::{flog, types::Float, GRAVITY};
 use itertools::{izip, Itertools};
 use na::{vector, DMatrix, DVector, Vector3};
 use nalgebra_sparse::{CooMatrix, CsrMatrix};
@@ -15,10 +15,12 @@ pub struct Deformable {
 
     pub q: DVector<Float>,
     pub qdot: DVector<Float>,
+
+    pub k: Float,
 }
 
 impl Deformable {
-    pub fn new(nodes: Vec<Vector3<Float>>, tetrahedra: Vec<Vec<usize>>) -> Self {
+    pub fn new(nodes: Vec<Vector3<Float>>, tetrahedra: Vec<Vec<usize>>, k: Float) -> Self {
         let dof = nodes.len() * 3;
         let q = DVector::from_iterator(dof, nodes.iter().flat_map(|x| x.iter().copied()));
         let qdot = DVector::zeros(q.len());
@@ -32,6 +34,7 @@ impl Deformable {
             edges,
             q,
             qdot,
+            k: k,
         }
     }
 
@@ -44,7 +47,7 @@ impl Deformable {
         ];
         let tetrahedra = vec![vec![0, 1, 2, 3]];
 
-        Deformable::new(nodes, tetrahedra)
+        Deformable::new(nodes, tetrahedra, 1e5)
     }
 
     pub fn new_pyramid() -> Self {
@@ -62,7 +65,7 @@ impl Deformable {
             vec![0, 1, 3, 5],
             vec![0, 3, 4, 5],
         ];
-        Self::new(nodes, tetrahedra)
+        Self::new(nodes, tetrahedra, 1e5)
     }
 
     pub fn new_octahedron() -> Self {
@@ -87,10 +90,10 @@ impl Deformable {
             vec![0, 1, 5, 6],
             vec![0, 5, 4, 6],
         ];
-        Self::new(nodes, tetrahedra)
+        Self::new(nodes, tetrahedra, 1e5)
     }
 
-    pub fn new_cube() -> Self {
+    pub fn new_cube(k: Float) -> Self {
         let nodes = vec![
             vector![0., 0., 0.], // base front-left
             vector![1., 0., 0.], // base front-right
@@ -115,11 +118,11 @@ impl Deformable {
         //     vec![6, 7, 5, 4], // back right
         //     vec![6, 0, 7, 4], // center
         // ];
-        Self::new(nodes, tetrahedra)
+        Self::new(nodes, tetrahedra, k)
     }
 
     /// size is side length, n is number of little cubes in each dimension
-    pub fn new_dense_cube(size: Float, n: usize) -> Self {
+    pub fn new_dense_cube(size: Float, n: usize, k: Float) -> Self {
         let mut nodes = vec![];
         let w = size / n as Float;
         // iterate over nodes
@@ -189,7 +192,7 @@ impl Deformable {
             }
         }
 
-        Self::new(nodes, tetrahedra)
+        Self::new(nodes, tetrahedra, k)
     }
 
     /// Linear momentum assuming mass = 1
@@ -224,7 +227,7 @@ impl Deformable {
     }
 
     /// free-motion velocity after timestep
-    pub fn free_velocity(&self, dt: Float) -> DVector<Float> {
+    pub fn free_velocity(&self, dt: Float, gravity_enabled: bool) -> DVector<Float> {
         let n_nodes = self.nodes.len();
         let mut adj: CooMatrix<u8> = CooMatrix::new(n_nodes, n_nodes);
         for tetrahedron in self.tetrahedra.iter() {
@@ -265,7 +268,7 @@ impl Deformable {
             let q0q1 = q1 - q0;
             let l = q0q1.norm();
 
-            let k = 1e2;
+            let k = self.k;
             let f_n0 = k * (l - r) * q0q1 / l;
             let f_n1 = -f_n0;
 
@@ -301,7 +304,16 @@ impl Deformable {
             }
         }
 
-        let f_total = f_elastic + f_damping;
+        let mut f_gravity: DVector<Float> = DVector::zeros(dof);
+        if gravity_enabled {
+            let mut i = 0;
+            while i < dof {
+                f_gravity[i + 2] = -GRAVITY;
+                i += 3;
+            }
+        }
+
+        let f_total = f_elastic + f_damping + f_gravity;
         let m_v0 = -dt * f_total; // momentum residual with velocity at t0
 
         let n_dim = self.q.len();

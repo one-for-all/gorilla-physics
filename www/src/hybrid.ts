@@ -14,6 +14,7 @@ import {
   WireframeGeometry,
 } from "three";
 import { Simulator } from "./Simulator";
+import { FloatArray } from "./type";
 
 declare module "./Simulator" {
   interface Simulator {
@@ -101,7 +102,7 @@ Simulator.prototype.addHybrid = function (state: InterfaceHybrid) {
       side: DoubleSide, // Render both sides of faces
       flatShading: true,
       transparent: true,
-      opacity: 0.5,
+      opacity: 1.0,
     });
     const mesh = new Mesh(geometry, material);
 
@@ -124,6 +125,18 @@ Simulator.prototype.addHybrid = function (state: InterfaceHybrid) {
     //   new LineBasicMaterial({ color: 0x000000 }),
     // );
     // this.graphics.scene.add(wireframe);
+
+    // Add halfspaces
+    let halfspaces = state.halfspaces();
+    for (let i = 0; i < halfspaces.length; i += 4) {
+      let n = new FloatArray([
+        halfspaces[i],
+        halfspaces[i + 1],
+        halfspaces[i + 2],
+      ]);
+      let dist = halfspaces[i + 3];
+      this.addPlane(n, dist, 10);
+    }
   }
 };
 

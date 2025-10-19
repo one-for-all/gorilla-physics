@@ -12,6 +12,7 @@ use na::{
 };
 
 use crate::{
+    collision::halfspace::HalfSpace,
     flog,
     hybrid::{articulated::Articulated, rigid::rigid_deformable_cd, visual::Visual},
     spatial::{
@@ -34,6 +35,10 @@ pub struct Hybrid {
     pub rigid_bodies: Vec<Rigid>,
     pub articulated: Vec<Articulated>,
     pub deformables: Vec<Deformable>,
+
+    pub halfspaces: Vec<HalfSpace>,
+
+    gravity_enabled: bool,
 }
 
 impl Hybrid {
@@ -46,6 +51,8 @@ impl Hybrid {
             rigid_bodies: vec![rigid],
             articulated: vec![],
             deformables: vec![deformable],
+            halfspaces: vec![],
+            gravity_enabled: true,
         }
     }
 
@@ -54,7 +61,13 @@ impl Hybrid {
             rigid_bodies: vec![],
             articulated: vec![],
             deformables: vec![],
+            halfspaces: vec![],
+            gravity_enabled: true,
         }
+    }
+
+    pub fn disable_gravity(&mut self) {
+        self.gravity_enabled = false;
     }
 
     pub fn add_rigid(&mut self, rigid: Rigid) {
@@ -67,6 +80,10 @@ impl Hybrid {
 
     pub fn add_deformable(&mut self, deformable: Deformable) {
         self.deformables.push(deformable);
+    }
+
+    pub fn add_halfspace(&mut self, halfspace: HalfSpace) {
+        self.halfspaces.push(halfspace);
     }
 
     pub fn step(&mut self, dt: Float) {
@@ -85,7 +102,7 @@ impl Hybrid {
         let v_deformables: Vec<DVector<Float>> = self
             .deformables
             .iter()
-            .map(|b| b.free_velocity(dt))
+            .map(|b| b.free_velocity(dt, self.gravity_enabled))
             .collect();
         let total_len = v_rigids.iter().map(|v| v.len()).sum::<usize>()
             + v_articulated.iter().map(|v| v.len()).sum::<usize>()
@@ -108,6 +125,37 @@ impl Hybrid {
 
         let mut Js: Vec<Matrix3xX<Float>> = vec![];
         let mu = 1.0; // friction coefficient
+
+        // halfspace - deformable collision detection
+        for halfspace in self.halfspaces.iter() {
+            let n = &halfspace.normal;
+            for (i_node, node) in deformable.get_positions().iter().enumerate() {
+                if halfspace.has_inside(node) {
+                    // t and b are contact frame tangential directions
+                    let t = {
+                        let candidate = n.cross(&Vector3::x_axis());
+                        if candidate.norm() != 0.0 {
+                            UnitVector3::new_normalize(candidate)
+                        } else {
+                            UnitVector3::new_normalize(n.cross(&Vector3::y_axis()))
+                        }
+                    };
+                    let b = UnitVector3::new_normalize(n.cross(&t));
+                    let C = Matrix3::from_rows(&[
+                        1. / mu * n.transpose(),
+                        t.transpose(),
+                        b.transpose(),
+                    ]);
+
+                    // set jacobian for deformable part
+                    let icol = offset_deformable + i_node * 3;
+                    let mut J = Matrix3xX::zeros(offset_deformable + deformable.q.len());
+                    J.fixed_view_mut::<3, 3>(0, icol).copy_from(&C);
+
+                    Js.push(J);
+                }
+            }
+        }
 
         // rigid-deformable point-sphere collision detection
         for (i_rigid, rigid) in self.rigid_bodies.iter().enumerate() {
@@ -367,6 +415,8 @@ mod hybrid_tests {
         ); // TODO: add a util fn that flattens a Vec<Vector3>
         state.set_deformable_velocities(vec![v]);
 
+        state.disable_gravity();
+
         // Act
         let final_time = 1.0;
         let dt = 1e-3;
@@ -397,6 +447,8 @@ mod hybrid_tests {
         let v_deformable = vector![1. / 7., 0., 0.];
         let v = vec![v_deformable; 7];
         state.set_deformable_velocities(vec![v]);
+
+        state.disable_gravity();
 
         let linear_momentum = state.linear_momentum();
 
@@ -458,7 +510,8 @@ mod hybrid_tests {
         articulated.set_joint_v(0, JointVelocity::Float(1.0));
         state.add_articulated(articulated);
 
-        state.add_deformable(Deformable::new_cube()); // k = 1e2
+        state.add_deformable(Deformable::new_cube(1e2)); // k = 1e2
+        state.disable_gravity();
 
         // Act
         let final_time = 2.0;
@@ -502,7 +555,7 @@ mod hybrid_tests {
         ];
         state.add_articulated(Articulated::new(bodies, joints));
 
-        state.add_deformable(Deformable::new_cube());
+        state.add_deformable(Deformable::new_cube(1e2));
 
         // Act
         let final_time = 1.4;

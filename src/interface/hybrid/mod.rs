@@ -2,6 +2,7 @@ use na::Vector3;
 use wasm_bindgen::prelude::wasm_bindgen;
 use web_sys::js_sys::{Float32Array, Uint32Array};
 
+use crate::collision::halfspace;
 use crate::hybrid::articulated::Articulated;
 use crate::hybrid::builders::build_gripper;
 use crate::hybrid::visual::Visual;
@@ -143,8 +144,18 @@ impl InterfaceHybrid {
         )
     }
 
+    /// Vecs of 4-element (normal, distance)
+    pub fn halfspaces(&self) -> Float32Array {
+        let mut q = vec![];
+        for halfspace in self.inner.halfspaces.iter() {
+            let n = &halfspace.normal;
+            q.extend([n.x, n.y, n.z, -halfspace.distance(&Vector3::zeros())]);
+        }
+        toJsFloat32Array!(q)
+    }
+
     pub fn step(&mut self, dt: Float) {
-        let n_substep = 10;
+        let n_substep = 2;
         let dt = dt / (n_substep as Float);
         for _ in 0..n_substep {
             self.inner.step(dt);
@@ -177,7 +188,7 @@ pub async fn createHybridCube() -> InterfaceHybrid {
     ]);
     state.set_rigid_velocities(vec![vector![-1., 0., 0.], vector![1., 0., 0.]]);
 
-    state.add_deformable(Deformable::new_cube());
+    state.add_deformable(Deformable::new_cube(1e2));
     // let v = vector![1. / 7., 0., 0.];
     // let v = vec![v; 7];
     // state.set_deformable_velocities(vec![v]);
@@ -201,7 +212,7 @@ pub async fn createPendulum() -> InterfaceHybrid {
     let joints = vec![Joint::new_revolute(pendulum_to_world, Vector3::y_axis())];
     state.add_articulated(Articulated::new(bodies, joints));
 
-    state.add_deformable(Deformable::new_cube());
+    state.add_deformable(Deformable::new_cube(1e2));
 
     InterfaceHybrid { inner: state }
 }
@@ -226,7 +237,7 @@ pub async fn createDoublePendulumAndCube() -> InterfaceHybrid {
     ];
     state.add_articulated(Articulated::new(bodies, joints));
 
-    state.add_deformable(Deformable::new_cube());
+    state.add_deformable(Deformable::new_cube(1e2));
 
     InterfaceHybrid { inner: state }
 }
@@ -250,7 +261,7 @@ pub async fn createSphereCart() -> InterfaceHybrid {
 
     state.add_articulated(articulated);
 
-    state.add_deformable(Deformable::new_cube());
+    state.add_deformable(Deformable::new_cube(1e2));
     // let v = vector![1. / 8., 0., 0.];
     // let v = vec![v; 8];
     // state.set_deformable_velocities(vec![v]);
@@ -294,7 +305,7 @@ pub async fn createCuboidCart() -> InterfaceHybrid {
     articulated.set_joint_v(0, JointVelocity::Float(1.0));
     state.add_articulated(articulated);
 
-    state.add_deformable(Deformable::new_cube());
+    state.add_deformable(Deformable::new_cube(1e2));
     // let v = vector![1. / 8., 0., 0.];
     // let v = vec![v; 8];
     // state.set_deformable_velocities(vec![v]);
