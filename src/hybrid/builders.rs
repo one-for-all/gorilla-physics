@@ -76,7 +76,8 @@ pub fn build_gripper() -> Hybrid {
 
     state.add_articulated(articulated);
 
-    state.add_deformable(Deformable::new_cube());
+    // state.add_deformable(Deformable::new_cube());
+    state.add_deformable(Deformable::new_dense_cube(1., 2));
 
     state
 }
