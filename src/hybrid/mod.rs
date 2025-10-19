@@ -476,6 +476,7 @@ mod hybrid_tests {
         assert!(v_cart2 < 0.);
         let vs = state.deformables[0].get_velocities();
         for v in vs.iter() {
+            assert_vec_close!(v, [0.; 3], 2e-2); // set tol to 1e-2, under no friction
         }
     }
 
