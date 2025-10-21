@@ -1017,7 +1017,7 @@ export class Simulator {
       // this.massSpring.step(dt);
       // this.updateMassSpring();
 
-      this.hybrid.step(dt);
+      this.hybrid.step(dt, control_input as Float64Array);
       this.updateHybrid();
 
       // this.cloth.step(dt);

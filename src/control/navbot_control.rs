@@ -35,7 +35,7 @@ impl LowPassFilter {
     }
 }
 
-struct PIModule {
+pub struct PIModule {
     pub P: Float,
     pub I: Float,
     pub limit: Float,

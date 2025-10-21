@@ -13,8 +13,14 @@ use na::{
 
 use crate::{
     collision::halfspace::HalfSpace,
+    control::NullController,
     flog,
-    hybrid::{articulated::Articulated, rigid::rigid_deformable_cd, visual::Visual},
+    hybrid::{
+        articulated::Articulated,
+        control::{ArticulatedController, NullArticulatedController},
+        rigid::rigid_deformable_cd,
+        visual::Visual,
+    },
     spatial::{
         pose::Pose, spatial_vector::SpatialVector, twist::compute_twist_transformation_matrix,
     },
@@ -27,6 +33,7 @@ pub use rigid::Rigid;
 
 pub mod articulated;
 pub mod builders;
+pub mod control;
 pub mod deformable;
 pub mod rigid;
 pub mod visual;
@@ -37,6 +44,8 @@ pub struct Hybrid {
     pub deformables: Vec<Deformable>,
 
     pub halfspaces: Vec<HalfSpace>,
+
+    pub controllers: Vec<Box<dyn ArticulatedController>>,
 
     gravity_enabled: bool,
 }
@@ -52,6 +61,7 @@ impl Hybrid {
             articulated: vec![],
             deformables: vec![deformable],
             halfspaces: vec![],
+            controllers: vec![],
             gravity_enabled: true,
         }
     }
@@ -62,6 +72,7 @@ impl Hybrid {
             articulated: vec![],
             deformables: vec![],
             halfspaces: vec![],
+            controllers: vec![],
             gravity_enabled: true,
         }
     }
@@ -76,6 +87,8 @@ impl Hybrid {
 
     pub fn add_articulated(&mut self, articulated: Articulated) {
         self.articulated.push(articulated);
+        self.controllers
+            .push(Box::new(NullArticulatedController {}));
     }
 
     pub fn add_deformable(&mut self, deformable: Deformable) {
@@ -86,19 +99,22 @@ impl Hybrid {
         self.halfspaces.push(halfspace);
     }
 
-    pub fn step(&mut self, dt: Float) {
+    pub fn step(&mut self, dt: Float, input: &Vec<Float>) {
         let deformable = &self.deformables[0];
+
+        let taus: Vec<DVector<Float>> = izip!(self.controllers.iter_mut(), self.articulated.iter())
+            .map(|(c, a)| c.control(a, input))
+            .collect();
 
         let v_rigids: Vec<DVector<Float>> = self
             .rigid_bodies
             .iter()
             .map(|b| b.free_velocity(dt))
             .collect();
-        let v_articulated: Vec<DVector<Float>> = self
-            .articulated
-            .iter_mut()
-            .map(|a| a.free_velocity(dt))
-            .collect();
+        let v_articulated: Vec<DVector<Float>> =
+            izip!(self.articulated.iter_mut(), taus.into_iter())
+                .map(|(a, t)| a.free_velocity(dt, t))
+                .collect();
         let v_deformables: Vec<DVector<Float>> = self
             .deformables
             .iter()
@@ -368,6 +384,11 @@ impl Hybrid {
         }
     }
 
+    pub fn set_controller(&mut self, i: usize, controller: impl ArticulatedController + 'static) {
+        assert!(i < self.controllers.len());
+        self.controllers[i] = Box::new(controller);
+    }
+
     /// Computes total linear momentum
     pub fn linear_momentum(&self) -> Vector3<Float> {
         self.rigid_bodies
@@ -390,7 +411,7 @@ mod hybrid_tests {
         assert_close, assert_vec_close,
         collision::mesh::projected_barycentric_coord,
         flog,
-        hybrid::{articulated::Articulated, builders::build_gripper, Deformable, Hybrid, Rigid},
+        hybrid::{articulated::Articulated, builders::build_claw, Deformable, Hybrid, Rigid},
         interface::hybrid::InterfaceHybrid,
         joint::{Joint, JointVelocity},
         plot::plot,
@@ -422,7 +443,7 @@ mod hybrid_tests {
         let dt = 1e-3;
         let num_steps = (final_time / dt) as usize;
         for _s in 0..num_steps {
-            state.step(dt);
+            state.step(dt, &vec![]);
         }
 
         // Assert
@@ -457,7 +478,7 @@ mod hybrid_tests {
         let dt = 1e-3;
         let num_steps = (final_time / dt) as usize;
         for _s in 0..num_steps {
-            state.step(dt);
+            state.step(dt, &vec![]);
         }
 
         // Assert
@@ -518,7 +539,7 @@ mod hybrid_tests {
         let dt = 1e-3;
         let num_steps = (final_time / dt) as usize;
         for _s in 0..num_steps {
-            state.step(dt);
+            state.step(dt, &vec![]);
         }
 
         // Assert
@@ -562,7 +583,7 @@ mod hybrid_tests {
         let dt = 1e-3;
         let num_steps = (final_time / dt) as usize;
         for _s in 0..num_steps {
-            state.step(dt);
+            state.step(dt, &vec![]);
         }
 
         // Assert

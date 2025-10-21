@@ -3,13 +3,13 @@ use na::{vector, Vector3};
 use crate::{
     collision::halfspace::HalfSpace,
     flog,
-    hybrid::{articulated::Articulated, Deformable, Hybrid, Rigid},
-    joint::Joint,
+    hybrid::{articulated::Articulated, control::GripperController, Deformable, Hybrid, Rigid},
+    joint::{Joint, JointVelocity},
     spatial::transform::Transform3D,
     WORLD_FRAME,
 };
 
-pub fn build_gripper() -> Hybrid {
+pub fn build_claw() -> Hybrid {
     let mut state = Hybrid::empty();
 
     let m = 1.0;
@@ -18,6 +18,10 @@ pub fn build_gripper() -> Hybrid {
     let h_palm = 0.1;
     let palm_frame = "palm";
     let palm = Rigid::new_cuboid(m, l_palm, l_palm, h_palm, palm_frame);
+    // let palm_joint = Joint::new_prismatic(
+    //     Transform3D::move_xyz(palm_frame, WORLD_FRAME, 0.5, 0.5, 1.1),
+    //     Vector3::z_axis(),
+    // );
     let palm_joint = Joint::new_fixed(Transform3D::move_xyz(
         palm_frame,
         WORLD_FRAME,
@@ -70,7 +74,7 @@ pub fn build_gripper() -> Hybrid {
         Vector3::y_axis(),
     );
 
-    let articulated = Articulated::new(
+    let mut articulated = Articulated::new(
         vec![palm, left, right],
         vec![palm_joint, left_joint, right_joint],
     );
@@ -79,11 +83,56 @@ pub fn build_gripper() -> Hybrid {
 
     // state.add_deformable(Deformable::new_cube());
     state.add_deformable(Deformable::new_dense_cube(1., 2, 1e3));
-    let n_nodes = state.deformables[0].nodes.len();
-    let v = vector![3., 0., 0.];
-    let v = vec![v; n_nodes];
-    state.set_deformable_velocities(vec![v]);
+    // let n_nodes = state.deformables[0].nodes.len();
+    // let v = vector![3., 0., 0.];
+    // let v = vec![v; n_nodes];
+    // state.set_deformable_velocities(vec![v]);
 
+    state.add_halfspace(HalfSpace::new(Vector3::z_axis(), -0.5));
+
+    state
+}
+
+pub fn build_gripper() -> Hybrid {
+    let mut state = Hybrid::empty();
+
+    let m = 10.0;
+
+    let l_palm = 1.5; // half-size of palm
+    let h_palm = 0.1;
+    let palm_frame = "palm";
+    let palm = Rigid::new_cuboid(m, l_palm, l_palm, h_palm, palm_frame);
+    let palm_joint = Joint::new_prismatic(
+        Transform3D::move_xyz(palm_frame, WORLD_FRAME, 0.5, 0.5, 1.1),
+        Vector3::z_axis(),
+    );
+
+    let l_finger = 1.0;
+    let w_finger = 0.1;
+    let d_finger = 0.5;
+    let left_frame = "left finger";
+    let left = Rigid::new_cuboid(m, w_finger, d_finger, l_finger, left_frame);
+
+    let left_joint = Joint::new_prismatic(
+        Transform3D::move_xyz(left_frame, palm_frame, -l_palm / 2., 0., -l_finger / 2.),
+        Vector3::x_axis(),
+    );
+
+    let right_frame = "right finger";
+    let right = Rigid::new_cuboid(m, w_finger, d_finger, l_finger, right_frame);
+    let right_joint = Joint::new_prismatic(
+        Transform3D::move_xyz(right_frame, palm_frame, l_palm / 2., 0., -l_finger / 2.),
+        Vector3::x_axis(),
+    );
+
+    let mut articulated = Articulated::new(
+        vec![palm, left, right],
+        vec![palm_joint, left_joint, right_joint],
+    );
+    state.add_articulated(articulated);
+    state.set_controller(0, GripperController::new(1. / 120.));
+
+    state.add_deformable(Deformable::new_dense_cube(1., 2, 1e3));
     state.add_halfspace(HalfSpace::new(Vector3::z_axis(), -0.5));
 
     state

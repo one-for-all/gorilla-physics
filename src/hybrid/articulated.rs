@@ -1,10 +1,12 @@
 use std::collections::HashMap;
 
 use itertools::izip;
-use na::{vector, DMatrix, DVector, Matrix6xX, UnitQuaternion};
+use na::{vector, DMatrix, DVector, Dyn, Matrix6xX, UnitQuaternion};
 
 use crate::{
-    hybrid::rigid::Rigid,
+    control::Controller,
+    flog,
+    hybrid::{control::ArticulatedController, rigid::Rigid},
     inertia::SpatialInertia,
     joint::{Joint, JointVelocity},
     spatial::{
@@ -89,7 +91,7 @@ impl Articulated {
         }
     }
 
-    pub fn free_velocity(&mut self, dt: Float) -> DVector<Float> {
+    pub fn free_velocity(&mut self, dt: Float, tau: DVector<Float>) -> DVector<Float> {
         // Compute dynamics bias c(q, v)
         // First, compute bias accelerations, i.e. acceleration of each body when no external force,  and no joint acceleration
         let mut bias_accels: Vec<SpatialVector> = vec![];
@@ -148,7 +150,7 @@ impl Articulated {
 
         let mass_matrix = self.mass_matrix();
 
-        let vdot = mass_matrix.cholesky().unwrap().solve(&-c);
+        let vdot = mass_matrix.cholesky().unwrap().solve(&(tau - c));
 
         self.v() + vdot * dt
     }
@@ -254,6 +256,10 @@ impl Articulated {
         DVector::from_vec(q)
     }
 
+    pub fn mass(&self) -> Float {
+        self.bodies.iter().map(|b| b.inertia.mass).sum()
+    }
+
     /// Update joint velocities, and integrate joint positions through dt
     pub fn integrate(&mut self, v: DVector<Float>, dt: Float) {
         let mut i = 0;
@@ -303,7 +309,7 @@ impl Articulated {
     }
 
     pub fn step(&mut self, dt: Float) {
-        let v = self.free_velocity(dt);
+        let v = self.free_velocity(dt, DVector::zeros(self.dof()));
         self.integrate(v, dt);
     }
 

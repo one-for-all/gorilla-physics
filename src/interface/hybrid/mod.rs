@@ -4,7 +4,7 @@ use web_sys::js_sys::{Float32Array, Uint32Array};
 
 use crate::collision::halfspace;
 use crate::hybrid::articulated::Articulated;
-use crate::hybrid::builders::build_gripper;
+use crate::hybrid::builders::{build_claw, build_gripper};
 use crate::hybrid::visual::Visual;
 use crate::hybrid::{Deformable, Rigid};
 use crate::interface::cart;
@@ -154,11 +154,11 @@ impl InterfaceHybrid {
         toJsFloat32Array!(q)
     }
 
-    pub fn step(&mut self, dt: Float) {
+    pub fn step(&mut self, dt: Float, input: Vec<Float>) {
         let n_substep = 2;
         let dt = dt / (n_substep as Float);
         for _ in 0..n_substep {
-            self.inner.step(dt);
+            self.inner.step(dt, &input);
         }
     }
 }
