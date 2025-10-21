@@ -58,16 +58,6 @@ impl Rigid {
         }
     }
 
-    pub fn new_sphere() -> Self {
-        let m = 1.0;
-        let r = 1.0;
-        let moment = 2. / 5. * m * r * r;
-        let moment = Matrix3::from_diagonal_element(moment);
-        let cross = Vector3::zeros();
-        let inertia = SpatialInertia::new(moment, cross, m, "sphere");
-        Rigid::new(inertia)
-    }
-
     pub fn new_sphere_at(com: &Vector3<Float>, m: Float, r: Float, frame: &str) -> Self {
         let moment = 2. / 5. * m * r * r;
         let moment_com = Matrix3::from_diagonal_element(moment);
@@ -84,6 +74,10 @@ impl Rigid {
             .visual
             .push((Visual::Sphere(SphereGeometry { r }), iso));
         rigid
+    }
+
+    pub fn new_sphere(m: Float, r: Float, frame: &str) -> Self {
+        Self::new_sphere_at(&Vector3::zeros(), m, r, frame)
     }
 
     /// Create a uniform cuboid, whose center of mass is not at the origin of frame
@@ -216,21 +210,21 @@ pub fn rigid_deformable_cd(
                     }
                 }
 
-                // edge - edge
-                let cuboid_edges = cuboid.edges(&iso);
-                for cuboid_edge in cuboid_edges.iter() {
-                    for (i_edge, deformable_e_coords) in deformable_edge_coords.iter().enumerate() {
-                        let e1 = cuboid_edge;
-                        let e2 = deformable_e_coords;
-                        if let Some((cp, n, ws)) = edge_edge_collision(e2, e1, 1e-2) {
-                            // Note: if edges have passed through each other already, normal would be opposite.
-                            // TODO(contact): Fix it? or maybe do CCD.
-                            let edge = deformable_edges[i_edge];
-                            let node_weights = vec![(edge[0], ws[0]), (edge[1], ws[1])];
-                            result.push((cp, n, node_weights));
-                        }
-                    }
-                }
+                // // edge - edge
+                // let cuboid_edges = cuboid.edges(&iso);
+                // for cuboid_edge in cuboid_edges.iter() {
+                //     for (i_edge, deformable_e_coords) in deformable_edge_coords.iter().enumerate() {
+                //         let e1 = cuboid_edge;
+                //         let e2 = deformable_e_coords;
+                //         if let Some((cp, n, ws)) = edge_edge_collision(e2, e1, 1e-2) {
+                //             // Note: if edges have passed through each other already, normal would be opposite.
+                //             // TODO(contact): Fix it? or maybe do CCD.
+                //             let edge = deformable_edges[i_edge];
+                //             let node_weights = vec![(edge[0], ws[0]), (edge[1], ws[1])];
+                //             result.push((cp, n, node_weights));
+                //         }
+                //     }
+                // }
             }
         }
     }

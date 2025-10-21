@@ -26,7 +26,7 @@ impl GripperController {
     pub fn new(dt: Float) -> Self {
         Self {
             pi_vz: PIModule::new(200., 200., 1000., dt),
-            pi_qgrip: PIModule::new(100., 50., 300., dt),
+            pi_qgrip: PIModule::new(200., 0., 300., dt),
         }
     }
 }

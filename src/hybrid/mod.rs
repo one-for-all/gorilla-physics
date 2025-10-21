@@ -53,7 +53,7 @@ pub struct Hybrid {
 impl Hybrid {
     /// A canonical hybrid system with 1 sphere rigid-body and 1 tetrahedron deformable
     pub fn new_canonical() -> Self {
-        let rigid = Rigid::new_sphere();
+        let rigid = Rigid::new_sphere(1., 1., "sphere");
         let deformable = Deformable::new_tetrahedron();
 
         Hybrid {
@@ -459,7 +459,7 @@ mod hybrid_tests {
     fn collision() {
         // Arrange
         let mut state = Hybrid::empty();
-        state.add_rigid(Rigid::new_sphere());
+        state.add_rigid(Rigid::new_sphere(1., 1., "sphere"));
         state.set_rigid_poses(vec![Pose::translation(vector![2.5, 0., 0.])]);
         let v_rigid = vector![-1., 0., 0.];
         state.set_rigid_velocities(vec![v_rigid]);

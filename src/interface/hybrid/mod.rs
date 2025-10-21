@@ -180,8 +180,8 @@ pub async fn createHybridSphereAndTetra() -> InterfaceHybrid {
 #[wasm_bindgen]
 pub async fn createHybridCube() -> InterfaceHybrid {
     let mut state = Hybrid::empty();
-    state.add_rigid(Rigid::new_sphere());
-    state.add_rigid(Rigid::new_sphere());
+    state.add_rigid(Rigid::new_sphere(1., 1., "sphere"));
+    state.add_rigid(Rigid::new_sphere(1., 1., "sphere"));
     state.set_rigid_poses(vec![
         Pose::translation(vector![2.5, 0., 0.]),
         Pose::translation(vector![-1.5, 0., 0.]),

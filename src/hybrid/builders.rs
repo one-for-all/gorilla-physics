@@ -112,7 +112,6 @@ pub fn build_gripper() -> Hybrid {
     let d_finger = 0.5;
     let left_frame = "left finger";
     let left = Rigid::new_cuboid(m, w_finger, d_finger, l_finger, left_frame);
-
     let left_joint = Joint::new_prismatic(
         Transform3D::move_xyz(left_frame, palm_frame, -l_palm / 2., 0., -l_finger / 2.),
         Vector3::x_axis(),
