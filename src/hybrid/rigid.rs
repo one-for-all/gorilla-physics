@@ -2,7 +2,10 @@ use itertools::izip;
 use na::{dvector, vector, DMatrix, DVector, Isometry3, Matrix3, UnitVector3, Vector3};
 
 use crate::{
-    collision::mesh::{edge_edge_collision, vertex_face_collision},
+    collision::{
+        ccd::edge_edge_ccd,
+        mesh::{edge_edge_collision, vertex_face_collision},
+    },
     flog,
     hybrid::{
         visual::{vertex_rect_face_collision, SphereGeometry, Visual},
@@ -154,6 +157,9 @@ impl Rigid {
 pub fn rigid_deformable_cd(
     rigid: &Rigid,
     deformable: &Deformable,
+    body_twist: &SpatialVector,
+    deformable_v: &DVector<Float>,
+    dt: Float,
 ) -> Vec<(Vector3<Float>, UnitVector3<Float>, Vec<(usize, Float)>)> {
     let mut result = vec![];
     for (collider, iso_collider_to_body) in rigid.visual.iter() {
@@ -210,21 +216,31 @@ pub fn rigid_deformable_cd(
                     }
                 }
 
-                // // edge - edge
-                // let cuboid_edges = cuboid.edges(&iso);
-                // for cuboid_edge in cuboid_edges.iter() {
-                //     for (i_edge, deformable_e_coords) in deformable_edge_coords.iter().enumerate() {
-                //         let e1 = cuboid_edge;
-                //         let e2 = deformable_e_coords;
-                //         if let Some((cp, n, ws)) = edge_edge_collision(e2, e1, 1e-2) {
-                //             // Note: if edges have passed through each other already, normal would be opposite.
-                //             // TODO(contact): Fix it? or maybe do CCD.
-                //             let edge = deformable_edges[i_edge];
-                //             let node_weights = vec![(edge[0], ws[0]), (edge[1], ws[1])];
-                //             result.push((cp, n, node_weights));
-                //         }
-                //     }
-                // }
+                // edge - edge
+                let cuboid_edges = cuboid.edges(&iso);
+                for cuboid_edge in cuboid_edges.iter() {
+                    // TODO(ccd): technically the rigid body edge points undergoes twist, not just linear velocity. Here we do linear velocity for simplicity, and under small dt, they should be close.
+                    // Computes the end points linear velocity
+                    let v3 = body_twist.linear + body_twist.angular.cross(&cuboid_edge[0]);
+                    let v4 = body_twist.linear + body_twist.angular.cross(&cuboid_edge[1]);
+
+                    for (i_edge, deformable_e_coords) in deformable_edge_coords.iter().enumerate() {
+                        let e2 = cuboid_edge;
+                        let e1 = deformable_e_coords;
+
+                        let edge = deformable_edges[i_edge];
+                        let v1 = deformable_v.fixed_rows::<3>(edge[0] * 3).into();
+                        let v2 = deformable_v.fixed_rows::<3>(edge[1] * 3).into();
+
+                        // if let Some((cp, n, ws)) = edge_edge_collision(e1, e2, 1e-2) {
+                        // Note: if edges have passed through each other already, normal would be opposite.
+                        if let Some((cp, n, ws)) = edge_edge_ccd(e1, e2, &v1, &v2, &v3, &v4, dt) {
+                            // TODO(ccd): this CCD still not fail proof.
+                            let node_weights = vec![(edge[0], ws[0]), (edge[1], ws[1])];
+                            result.push((cp, n, node_weights));
+                        }
+                    }
+                }
             }
         }
     }

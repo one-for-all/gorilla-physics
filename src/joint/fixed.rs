@@ -2,6 +2,7 @@ use na::Matrix3xX;
 
 use crate::spatial::{geometric_jacobian::GeometricJacobian, transform::Transform3D};
 
+#[derive(Clone)]
 pub struct FixedJoint {
     pub transform: Transform3D, // fixed transform from successor frame to predecessor frame
 }

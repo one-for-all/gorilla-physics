@@ -1,3 +1,138 @@
+use na::{Matrix2, UnitVector3, Vector2, Vector3};
+
+use crate::types::Float;
+
+/// Returns (contact point on edge 1, contact normal, barycentric coords of cp on edge 1 )
+/// contact normal is from edge 1 to edge 2
+/// TODO: still not fail-proof at super-fast speeds
+pub fn edge_edge_ccd(
+    e1: &[Vector3<Float>; 2],
+    e2: &[Vector3<Float>; 2],
+    v1: &Vector3<Float>,
+    v2: &Vector3<Float>,
+    v3: &Vector3<Float>,
+    v4: &Vector3<Float>,
+    t_end: Float,
+) -> Option<(Vector3<Float>, UnitVector3<Float>, [Float; 2])> {
+    let x1 = e1[0];
+    let x2 = e1[1];
+    let x3 = e2[0];
+    let x4 = e2[1];
+
+    // Skip the test if edges are parallel
+    if (x4 - x3).cross(&(x2 - x1)).norm() <= 1e-6 {
+        return None;
+    }
+
+    let a = (v2 - v1).cross(&(v4 - v3));
+    let b = (x2 - x1).cross(&(v4 - v3)) + (v2 - v1).cross(&(x4 - x3));
+    let c = (x2 - x1).cross(&(x4 - x3));
+
+    let d = x3 - x1;
+    let e = v3 - v1;
+
+    let p3 = a.dot(&e);
+    let p2 = a.dot(&d) + b.dot(&e);
+    let p1 = b.dot(&d) + c.dot(&e);
+    let p0 = c.dot(&d);
+
+    // TODO: this is a hack. fix it.
+    if p3 == 0. {
+        return None;
+    }
+
+    let t = solve_cubic(p3, p2, p1, p0);
+    if t > t_end {
+        return None;
+    }
+
+    // ref: Contact and Friction Simulation for Comptuer Graphics, 2022
+    // 2.2.3 Continuous Collision Detection of Edge-Edge Pair
+    let x1 = x1 + v1 * t;
+    let x2 = x2 + v2 * t;
+    let x3 = x3 + v3 * t;
+    let x4 = x4 + v4 * t;
+
+    let x12 = x2 - x1;
+    let x34 = x4 - x3;
+    let A00 = x12.dot(&x12);
+    let A01 = -x12.dot(&x34);
+    let A10 = A01;
+    let A11 = x34.dot(&x34);
+    let A = Matrix2::new(A00, A01, A10, A11);
+
+    let x13 = x3 - x1;
+    let b = Vector2::new(x12.dot(&x13), -x34.dot(&x13));
+
+    if let Some(x) = A.lu().solve(&b) {
+        let a = x[0];
+        let b = x[1];
+        if a > 1. || a < 0. || b > 1. || b < 0. {
+            return None;
+        }
+        let cp = x1 + a * x12;
+        let mut n = UnitVector3::new_normalize(x12.cross(&x34));
+        if (e2[0] - e1[0]).dot(&n) < 0. {
+            n = -n;
+        }
+        return Some((cp, n, [1. - a, a]));
+    } else {
+        panic!("no solution on normal equation for edge-edge CCD");
+    }
+}
+
+pub fn solve_quadratic(b: Float, c: Float, d: Float) -> Float {
+    0.
+}
+
+/// Cardano's method to solve a cubic equation
+/// Solve for x in ax^3 + bx^2 + cx + d = 0
+/// ref: https://en.wikipedia.org/wiki/Cubic_equation#Cardano's_formula
+pub fn solve_cubic(a: Float, b: Float, c: Float, d: Float) -> Float {
+    // Convert to depressed form
+    // ref: https://en.wikipedia.org/wiki/Cubic_equation#Depressed_cubic
+    let p = (3. * a * c - b * b) / (3. * a * a);
+    let q = (2. * b * b * b - 9. * a * b * c + 27. * a * a * d) / (27. * a * a * a);
+    let discriminant = (q * q / 4.0) + (p * p * p / 27.0);
+    let offset = -b / (3. * a);
+
+    if discriminant > 0.0 {
+        // One real root
+        let sqrt_disc = discriminant.sqrt();
+        let u = (-q / 2. + sqrt_disc).cbrt();
+        let v = (-q / 2. - sqrt_disc).cbrt();
+        return u + v + offset;
+    } else {
+        panic!(
+            "should not have an equation with non-singular root in edge-edge ccd. discriminant: {}, abcd: {}, {}, {}, {}",
+            discriminant, a, b, c, d
+        );
+    }
+}
+
+#[cfg(test)]
+mod cubic_tests {
+    use crate::{assert_close, collision::ccd::solve_cubic};
+
+    #[test]
+    fn single_root1() {
+        let sol = solve_cubic(1., 0., 1., 1.);
+        assert_close!(sol, -0.6823278, 1e-5);
+    }
+
+    #[test]
+    fn single_root2() {
+        let sol = solve_cubic(1., 0., -3., 5.);
+        assert_close!(sol, -2.27902, 1e-5);
+    }
+
+    #[test]
+    fn single_root3() {
+        let sol = solve_cubic(2., 4., 5., 10.);
+        assert_close!(sol, -2.0, 1e-5);
+    }
+}
+
 #[cfg(test)]
 mod ccd_tests {
     use itertools::izip;

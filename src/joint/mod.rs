@@ -19,6 +19,7 @@ pub mod floating;
 pub mod prismatic;
 pub mod revolute;
 
+#[derive(Clone)]
 pub enum Joint {
     FixedJoint(FixedJoint),
     RevoluteJoint(RevoluteJoint),

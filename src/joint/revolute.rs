@@ -4,7 +4,8 @@ use std::ops::Mul;
 
 use crate::{
     spatial::{
-        geometric_jacobian::GeometricJacobian, spatial_acceleration::SpatialAcceleration, transform::Transform3D,
+        geometric_jacobian::GeometricJacobian, spatial_acceleration::SpatialAcceleration,
+        transform::Transform3D,
     },
     types::Float,
 };
@@ -12,6 +13,7 @@ use crate::{
 /// Represents a revolute joint connecting a predecessor and a successor body.
 ///
 /// Note: joint frame is defined as the successor body frame
+#[derive(Clone)]
 pub struct RevoluteJoint {
     pub init_iso: Isometry3<Float>, // initial transform from successor frame to predecessor frame
     pub transform: Transform3D,     // transform from successor frame to predecessor frame

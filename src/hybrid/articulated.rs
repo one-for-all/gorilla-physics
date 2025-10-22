@@ -91,7 +91,7 @@ impl Articulated {
         }
     }
 
-    pub fn free_velocity(&mut self, dt: Float, tau: DVector<Float>) -> DVector<Float> {
+    pub fn free_velocity(&self, dt: Float, tau: DVector<Float>) -> DVector<Float> {
         // Compute dynamics bias c(q, v)
         // First, compute bias accelerations, i.e. acceleration of each body when no external force,  and no joint acceleration
         let mut bias_accels: Vec<SpatialVector> = vec![];

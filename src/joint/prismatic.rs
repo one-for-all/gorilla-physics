@@ -8,6 +8,7 @@ use crate::{
     types::Float,
 };
 
+#[derive(Clone)]
 /// Give springiness to a joint
 pub struct JointSpring {
     pub k: Float, // spring constant
@@ -17,6 +18,7 @@ pub struct JointSpring {
 /// Represents a prismatic joint connecting a predecessor and a successor body.
 ///
 /// Note: joint frame is defined as the successor body frame
+#[derive(Clone)]
 pub struct PrismaticJoint {
     pub init_iso: Isometry3<Float>,
     pub transform: Transform3D,

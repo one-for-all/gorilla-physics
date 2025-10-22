@@ -21,6 +21,7 @@ use crate::{
         rigid::rigid_deformable_cd,
         visual::Visual,
     },
+    joint::Joint,
     spatial::{
         pose::Pose, spatial_vector::SpatialVector, twist::compute_twist_transformation_matrix,
     },
@@ -220,13 +221,45 @@ impl Hybrid {
         // articulated-deformable collision detection
         let mut icol_arti = offset_articulated;
         for (i_articulated, articulated) in self.articulated.iter().enumerate() {
+            let v_art = &v_articulated[i_articulated];
+            let v_deform = &v_deformables[0];
+
+            // compute body twists
+            let mut iv = 0;
+            let mut body_twists = vec![];
+            for (i, joint) in articulated.joints.iter().enumerate() {
+                let parent = articulated.parents[i];
+                let pose = articulated.bodies[i].pose;
+                let mut joint = (*joint).clone();
+                match &mut joint {
+                    Joint::FixedJoint(_) => {}
+                    Joint::RevoluteJoint(j) => j.v = v_art[iv],
+                    Joint::PrismaticJoint(j) => j.v = v_art[iv],
+                    Joint::FloatingJoint(j) => {
+                        j.v = SpatialVector::new(
+                            vector![v_art[iv], v_art[iv + 1], v_art[iv + 2]],
+                            vector![v_art[iv + 3], v_art[iv + 4], v_art[iv + 5]],
+                        )
+                    }
+                }
+                let joint_twist = joint.twist().transform(&pose);
+                let body_twist = if parent == i {
+                    joint_twist
+                } else {
+                    body_twists[parent] + joint_twist
+                };
+                body_twists.push(body_twist);
+                iv += joint.dof();
+            }
+
             let dof = articulated.dof();
             let offsets = articulated.offsets();
             let jacobians = articulated.jacobians();
             for (i_joint, (body, joint)) in
                 izip!(articulated.bodies.iter(), articulated.joints.iter()).enumerate()
             {
-                let contacts = rigid_deformable_cd(body, deformable);
+                let contacts =
+                    rigid_deformable_cd(body, deformable, &body_twists[i_joint], v_deform, dt);
                 for (cp, n, node_weights) in contacts.iter() {
                     let mut J = Matrix3xX::zeros(total_dof);
 
