@@ -98,13 +98,22 @@ pub fn build_gripper() -> Hybrid {
 
     let m = 10.0;
 
+    let w_base = 0.5;
+    let h_base = 0.1;
+    let base_frame = "base";
+    let base = Rigid::new_cuboid(m, w_base, w_base, h_base, base_frame);
+    let base_joint = Joint::new_prismatic(
+        Transform3D::move_xyz(base_frame, WORLD_FRAME, 0.5, 0.5, 1.2),
+        Vector3::z_axis(),
+    );
+
     let l_palm = 1.5; // half-size of palm
     let h_palm = 0.1;
     let palm_frame = "palm";
     let palm = Rigid::new_cuboid(m, l_palm, l_palm, h_palm, palm_frame);
     let palm_joint = Joint::new_prismatic(
-        Transform3D::move_xyz(palm_frame, WORLD_FRAME, 0.5, 0.5, 1.1),
-        Vector3::z_axis(),
+        Transform3D::move_z(palm_frame, base_frame, -h_base),
+        Vector3::x_axis(),
     );
 
     let l_finger = 1.0;
@@ -125,8 +134,8 @@ pub fn build_gripper() -> Hybrid {
     );
 
     let mut articulated = Articulated::new(
-        vec![palm, left, right],
-        vec![palm_joint, left_joint, right_joint],
+        vec![base, palm, left, right],
+        vec![base_joint, palm_joint, left_joint, right_joint],
     );
     state.add_articulated(articulated);
     state.set_controller(0, GripperController::new(1. / 120.));
