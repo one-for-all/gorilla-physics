@@ -332,7 +332,7 @@ impl Hybrid {
             (offset_deformable, offset_deformable),
             (deformable_dof, deformable_dof),
         )
-        .copy_from(&DMatrix::identity(deformable_dof, deformable_dof));
+        .copy_from(&deformable.mass_matrix());
 
         // Solve convex optimization to resolve contact
         let P = CscMatrix::from(A.row_iter());

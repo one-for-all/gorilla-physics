@@ -316,14 +316,22 @@ impl Deformable {
         let f_total = f_elastic + f_damping + f_gravity;
         let m_v0 = -dt * f_total; // momentum residual with velocity at t0
 
-        let n_dim = self.q.len();
-        let mass = 1.0;
-        let M: DMatrix<Float> = mass * DMatrix::identity(n_dim, n_dim); // mass matrix
-        let A = M;
+        let A = self.mass_matrix();
         let v0 = &self.qdot;
         let v_star = v0 - A.clone().try_inverse().unwrap() * m_v0;
 
         v_star
+    }
+
+    pub fn mass_matrix(&self) -> DMatrix<Float> {
+        let dof = self.dof();
+        let mass = 1.0;
+        let M: DMatrix<Float> = mass * DMatrix::identity(dof, dof); // mass matrix
+        M
+    }
+
+    pub fn dof(&self) -> usize {
+        self.q.len()
     }
 
     /// Extract the boundary facets, for better visualization
