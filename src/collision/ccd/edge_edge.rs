@@ -85,9 +85,30 @@ pub fn edge_edge_ccd(
 mod edge_ccd_tests {
     use na::{vector, Vector3};
 
+    use crate::{assert_vec_close, collision::ccd::edge_edge::edge_edge_ccd, flog, types::Float};
+
     #[test]
     fn edge_edge_1() {
         // Arrange
-        let e1 = [vector![0., 0., 0.], vector![0., 1., 0.]];
+        let e1 = [vector![0., -1., 0.], vector![0., 1., 0.]];
+        let e2: [Vector3<Float>; 2] =
+            [vector![0., 0., -1.], vector![0., 0., 1.]].map(|e| e + vector![0.1, 0., 0.]);
+
+        let v1 = Vector3::zeros();
+        let v2 = Vector3::zeros();
+        let v3 = vector![-1., 0., 0.];
+        let v4 = v3.clone();
+
+        // Act
+        let ccd = edge_edge_ccd(&e1, &e2, &v1, &v2, &v3, &v4, 1.0);
+
+        // Assert
+        if let Some((cp, n, ws)) = ccd {
+            assert_eq!(cp, vector![0., 0., 0.]);
+            assert_eq!(n, Vector3::x_axis());
+            assert_eq!(ws, [0.5, 0.5]);
+        } else {
+            panic!("not detecting collision");
+        }
     }
 }
