@@ -13,13 +13,11 @@ use na::{
 
 use crate::{
     collision::halfspace::HalfSpace,
-    control::NullController,
-    flog,
     hybrid::{
         articulated::Articulated,
+        cloth::Cloth,
         control::{ArticulatedController, NullArticulatedController},
-        rigid::rigid_deformable_cd,
-        visual::Visual,
+        rigid::{rigid_cloth_ccd, rigid_deformable_cd},
     },
     joint::Joint,
     spatial::{
@@ -34,6 +32,7 @@ pub use rigid::Rigid;
 
 pub mod articulated;
 pub mod builders;
+pub mod cloth;
 pub mod control;
 pub mod deformable;
 pub mod rigid;
@@ -43,6 +42,7 @@ pub struct Hybrid {
     pub rigid_bodies: Vec<Rigid>,
     pub articulated: Vec<Articulated>,
     pub deformables: Vec<Deformable>,
+    pub cloths: Vec<Cloth>,
 
     pub halfspaces: Vec<HalfSpace>,
 
@@ -61,6 +61,7 @@ impl Hybrid {
             rigid_bodies: vec![rigid],
             articulated: vec![],
             deformables: vec![deformable],
+            cloths: vec![],
             halfspaces: vec![],
             controllers: vec![],
             gravity_enabled: true,
@@ -72,6 +73,7 @@ impl Hybrid {
             rigid_bodies: vec![],
             articulated: vec![],
             deformables: vec![],
+            cloths: vec![],
             halfspaces: vec![],
             controllers: vec![],
             gravity_enabled: true,
@@ -96,13 +98,15 @@ impl Hybrid {
         self.deformables.push(deformable);
     }
 
+    pub fn add_cloth(&mut self, cloth: Cloth) {
+        self.cloths.push(cloth);
+    }
+
     pub fn add_halfspace(&mut self, halfspace: HalfSpace) {
         self.halfspaces.push(halfspace);
     }
 
     pub fn step(&mut self, dt: Float, input: &Vec<Float>) {
-        let deformable = &self.deformables[0];
-
         let taus: Vec<DVector<Float>> = izip!(self.controllers.iter_mut(), self.articulated.iter())
             .map(|(c, a)| c.control(a, input))
             .collect();
@@ -114,22 +118,26 @@ impl Hybrid {
             .collect();
         let v_articulated: Vec<DVector<Float>> =
             izip!(self.articulated.iter_mut(), taus.into_iter())
-                .map(|(a, t)| a.free_velocity(dt, t))
+                .map(|(a, t)| a.free_velocity(dt, t, self.gravity_enabled))
                 .collect();
         let v_deformables: Vec<DVector<Float>> = self
             .deformables
             .iter()
             .map(|b| b.free_velocity(dt, self.gravity_enabled))
             .collect();
+        let v_cloths: Vec<DVector<Float>> =
+            self.cloths.iter().map(|c| c.free_velocity(dt)).collect();
         let total_len = v_rigids.iter().map(|v| v.len()).sum::<usize>()
             + v_articulated.iter().map(|v| v.len()).sum::<usize>()
-            + v_deformables.iter().map(|v| v.len()).sum::<usize>();
+            + v_deformables.iter().map(|v| v.len()).sum::<usize>()
+            + v_cloths.iter().map(|v| v.len()).sum::<usize>();
         let v_star: DVector<Float> = DVector::from_iterator(
             total_len,
             v_rigids
                 .iter()
                 .chain(v_articulated.iter())
                 .chain(v_deformables.iter())
+                .chain(v_cloths.iter())
                 .flat_map(|v| v.data.as_vec().clone()),
         );
 
@@ -137,8 +145,11 @@ impl Hybrid {
         let dof_articulated: usize = self.articulated.iter().map(|a| a.dof()).sum();
         let offset_deformable = offset_articulated + dof_articulated;
 
-        let deformable_dof = deformable.q.len();
-        let total_dof = offset_deformable + deformable_dof;
+        let deformable_dof: usize = self.deformables.iter().map(|d| d.dof()).sum();
+        let offset_cloth = offset_deformable + deformable_dof;
+
+        let cloth_dof: usize = self.cloths.iter().map(|c| c.q.len()).sum();
+        let total_dof = offset_cloth + cloth_dof;
 
         let mut Js: Vec<Matrix3xX<Float>> = vec![];
         let mu = 1.0; // friction coefficient
@@ -146,31 +157,35 @@ impl Hybrid {
         // halfspace - deformable collision detection
         for halfspace in self.halfspaces.iter() {
             let n = &halfspace.normal;
-            for (i_node, node) in deformable.get_positions().iter().enumerate() {
-                if halfspace.has_inside(node) {
-                    // t and b are contact frame tangential directions
-                    let t = {
-                        let candidate = n.cross(&Vector3::x_axis());
-                        if candidate.norm() != 0.0 {
-                            UnitVector3::new_normalize(candidate)
-                        } else {
-                            UnitVector3::new_normalize(n.cross(&Vector3::y_axis()))
-                        }
-                    };
-                    let b = UnitVector3::new_normalize(n.cross(&t));
-                    let C = Matrix3::from_rows(&[
-                        1. / mu * n.transpose(),
-                        t.transpose(),
-                        b.transpose(),
-                    ]);
+            let mut i_deformable_offset = 0;
+            for (i_deform, deformable) in self.deformables.iter().enumerate() {
+                for (i_node, node) in deformable.get_positions().iter().enumerate() {
+                    if halfspace.has_inside(node) {
+                        // t and b are contact frame tangential directions
+                        let t = {
+                            let candidate = n.cross(&Vector3::x_axis());
+                            if candidate.norm() != 0.0 {
+                                UnitVector3::new_normalize(candidate)
+                            } else {
+                                UnitVector3::new_normalize(n.cross(&Vector3::y_axis()))
+                            }
+                        };
+                        let b = UnitVector3::new_normalize(n.cross(&t));
+                        let C = Matrix3::from_rows(&[
+                            1. / mu * n.transpose(),
+                            t.transpose(),
+                            b.transpose(),
+                        ]);
 
-                    // set jacobian for deformable part
-                    let icol = offset_deformable + i_node * 3;
-                    let mut J = Matrix3xX::zeros(offset_deformable + deformable.q.len());
-                    J.fixed_view_mut::<3, 3>(0, icol).copy_from(&C);
+                        // set jacobian for deformable part
+                        let icol = offset_deformable + i_deformable_offset + i_node * 3;
+                        let mut J = Matrix3xX::zeros(total_dof);
+                        J.fixed_view_mut::<3, 3>(0, icol).copy_from(&C);
 
-                    Js.push(J);
+                        Js.push(J);
+                    }
                 }
+                i_deformable_offset += deformable.dof();
             }
         }
 
@@ -180,41 +195,45 @@ impl Hybrid {
             let translation = rigid.pose.translation;
             let T = compute_twist_transformation_matrix(&iso);
 
-            for (i_node, pos) in deformable.get_positions().iter().enumerate() {
-                if (pos - translation).norm() <= 1.0 {
-                    let n = UnitVector3::new_normalize(translation - pos);
-                    let cp = pos;
+            let mut i_deformable_offset = 0;
+            for (i_deform, deformable) in self.deformables.iter().enumerate() {
+                for (i_node, pos) in deformable.get_positions().iter().enumerate() {
+                    if (pos - translation).norm() <= 1.0 {
+                        let n = UnitVector3::new_normalize(translation - pos);
+                        let cp = pos;
 
-                    // t and b are contact frame tangential directions
-                    let t = {
-                        let candidate = n.cross(&Vector3::x_axis());
-                        if candidate.norm() != 0.0 {
-                            UnitVector3::new_normalize(candidate)
-                        } else {
-                            UnitVector3::new_normalize(n.cross(&Vector3::y_axis()))
-                        }
-                    };
-                    let b = UnitVector3::new_normalize(n.cross(&t));
-                    let C = Matrix3::from_rows(&[
-                        1. / mu * n.transpose(),
-                        t.transpose(),
-                        b.transpose(),
-                    ]);
+                        // t and b are contact frame tangential directions
+                        let t = {
+                            let candidate = n.cross(&Vector3::x_axis());
+                            if candidate.norm() != 0.0 {
+                                UnitVector3::new_normalize(candidate)
+                            } else {
+                                UnitVector3::new_normalize(n.cross(&Vector3::y_axis()))
+                            }
+                        };
+                        let b = UnitVector3::new_normalize(n.cross(&t));
+                        let C = Matrix3::from_rows(&[
+                            1. / mu * n.transpose(),
+                            t.transpose(),
+                            b.transpose(),
+                        ]);
 
-                    // set jacobian for deformable part
-                    let icol = offset_deformable + i_node * 3;
-                    let mut J = Matrix3xX::zeros(offset_deformable + deformable.q.len());
-                    J.fixed_view_mut::<3, 3>(0, icol).copy_from(&-C);
+                        // set jacobian for deformable part
+                        let icol = offset_deformable + i_deformable_offset + i_node * 3;
+                        let mut J = Matrix3xX::zeros(total_dof);
+                        J.fixed_view_mut::<3, 3>(0, icol).copy_from(&-C);
 
-                    // set jacobian for rigid body part
-                    let mut X = Matrix3x6::zeros();
-                    let r = cp;
-                    X.columns_mut(0, 3).copy_from(&-skew_symmetric(&r));
-                    X.columns_mut(3, 3).copy_from(&Matrix3::identity());
-                    J.fixed_view_mut::<3, 6>(0, i_rigid * 6)
-                        .copy_from(&(C * X * T));
-                    Js.push(J);
+                        // set jacobian for rigid body part
+                        let mut X = Matrix3x6::zeros();
+                        let r = cp;
+                        X.columns_mut(0, 3).copy_from(&-skew_symmetric(&r));
+                        X.columns_mut(3, 3).copy_from(&Matrix3::identity());
+                        J.fixed_view_mut::<3, 6>(0, i_rigid * 6)
+                            .copy_from(&(C * X * T));
+                        Js.push(J);
+                    }
                 }
+                i_deformable_offset += deformable.dof();
             }
         }
 
@@ -222,35 +241,8 @@ impl Hybrid {
         let mut icol_arti = offset_articulated;
         for (i_articulated, articulated) in self.articulated.iter().enumerate() {
             let v_art = &v_articulated[i_articulated];
-            let v_deform = &v_deformables[0];
 
-            // compute body twists
-            let mut iv = 0;
-            let mut body_twists = vec![];
-            for (i, joint) in articulated.joints.iter().enumerate() {
-                let parent = articulated.parents[i];
-                let pose = articulated.bodies[i].pose;
-                let mut joint = (*joint).clone();
-                match &mut joint {
-                    Joint::FixedJoint(_) => {}
-                    Joint::RevoluteJoint(j) => j.v = v_art[iv],
-                    Joint::PrismaticJoint(j) => j.v = v_art[iv],
-                    Joint::FloatingJoint(j) => {
-                        j.v = SpatialVector::new(
-                            vector![v_art[iv], v_art[iv + 1], v_art[iv + 2]],
-                            vector![v_art[iv + 3], v_art[iv + 4], v_art[iv + 5]],
-                        )
-                    }
-                }
-                let joint_twist = joint.twist().transform(&pose);
-                let body_twist = if parent == i {
-                    joint_twist
-                } else {
-                    body_twists[parent] + joint_twist
-                };
-                body_twists.push(body_twist);
-                iv += joint.dof();
-            }
+            let body_twists = articulated.body_twists(v_art);
 
             let dof = articulated.dof();
             let offsets = articulated.offsets();
@@ -258,53 +250,126 @@ impl Hybrid {
             for (i_joint, (body, joint)) in
                 izip!(articulated.bodies.iter(), articulated.joints.iter()).enumerate()
             {
-                let contacts =
-                    rigid_deformable_cd(body, deformable, &body_twists[i_joint], v_deform, dt);
-                for (cp, n, node_weights) in contacts.iter() {
-                    let mut J = Matrix3xX::zeros(total_dof);
+                let mut i_deformable_offset = 0;
+                for (i_deform, deformable) in self.deformables.iter().enumerate() {
+                    let v_deform = &v_deformables[i_deform];
+                    let contacts =
+                        rigid_deformable_cd(body, deformable, &body_twists[i_joint], v_deform, dt);
+                    for (cp, n, node_weights) in contacts.iter() {
+                        let mut J = Matrix3xX::zeros(total_dof);
 
-                    // t and b are contact frame tangential directions
-                    let t = {
-                        let candidate = n.cross(&Vector3::x_axis());
-                        if candidate.norm() != 0.0 {
-                            UnitVector3::new_normalize(candidate)
-                        } else {
-                            UnitVector3::new_normalize(n.cross(&Vector3::y_axis()))
+                        // t and b are contact frame tangential directions
+                        let t = {
+                            let candidate = n.cross(&Vector3::x_axis());
+                            if candidate.norm() != 0.0 {
+                                UnitVector3::new_normalize(candidate)
+                            } else {
+                                UnitVector3::new_normalize(n.cross(&Vector3::y_axis()))
+                            }
+                        };
+                        let b = UnitVector3::new_normalize(n.cross(&t));
+                        let C = Matrix3::from_rows(&[
+                            1. / mu * n.transpose(),
+                            t.transpose(),
+                            b.transpose(),
+                        ]);
+
+                        // set jacobian for deformable part
+                        for (i_node, weight) in node_weights.iter() {
+                            let icol = offset_deformable + i_deformable_offset + i_node * 3;
+                            J.fixed_view_mut::<3, 3>(0, icol).copy_from(&(-weight * C));
                         }
-                    };
-                    let b = UnitVector3::new_normalize(n.cross(&t));
-                    let C = Matrix3::from_rows(&[
-                        1. / mu * n.transpose(),
-                        t.transpose(),
-                        b.transpose(),
-                    ]);
 
-                    // set jacobian for deformable part
-                    for (i_node, weight) in node_weights.iter() {
-                        let icol = offset_deformable + i_node * 3;
-                        J.fixed_view_mut::<3, 3>(0, icol).copy_from(&(-weight * C));
+                        // set jacobian for articulated body
+                        let mut H = Matrix6xX::zeros(dof);
+                        H.view_mut((0, offsets[i_joint]), (6, joint.dof()))
+                            .copy_from(&jacobians[i_joint]);
+                        let mut parent = i_joint;
+                        while articulated.parents[parent] != parent {
+                            parent = articulated.parents[parent];
+                            H.view_mut((0, offsets[parent]), (6, articulated.joints[parent].dof()))
+                                .copy_from(&jacobians[parent]);
+                        }
+
+                        let mut X = Matrix3x6::zeros();
+                        let r = cp;
+                        X.columns_mut(0, 3).copy_from(&-skew_symmetric(&r));
+                        X.columns_mut(3, 3).copy_from(&Matrix3::identity());
+
+                        J.view_mut((0, icol_arti), (3, dof)).copy_from(&(C * X * H));
+                        Js.push(J);
                     }
-
-                    // set jacobian for articulated body
-                    let mut H = Matrix6xX::zeros(dof);
-                    H.view_mut((0, offsets[i_joint]), (6, joint.dof()))
-                        .copy_from(&jacobians[i_joint]);
-                    let mut parent = i_joint;
-                    while articulated.parents[parent] != parent {
-                        parent = articulated.parents[parent];
-                        H.view_mut((0, offsets[parent]), (6, articulated.joints[parent].dof()))
-                            .copy_from(&jacobians[parent]);
-                    }
-
-                    let mut X = Matrix3x6::zeros();
-                    let r = cp;
-                    X.columns_mut(0, 3).copy_from(&-skew_symmetric(&r));
-                    X.columns_mut(3, 3).copy_from(&Matrix3::identity());
-
-                    J.view_mut((0, icol_arti), (3, dof)).copy_from(&(C * X * H));
-                    Js.push(J);
+                    i_deformable_offset += deformable.dof();
                 }
             }
+            icol_arti += dof;
+        }
+
+        // articulated-cloth collision detection
+        let mut icol_arti = offset_articulated;
+        for (i_art, articulated) in self.articulated.iter().enumerate() {
+            let v_art = &v_articulated[i_art];
+
+            let body_twists = articulated.body_twists(v_art);
+
+            let dof = articulated.dof();
+            let offsets = articulated.offsets();
+            let jacobians = articulated.jacobians();
+            for (i_joint, (body, joint)) in
+                izip!(articulated.bodies.iter(), articulated.joints.iter()).enumerate()
+            {
+                let mut i_cloth_offset = 0;
+                for (i_cloth, cloth) in self.cloths.iter().enumerate() {
+                    let v_cloth = &v_cloths[i_cloth];
+                    let contacts = rigid_cloth_ccd(body, cloth, &body_twists[i_joint], v_cloth, dt);
+                    for (cp, n, node_weights) in contacts.iter() {
+                        let mut J = Matrix3xX::zeros(total_dof);
+
+                        // t and b are contact frame tangential directions
+                        let t = {
+                            let candidate = n.cross(&Vector3::x_axis());
+                            if candidate.norm() != 0.0 {
+                                UnitVector3::new_normalize(candidate)
+                            } else {
+                                UnitVector3::new_normalize(n.cross(&Vector3::y_axis()))
+                            }
+                        };
+                        let b = UnitVector3::new_normalize(n.cross(&t));
+                        let C = Matrix3::from_rows(&[
+                            1. / mu * n.transpose(),
+                            t.transpose(),
+                            b.transpose(),
+                        ]);
+
+                        // set jacobian for cloth part
+                        for (i_node, weight) in node_weights.iter() {
+                            let icol = offset_cloth + i_cloth_offset + i_node * 3;
+                            J.fixed_view_mut::<3, 3>(0, icol).copy_from(&(-weight * C));
+                        }
+
+                        // set jacobian for articulated body
+                        let mut H = Matrix6xX::zeros(dof);
+                        H.view_mut((0, offsets[i_joint]), (6, joint.dof()))
+                            .copy_from(&jacobians[i_joint]);
+                        let mut parent = i_joint;
+                        while articulated.parents[parent] != parent {
+                            parent = articulated.parents[parent];
+                            H.view_mut((0, offsets[parent]), (6, articulated.joints[parent].dof()))
+                                .copy_from(&jacobians[parent]);
+                        }
+
+                        let mut X = Matrix3x6::zeros();
+                        let r = cp;
+                        X.columns_mut(0, 3).copy_from(&-skew_symmetric(&r));
+                        X.columns_mut(3, 3).copy_from(&Matrix3::identity());
+
+                        J.view_mut((0, icol_arti), (3, dof)).copy_from(&(C * X * H));
+                        Js.push(J);
+                    }
+                    i_cloth_offset += cloth.dof();
+                }
+            }
+
             icol_arti += dof;
         }
 
@@ -328,11 +393,22 @@ impl Hybrid {
         }
 
         // Assemble A for deformables
-        A.view_mut(
-            (offset_deformable, offset_deformable),
-            (deformable_dof, deformable_dof),
-        )
-        .copy_from(&deformable.mass_matrix());
+        let mut i = offset_deformable;
+        for deformable in self.deformables.iter() {
+            let dof = deformable.dof();
+            A.view_mut((i, i), (dof, dof))
+                .copy_from(&deformable.mass_matrix());
+            i += dof;
+        }
+
+        // Assemble A for cloths
+        let mut i = offset_cloth;
+        for cloth in self.cloths.iter() {
+            let dof = cloth.dof();
+            A.view_mut((i, i), (dof, dof))
+                .copy_from(&cloth.mass_matrix());
+            i += dof;
+        }
 
         // Solve convex optimization to resolve contact
         let P = CscMatrix::from(A.row_iter());
@@ -393,10 +469,24 @@ impl Hybrid {
         }
 
         // Update deformable qdot and q
-        let v_deformable = v_sol.rows(offset_deformable, deformable_dof).into_owned();
-        let deformable = &mut self.deformables[0];
-        deformable.q += &v_deformable * dt;
-        deformable.qdot = v_deformable;
+        let mut i = offset_deformable;
+        for deformable in self.deformables.iter_mut() {
+            let dof = deformable.dof();
+            let v = v_sol.rows(i, dof).into_owned();
+            deformable.q += &v * dt;
+            deformable.qdot = v;
+            i += dof;
+        }
+
+        // Update cloth qdot and q
+        let mut i = offset_cloth;
+        for cloth in self.cloths.iter_mut() {
+            let dof = cloth.dof();
+            let v = v_sol.rows(i, dof).into_owned();
+            cloth.q += &v * dt;
+            cloth.qdot = v;
+            i += dof;
+        }
     }
 
     pub fn set_rigid_poses(&mut self, poses: Vec<Pose>) {
@@ -441,15 +531,14 @@ mod hybrid_tests {
     use na::{vector, DVector, UnitVector3, Vector3};
 
     use crate::{
-        assert_close, assert_vec_close,
-        collision::mesh::projected_barycentric_coord,
-        flog,
-        hybrid::{articulated::Articulated, builders::build_claw, Deformable, Hybrid, Rigid},
-        interface::hybrid::InterfaceHybrid,
+        assert_vec_close,
+        hybrid::{
+            articulated::Articulated,
+            builders::{build_cube_cloth, build_gripper},
+            Deformable, Hybrid, Rigid,
+        },
         joint::{Joint, JointVelocity},
-        plot::plot,
         spatial::{pose::Pose, transform::Transform3D},
-        types::Float,
         WORLD_FRAME,
     };
 
@@ -584,6 +673,35 @@ mod hybrid_tests {
         let vs = state.deformables[0].get_velocities();
         for v in vs.iter() {
             assert_vec_close!(v, [0.; 3], 2e-2); // set tol to 1e-2, under no friction
+        }
+    }
+
+    #[test]
+    fn cube_cloth() {
+        // Arrange
+        let mut state = build_cube_cloth();
+
+        // Act
+        let final_time = 0.11;
+        let dt = 1e-3;
+        let num_steps = (final_time / dt) as usize;
+        for _s in 0..num_steps {
+            state.step(dt, &vec![0., 0., 0.]);
+        }
+    }
+
+    #[ignore] // brittle, depends on dt
+    #[test]
+    fn gripper() {
+        // Arrange
+        let mut state = build_gripper();
+
+        // Act
+        let final_time = 1.0;
+        let dt = 1e-3;
+        let num_steps = (final_time / dt) as usize;
+        for _s in 0..num_steps {
+            state.step(dt, &vec![0., 0., 0.]);
         }
     }
 

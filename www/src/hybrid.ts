@@ -125,18 +125,86 @@ Simulator.prototype.addHybrid = function (state: InterfaceHybrid) {
     //   new LineBasicMaterial({ color: 0x000000 }),
     // );
     // this.graphics.scene.add(wireframe);
+  }
 
-    // Add halfspaces
-    let halfspaces = state.halfspaces();
-    for (let i = 0; i < halfspaces.length; i += 4) {
-      let n = new FloatArray([
-        halfspaces[i],
-        halfspaces[i + 1],
-        halfspaces[i + 2],
-      ]);
-      let dist = halfspaces[i + 3];
-      this.addPlane(n, dist, 10);
-    }
+  // Add cloths
+  let cloth_nodes = state.cloth_nodes();
+  let cloth_dofs = state.cloth_dofs();
+
+  let cloth_nodes_array: Float32Array[] = []; // break array into array of arrays
+  let cloth_offset = 0;
+  for (let i = 0; i < cloth_dofs.length; i++) {
+    const dof = cloth_dofs[i];
+    cloth_nodes_array.push(
+      cloth_nodes.subarray(cloth_offset, cloth_offset + dof),
+    );
+    cloth_offset += dof;
+  }
+
+  let cloth_faces = state.cloth_faces();
+  let cloth_face_ns = state.cloth_face_ns();
+  if (cloth_dofs.length != cloth_face_ns.length) {
+    alert("cloth_dofs.len != cloth_face_ns.len");
+  }
+
+  let cloth_faces_array: Uint32Array[] = [];
+  cloth_offset = 0;
+  for (let i = 0; i < cloth_face_ns.length; i++) {
+    const face_n = cloth_face_ns[i];
+    cloth_faces_array.push(
+      cloth_faces.subarray(cloth_offset, cloth_offset + face_n * 3),
+    );
+    cloth_offset += face_n;
+  }
+
+  for (let i = 0; i < cloth_dofs.length; i++) {
+    const geometry = new BufferGeometry();
+    let nodes = cloth_nodes_array[i];
+    geometry.setAttribute("position", new BufferAttribute(nodes, 3));
+    let faces = cloth_faces_array[i];
+    geometry.setIndex(new BufferAttribute(faces, 1));
+    geometry.computeVertexNormals();
+
+    const material = new MeshPhongMaterial({
+      color: 0x2194ce,
+      side: DoubleSide, // Render both sides of faces
+      flatShading: true,
+      transparent: true,
+      opacity: 1.0,
+    });
+    const mesh = new Mesh(geometry, material);
+
+    mesh.frustumCulled = false; // prevent mesh disappearing
+    this.meshes.set("cloth " + i, mesh);
+    this.graphics.scene.add(mesh);
+
+    // --- Add vertex points ---
+    const pointMaterial = new PointsMaterial({
+      color: 0xff0000, // red
+      size: 0.1, // adjust for your scale
+    });
+    const points = new Points(geometry, pointMaterial);
+    this.graphics.scene.add(points);
+
+    // // --- Add edges overlay ---
+    // const wireframeGeometry = new WireframeGeometry(geometry);
+    // const wireframe = new LineSegments(
+    //   wireframeGeometry,
+    //   new LineBasicMaterial({ color: 0x000000 }),
+    // );
+    // this.graphics.scene.add(wireframe);
+  }
+
+  // Add halfspaces
+  let halfspaces = state.halfspaces();
+  for (let i = 0; i < halfspaces.length; i += 4) {
+    let n = new FloatArray([
+      halfspaces[i],
+      halfspaces[i + 1],
+      halfspaces[i + 2],
+    ]);
+    let dist = halfspaces[i + 3];
+    this.addPlane(n, dist, 10);
   }
 };
 
@@ -180,5 +248,25 @@ Simulator.prototype.updateHybrid = function () {
     let deformable = this.meshes.get("deformable " + i);
     let nodes = nodes_array[i];
     deformable.geometry.setAttribute("position", new BufferAttribute(nodes, 3));
+  }
+
+  // update cloth positions
+  let cloth_nodes = state.cloth_nodes();
+  let cloth_dofs = state.cloth_dofs();
+
+  let cloth_nodes_array: Float32Array[] = [];
+  let cloth_offset = 0;
+  for (let i = 0; i < cloth_dofs.length; i++) {
+    const dof = cloth_dofs[i];
+    cloth_nodes_array.push(
+      cloth_nodes.subarray(cloth_offset, cloth_offset + dof),
+    );
+    cloth_offset += dof;
+  }
+
+  for (let i = 0; i < cloth_dofs.length; i++) {
+    let cloth = this.meshes.get("cloth " + i);
+    let nodes = cloth_nodes_array[i];
+    cloth.geometry.setAttribute("position", new BufferAttribute(nodes, 3));
   }
 };

@@ -4,7 +4,7 @@ use web_sys::js_sys::{Float32Array, Uint32Array};
 
 use crate::collision::halfspace;
 use crate::hybrid::articulated::Articulated;
-use crate::hybrid::builders::{build_claw, build_gripper};
+use crate::hybrid::builders::{build_claw, build_cube_cloth, build_gripper};
 use crate::hybrid::visual::Visual;
 use crate::hybrid::{Deformable, Rigid};
 use crate::interface::cart;
@@ -97,9 +97,27 @@ impl InterfaceHybrid {
         toJsFloat32Array!(q)
     }
 
+    pub fn cloth_nodes(&self) -> Float32Array {
+        let mut q: Vec<Float> = vec![];
+        for cloth in self.inner.cloths.iter() {
+            q.extend(cloth.q.iter());
+        }
+        toJsFloat32Array!(q)
+    }
+
     /// dofs of each deformable as an array
     pub fn deformable_dofs(&self) -> Uint32Array {
         let dofs: Vec<usize> = self.inner.deformables.iter().map(|x| x.q.len()).collect();
+        Uint32Array::from(
+            dofs.iter()
+                .map(|x| *x as u32)
+                .collect::<Vec<u32>>()
+                .as_slice(),
+        )
+    }
+
+    pub fn cloth_dofs(&self) -> Uint32Array {
+        let dofs: Vec<usize> = self.inner.cloths.iter().map(|x| x.dof()).collect();
         Uint32Array::from(
             dofs.iter()
                 .map(|x| *x as u32)
@@ -128,6 +146,21 @@ impl InterfaceHybrid {
         )
     }
 
+    pub fn cloth_faces(&self) -> Uint32Array {
+        let mut faces: Vec<usize> = vec![];
+        for cloth in self.inner.cloths.iter() {
+            faces.extend(cloth.faces.iter().flat_map(|f| *f).collect::<Vec<usize>>());
+        }
+        Uint32Array::from(
+            faces
+                .iter()
+                .map(|x| *x as u32)
+                .collect::<Vec<u32>>()
+                .as_slice(),
+        )
+    }
+
+    /// number of faces of each deformable
     pub fn deformable_face_ns(&self) -> Uint32Array {
         let face_ns: Vec<usize> = self
             .inner
@@ -135,6 +168,18 @@ impl InterfaceHybrid {
             .iter()
             .map(|x| x.faces.len())
             .collect();
+        Uint32Array::from(
+            face_ns
+                .iter()
+                .map(|x| *x as u32)
+                .collect::<Vec<u32>>()
+                .as_slice(),
+        )
+    }
+
+    /// number of faces of each cloth
+    pub fn cloth_face_ns(&self) -> Uint32Array {
+        let face_ns: Vec<usize> = self.inner.cloths.iter().map(|x| x.faces.len()).collect();
         Uint32Array::from(
             face_ns
                 .iter()

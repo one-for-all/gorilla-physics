@@ -55,7 +55,6 @@ impl ArticulatedController for GripperController {
             0.
         };
         let mut fz = self.pi_vz.compute(vz_target - vz);
-        flog!("fz: {}", fz);
 
         let base_mass = 10.;
         fz += (articulated.mass()) * GRAVITY;
@@ -85,7 +84,6 @@ impl ArticulatedController for GripperController {
 
         let f_right = f_qright + f_vright;
 
-        flog!("f left grip: {}", f_left);
         dvector![fz, fx, f_left, f_right]
     }
 }

@@ -91,7 +91,12 @@ impl Articulated {
         }
     }
 
-    pub fn free_velocity(&self, dt: Float, tau: DVector<Float>) -> DVector<Float> {
+    pub fn free_velocity(
+        &self,
+        dt: Float,
+        tau: DVector<Float>,
+        gravity_enabled: bool,
+    ) -> DVector<Float> {
         // Compute dynamics bias c(q, v)
         // First, compute bias accelerations, i.e. acceleration of each body when no external force,  and no joint acceleration
         let mut bias_accels: Vec<SpatialVector> = vec![];
@@ -103,7 +108,11 @@ impl Articulated {
             let coriolis_accel = spatial_motion_cross(&body_twist, &joint_twist);
             let bias_accel = if parent == i {
                 // add inv gravity accel to base to simulate gravity force
-                SpatialVector::linear(vector![0., 0., GRAVITY]) + coriolis_accel
+                if gravity_enabled {
+                    SpatialVector::linear(vector![0., 0., GRAVITY]) + coriolis_accel
+                } else {
+                    coriolis_accel
+                }
             } else {
                 bias_accels[parent] + coriolis_accel
             };
@@ -222,6 +231,37 @@ impl Articulated {
         mass_matrix
     }
 
+    /// Compute the body twists in world frame, at the given joint velocities
+    pub fn body_twists(&self, v: &DVector<Float>) -> Vec<SpatialVector> {
+        let mut iv = 0;
+        let mut body_twists = vec![];
+        for (i, joint) in self.joints.iter().enumerate() {
+            let parent = self.parents[i];
+            let pose = self.bodies[i].pose;
+            let mut joint = (*joint).clone();
+            match &mut joint {
+                Joint::FixedJoint(_) => {}
+                Joint::RevoluteJoint(j) => j.v = v[iv],
+                Joint::PrismaticJoint(j) => j.v = v[iv],
+                Joint::FloatingJoint(j) => {
+                    j.v = SpatialVector::new(
+                        vector![v[iv], v[iv + 1], v[iv + 2]],
+                        vector![v[iv + 3], v[iv + 4], v[iv + 5]],
+                    )
+                }
+            }
+            let joint_twist = joint.twist().transform(&pose);
+            let body_twist = if parent == i {
+                joint_twist
+            } else {
+                body_twists[parent] + joint_twist
+            };
+            body_twists.push(body_twist);
+            iv += joint.dof();
+        }
+        body_twists
+    }
+
     /// Total degrees of freedom
     pub fn dof(&self) -> usize {
         self.joints.iter().map(|j| j.dof()).sum()
@@ -309,7 +349,8 @@ impl Articulated {
     }
 
     pub fn step(&mut self, dt: Float) {
-        let v = self.free_velocity(dt, DVector::zeros(self.dof()));
+        let gravity_enabled = true;
+        let v = self.free_velocity(dt, DVector::zeros(self.dof()), gravity_enabled);
         self.integrate(v, dt);
     }
 

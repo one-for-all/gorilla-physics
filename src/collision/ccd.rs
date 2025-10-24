@@ -1,6 +1,15 @@
 use na::{Matrix2, UnitVector3, Vector2, Vector3};
 
-use crate::types::Float;
+use crate::{flog, types::Float};
+
+/// Returns (contact point, contact normal, barycentric coords) if vertex collides with face.
+pub fn point_face_ccd(
+    p: &Vector3<Float>,
+    f: &[Vector3<Float>; 3],
+    dt: Float,
+) -> Option<(Vector3<Float>, UnitVector3<Float>, [Float; 3])> {
+    None
+}
 
 /// Returns (contact point on edge 1, contact normal, barycentric coords of cp on edge 1 )
 /// contact normal is from edge 1 to edge 2
@@ -36,13 +45,12 @@ pub fn edge_edge_ccd(
     let p1 = b.dot(&d) + c.dot(&e);
     let p0 = c.dot(&d);
 
-    // TODO: this is a hack. fix it.
-    if p3 == 0. {
+    let t = solve_cubic(p3, p2, p1, p0);
+    if t.is_none() {
         return None;
     }
-
-    let t = solve_cubic(p3, p2, p1, p0);
-    if t > t_end {
+    let t = t.unwrap();
+    if t < 0. || t > t_end {
         return None;
     }
 
@@ -81,14 +89,14 @@ pub fn edge_edge_ccd(
     }
 }
 
-pub fn solve_quadratic(b: Float, c: Float, d: Float) -> Float {
-    0.
-}
-
 /// Cardano's method to solve a cubic equation
 /// Solve for x in ax^3 + bx^2 + cx + d = 0
 /// ref: https://en.wikipedia.org/wiki/Cubic_equation#Cardano's_formula
-pub fn solve_cubic(a: Float, b: Float, c: Float, d: Float) -> Float {
+pub fn solve_cubic(a: Float, b: Float, c: Float, d: Float) -> Option<Float> {
+    if a == 0. {
+        return solve_quadratic(b, c, d);
+    }
+
     // Convert to depressed form
     // ref: https://en.wikipedia.org/wiki/Cubic_equation#Depressed_cubic
     let p = (3. * a * c - b * b) / (3. * a * a);
@@ -101,7 +109,7 @@ pub fn solve_cubic(a: Float, b: Float, c: Float, d: Float) -> Float {
         let sqrt_disc = discriminant.sqrt();
         let u = (-q / 2. + sqrt_disc).cbrt();
         let v = (-q / 2. - sqrt_disc).cbrt();
-        return u + v + offset;
+        return Some(u + v + offset);
     } else {
         panic!(
             "should not have an equation with non-singular root in edge-edge ccd. discriminant: {}, abcd: {}, {}, {}, {}",
@@ -110,25 +118,52 @@ pub fn solve_cubic(a: Float, b: Float, c: Float, d: Float) -> Float {
     }
 }
 
+pub fn solve_quadratic(a: Float, b: Float, c: Float) -> Option<Float> {
+    if a == 0. {
+        return solve_linear(b, c);
+    }
+
+    let det = b * b - 4. * a * c;
+    if det < 0. {
+        return None;
+    }
+    if det == 0. {
+        return Some(-b / (2. * a));
+    } else {
+        let sqrt = det.sqrt();
+        return Some((-b + sqrt) / (2. * a)); // TODO: there should be two solutions
+    }
+}
+
+pub fn solve_linear(a: Float, b: Float) -> Option<Float> {
+    if a == 0. {
+        if b == 0. {
+            return Some(0.);
+        }
+        return None;
+    }
+    return Some(-b / a);
+}
+
 #[cfg(test)]
 mod cubic_tests {
     use crate::{assert_close, collision::ccd::solve_cubic};
 
     #[test]
     fn single_root1() {
-        let sol = solve_cubic(1., 0., 1., 1.);
+        let sol = solve_cubic(1., 0., 1., 1.).unwrap();
         assert_close!(sol, -0.6823278, 1e-5);
     }
 
     #[test]
     fn single_root2() {
-        let sol = solve_cubic(1., 0., -3., 5.);
+        let sol = solve_cubic(1., 0., -3., 5.).unwrap();
         assert_close!(sol, -2.27902, 1e-5);
     }
 
     #[test]
     fn single_root3() {
-        let sol = solve_cubic(2., 4., 5., 10.);
+        let sol = solve_cubic(2., 4., 5., 10.).unwrap();
         assert_close!(sol, -2.0, 1e-5);
     }
 }
