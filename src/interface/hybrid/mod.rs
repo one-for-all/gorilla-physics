@@ -4,7 +4,10 @@ use web_sys::js_sys::{Float32Array, Uint32Array};
 
 use crate::collision::halfspace;
 use crate::hybrid::articulated::Articulated;
-use crate::hybrid::builders::{build_claw, build_cube_cloth, build_gripper};
+use crate::hybrid::builders::{
+    build_claw, build_cube_cloth, build_gripper_cloth, build_gripper_cube,
+};
+use crate::hybrid::control::GripperController;
 use crate::hybrid::visual::Visual;
 use crate::hybrid::{Deformable, Rigid};
 use crate::interface::cart;
@@ -360,7 +363,7 @@ pub async fn createCuboidCart() -> InterfaceHybrid {
 
 #[wasm_bindgen]
 pub async fn createGripperHybrid() -> InterfaceHybrid {
-    let state = build_gripper();
+    let state = build_gripper_cube();
 
     InterfaceHybrid { inner: state }
 }

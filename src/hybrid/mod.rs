@@ -534,7 +534,7 @@ mod hybrid_tests {
         assert_vec_close,
         hybrid::{
             articulated::Articulated,
-            builders::{build_cube_cloth, build_gripper},
+            builders::{build_cube_cloth, build_gripper_cube},
             Deformable, Hybrid, Rigid,
         },
         joint::{Joint, JointVelocity},
@@ -694,7 +694,7 @@ mod hybrid_tests {
     #[test]
     fn gripper() {
         // Arrange
-        let mut state = build_gripper();
+        let mut state = build_gripper_cube();
 
         // Act
         let final_time = 1.0;

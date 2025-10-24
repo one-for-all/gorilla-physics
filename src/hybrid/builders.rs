@@ -96,9 +96,7 @@ pub fn build_claw() -> Hybrid {
     state
 }
 
-pub fn build_gripper() -> Hybrid {
-    let mut state = Hybrid::empty();
-
+pub fn build_gripper() -> Articulated {
     let m = 10.0;
 
     let w_base = 0.5;
@@ -136,33 +134,48 @@ pub fn build_gripper() -> Hybrid {
         Vector3::x_axis(),
     );
 
-    let mut articulated = Articulated::new(
+    let articulated = Articulated::new(
         vec![base, palm, left, right],
         vec![base_joint, palm_joint, left_joint, right_joint],
     );
-    state.add_articulated(articulated);
+    articulated
+}
+
+pub fn build_gripper_cube() -> Hybrid {
+    let mut state = Hybrid::empty();
+    let gripper = build_gripper();
+    state.add_articulated(gripper);
     state.set_controller(0, GripperController::new(1. / 120.));
 
     state.add_deformable(Deformable::new_dense_cube(1., 1, 1e3));
-    state.add_cloth(Cloth::new_square(vector![0., 0., 2.]));
-
     state.add_halfspace(HalfSpace::new(Vector3::z_axis(), -0.5));
 
+    state
+}
+
+pub fn build_gripper_cloth() -> Hybrid {
+    let mut state = Hybrid::empty();
+    let gripper = build_gripper();
+    state.add_articulated(gripper);
+    state.set_controller(0, GripperController::new(1. / 120.));
+
+    state.add_cloth(Cloth::new_square(vector![0., 0., 0.2]));
+    state.add_halfspace(HalfSpace::new(Vector3::z_axis(), 0.));
     state
 }
 
 pub fn build_cube_cloth() -> Hybrid {
     let mut state = Hybrid::empty();
     let m = 1.0;
-    let w = 0.1;
+    let w = 0.5;
     let cube_frame = "cube";
     let cube = Rigid::new_cuboid(m, w, w, w, cube_frame);
-    let cube_to_world = Transform3D::move_xyz(cube_frame, WORLD_FRAME, 0., w, w / 2. + 0.1);
+    let cube_to_world = Transform3D::move_xyz(cube_frame, WORLD_FRAME, -0.6, 0.5, 0.);
     let mut articulated = Articulated::new(
         vec![cube],
-        vec![Joint::new_prismatic(cube_to_world, Vector3::z_axis())],
+        vec![Joint::new_prismatic(cube_to_world, Vector3::x_axis())],
     );
-    articulated.set_joint_v(0, JointVelocity::Float(-1.0));
+    articulated.set_joint_v(0, JointVelocity::Float(1.0));
     state.add_articulated(articulated);
 
     state.add_cloth(Cloth::new_square(vector![0., 0., 0.]));

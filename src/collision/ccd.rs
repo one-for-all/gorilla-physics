@@ -85,7 +85,8 @@ pub fn edge_edge_ccd(
         }
         return Some((cp, n, [1. - a, a]));
     } else {
-        panic!("no solution on normal equation for edge-edge CCD");
+        return None;
+        // panic!("no solution / infinite solution on normal equation for edge-edge CCD");
     }
 }
 
@@ -131,7 +132,7 @@ pub fn solve_quadratic(a: Float, b: Float, c: Float) -> Option<Float> {
         return Some(-b / (2. * a));
     } else {
         let sqrt = det.sqrt();
-        return Some((-b + sqrt) / (2. * a)); // TODO: there should be two solutions
+        return Some((-b - sqrt) / (2. * a)); // TODO: there should be two solutions
     }
 }
 
