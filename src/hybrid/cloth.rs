@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use itertools::{izip, Itertools};
-use na::{dvector, vector, DMatrix, DVector, Vector3};
+use na::{dvector, vector, DMatrix, DVector, UnitQuaternion, Vector3};
 
 use crate::types::Float;
 
@@ -14,6 +14,8 @@ pub struct Cloth {
 
     pub q: DVector<Float>,
     pub qdot: DVector<Float>,
+
+    pub k: Float,
 }
 
 impl Cloth {
@@ -37,8 +39,7 @@ impl Cloth {
             let q0q1 = q1 - q0;
             let l = q0q1.norm();
 
-            let k = 1e2;
-            let f_n0 = k * (l - r) * q0q1 / l;
+            let f_n0 = self.k * (l - r) * q0q1 / l;
             let f_n1 = -f_n0;
 
             for i in 0..3 {
@@ -135,7 +136,7 @@ impl Cloth {
 
 /// Constructors
 impl Cloth {
-    pub fn new(nodes: Vec<Vector3<Float>>, faces: Vec<[usize; 3]>) -> Self {
+    pub fn new(nodes: Vec<Vector3<Float>>, faces: Vec<[usize; 3]>, k: Float) -> Self {
         let dof = nodes.len() * 3;
         let q = DVector::from_iterator(dof, nodes.iter().flat_map(|x| x.iter().copied()));
         let qdot = DVector::zeros(q.len());
@@ -148,10 +149,11 @@ impl Cloth {
             edges,
             q,
             qdot,
+            k,
         }
     }
 
-    pub fn new_square(offset: Vector3<Float>) -> Self {
+    pub fn new_square(rotation: UnitQuaternion<Float>, offset: Vector3<Float>, k: Float) -> Self {
         let nodes = vec![
             vector![0., 0., 0.],
             vector![1., 0., 0.],
@@ -159,9 +161,9 @@ impl Cloth {
             vector![1., 1., 0.],
         ]
         .iter()
-        .map(|n| n + offset)
+        .map(|n| rotation * n + offset)
         .collect();
         let faces = vec![[0, 1, 2], [3, 2, 1]];
-        Self::new(nodes, faces)
+        Self::new(nodes, faces, k)
     }
 }

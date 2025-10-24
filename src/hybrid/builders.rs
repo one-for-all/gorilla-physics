@@ -1,4 +1,4 @@
-use na::{vector, Vector3};
+use na::{vector, UnitQuaternion, Vector3};
 
 use crate::{
     collision::halfspace::HalfSpace,
@@ -9,7 +9,7 @@ use crate::{
     },
     joint::{Joint, JointVelocity},
     spatial::transform::Transform3D,
-    WORLD_FRAME,
+    PI, WORLD_FRAME,
 };
 
 pub fn build_claw() -> Hybrid {
@@ -159,7 +159,11 @@ pub fn build_gripper_cloth() -> Hybrid {
     state.add_articulated(gripper);
     state.set_controller(0, GripperController::new(1. / 120.));
 
-    state.add_cloth(Cloth::new_square(vector![0., 0., 0.2]));
+    state.add_cloth(Cloth::new_square(
+        UnitQuaternion::from_axis_angle(&Vector3::y_axis(), -PI / 2.),
+        vector![0.5, 0., 0.1],
+        1e3,
+    ));
     state.add_halfspace(HalfSpace::new(Vector3::z_axis(), 0.));
     state
 }
@@ -178,7 +182,11 @@ pub fn build_cube_cloth() -> Hybrid {
     articulated.set_joint_v(0, JointVelocity::Float(1.0));
     state.add_articulated(articulated);
 
-    state.add_cloth(Cloth::new_square(vector![0., 0., 0.]));
+    state.add_cloth(Cloth::new_square(
+        UnitQuaternion::identity(),
+        vector![0., 0., 0.],
+        1e4,
+    ));
 
     state.disable_gravity();
 

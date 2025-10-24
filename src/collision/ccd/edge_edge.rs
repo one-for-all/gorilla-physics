@@ -69,6 +69,15 @@ pub fn edge_edge_ccd(
         if a > 1. || a < 0. || b > 1. || b < 0. {
             return None;
         }
+
+        // Use current points to find cp and n?
+        // let x1 = e1[0];
+        // let x2 = e1[1];
+        // let x3 = e2[0];
+        // let x4 = e2[1];
+        // let x12 = x2 - x1;
+        // let x34 = x4 - x3;
+
         let cp = x1 + a * x12;
         let mut n = UnitVector3::new_normalize(x12.cross(&x34));
         if (e2[0] - e1[0]).dot(&n) < 0. {
@@ -105,6 +114,31 @@ mod edge_ccd_tests {
         // Assert
         if let Some((cp, n, ws)) = ccd {
             assert_eq!(cp, vector![0., 0., 0.]);
+            assert_eq!(n, Vector3::x_axis());
+            assert_eq!(ws, [0.5, 0.5]);
+        } else {
+            panic!("not detecting collision");
+        }
+    }
+
+    #[test]
+    fn edge_edge_2() {
+        // Arrange
+        let e1 = [vector![0., -1., 0.], vector![0., 1., 0.]];
+        let e2: [Vector3<Float>; 2] =
+            [vector![0., 0., -1.], vector![0., 0., 1.]].map(|e| e + vector![0.1, 0., 0.]);
+
+        let v1 = vector![-0.1, 0., 0.];
+        let v2 = v1.clone();
+        let v3 = vector![-1.1, 0., 0.];
+        let v4 = v3.clone();
+
+        // Act
+        let ccd = edge_edge_ccd(&e1, &e2, &v1, &v2, &v3, &v4, 1.0);
+
+        // Assert
+        if let Some((cp, n, ws)) = ccd {
+            assert_vec_close!(cp, vector![-0.01, 0., 0.], 1e-5);
             assert_eq!(n, Vector3::x_axis());
             assert_eq!(ws, [0.5, 0.5]);
         } else {
