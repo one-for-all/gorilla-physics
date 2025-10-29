@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use crate::{
     collision::{
         ccd::edge_edge::{self, edge_edge_ccd},
-        mesh::edge_edge_collision,
+        mesh::{edge_edge_collision, vertex_face_collision},
     },
     flog,
     types::Float,
@@ -462,12 +462,41 @@ pub fn deformable_deformable_ccd(
     let d1_ns = d1.get_positions();
     let d1_e_coords: Vec<[Vector3<Float>; 2]> =
         d1_es.iter().map(|e| e.map(|ei| d1_ns[ei])).collect();
+    let d1_fs = &d1.faces;
+    let d1_f_coords: Vec<[Vector3<Float>; 3]> =
+        d1_fs.iter().map(|f| f.map(|fi| d1_ns[fi])).collect();
 
     let d2_es = &d2.edges;
     let d2_ns = d2.get_positions();
     let d2_e_coords: Vec<[Vector3<Float>; 2]> =
         d2_es.iter().map(|e| e.map(|ei| d2_ns[ei])).collect();
+    let d2_fs = &d2.faces;
+    let d2_f_coords: Vec<[Vector3<Float>; 3]> =
+        d2_fs.iter().map(|f| f.map(|fi| d2_ns[fi])).collect();
 
+    // d1 face - d2 point
+    for (d1_f, d1_f_coord) in izip!(d1_fs.iter(), d1_f_coords.iter()) {
+        for (i_d2, d2_n) in d2_ns.iter().enumerate() {
+            if let Some((cp, n, ws)) = vertex_face_collision(d2_n, d1_f_coord, 1e-2) {
+                let n2_ws = vec![(i_d2, 1.)];
+                let n1_ws = vec![(d1_f[0], ws[0]), (d1_f[1], ws[1]), (d1_f[2], ws[2])];
+                result.push((cp, n, n1_ws, n2_ws));
+            }
+        }
+    }
+
+    // d1 point - d2 face
+    for (i_d1, d1_n) in d1_ns.iter().enumerate() {
+        for (d2_f, d2_f_coord) in izip!(d2_fs.iter(), d2_f_coords.iter()) {
+            if let Some((cp, n, ws)) = vertex_face_collision(d1_n, d2_f_coord, 1e-2) {
+                let n1_ws = vec![(i_d1, 1.)];
+                let n2_ws = vec![(d2_f[0], ws[0]), (d2_f[1], ws[1]), (d2_f[2], ws[2])];
+                result.push((cp, -n, n1_ws, n2_ws));
+            }
+        }
+    }
+
+    // edge-edge
     for (i_d1, e1) in d1_e_coords.iter().enumerate() {
         for (i_d2, e2) in d2_e_coords.iter().enumerate() {
             let d1_e = d1_es[i_d1];
@@ -479,7 +508,8 @@ pub fn deformable_deformable_ccd(
             let v4: Vector3<Float> = v_d2.fixed_rows::<3>(d2_e[1] * 3).into();
 
             // TODO(ccd): replace with conservative ccd
-            if let Some((cp, n, w1s, w2s)) = edge_edge_collision(e1, e2, 1e-2) {
+            // if let Some((cp, n, w1s, w2s)) = edge_edge_collision(e1, e2, 1e-2) {
+            if let Some((cp, n, w1s, w2s)) = edge_edge_ccd(e1, e2, &v1, &v2, &v3, &v4, dt) {
                 let n1_ws = vec![(d1_e[0], w1s[0]), (d1_e[1], w1s[1])];
                 let n2_ws = vec![(d2_e[0], w2s[0]), (d2_e[1], w2s[1])];
 

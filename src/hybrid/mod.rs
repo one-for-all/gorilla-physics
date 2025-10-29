@@ -359,13 +359,13 @@ impl Hybrid {
                     // set jacobian for deformable1
                     for (i_node, weight) in n1_ws.iter() {
                         let icol = offset_deformable + d1_offset + i_node * 3;
-                        J.fixed_view_mut::<3, 3>(0, icol).copy_from(&(*weight * C));
+                        J.fixed_view_mut::<3, 3>(0, icol).copy_from(&(-weight * C));
                     }
 
-                    // set jacobian for deformable1
+                    // set jacobian for deformable2
                     for (i_node, weight) in n2_ws.iter() {
                         let icol = offset_deformable + d2_offset + i_node * 3;
-                        J.fixed_view_mut::<3, 3>(0, icol).copy_from(&(-weight * C));
+                        J.fixed_view_mut::<3, 3>(0, icol).copy_from(&(*weight * C));
                     }
 
                     Js.push(J);
@@ -692,7 +692,7 @@ mod hybrid_tests {
         }
     }
 
-    // #[ignore] // brittle, depends on dt
+    #[ignore] // brittle, depends on dt
     #[test]
     fn gripper() {
         // Arrange
