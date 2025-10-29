@@ -1,7 +1,7 @@
-use na::{base, dvector, DVector};
+use na::{dvector, DVector};
 
 use crate::{
-    control::navbot_control::PIModule, flog, hybrid::articulated::Articulated, types::Float,
+    control::navbot_control::PIModule, hybrid::articulated::Articulated, types::Float,
     GRAVITY,
 };
 

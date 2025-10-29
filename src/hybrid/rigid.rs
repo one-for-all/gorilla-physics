@@ -3,10 +3,9 @@ use na::{dvector, vector, DMatrix, DVector, Isometry3, Matrix3, UnitVector3, Vec
 
 use crate::{
     collision::{
-        ccd::{edge_edge::edge_edge_ccd, point_face_ccd},
-        mesh::{edge_edge_collision, vertex_face_collision},
+        ccd::edge_edge::edge_edge_ccd,
+        mesh::vertex_face_collision,
     },
-    flog,
     hybrid::{
         cloth::Cloth,
         visual::{vertex_rect_face_collision, SphereGeometry, Visual},

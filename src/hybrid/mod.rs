@@ -2,7 +2,7 @@ use clarabel::{
     algebra::{CscMatrix, MatrixMathMut},
     solver::{
         DefaultSettingsBuilder, DefaultSolver, IPSolver,
-        SupportedConeT::{self, NonnegativeConeT, SecondOrderConeT},
+        SupportedConeT::{self, SecondOrderConeT},
     },
 };
 use itertools::izip;
@@ -19,7 +19,6 @@ use crate::{
         control::{ArticulatedController, NullArticulatedController},
         rigid::{rigid_cloth_ccd, rigid_deformable_cd},
     },
-    joint::Joint,
     spatial::{
         pose::Pose, spatial_vector::SpatialVector, twist::compute_twist_transformation_matrix,
     },
@@ -492,7 +491,7 @@ impl Hybrid {
 
 #[cfg(test)]
 mod hybrid_tests {
-    use na::{vector, DVector, UnitVector3, Vector3};
+    use na::{vector, DVector, Vector3};
 
     use crate::{
         assert_vec_close,

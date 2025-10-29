@@ -1,6 +1,6 @@
-use na::{vector, Isometry, Isometry3, Point3, UnitVector3, Vector3};
+use na::{vector, Isometry3, Point3, UnitVector3, Vector3};
 
-use crate::{collision::cuboid, types::Float};
+use crate::types::Float;
 
 pub struct SphereGeometry {
     pub r: Float,

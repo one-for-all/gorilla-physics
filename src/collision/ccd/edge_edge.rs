@@ -96,7 +96,7 @@ pub fn edge_edge_ccd(
 mod edge_ccd_tests {
     use na::{vector, Vector3};
 
-    use crate::{assert_vec_close, collision::ccd::edge_edge::edge_edge_ccd, flog, types::Float};
+    use crate::{assert_vec_close, collision::ccd::edge_edge::edge_edge_ccd, types::Float};
 
     #[test]
     fn edge_edge_1() {

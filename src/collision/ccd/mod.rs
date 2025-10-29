@@ -1,6 +1,6 @@
-use na::{Matrix2, UnitVector3, Vector2, Vector3};
+use na::{UnitVector3, Vector3};
 
-use crate::{flog, types::Float};
+use crate::types::Float;
 
 pub mod edge_edge;
 pub mod solver;

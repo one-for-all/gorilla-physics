@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use itertools::{izip, Itertools};
-use na::{dvector, vector, DMatrix, DVector, UnitQuaternion, Vector3};
+use na::{vector, DMatrix, DVector, UnitQuaternion, Vector3};
 
 use crate::types::Float;
 

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use itertools::Itertools;
 use na::{vector, Isometry3, Matrix2, Matrix2x1, Point3, UnitVector3, Vector3};
 
-use crate::{flog, types::Float};
+use crate::types::Float;
 
 /// Mesh collider
 #[derive(Clone, PartialEq, Debug)]

@@ -1,12 +1,10 @@
 use std::collections::HashMap;
 
 use itertools::izip;
-use na::{vector, DMatrix, DVector, Dyn, Matrix6xX, UnitQuaternion};
+use na::{vector, DMatrix, DVector, Matrix6xX, UnitQuaternion};
 
 use crate::{
-    control::Controller,
-    flog,
-    hybrid::{control::ArticulatedController, rigid::Rigid},
+    hybrid::rigid::Rigid,
     inertia::SpatialInertia,
     joint::{Joint, JointVelocity},
     spatial::{

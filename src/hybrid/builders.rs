@@ -2,7 +2,6 @@ use na::{vector, UnitQuaternion, Vector3};
 
 use crate::{
     collision::halfspace::HalfSpace,
-    flog,
     hybrid::{
         articulated::Articulated, cloth::Cloth, control::GripperController, Deformable, Hybrid,
         Rigid,
@@ -77,7 +76,7 @@ pub fn build_claw() -> Hybrid {
         Vector3::y_axis(),
     );
 
-    let mut articulated = Articulated::new(
+    let articulated = Articulated::new(
         vec![palm, left, right],
         vec![palm_joint, left_joint, right_joint],
     );

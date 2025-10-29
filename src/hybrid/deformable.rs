@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::{flog, types::Float, GRAVITY};
+use crate::{types::Float, GRAVITY};
 use itertools::{izip, Itertools};
 use na::{vector, DMatrix, DVector, Vector3};
 use nalgebra_sparse::{CooMatrix, CsrMatrix};
