@@ -1,8 +1,8 @@
 use na::{Matrix2, UnitVector3, Vector2, Vector3};
 
-use crate::{collision::ccd::solver::solve_cubic, types::Float};
+use crate::{collision::ccd::solver::solve_cubic, flog, types::Float};
 
-/// Returns (contact point on edge 1, contact normal, barycentric coords of cp on edge 1 )
+/// Returns (contact point on edge 1, contact normal, barycentric coords of cp on edge 1, and that on edge 2)
 /// contact normal is from edge 1 to edge 2
 /// TODO: still not fail-proof at super-fast speeds
 pub fn edge_edge_ccd(
@@ -13,14 +13,15 @@ pub fn edge_edge_ccd(
     v3: &Vector3<Float>,
     v4: &Vector3<Float>,
     t_end: Float,
-) -> Option<(Vector3<Float>, UnitVector3<Float>, [Float; 2])> {
+) -> Option<(Vector3<Float>, UnitVector3<Float>, [Float; 2], [Float; 2])> {
     let x1 = e1[0];
     let x2 = e1[1];
     let x3 = e2[0];
     let x4 = e2[1];
 
     // Skip the test if edges are parallel
-    if (x4 - x3).cross(&(x2 - x1)).norm() <= 1e-6 {
+    let norm = (x4 - x3).cross(&(x2 - x1)).norm();
+    if norm <= 1e-6 {
         return None;
     }
 
@@ -85,7 +86,8 @@ pub fn edge_edge_ccd(
         if (e2[0] - e1[0]).dot(&n) < 0. {
             n = -n;
         }
-        return Some((cp, n, [1. - a, a]));
+
+        return Some((cp, n, [1. - a, a], [1. - b, b]));
     } else {
         return None;
         // panic!("no solution / infinite solution on normal equation for edge-edge CCD");
@@ -114,7 +116,7 @@ mod edge_ccd_tests {
         let ccd = edge_edge_ccd(&e1, &e2, &v1, &v2, &v3, &v4, 1.0);
 
         // Assert
-        if let Some((cp, n, ws)) = ccd {
+        if let Some((cp, n, ws, _)) = ccd {
             assert_eq!(cp, vector![0., 0., 0.]);
             assert_eq!(n, Vector3::x_axis());
             assert_eq!(ws, [0.5, 0.5]);
@@ -139,7 +141,7 @@ mod edge_ccd_tests {
         let ccd = edge_edge_ccd(&e1, &e2, &v1, &v2, &v3, &v4, 1.0);
 
         // Assert
-        if let Some((cp, n, ws)) = ccd {
+        if let Some((cp, n, ws, _)) = ccd {
             assert_vec_close!(cp, vector![-0.01, 0., 0.], 1e-5);
             assert_eq!(n, Vector3::x_axis());
             assert_eq!(ws, [0.5, 0.5]);

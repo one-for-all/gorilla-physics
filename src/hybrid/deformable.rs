@@ -1,8 +1,16 @@
 use std::collections::HashSet;
 
-use crate::{types::Float, GRAVITY};
+use crate::{
+    collision::{
+        ccd::edge_edge::{self, edge_edge_ccd},
+        mesh::edge_edge_collision,
+    },
+    flog,
+    types::Float,
+    GRAVITY,
+};
 use itertools::{izip, Itertools};
-use na::{vector, DMatrix, DVector, Vector3};
+use na::{vector, DMatrix, DVector, UnitVector3, Vector3};
 use nalgebra_sparse::{CooMatrix, CsrMatrix};
 
 /// Mass-spring modeled deformable
@@ -433,4 +441,52 @@ impl Deformable {
 
         (boundary_facets, edges)
     }
+}
+
+/// Returns a vec of (contact point, contact normal, deformable1 node weights, deformable2 node weights)
+/// Note: contact normal point outwards of deformable1
+pub fn deformable_deformable_ccd(
+    d1: &Deformable,
+    d2: &Deformable,
+    v_d1: &DVector<Float>,
+    v_d2: &DVector<Float>,
+    dt: Float,
+) -> Vec<(
+    Vector3<Float>,
+    UnitVector3<Float>,
+    Vec<(usize, Float)>,
+    Vec<(usize, Float)>,
+)> {
+    let mut result = vec![];
+    let d1_es = &d1.edges;
+    let d1_ns = d1.get_positions();
+    let d1_e_coords: Vec<[Vector3<Float>; 2]> =
+        d1_es.iter().map(|e| e.map(|ei| d1_ns[ei])).collect();
+
+    let d2_es = &d2.edges;
+    let d2_ns = d2.get_positions();
+    let d2_e_coords: Vec<[Vector3<Float>; 2]> =
+        d2_es.iter().map(|e| e.map(|ei| d2_ns[ei])).collect();
+
+    for (i_d1, e1) in d1_e_coords.iter().enumerate() {
+        for (i_d2, e2) in d2_e_coords.iter().enumerate() {
+            let d1_e = d1_es[i_d1];
+            let v1: Vector3<Float> = v_d1.fixed_rows::<3>(d1_e[0] * 3).into();
+            let v2: Vector3<Float> = v_d1.fixed_rows::<3>(d1_e[1] * 3).into();
+
+            let d2_e = d2_es[i_d2];
+            let v3: Vector3<Float> = v_d2.fixed_rows::<3>(d2_e[0] * 3).into();
+            let v4: Vector3<Float> = v_d2.fixed_rows::<3>(d2_e[1] * 3).into();
+
+            // TODO(ccd): replace with conservative ccd
+            if let Some((cp, n, w1s, w2s)) = edge_edge_collision(e1, e2, 1e-2) {
+                let n1_ws = vec![(d1_e[0], w1s[0]), (d1_e[1], w1s[1])];
+                let n2_ws = vec![(d2_e[0], w2s[0]), (d2_e[1], w2s[1])];
+
+                result.push((cp, n, n1_ws, n2_ws));
+            }
+        }
+    }
+
+    result
 }

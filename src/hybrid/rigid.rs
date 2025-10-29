@@ -2,10 +2,7 @@ use itertools::izip;
 use na::{dvector, vector, DMatrix, DVector, Isometry3, Matrix3, UnitVector3, Vector3};
 
 use crate::{
-    collision::{
-        ccd::edge_edge::edge_edge_ccd,
-        mesh::vertex_face_collision,
-    },
+    collision::{ccd::edge_edge::edge_edge_ccd, mesh::vertex_face_collision},
     hybrid::{
         cloth::Cloth,
         visual::{vertex_rect_face_collision, SphereGeometry, Visual},
@@ -234,7 +231,8 @@ pub fn rigid_deformable_cd(
 
                         // if let Some((cp, n, ws)) = edge_edge_collision(e1, e2, 1e-2) {
                         // Note: if edges have passed through each other already, normal would be opposite.
-                        if let Some((cp, n, ws)) = edge_edge_ccd(e1, e2, &v1, &v2, &v3, &v4, dt) {
+                        if let Some((cp, n, ws, _)) = edge_edge_ccd(e1, e2, &v1, &v2, &v3, &v4, dt)
+                        {
                             // TODO(ccd): this CCD still not fail proof.
                             let node_weights = vec![(edge[0], ws[0]), (edge[1], ws[1])];
                             result.push((cp, n, node_weights));
@@ -298,7 +296,8 @@ pub fn rigid_cloth_ccd(
                         let v2 = v_cloth.fixed_rows::<3>(edge[1] * 3).into();
 
                         // Note: if edges have passed through each other already, normal would be opposite.
-                        if let Some((cp, n, ws)) = edge_edge_ccd(e1, e2, &v1, &v2, &v3, &v4, dt) {
+                        if let Some((cp, n, ws, _)) = edge_edge_ccd(e1, e2, &v1, &v2, &v3, &v4, dt)
+                        {
                             // TODO(ccd): this CCD still not fail proof.
                             let node_weights = vec![(edge[0], ws[0]), (edge[1], ws[1])];
                             result.push((cp, n, node_weights));

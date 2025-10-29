@@ -365,7 +365,7 @@ pub fn edge_edge_collision(
     edgeA: &[Vector3<Float>; 2],
     edgeB: &[Vector3<Float>; 2],
     tol: Float,
-) -> Option<(Vector3<Float>, UnitVector3<Float>, [Float; 2])> {
+) -> Option<(Vector3<Float>, UnitVector3<Float>, [Float; 2], [Float; 2])> {
     let v1 = edgeA[0];
     let v2 = edgeA[1];
     let v3 = edgeB[0];
@@ -423,7 +423,7 @@ pub fn edge_edge_collision(
 
     // Note: for mesh-mesh collision, this contact normal might not be final. Need to be validated and corrected with face information by correct_contact_normal_direction.
     // because the meshes might have passed through each other already
-    Some((cp, n, [1. - w1, w1]))
+    Some((cp, n, [1. - w1, w1], [1. - w2, w2]))
 }
 
 /// Given candidate contact normal, flip the direction if opposite, or report
@@ -478,7 +478,7 @@ mod edge_edge_collision_tests {
         let collision = edge_edge_collision(&A, &B, 1e-3);
 
         // Assert
-        let (cp, n, _) = collision.expect("should detect collision");
+        let (cp, n, _, _) = collision.expect("should detect collision");
         assert_eq!(cp, vector![0., 0., 0.]); // collide at origin
         assert_align(&n, &Vector3::z_axis());
     }
@@ -493,7 +493,7 @@ mod edge_edge_collision_tests {
         let collision = edge_edge_collision(&A, &B, 1e-3);
 
         // Assert
-        let (cp, n, _) = collision.expect("should detect collision");
+        let (cp, n, _, _) = collision.expect("should detect collision");
         assert_eq!(cp, vector![0.5, 0., 0.5]);
         let n_expect = UnitVector3::new_normalize(vector![1., 0., 1.]);
         assert_align(&n, &n_expect);
@@ -574,7 +574,8 @@ pub fn mesh_mesh_collision(
                 other_vertices[other_edge.0[0]],
                 other_vertices[other_edge.0[1]],
             ];
-            if let Some((contact_point, contact_normal, _)) = edge_edge_collision(&e, &other_e, tol)
+            if let Some((contact_point, contact_normal, _, _)) =
+                edge_edge_collision(&e, &other_e, tol)
             {
                 let other_faces = &other_mesh.faces;
                 let f_A = other_faces[other_edge.1];

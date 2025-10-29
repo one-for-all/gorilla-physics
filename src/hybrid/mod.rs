@@ -13,10 +13,12 @@ use na::{
 
 use crate::{
     collision::halfspace::HalfSpace,
+    flog,
     hybrid::{
         articulated::Articulated,
         cloth::Cloth,
         control::{ArticulatedController, NullArticulatedController},
+        deformable::deformable_deformable_ccd,
         rigid::{rigid_cloth_ccd, rigid_deformable_cd},
     },
     spatial::{
@@ -336,6 +338,43 @@ impl Hybrid {
             icol_arti += dof;
         }
 
+        // deformable-deformable collision detection
+        let mut d1_offset = 0;
+        for (i1, d1) in self.deformables.iter().enumerate() {
+            let v1 = &v_deformables[i1];
+            let mut d2_offset = d1_offset + d1.dof();
+            for (i2, d2) in self.deformables.iter().enumerate().skip(i1 + 1) {
+                let v2 = &v_deformables[i2];
+                let contacts = deformable_deformable_ccd(d1, d2, v1, v2, dt);
+                for (cp, n, n1_ws, n2_ws) in contacts.iter() {
+                    let mut J = Matrix3xX::zeros(total_dof);
+
+                    let (t, b) = tangentials(n);
+                    let C = Matrix3::from_rows(&[
+                        1. / mu * n.transpose(),
+                        t.transpose(),
+                        b.transpose(),
+                    ]);
+
+                    // set jacobian for deformable1
+                    for (i_node, weight) in n1_ws.iter() {
+                        let icol = offset_deformable + d1_offset + i_node * 3;
+                        J.fixed_view_mut::<3, 3>(0, icol).copy_from(&(*weight * C));
+                    }
+
+                    // set jacobian for deformable1
+                    for (i_node, weight) in n2_ws.iter() {
+                        let icol = offset_deformable + d2_offset + i_node * 3;
+                        J.fixed_view_mut::<3, 3>(0, icol).copy_from(&(-weight * C));
+                    }
+
+                    Js.push(J);
+                }
+                d2_offset += d2.dof();
+            }
+            d1_offset += d1.dof();
+        }
+
         let mut A: DMatrix<Float> = DMatrix::zeros(total_dof, total_dof);
 
         // Assemble A for rigid bodies
@@ -653,7 +692,7 @@ mod hybrid_tests {
         }
     }
 
-    #[ignore] // brittle, depends on dt
+    // #[ignore] // brittle, depends on dt
     #[test]
     fn gripper() {
         // Arrange
