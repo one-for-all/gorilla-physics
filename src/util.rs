@@ -3,7 +3,9 @@ use std::{
     io::{BufReader, Read},
 };
 
-use na::{DMatrix, DVector, Matrix3xX, Matrix4x3, Quaternion, SymmetricEigen, UnitQuaternion};
+use na::{
+    DMatrix, DVector, Matrix3xX, Matrix4x3, Quaternion, SymmetricEigen, UnitQuaternion, UnitVector3,
+};
 use nalgebra::{Matrix3, Vector3};
 use web_sys::{self};
 
@@ -106,6 +108,20 @@ pub fn skew_symmetric(v: &Vector3<Float>) -> Matrix3<Float> {
         v.z,    0.0,    -v.x,
         -v.y,   v.x,    0.0
     );
+}
+
+/// Given a normal direction, produces two tangential directions
+pub fn tangentials(n: &UnitVector3<Float>) -> (UnitVector3<Float>, UnitVector3<Float>) {
+    let t = {
+        let candidate = n.cross(&Vector3::x_axis());
+        if candidate.norm() != 0.0 {
+            UnitVector3::new_normalize(candidate)
+        } else {
+            UnitVector3::new_normalize(n.cross(&Vector3::y_axis()))
+        }
+    };
+    let b = UnitVector3::new_normalize(n.cross(&t));
+    (t, b)
 }
 
 /// Project a matrix to be symmetric & positive semi-definite

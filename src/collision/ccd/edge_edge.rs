@@ -80,6 +80,8 @@ pub fn edge_edge_ccd(
 
         let cp = x1 + a * x12;
         let mut n = UnitVector3::new_normalize(x12.cross(&x34));
+
+        // TODO: this might be wrong. fix this.
         if (e2[0] - e1[0]).dot(&n) < 0. {
             n = -n;
         }

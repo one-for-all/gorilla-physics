@@ -202,6 +202,17 @@ impl Deformable {
             .fold(Vector3::<Float>::zeros(), |acc, v| acc + v)
     }
 
+    pub fn translate(&mut self, pos: &Vector3<Float>) {
+        let mut i = 0;
+        while i < self.dof() {
+            let mut q = self.q.fixed_rows_mut::<3>(i);
+            for j in 0..3 {
+                q[j] += pos[j];
+            }
+            i += 3;
+        }
+    }
+
     pub fn get_positions(&self) -> Vec<Vector3<Float>> {
         let mut p = vec![];
         let mut i = 0;

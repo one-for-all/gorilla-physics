@@ -363,7 +363,7 @@ pub async fn createCuboidCart() -> InterfaceHybrid {
 
 #[wasm_bindgen]
 pub async fn createGripperHybrid() -> InterfaceHybrid {
-    let state = build_gripper_cloth();
+    let state = build_gripper_cube();
 
     InterfaceHybrid { inner: state }
 }

@@ -24,7 +24,7 @@ use crate::{
         pose::Pose, spatial_vector::SpatialVector, twist::compute_twist_transformation_matrix,
     },
     types::Float,
-    util::{quaternion_derivative, skew_symmetric},
+    util::{quaternion_derivative, skew_symmetric, tangentials},
 };
 
 pub use deformable::Deformable;
@@ -161,16 +161,7 @@ impl Hybrid {
             for (i_deform, deformable) in self.deformables.iter().enumerate() {
                 for (i_node, node) in deformable.get_positions().iter().enumerate() {
                     if halfspace.has_inside(node) {
-                        // t and b are contact frame tangential directions
-                        let t = {
-                            let candidate = n.cross(&Vector3::x_axis());
-                            if candidate.norm() != 0.0 {
-                                UnitVector3::new_normalize(candidate)
-                            } else {
-                                UnitVector3::new_normalize(n.cross(&Vector3::y_axis()))
-                            }
-                        };
-                        let b = UnitVector3::new_normalize(n.cross(&t));
+                        let (t, b) = tangentials(n);
                         let C = Matrix3::from_rows(&[
                             1. / mu * n.transpose(),
                             t.transpose(),
@@ -202,16 +193,7 @@ impl Hybrid {
                         let n = UnitVector3::new_normalize(translation - pos);
                         let cp = pos;
 
-                        // t and b are contact frame tangential directions
-                        let t = {
-                            let candidate = n.cross(&Vector3::x_axis());
-                            if candidate.norm() != 0.0 {
-                                UnitVector3::new_normalize(candidate)
-                            } else {
-                                UnitVector3::new_normalize(n.cross(&Vector3::y_axis()))
-                            }
-                        };
-                        let b = UnitVector3::new_normalize(n.cross(&t));
+                        let (t, b) = tangentials(&n);
                         let C = Matrix3::from_rows(&[
                             1. / mu * n.transpose(),
                             t.transpose(),
@@ -258,16 +240,7 @@ impl Hybrid {
                     for (cp, n, node_weights) in contacts.iter() {
                         let mut J = Matrix3xX::zeros(total_dof);
 
-                        // t and b are contact frame tangential directions
-                        let t = {
-                            let candidate = n.cross(&Vector3::x_axis());
-                            if candidate.norm() != 0.0 {
-                                UnitVector3::new_normalize(candidate)
-                            } else {
-                                UnitVector3::new_normalize(n.cross(&Vector3::y_axis()))
-                            }
-                        };
-                        let b = UnitVector3::new_normalize(n.cross(&t));
+                        let (t, b) = tangentials(n);
                         let C = Matrix3::from_rows(&[
                             1. / mu * n.transpose(),
                             t.transpose(),
@@ -325,16 +298,7 @@ impl Hybrid {
                     for (cp, n, node_weights) in contacts.iter() {
                         let mut J = Matrix3xX::zeros(total_dof);
 
-                        // t and b are contact frame tangential directions
-                        let t = {
-                            let candidate = n.cross(&Vector3::x_axis());
-                            if candidate.norm() != 0.0 {
-                                UnitVector3::new_normalize(candidate)
-                            } else {
-                                UnitVector3::new_normalize(n.cross(&Vector3::y_axis()))
-                            }
-                        };
-                        let b = UnitVector3::new_normalize(n.cross(&t));
+                        let (t, b) = tangentials(n);
                         let C = Matrix3::from_rows(&[
                             1. / mu * n.transpose(),
                             t.transpose(),
