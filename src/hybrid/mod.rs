@@ -692,7 +692,7 @@ mod hybrid_tests {
         }
     }
 
-    #[ignore] // brittle, depends on dt
+    // #[ignore] // brittle, depends on dt
     #[test]
     fn gripper() {
         // Arrange

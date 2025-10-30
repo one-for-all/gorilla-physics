@@ -2,7 +2,10 @@ use std::collections::HashSet;
 
 use crate::{
     collision::{
-        ccd::edge_edge::{self, edge_edge_ccd},
+        ccd::{
+            accd::edge_edge::{edge_edge_accd, edge_edge_contact},
+            edge_edge::{self, edge_edge_ccd},
+        },
         mesh::{edge_edge_collision, vertex_face_collision},
     },
     flog,
@@ -498,18 +501,32 @@ pub fn deformable_deformable_ccd(
 
     // edge-edge
     for (i_d1, e1) in d1_e_coords.iter().enumerate() {
-        for (i_d2, e2) in d2_e_coords.iter().enumerate() {
-            let d1_e = d1_es[i_d1];
-            let v1: Vector3<Float> = v_d1.fixed_rows::<3>(d1_e[0] * 3).into();
-            let v2: Vector3<Float> = v_d1.fixed_rows::<3>(d1_e[1] * 3).into();
+        let d1_e = d1_es[i_d1];
+        let v1: Vector3<Float> = v_d1.fixed_rows::<3>(d1_e[0] * 3).into();
+        let v2: Vector3<Float> = v_d1.fixed_rows::<3>(d1_e[1] * 3).into();
 
+        let ea0_t0 = &e1[0];
+        let ea1_t0 = &e1[1];
+        let ea0_t1 = ea0_t0 + v1 * dt;
+        let ea1_t1 = ea1_t0 + v2 * dt;
+
+        for (i_d2, e2) in d2_e_coords.iter().enumerate() {
             let d2_e = d2_es[i_d2];
             let v3: Vector3<Float> = v_d2.fixed_rows::<3>(d2_e[0] * 3).into();
             let v4: Vector3<Float> = v_d2.fixed_rows::<3>(d2_e[1] * 3).into();
 
-            // TODO(ccd): replace with conservative ccd
-            // if let Some((cp, n, w1s, w2s)) = edge_edge_collision(e1, e2, 1e-2) {
-            if let Some((cp, n, w1s, w2s)) = edge_edge_ccd(e1, e2, &v1, &v2, &v3, &v4, dt) {
+            let eb0_t0 = &e2[0];
+            let eb1_t0 = &e2[1];
+            let eb0_t1 = eb0_t0 + v3 * dt;
+            let eb1_t1 = eb1_t0 + v4 * dt;
+            let (collision, toi) = edge_edge_accd(
+                ea0_t0, ea1_t0, eb0_t0, eb1_t0, &ea0_t1, &ea1_t1, &eb0_t1, &eb1_t1, 0., 1.0,
+            );
+            if collision {
+                let (cp, n, w1s, w2s) = edge_edge_contact(
+                    ea0_t0, ea1_t0, eb0_t0, eb1_t0, &ea0_t1, &ea1_t1, &eb0_t1, &eb1_t1, toi,
+                );
+
                 let n1_ws = vec![(d1_e[0], w1s[0]), (d1_e[1], w1s[1])];
                 let n2_ws = vec![(d2_e[0], w2s[0]), (d2_e[1], w2s[1])];
 

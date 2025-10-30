@@ -2,6 +2,7 @@ use na::{UnitVector3, Vector3};
 
 use crate::types::Float;
 
+pub mod accd;
 pub mod edge_edge;
 pub mod solver;
 
