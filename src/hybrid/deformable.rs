@@ -520,7 +520,7 @@ pub fn deformable_deformable_ccd(
             let eb0_t1 = eb0_t0 + v3 * dt;
             let eb1_t1 = eb1_t0 + v4 * dt;
             let (collision, toi) = edge_edge_accd(
-                ea0_t0, ea1_t0, eb0_t0, eb1_t0, &ea0_t1, &ea1_t1, &eb0_t1, &eb1_t1, 0., 1.0,
+                ea0_t0, ea1_t0, eb0_t0, eb1_t0, &ea0_t1, &ea1_t1, &eb0_t1, &eb1_t1, 1e-3, 1.0,
             );
             if collision {
                 let (cp, n, w1s, w2s) = edge_edge_contact(

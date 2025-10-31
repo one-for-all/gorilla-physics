@@ -2,7 +2,13 @@ use itertools::izip;
 use na::{dvector, vector, DMatrix, DVector, Isometry3, Matrix3, UnitVector3, Vector3};
 
 use crate::{
-    collision::{ccd::edge_edge::edge_edge_ccd, mesh::vertex_face_collision},
+    collision::{
+        ccd::{
+            accd::edge_edge::{edge_edge_accd, edge_edge_contact},
+            edge_edge::edge_edge_ccd,
+        },
+        mesh::vertex_face_collision,
+    },
     hybrid::{
         cloth::Cloth,
         visual::{vertex_rect_face_collision, SphereGeometry, Visual},
@@ -221,20 +227,35 @@ pub fn rigid_deformable_cd(
                     let v3 = body_twist.linear + body_twist.angular.cross(&cuboid_edge[0]);
                     let v4 = body_twist.linear + body_twist.angular.cross(&cuboid_edge[1]);
 
+                    let e2 = cuboid_edge;
+                    let eb0_t0 = &e2[0];
+                    let eb1_t0 = &e2[1];
+                    let eb0_t1 = eb0_t0 + v3 * dt;
+                    let eb1_t1 = eb1_t0 + v4 * dt;
+
                     for (i_edge, deformable_e_coords) in deformable_edge_coords.iter().enumerate() {
-                        let e2 = cuboid_edge;
                         let e1 = deformable_e_coords;
 
                         let edge = deformable_edges[i_edge];
-                        let v1 = v_deformable.fixed_rows::<3>(edge[0] * 3).into();
-                        let v2 = v_deformable.fixed_rows::<3>(edge[1] * 3).into();
+                        let v1: Vector3<Float> = v_deformable.fixed_rows::<3>(edge[0] * 3).into();
+                        let v2: Vector3<Float> = v_deformable.fixed_rows::<3>(edge[1] * 3).into();
 
-                        // if let Some((cp, n, ws)) = edge_edge_collision(e1, e2, 1e-2) {
-                        // Note: if edges have passed through each other already, normal would be opposite.
-                        if let Some((cp, n, ws, _)) = edge_edge_ccd(e1, e2, &v1, &v2, &v3, &v4, dt)
-                        {
-                            // TODO(ccd): this CCD still not fail proof.
-                            let node_weights = vec![(edge[0], ws[0]), (edge[1], ws[1])];
+                        let ea0_t0 = &e1[0];
+                        let ea1_t0 = &e1[1];
+                        let ea0_t1 = ea0_t0 + v1 * dt;
+                        let ea1_t1 = ea1_t0 + v2 * dt;
+
+                        let (collision, toi) = edge_edge_accd(
+                            ea0_t0, ea1_t0, eb0_t0, eb1_t0, &ea0_t1, &ea1_t1, &eb0_t1, &eb1_t1,
+                            1e-3, 1.0,
+                        );
+                        if collision {
+                            let (cp, n, w1s, _w2s) = edge_edge_contact(
+                                ea0_t0, ea1_t0, eb0_t0, eb1_t0, &ea0_t1, &ea1_t1, &eb0_t1, &eb1_t1,
+                                toi,
+                            );
+
+                            let node_weights = vec![(edge[0], w1s[0]), (edge[1], w1s[1])];
                             result.push((cp, n, node_weights));
                         }
                     }
