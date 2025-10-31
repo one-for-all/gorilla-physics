@@ -146,7 +146,7 @@ pub fn build_gripper_cube() -> Hybrid {
     state.add_articulated(gripper);
     state.set_controller(0, GripperController::new(1. / 120.));
 
-    state.add_deformable(Deformable::new_dense_cube(1., 1, 1e3));
+    state.add_deformable(Deformable::new_dense_cube(1., 2, 1e3));
 
     let mut cube = Deformable::new_dense_cube(1., 1, 1e3);
     cube.translate(&vector![-2., 0., 0.]);

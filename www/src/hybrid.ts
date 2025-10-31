@@ -86,7 +86,7 @@ Simulator.prototype.addHybrid = function (state: InterfaceHybrid) {
   for (let i = 0; i < face_ns.length; i++) {
     const face_n = face_ns[i];
     faces_array.push(all_faces.subarray(offset, offset + face_n * 3));
-    offset += face_n;
+    offset += face_n * 3;
   }
 
   for (let i = 0; i < dofs.length; i++) {
