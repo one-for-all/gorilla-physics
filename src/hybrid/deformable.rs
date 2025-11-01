@@ -483,8 +483,31 @@ pub fn deformable_deformable_ccd(
 
     // d1 face - d2 point
     for (d1_f, d1_f_coord) in izip!(d1_fs.iter(), d1_f_coords.iter()) {
+        let t0_t0 = &d1_f_coord[0];
+        let t1_t0 = &d1_f_coord[1];
+        let t2_t0 = &d1_f_coord[2];
+
+        let v2: Vector3<Float> = v_d1.fixed_rows::<3>(d1_f[0] * 3).into();
+        let v3: Vector3<Float> = v_d1.fixed_rows::<3>(d1_f[1] * 3).into();
+        let v4: Vector3<Float> = v_d1.fixed_rows::<3>(d1_f[2] * 3).into();
+
+        let t0_t1 = t0_t0 + v2 * dt;
+        let t1_t1 = t1_t0 + v3 * dt;
+        let t2_t1 = t2_t0 + v4 * dt;
+
         for (i_d2, d2_n) in d2_ns.iter().enumerate() {
-            if let Some((cp, n, ws)) = vertex_face_collision(d2_n, d1_f_coord, 1e-2) {
+            let p_t0 = d2_n;
+            let v1: Vector3<Float> = v_d2.fixed_rows::<3>(i_d2 * 3).into();
+            let p_t1 = p_t0 + v1 * dt;
+
+            let toi = point_triangle_accd(
+                p_t0, t0_t0, t1_t0, t2_t0, &p_t1, &t0_t1, &t1_t1, &t2_t1, 1e-3, 1.0,
+            );
+            if let Some(toi) = toi {
+                let (cp, n, ws) = point_triangle_contact(
+                    p_t0, t0_t0, t1_t0, t2_t0, &p_t1, &t0_t1, &t1_t1, &t2_t1, toi,
+                );
+
                 let n2_ws = vec![(i_d2, 1.)];
                 let n1_ws = vec![(d1_f[0], ws[0]), (d1_f[1], ws[1]), (d1_f[2], ws[2])];
                 result.push((cp, n, n1_ws, n2_ws));
