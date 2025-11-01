@@ -128,7 +128,7 @@ pub fn point_triangle_accd(
     t2_t1: &Vector3<Float>,
     min_distance: Float,
     tmax: Float,
-) -> (bool, Float) {
+) -> Option<Float> {
     let initial_distance = point_triangle_distance(p_t0, t0_t0, t1_t0, t2_t0);
     if initial_distance <= min_distance * min_distance {
         // TODO(log): log this only at warning level
@@ -137,7 +137,7 @@ pub fn point_triangle_accd(
             initial_distance.sqrt(),
             min_distance
         );
-        return (true, 0.);
+        return Some(0.);
     }
 
     let mut dp = p_t1 - p_t0;
@@ -158,7 +158,7 @@ pub fn point_triangle_accd(
             .max(dt2.norm_squared())
             .sqrt();
     if max_disp_mag == 0. {
-        return (false, Float::INFINITY);
+        return None;
     }
 
     let distance_squared = |x: &SVector<Float, 12>| {

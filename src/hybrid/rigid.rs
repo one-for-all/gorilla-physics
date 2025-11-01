@@ -245,11 +245,11 @@ pub fn rigid_deformable_cd(
                         let ea0_t1 = ea0_t0 + v1 * dt;
                         let ea1_t1 = ea1_t0 + v2 * dt;
 
-                        let (collision, toi) = edge_edge_accd(
+                        let toi = edge_edge_accd(
                             ea0_t0, ea1_t0, eb0_t0, eb1_t0, &ea0_t1, &ea1_t1, &eb0_t1, &eb1_t1,
                             1e-3, 1.0,
                         );
-                        if collision {
+                        if let Some(toi) = toi {
                             let (cp, n, w1s, _w2s) = edge_edge_contact(
                                 ea0_t0, ea1_t0, eb0_t0, eb1_t0, &ea0_t1, &ea1_t1, &eb0_t1, &eb1_t1,
                                 toi,

@@ -230,7 +230,7 @@ pub fn edge_edge_distance(
 
 /// Computes the time of impact between two edges using Additive CCD
 /// initial positions and final positions of two edges are given.
-/// Returns (whether collision, time of impact)
+/// Returns (time of impact) if collision
 pub fn edge_edge_accd(
     ea0_t0: &Vector3<Float>,
     ea1_t0: &Vector3<Float>,
@@ -242,7 +242,7 @@ pub fn edge_edge_accd(
     eb1_t1: &Vector3<Float>,
     min_distance: Float,
     tmax: Float,
-) -> (bool, Float) {
+) -> Option<Float> {
     let initial_distance = edge_edge_distance(ea0_t0, ea1_t0, eb0_t0, eb1_t0);
 
     if initial_distance <= min_distance * min_distance {
@@ -252,7 +252,7 @@ pub fn edge_edge_accd(
             initial_distance.sqrt(),
             min_distance
         );
-        return (true, 0.);
+        return Some(0.);
     }
 
     let mut dea0 = ea0_t1 - ea0_t0;
@@ -269,7 +269,7 @@ pub fn edge_edge_accd(
     let max_disp_mag = dea0.norm_squared().max(dea1.norm_squared()).sqrt()
         + deb0.norm_squared().max(deb1.norm_squared()).sqrt();
     if max_disp_mag == 0. {
-        return (false, Float::INFINITY);
+        return None;
     }
 
     let min_distance_sq = min_distance * min_distance;

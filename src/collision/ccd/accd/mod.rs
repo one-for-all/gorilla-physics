@@ -22,7 +22,7 @@ const DEFAULT_CONSERVATIVE_RESCALING: Float = 0.9;
 /// max_disp_mag: Maximum displacement magnitude
 /// min_distance: The minimum distance between the objects
 /// tmax: The maximum time to check for collisions
-/// Returns (whether collision, time of impact)
+/// Returns (time of impact) if collision
 pub fn additive_ccd<F>(
     mut x: SVector<Float, 12>,
     dx: SVector<Float, 12>,
@@ -30,7 +30,7 @@ pub fn additive_ccd<F>(
     max_disp_mag: Float,
     min_distance: Float,
     tmax: Float,
-) -> (bool, Float)
+) -> Option<Float>
 where
     F: Fn(&SVector<Float, 12>) -> Float,
 {
@@ -74,7 +74,7 @@ where
 
         toi += toi_lower_bound;
         if toi > tmax {
-            return (false, Float::INFINITY); // collision occurs after tmax
+            return None; // collision occurs after tmax
         }
 
         if i == max_iterations - 1 {
@@ -86,7 +86,7 @@ where
         }
     }
 
-    (true, toi)
+    Some(toi)
 }
 
 /// Stack 4 Vector3 into a Vector12

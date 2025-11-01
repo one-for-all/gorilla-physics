@@ -511,10 +511,10 @@ pub fn deformable_deformable_ccd(
             let t1_t1 = t1_t0 + v3 * dt;
             let t2_t1 = t2_t0 + v4 * dt;
 
-            let (collision, toi) = point_triangle_accd(
+            let toi = point_triangle_accd(
                 p_t0, t0_t0, t1_t0, t2_t0, &p_t1, &t0_t1, &t1_t1, &t2_t1, 1e-3, 1.0,
             );
-            if collision {
+            if let Some(toi) = toi {
                 let (cp, n, ws) = point_triangle_contact(
                     p_t0, t0_t0, t1_t0, t2_t0, &p_t1, &t0_t1, &t1_t1, &t2_t1, toi,
                 );
@@ -546,10 +546,10 @@ pub fn deformable_deformable_ccd(
             let eb1_t0 = &e2[1];
             let eb0_t1 = eb0_t0 + v3 * dt;
             let eb1_t1 = eb1_t0 + v4 * dt;
-            let (collision, toi) = edge_edge_accd(
+            let toi = edge_edge_accd(
                 ea0_t0, ea1_t0, eb0_t0, eb1_t0, &ea0_t1, &ea1_t1, &eb0_t1, &eb1_t1, 1e-3, 1.0,
             );
-            if collision {
+            if let Some(toi) = toi {
                 let (cp, n, w1s, w2s) = edge_edge_contact(
                     ea0_t0, ea1_t0, eb0_t0, eb1_t0, &ea0_t1, &ea1_t1, &eb0_t1, &eb1_t1, toi,
                 );
