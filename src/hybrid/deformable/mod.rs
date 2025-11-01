@@ -1,18 +1,10 @@
 use std::collections::HashSet;
 
 use crate::{
-    collision::{
-        ccd::{
-            accd::{
-                edge_edge::{edge_edge_accd, edge_edge_contact},
-                point_triangle::{point_triangle_accd, point_triangle_contact},
-            },
-            edge_edge::{self, edge_edge_ccd},
-            point_face_ccd,
-        },
-        mesh::{edge_edge_collision, vertex_face_collision},
+    collision::ccd::accd::{
+        edge_edge::{edge_edge_accd, edge_edge_contact},
+        point_triangle::{point_triangle_accd, point_triangle_contact},
     },
-    flog,
     types::Float,
     GRAVITY,
 };
