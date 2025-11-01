@@ -313,7 +313,7 @@ pub fn read_mesh(content: &str) -> (Vec<Vector3<Float>>, Vec<Vec<usize>>) {
 }
 
 /// Computes the barycentric coordinates of p projected on the triangle formed
-/// by (p, p + u, p + v).
+/// by (q, q + u, q + v).
 /// Ref: Computing the Barycentric Coordinates of a Projected Point, by Wolfgang
 /// Heidrich, 2005
 pub fn projected_barycentric_coord(

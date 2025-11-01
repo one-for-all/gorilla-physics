@@ -3,8 +3,12 @@ use std::collections::HashSet;
 use crate::{
     collision::{
         ccd::{
-            accd::edge_edge::{edge_edge_accd, edge_edge_contact},
+            accd::{
+                edge_edge::{edge_edge_accd, edge_edge_contact},
+                point_triangle::{point_triangle_accd, point_triangle_contact},
+            },
             edge_edge::{self, edge_edge_ccd},
+            point_face_ccd,
         },
         mesh::{edge_edge_collision, vertex_face_collision},
     },
@@ -490,8 +494,31 @@ pub fn deformable_deformable_ccd(
 
     // d1 point - d2 face
     for (i_d1, d1_n) in d1_ns.iter().enumerate() {
+        let p_t0 = d1_n;
+        let v1: Vector3<Float> = v_d1.fixed_rows::<3>(i_d1 * 3).into();
+        let p_t1 = p_t0 + v1 * dt;
+
         for (d2_f, d2_f_coord) in izip!(d2_fs.iter(), d2_f_coords.iter()) {
-            if let Some((cp, n, ws)) = vertex_face_collision(d1_n, d2_f_coord, 1e-2) {
+            let t0_t0 = &d2_f_coord[0];
+            let t1_t0 = &d2_f_coord[1];
+            let t2_t0 = &d2_f_coord[2];
+
+            let v2: Vector3<Float> = v_d2.fixed_rows::<3>(d2_f[0] * 3).into();
+            let v3: Vector3<Float> = v_d2.fixed_rows::<3>(d2_f[1] * 3).into();
+            let v4: Vector3<Float> = v_d2.fixed_rows::<3>(d2_f[2] * 3).into();
+
+            let t0_t1 = t0_t0 + v2 * dt;
+            let t1_t1 = t1_t0 + v3 * dt;
+            let t2_t1 = t2_t0 + v4 * dt;
+
+            let (collision, toi) = point_triangle_accd(
+                p_t0, t0_t0, t1_t0, t2_t0, &p_t1, &t0_t1, &t1_t1, &t2_t1, 1e-3, 1.0,
+            );
+            if collision {
+                let (cp, n, ws) = point_triangle_contact(
+                    p_t0, t0_t0, t1_t0, t2_t0, &p_t1, &t0_t1, &t1_t1, &t2_t1, toi,
+                );
+
                 let n1_ws = vec![(i_d1, 1.)];
                 let n2_ws = vec![(d2_f[0], ws[0]), (d2_f[1], ws[1]), (d2_f[2], ws[2])];
                 result.push((cp, -n, n1_ws, n2_ws));

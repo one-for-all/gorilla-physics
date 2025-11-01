@@ -5,7 +5,7 @@ use na::{DVector, Matrix2, Normed, SVector, UnitVector3, Vector, Vector2, Vector
 use crate::{
     collision::ccd::accd::{
         additive_ccd, line_line::line_line_distance, point_line::point_line_distance,
-        point_point::point_point_distance,
+        point_point::point_point_distance, stack,
     },
     flog,
     types::Float,
@@ -245,7 +245,7 @@ pub fn edge_edge_accd(
 ) -> (bool, Float) {
     let initial_distance = edge_edge_distance(ea0_t0, ea1_t0, eb0_t0, eb1_t0);
 
-    if initial_distance < min_distance * min_distance {
+    if initial_distance <= min_distance * min_distance {
         // TODO(log): log this only at warning level
         flog!(
             "Initial distance {} ≤ d_min={}, returning toi=0!",
@@ -361,22 +361,4 @@ pub fn edge_edge_contact(
             A, b
         );
     }
-}
-
-/// Stack 4 Vector3 into a Vector12
-fn stack(
-    a: &Vector3<Float>,
-    b: &Vector3<Float>,
-    c: &Vector3<Float>,
-    d: &Vector3<Float>,
-) -> SVector<Float, 12> {
-    #[rustfmt::skip]
-   let s = SVector::<Float, 12>::from_row_slice(&[
-        a.x, a.y, a.z,
-        b.x, b.y, b.z,
-        c.x, c.y, c.z,
-        d.x, d.y, d.z,
-    ]);
-
-    s
 }

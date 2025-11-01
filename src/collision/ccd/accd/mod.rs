@@ -1,14 +1,16 @@
 //! Additive CCD implementation
 //! ref: Codimensional Incremental Potential Contact, Li et. al, 2021
 
-use na::SVector;
+use na::{SVector, Vector3};
 
 use crate::{flog, types::Float};
 
 pub mod edge_edge;
 pub mod line_line;
 pub mod point_line;
+pub mod point_plane;
 pub mod point_point;
+pub mod point_triangle;
 
 const DEFAULT_MAX_ITERATIONS: usize = 10_000_000;
 const DEFAULT_CONSERVATIVE_RESCALING: Float = 0.9;
@@ -85,4 +87,22 @@ where
     }
 
     (true, toi)
+}
+
+/// Stack 4 Vector3 into a Vector12
+fn stack(
+    a: &Vector3<Float>,
+    b: &Vector3<Float>,
+    c: &Vector3<Float>,
+    d: &Vector3<Float>,
+) -> SVector<Float, 12> {
+    #[rustfmt::skip]
+   let s = SVector::<Float, 12>::from_row_slice(&[
+        a.x, a.y, a.z,
+        b.x, b.y, b.z,
+        c.x, c.y, c.z,
+        d.x, d.y, d.z,
+    ]);
+
+    s
 }
