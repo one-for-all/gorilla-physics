@@ -12,6 +12,8 @@ use itertools::{izip, Itertools};
 use na::{vector, DMatrix, DVector, UnitVector3, Vector3};
 use nalgebra_sparse::{CooMatrix, CsrMatrix};
 
+pub mod constructor;
+
 /// Mass-spring modeled deformable
 pub struct Deformable {
     pub nodes: Vec<Vector3<Float>>,
@@ -24,10 +26,16 @@ pub struct Deformable {
     pub qdot: DVector<Float>,
 
     pub k: Float,
+    pub mass: Float,
 }
 
 impl Deformable {
-    pub fn new(nodes: Vec<Vector3<Float>>, tetrahedra: Vec<Vec<usize>>, k: Float) -> Self {
+    pub fn new(
+        nodes: Vec<Vector3<Float>>,
+        tetrahedra: Vec<Vec<usize>>,
+        k: Float,
+        mass: Float,
+    ) -> Self {
         let dof = nodes.len() * 3;
         let q = DVector::from_iterator(dof, nodes.iter().flat_map(|x| x.iter().copied()));
         let qdot = DVector::zeros(q.len());
@@ -42,6 +50,7 @@ impl Deformable {
             q,
             qdot,
             k: k,
+            mass,
         }
     }
 
@@ -54,7 +63,7 @@ impl Deformable {
         ];
         let tetrahedra = vec![vec![0, 1, 2, 3]];
 
-        Deformable::new(nodes, tetrahedra, 1e5)
+        Deformable::new(nodes, tetrahedra, 1e5, 1.0)
     }
 
     pub fn new_pyramid() -> Self {
@@ -72,7 +81,7 @@ impl Deformable {
             vec![0, 1, 3, 5],
             vec![0, 3, 4, 5],
         ];
-        Self::new(nodes, tetrahedra, 1e5)
+        Self::new(nodes, tetrahedra, 1e5, 1.0)
     }
 
     pub fn new_octahedron() -> Self {
@@ -97,7 +106,9 @@ impl Deformable {
             vec![0, 1, 5, 6],
             vec![0, 5, 4, 6],
         ];
-        Self::new(nodes, tetrahedra, 1e5)
+
+        let mass = nodes.len() as Float;
+        Self::new(nodes, tetrahedra, 1e5, mass)
     }
 
     pub fn new_cube(k: Float) -> Self {
@@ -125,7 +136,9 @@ impl Deformable {
         //     vec![6, 7, 5, 4], // back right
         //     vec![6, 0, 7, 4], // center
         // ];
-        Self::new(nodes, tetrahedra, k)
+
+        let mass = nodes.len() as Float;
+        Self::new(nodes, tetrahedra, k, mass)
     }
 
     /// size is side length, n is number of little cubes in each dimension
@@ -199,7 +212,8 @@ impl Deformable {
             }
         }
 
-        Self::new(nodes, tetrahedra, k)
+        let mass = nodes.len() as Float;
+        Self::new(nodes, tetrahedra, k, mass)
     }
 
     /// Linear momentum assuming mass = 1
@@ -334,18 +348,25 @@ impl Deformable {
         let f_total = f_elastic + f_damping + f_gravity;
         let m_v0 = -dt * f_total; // momentum residual with velocity at t0
 
-        let A = self.mass_matrix();
+        let A_inverse = self.mass_matrix_inverse();
         let v0 = &self.qdot;
-        let v_star = v0 - A.clone().try_inverse().unwrap() * m_v0;
+        let v_star = v0 - A_inverse * m_v0;
 
         v_star
     }
 
     pub fn mass_matrix(&self) -> DMatrix<Float> {
         let dof = self.dof();
-        let mass = 1.0;
-        let M: DMatrix<Float> = mass * DMatrix::identity(dof, dof); // mass matrix
+        let node_mass = self.mass / self.nodes.len() as Float;
+        let M: DMatrix<Float> = node_mass * DMatrix::identity(dof, dof); // mass matrix
         M
+    }
+
+    pub fn mass_matrix_inverse(&self) -> DMatrix<Float> {
+        let dof = self.dof();
+        let node_mass = self.mass / self.nodes.len() as Float;
+        let node_mass_inverse = 1. / node_mass;
+        node_mass_inverse * DMatrix::identity(dof, dof)
     }
 
     pub fn dof(&self) -> usize {

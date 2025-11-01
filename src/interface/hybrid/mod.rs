@@ -5,12 +5,13 @@ use web_sys::js_sys::{Float32Array, Uint32Array};
 use crate::collision::halfspace;
 use crate::hybrid::articulated::Articulated;
 use crate::hybrid::builders::{
-    build_claw, build_cube_cloth, build_gripper_cloth, build_gripper_cube,
+    build_claw, build_cube_cloth, build_gripper_cloth, build_gripper_cube, build_teddy,
 };
 use crate::hybrid::control::GripperController;
 use crate::hybrid::visual::Visual;
 use crate::hybrid::{Deformable, Rigid};
 use crate::interface::cart;
+use crate::interface::util::read_web_file;
 use crate::joint::floating::FloatingJoint;
 use crate::joint::{Joint, JointVelocity};
 use crate::na::vector;
@@ -322,7 +323,7 @@ pub async fn createCuboidCart() -> InterfaceHybrid {
     let mut state = Hybrid::empty();
 
     let l_cube = 1.0;
-    let cart_offset = 0.01;
+    let cart_offset = 0.0;
 
     let m = 1.0;
     let w = 1.0;
@@ -354,6 +355,7 @@ pub async fn createCuboidCart() -> InterfaceHybrid {
     state.add_articulated(articulated);
 
     state.add_deformable(Deformable::new_cube(1e2));
+    state.disable_gravity();
     // let v = vector![1. / 8., 0., 0.];
     // let v = vec![v; 8];
     // state.set_deformable_velocities(vec![v]);
@@ -364,6 +366,14 @@ pub async fn createCuboidCart() -> InterfaceHybrid {
 #[wasm_bindgen]
 pub async fn createGripperHybrid() -> InterfaceHybrid {
     let state = build_gripper_cube();
+
+    InterfaceHybrid { inner: state }
+}
+
+#[wasm_bindgen]
+pub async fn createTeddy() -> InterfaceHybrid {
+    let buf = read_web_file("teddy.vtk").await;
+    let state = build_teddy(&buf);
 
     InterfaceHybrid { inner: state }
 }

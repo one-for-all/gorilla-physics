@@ -533,14 +533,15 @@ mod hybrid_tests {
     use na::{vector, DVector, Vector3};
 
     use crate::{
-        assert_vec_close,
+        assert_vec_close, flog,
         hybrid::{
             articulated::Articulated,
-            builders::{build_cube_cloth, build_gripper_cube},
+            builders::{build_cube_cloth, build_gripper_cube, build_teddy},
             Deformable, Hybrid, Rigid,
         },
         joint::{Joint, JointVelocity},
         spatial::{pose::Pose, transform::Transform3D},
+        util::read_file,
         WORLD_FRAME,
     };
 
@@ -623,8 +624,8 @@ mod hybrid_tests {
         let mut state = Hybrid::empty();
 
         let l_cube = 1.0;
-        let cart_offset = 0.01; // Note: this is important to make sure contact point is not on mesh edge. Collision-handling is not exactly penetration free because satisfying the contact constraint for contact point and normal at current step, does not ensure no penetration after velocity integration, because nearest point and normal could change.
-                                // TODO(contact): make the test work without offset
+        let cart_offset = 0.0; // Note: this is useful for making sure contact point is not on mesh edge. Collision-handling is not exactly penetration free because satisfying the contact constraint for contact point and normal at current step, does not ensure no penetration after velocity integration, because nearest point and normal could change.
+                               // TODO(contact): make the test work without offset
 
         let m = 1.0;
         let w = 1.0;
@@ -636,7 +637,7 @@ mod hybrid_tests {
             WORLD_FRAME,
             l_cube + 0.5 + w / 2.,
             cart_offset,
-            0.0,
+            0.,
         );
 
         let bodies = vec![cart];
@@ -648,7 +649,7 @@ mod hybrid_tests {
         let cart2_frame = "cart2";
         let cart2 = Rigid::new_cuboid_at(&vector![0., 0., 0.], m, w, d, d, cart2_frame);
         let cart2_to_world =
-            Transform3D::move_xyz(cart2_frame, WORLD_FRAME, -0.5 - w / 2., cart_offset, 0.0);
+            Transform3D::move_xyz(cart2_frame, WORLD_FRAME, -0.5 - w / 2., cart_offset, 0.);
         let bodies = vec![cart2];
         let joints = vec![Joint::new_prismatic(cart2_to_world, Vector3::x_axis())];
         let mut articulated = Articulated::new(bodies, joints);
@@ -692,14 +693,29 @@ mod hybrid_tests {
         }
     }
 
-    // #[ignore] // brittle, depends on dt
+    #[ignore] // brittle, depends on dt
     #[test]
     fn gripper() {
         // Arrange
         let mut state = build_gripper_cube();
 
         // Act
-        let final_time = 1.0;
+        let final_time = 0.5;
+        let dt = 1e-3;
+        let num_steps = (final_time / dt) as usize;
+        for _s in 0..num_steps {
+            state.step(dt, &vec![0., 0., 0.]);
+        }
+    }
+
+    #[test]
+    fn teddy() {
+        // Arrange
+        let buf = read_file("data/teddy.vtk");
+        let mut state = build_teddy(&buf);
+
+        // Act
+        let final_time = 0.1;
         let dt = 1e-3;
         let num_steps = (final_time / dt) as usize;
         for _s in 0..num_steps {

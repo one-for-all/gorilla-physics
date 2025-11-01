@@ -138,6 +138,11 @@ nalgebra = { version = "0.33", features = ["rand"] }
 [profile.release]
 strip = true
 
+[profile.profiling]
+inherits = "release"
+debug = true
+strip = "none"
+
 [features]
 gpu = []
 

@@ -36,6 +36,10 @@ Profile the run-time of an example:
 
 This would run the example, and show profiling result & flame graph in browser, assuming [samply](https://github.com/mstange/samply) is installed, and Firefox profiler plugin (in Chrome) is installed.
 
+Profile the optimized run-time of an example
+
+`samply record cargo run --profile profiling --bin acrobot`
+
 ## References
 
 It mainly implements the theory in Roy Featherstone's book [Rigid Body Dynamics Algorithm](https://royfeatherstone.org/).

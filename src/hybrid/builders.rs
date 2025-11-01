@@ -8,6 +8,7 @@ use crate::{
     },
     joint::{Joint, JointVelocity},
     spatial::transform::Transform3D,
+    util::read_file,
     PI, WORLD_FRAME,
 };
 
@@ -193,6 +194,20 @@ pub fn build_cube_cloth() -> Hybrid {
     ));
 
     state.disable_gravity();
+
+    state
+}
+
+pub fn build_teddy(buf: &str) -> Hybrid {
+    let mut state = Hybrid::empty();
+
+    let mut deformable = Deformable::new_from_vtk(buf, 1e3, 1000.0);
+    deformable.translate(&vector![0., 0., 1.0]);
+    state.add_deformable(deformable);
+
+    // state.disable_gravity();
+
+    state.add_halfspace(HalfSpace::new(Vector3::z_axis(), 0.));
 
     state
 }

@@ -22,6 +22,7 @@ import {
   createCuboidCart,
   createGripper,
   createGripperHybrid,
+  createTeddy,
 } from "gorilla-physics";
 import { Simulator } from "./Simulator";
 import "./biped";
