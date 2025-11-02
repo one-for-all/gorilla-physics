@@ -142,7 +142,9 @@ impl Deformable {
     }
 
     /// size is side length, n is number of little cubes in each dimension
-    pub fn new_dense_cube(size: Float, n: usize, k: Float) -> Self {
+    /// k: Spring constant
+    /// m: Mass
+    pub fn new_dense_cube(size: Float, n: usize, k: Float, m: Float) -> Self {
         let mut nodes = vec![];
         let w = size / n as Float;
         // iterate over nodes
@@ -212,8 +214,7 @@ impl Deformable {
             }
         }
 
-        let mass = nodes.len() as Float;
-        Self::new(nodes, tetrahedra, k, mass)
+        Self::new(nodes, tetrahedra, k, m)
     }
 
     /// Linear momentum assuming mass = 1

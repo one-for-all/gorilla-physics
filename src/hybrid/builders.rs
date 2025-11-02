@@ -1,4 +1,5 @@
-use na::{vector, UnitQuaternion, Vector3};
+use na::{vector, UnitQuaternion, Vector, Vector3};
+use rand::Rng;
 
 use crate::{
     collision::halfspace::HalfSpace,
@@ -8,6 +9,7 @@ use crate::{
     },
     joint::{Joint, JointVelocity},
     spatial::transform::Transform3D,
+    types::Float,
     util::read_file,
     PI, WORLD_FRAME,
 };
@@ -85,7 +87,7 @@ pub fn build_claw() -> Hybrid {
     state.add_articulated(articulated);
 
     // state.add_deformable(Deformable::new_cube());
-    state.add_deformable(Deformable::new_dense_cube(1., 2, 1e3));
+    state.add_deformable(Deformable::new_dense_cube(1., 2, 1e3, 10.));
     // let n_nodes = state.deformables[0].nodes.len();
     // let v = vector![3., 0., 0.];
     // let v = vec![v; n_nodes];
@@ -147,9 +149,9 @@ pub fn build_gripper_cube() -> Hybrid {
     state.add_articulated(gripper);
     state.set_controller(0, GripperController::new(1. / 120.));
 
-    state.add_deformable(Deformable::new_dense_cube(1., 2, 1e3));
+    state.add_deformable(Deformable::new_dense_cube(1., 2, 1e3, 27.));
 
-    let mut cube = Deformable::new_dense_cube(1., 1, 1e3);
+    let mut cube = Deformable::new_dense_cube(1., 1, 1e3, 10.);
     cube.translate(&vector![-2., 0., 0.]);
     state.add_deformable(cube);
 
@@ -206,6 +208,29 @@ pub fn build_teddy(buf: &str) -> Hybrid {
     state.add_deformable(deformable);
 
     // state.disable_gravity();
+
+    state.add_halfspace(HalfSpace::new(Vector3::z_axis(), 0.));
+
+    state
+}
+
+pub fn build_cube_frenzy() -> Hybrid {
+    let mut state = Hybrid::empty();
+
+    let mut rng = rand::rng();
+
+    let w = 1.0;
+
+    let arena_size = w * 0.5;
+
+    let n = 2;
+    for i in 0..n {
+        let mut deformable = Deformable::new_dense_cube(w, 1, 1e3, 10.);
+        let x = rng.random_range(-arena_size..arena_size);
+        let y = rng.random_range(-arena_size..arena_size);
+        deformable.translate(&vector![x, y, 1. + (w + 0.01) * i as Float]);
+        state.add_deformable(deformable);
+    }
 
     state.add_halfspace(HalfSpace::new(Vector3::z_axis(), 0.));
 

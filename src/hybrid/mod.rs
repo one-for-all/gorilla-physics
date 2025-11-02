@@ -536,7 +536,7 @@ mod hybrid_tests {
         assert_vec_close, flog,
         hybrid::{
             articulated::Articulated,
-            builders::{build_cube_cloth, build_gripper_cube, build_teddy},
+            builders::{build_cube_cloth, build_cube_frenzy, build_gripper_cube, build_teddy},
             Deformable, Hybrid, Rigid,
         },
         joint::{Joint, JointVelocity},
@@ -717,6 +717,20 @@ mod hybrid_tests {
         // Act
         let final_time = 0.1;
         let dt = 1e-3;
+        let num_steps = (final_time / dt) as usize;
+        for _s in 0..num_steps {
+            state.step(dt, &vec![0., 0., 0.]);
+        }
+    }
+
+    #[test]
+    fn cube_frenzy() {
+        // Arrange
+        let mut state = build_cube_frenzy();
+
+        // Act
+        let final_time = 1.0;
+        let dt = 1. / 120.;
         let num_steps = (final_time / dt) as usize;
         for _s in 0..num_steps {
             state.step(dt, &vec![0., 0., 0.]);

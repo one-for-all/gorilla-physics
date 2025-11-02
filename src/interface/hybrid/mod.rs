@@ -5,7 +5,8 @@ use web_sys::js_sys::{Float32Array, Uint32Array};
 use crate::collision::halfspace;
 use crate::hybrid::articulated::Articulated;
 use crate::hybrid::builders::{
-    build_claw, build_cube_cloth, build_gripper_cloth, build_gripper_cube, build_teddy,
+    build_claw, build_cube_cloth, build_cube_frenzy, build_gripper_cloth, build_gripper_cube,
+    build_teddy,
 };
 use crate::hybrid::control::GripperController;
 use crate::hybrid::visual::Visual;
@@ -374,6 +375,13 @@ pub async fn createGripperHybrid() -> InterfaceHybrid {
 pub async fn createTeddy() -> InterfaceHybrid {
     let buf = read_web_file("teddy.vtk").await;
     let state = build_teddy(&buf);
+
+    InterfaceHybrid { inner: state }
+}
+
+#[wasm_bindgen]
+pub async fn createCubeFrenzy() -> InterfaceHybrid {
+    let state = build_cube_frenzy();
 
     InterfaceHybrid { inner: state }
 }
