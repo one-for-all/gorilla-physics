@@ -1,6 +1,8 @@
 {
   "compilerOptions": {
-    "outDir": "./dist/",
+    "outDir": "dist",
+    "declaration": true,
+    "emitDeclarationOnly": false,
     "noImplicitAny": true,
     "module": "es2020", // or "es2019" for better compatibility
     "target": "es2020", // or "es2019"
@@ -8,6 +10,8 @@
     // "target": "es2022",
     "allowJs": true,
     "moduleResolution": "node",
-    "allowSyntheticDefaultImports": true
-  }
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*"]
 }

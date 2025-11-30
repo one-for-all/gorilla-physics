@@ -141,6 +141,6 @@ import("gorilla-physics").then((gorilla) => {
     };
     simulator.graphics.lookAt(cameraPosition);
 
-    simulator.run(0);
+    simulator.run(2, 0);
   });
 });

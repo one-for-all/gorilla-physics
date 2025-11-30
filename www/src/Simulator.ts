@@ -14,9 +14,12 @@ import { Graphics } from "./Graphics";
 import { Line2 } from "three/examples/jsm/lines/Line2";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
-import { keysPressed } from ".";
+// import { keysPressed } from "./demo";
 import { Matrix4 } from "three";
 import { FloatArray, FloatArrayType } from "./type";
+
+// TODO: take in keysPressed as an argument in Simulator
+const keysPressed: Record<string, boolean> = {};
 
 export class Simulator {
   simulator: InterfaceSimulator;
@@ -959,7 +962,7 @@ export class Simulator {
   }
 
   /// Note: timestamp is in milliseconds
-  async run(timestamp?: number) {
+  async run(n_substeps: number, timestamp?: number) {
     this.graphics.render();
 
     // TODO: measure and use the actual time elapsed
@@ -1017,8 +1020,13 @@ export class Simulator {
       // this.massSpring.step(dt);
       // this.updateMassSpring();
 
-      this.hybrid.step(dt, control_input as Float64Array);
-      this.updateHybrid();
+      if (this.hybrid) {
+        let sub_dt = dt / n_substeps;
+        for (let i = 0; i < n_substeps; i++) {
+          this.hybrid.step(sub_dt, control_input as Float64Array);
+        }
+        this.updateHybrid();
+      }
 
       // this.cloth.step(dt);
       // this.updateCloth();
@@ -1091,6 +1099,6 @@ export class Simulator {
     // this.updateCube(poses);
     // this.updatePusher(poses);
 
-    requestAnimationFrame((timestamp) => this.run(timestamp));
+    requestAnimationFrame((timestamp) => this.run(n_substeps, timestamp));
   }
 }

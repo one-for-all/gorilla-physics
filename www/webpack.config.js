@@ -13,7 +13,7 @@ const featureGPU = process.env.FEATURE_GPU === "1";
  */
 const webpackConfig = {
   mode: isDev ? "development" : "production",
-  entry: "./src/index.ts",
+  entry: "./src/demo.ts",
   devtool: isDev ? "inline-source-map" : false,
   output: {
     path: dist,

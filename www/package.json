@@ -3,14 +3,17 @@
   "name": "gorilla-physics-ui",
   "version": "0.0.1",
   "description": "UI for gorilla-physics",
-  "main": "dist/main.js",
+  "main": "dist/lib.js",
+  "types": "dist/lib.d.ts",
   "scripts": {
     "build": "rimraf dist pkg && webpack",
     "start": "rimraf dist pkg && webpack serve --open --node-env development",
     "prod": "rimraf dist pkg && webpack serve --open --node-env production",
     "build:gpu": "FEATURE_GPU=1 npm run build",
     "start:gpu": "FEATURE_GPU=1 npm run start",
-    "prod:gpu": "FEATURE_GPU=1 npm run prod"
+    "prod:gpu": "FEATURE_GPU=1 npm run prod",
+    "build:types": "tsc --emitDeclarationOnly",
+    "build:lib": "tsc --project tsconfig.json --watch"
   },
   "dependencies": {
     "gorilla-physics": "file:../pkg",
