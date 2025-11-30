@@ -2,28 +2,26 @@ use na::Vector3;
 use wasm_bindgen::prelude::wasm_bindgen;
 use web_sys::js_sys::{Float32Array, Uint32Array};
 
-use crate::collision::halfspace;
 use crate::hybrid::articulated::Articulated;
-use crate::hybrid::builders::{
-    build_claw, build_cube_cloth, build_cube_frenzy, build_gripper_cloth, build_gripper_cube,
-    build_teddy,
-};
-use crate::hybrid::control::GripperController;
-use crate::hybrid::visual::Visual;
-use crate::hybrid::{Deformable, Rigid};
-use crate::interface::cart;
+use crate::hybrid::builders::{build_cube_frenzy, build_gripper_cube, build_teddy};
+use crate::hybrid::{visual::Visual, Deformable, Rigid};
 use crate::interface::util::read_web_file;
-use crate::joint::floating::FloatingJoint;
 use crate::joint::{Joint, JointVelocity};
 use crate::na::vector;
 use crate::spatial::transform::Transform3D;
 use crate::types::Float;
+use crate::WORLD_FRAME;
 use crate::{hybrid::Hybrid, spatial::pose::Pose, toJsFloat32Array};
-use crate::{PI, WORLD_FRAME};
 
 #[wasm_bindgen]
 pub struct InterfaceHybrid {
     pub(crate) inner: Hybrid,
+}
+
+impl InterfaceHybrid {
+    pub fn new(hybrid: Hybrid) -> Self {
+        Self { inner: hybrid }
+    }
 }
 
 #[wasm_bindgen]
@@ -205,7 +203,7 @@ impl InterfaceHybrid {
     }
 
     pub fn step(&mut self, dt: Float, input: Vec<Float>) {
-        let n_substep = 2;
+        let n_substep = 1;
         let dt = dt / (n_substep as Float);
         for _ in 0..n_substep {
             self.inner.step(dt, &input);

@@ -1,11 +1,12 @@
 use na::{dvector, DVector};
 
 use crate::{
-    control::navbot_control::PIModule, hybrid::articulated::Articulated, types::Float,
-    GRAVITY,
+    control::navbot_control::PIModule, hybrid::articulated::Articulated, types::Float, GRAVITY,
 };
 
 pub trait ArticulatedController {
+    fn step(&mut self, dt: Float) {}
+
     fn control(&mut self, articulated: &Articulated, input: &Vec<Float>) -> DVector<Float>;
 }
 

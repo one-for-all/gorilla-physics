@@ -112,6 +112,11 @@ impl Hybrid {
             .map(|(c, a)| c.control(a, input))
             .collect();
 
+        // Step the controllers for time effect
+        for controller in self.controllers.iter_mut() {
+            controller.step(dt);
+        }
+
         let v_rigids: Vec<DVector<Float>> = self
             .rigid_bodies
             .iter()
@@ -533,7 +538,7 @@ mod hybrid_tests {
     use na::{vector, DVector, Vector3};
 
     use crate::{
-        assert_vec_close, flog,
+        assert_vec_close,
         hybrid::{
             articulated::Articulated,
             builders::{build_cube_cloth, build_cube_frenzy, build_gripper_cube, build_teddy},
