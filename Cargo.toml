@@ -97,7 +97,7 @@ nalgebra = { version = "0.33", features = [] }
 nalgebra-sparse = "0.10"
 plotters = "0.3.5"
 ordered-float = "5.0.0"
-clarabel = "0"
+clarabel = "0.10.0"
 wgpu = "25.0.0"
 pollster = "0.4"
 bytemuck = "1.22.0"
