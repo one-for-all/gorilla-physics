@@ -30,15 +30,13 @@ pub fn plot(data: &Vec<Float>, final_time: Float, dt: Float, num_steps: usize, f
     ));
 }
 
-pub fn plot2(
-    data1: &Vec<Float>,
-    data2: &Vec<Float>,
-    final_time: Float,
-    dt: Float,
-    num_steps: usize,
-) {
+pub fn plot2(data1: &Vec<Float>, data2: &Vec<Float>, dt: Float, fname: &str) {
+    assert_eq!(data1.len(), data2.len());
+    let num_steps = data1.len();
+
     // Create a drawing area
-    let root_area = BitMapBackend::new("plot 2 sets.png", (800, 600)).into_drawing_area();
+    let file_name = format!("{}.png", fname);
+    let root_area = BitMapBackend::new(&file_name, (800, 600)).into_drawing_area();
     let _ = root_area.fill(&WHITE);
 
     let min_y = data1
@@ -57,7 +55,7 @@ pub fn plot2(
         .margin(10)
         .x_label_area_size(30)
         .y_label_area_size(50)
-        .build_cartesian_2d(0.0..final_time, min_y..max_y)
+        .build_cartesian_2d(0.0..(data1.len() as Float * dt), min_y..max_y)
         .unwrap();
 
     let _ = chart.configure_mesh().draw();

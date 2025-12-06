@@ -87,5 +87,5 @@ pub fn main() {
     let vs = vs.iter().map(|x| x[index]).collect::<Vec<Float>>();
     let _taus = taus.iter().map(|x| x[0]).collect::<Vec<Float>>();
 
-    plot2(&qs, &vs, final_time, dt, num_steps);
+    plot2(&qs, &vs,  dt, "plot 2 side by side");
 }

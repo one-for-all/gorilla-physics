@@ -222,7 +222,7 @@ pub fn main() {
         data4.push(pose_body.translation.x);
     }
 
-    plot2(&data3, &data4, final_time, dt, num_steps);
+    plot2(&data3, &data4, dt, "plot 2 side by side");
     plot(&data5, final_time, dt, num_steps, "plot");
     plot(&data6, final_time, dt, num_steps, "plot 2");
     plot_trajectory(&data1, &data2, "traj");
