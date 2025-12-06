@@ -6,7 +6,7 @@ use crate::hybrid::articulated::Articulated;
 use crate::hybrid::builders::{build_cube_frenzy, build_gripper_cube, build_teddy};
 use crate::hybrid::{visual::Visual, Deformable, Rigid};
 use crate::interface::util::read_web_file;
-use crate::joint::{Joint, JointVelocity};
+use crate::joint::{Joint, JointPosition, JointVelocity};
 use crate::na::vector;
 use crate::spatial::transform::Transform3D;
 use crate::types::Float;
@@ -208,6 +208,14 @@ impl InterfaceHybrid {
         for _ in 0..n_substep {
             self.inner.step(dt, &input);
         }
+    }
+
+    pub fn set_joint_q(&mut self, i: usize, value: Float) {
+        self.inner.articulated[0].set_joint_q(i, JointPosition::Float(value));
+    }
+
+    pub fn set_joint_v(&mut self, i: usize, value: Float) {
+        self.inner.articulated[0].set_joint_v(i, JointVelocity::Float(value));
     }
 }
 

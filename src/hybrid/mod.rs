@@ -113,8 +113,9 @@ impl Hybrid {
             .collect();
 
         // Step the controllers for time effect
-        for controller in self.controllers.iter_mut() {
-            controller.step(dt);
+        for (controller, articulated) in izip!(self.controllers.iter_mut(), self.articulated.iter())
+        {
+            controller.step(dt, articulated);
         }
 
         let v_rigids: Vec<DVector<Float>> = self

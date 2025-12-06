@@ -5,7 +5,19 @@ use crate::{
 };
 
 pub trait ArticulatedController {
-    fn step(&mut self, dt: Float) {}
+    /// Access the float stored in DDRB register
+    /// TODO: make this cleaner
+    fn ddrb_float(&mut self) -> Float {
+        0.
+    }
+
+    /// Access the float stored in eeprom addr
+    /// TODO: make this cleaner
+    fn eeprom_float(&mut self, addr: usize) -> Float {
+        0.
+    }
+
+    fn step(&mut self, dt: Float, articulated: &Articulated) {}
 
     fn control(&mut self, articulated: &Articulated, input: &Vec<Float>) -> DVector<Float>;
 }

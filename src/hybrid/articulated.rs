@@ -6,7 +6,7 @@ use na::{vector, DMatrix, DVector, Matrix6xX, UnitQuaternion};
 use crate::{
     hybrid::rigid::Rigid,
     inertia::SpatialInertia,
-    joint::{Joint, JointVelocity},
+    joint::{Joint, JointPosition, JointVelocity},
     spatial::{
         geometric_jacobian::{Momentum, MotionSubspace},
         pose::Pose,
@@ -358,6 +358,15 @@ impl Articulated {
             Joint::RevoluteJoint(j) => j.v = v.float(),
             Joint::PrismaticJoint(j) => j.v = v.float(),
             Joint::FloatingJoint(j) => j.v = *v.spatial(),
+        }
+    }
+
+    pub fn set_joint_q(&mut self, i: usize, q: JointPosition) {
+        match &mut self.joints[i] {
+            Joint::FixedJoint(_) => panic!("can't set fixed joint v"),
+            Joint::RevoluteJoint(j) => j.q = q.float(),
+            Joint::PrismaticJoint(j) => j.q = q.float(),
+            Joint::FloatingJoint(j) => j.q = *q.pose(),
         }
     }
 
