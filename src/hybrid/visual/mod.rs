@@ -1,6 +1,8 @@
 use na::{vector, Isometry3, Point3, UnitVector3, Vector3};
 
-use crate::types::Float;
+use crate::{hybrid::visual::rigid_mesh::RigidMesh, types::Float};
+
+pub mod rigid_mesh;
 
 pub struct SphereGeometry {
     pub r: Float,
@@ -117,6 +119,7 @@ pub fn vertex_rect_face_collision(
 pub enum Visual {
     Sphere(SphereGeometry),
     Cuboid(CuboidGeometry),
+    RigidMesh(RigidMesh),
 }
 
 impl Visual {

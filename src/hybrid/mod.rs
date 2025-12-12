@@ -444,8 +444,13 @@ impl Hybrid {
             .build()
             .unwrap();
         let mut solver = DefaultSolver::new(&P, &q, &A_, &b, &cones, settings);
-        solver.solve();
-        let v_sol = DVector::from(solver.solution.x);
+
+        let v_sol = if total_dof > 0 {
+            solver.solve();
+            DVector::from(solver.solution.x)
+        } else {
+            DVector::zeros(0)
+        };
 
         // Update rigid body velocities and poses
         let mut i = 0;

@@ -11,7 +11,7 @@ use crate::{
     },
     hybrid::{
         cloth::Cloth,
-        visual::{vertex_rect_face_collision, SphereGeometry, Visual},
+        visual::{rigid_mesh::RigidMesh, vertex_rect_face_collision, SphereGeometry, Visual},
         Deformable,
     },
     inertia::SpatialInertia,
@@ -261,6 +261,9 @@ pub fn rigid_deformable_cd(
                     }
                 }
             }
+            Visual::RigidMesh(_) => {
+                panic!("collision detection between rigid mesh and deformable is not implemented")
+            }
         }
     }
     result
@@ -325,6 +328,9 @@ pub fn rigid_cloth_ccd(
                         }
                     }
                 }
+            }
+            Visual::RigidMesh(_) => {
+                panic!("collision detection between rigid mesh and deformable is not implemented")
             }
         }
     }

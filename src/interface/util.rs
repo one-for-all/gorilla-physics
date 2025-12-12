@@ -37,3 +37,15 @@ macro_rules! toJsFloat32Array {
         )
     };
 }
+
+#[macro_export]
+macro_rules! toJsUint32Array {
+    ($q:expr) => {
+        Uint32Array::from(
+            $q.iter()
+                .map(|qi| *qi as u32)
+                .collect::<Vec<u32>>()
+                .as_slice(),
+        )
+    };
+}

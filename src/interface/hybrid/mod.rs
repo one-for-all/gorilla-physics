@@ -11,7 +11,7 @@ use crate::na::vector;
 use crate::spatial::transform::Transform3D;
 use crate::types::Float;
 use crate::WORLD_FRAME;
-use crate::{hybrid::Hybrid, spatial::pose::Pose, toJsFloat32Array};
+use crate::{hybrid::Hybrid, spatial::pose::Pose, toJsFloat32Array, toJsUint32Array};
 
 #[wasm_bindgen]
 pub struct InterfaceHybrid {
@@ -48,6 +48,7 @@ impl InterfaceHybrid {
         return match visual {
             Visual::Sphere(_) => 0,
             Visual::Cuboid(_) => 1,
+            Visual::RigidMesh(_) => 2,
         };
     }
 
@@ -56,6 +57,7 @@ impl InterfaceHybrid {
         return match visual {
             Visual::Sphere(sphere) => sphere.r,
             Visual::Cuboid(_) => panic!("visual is not a sphere"),
+            Visual::RigidMesh(_) => panic!("visual is not a sphere"),
         };
     }
 
@@ -64,6 +66,31 @@ impl InterfaceHybrid {
         return match visual {
             Visual::Sphere(_) => panic!("visual is not a cuboid"),
             Visual::Cuboid(cuboid) => toJsFloat32Array!([cuboid.w, cuboid.d, cuboid.h]),
+            Visual::RigidMesh(_) => panic!("visual is not a cuboid"),
+        };
+    }
+
+    pub fn visual_mesh_vertices(&self, i: usize, j: usize, k: usize) -> Float32Array {
+        let visual = &self.inner.articulated[i].bodies[j].visual[k].0;
+        return match visual {
+            Visual::RigidMesh(mesh) => {
+                let vertices = &mesh.vertices;
+                let flat: Vec<Float> = vertices.iter().flat_map(|v| v.iter().cloned()).collect();
+                toJsFloat32Array!(flat)
+            }
+            _ => panic!("visual is not a rigid mesh"),
+        };
+    }
+
+    pub fn visual_mesh_faces(&self, i: usize, j: usize, k: usize) -> Uint32Array {
+        let visual = &self.inner.articulated[i].bodies[j].visual[k].0;
+        return match visual {
+            Visual::RigidMesh(mesh) => {
+                let faces = &mesh.faces;
+                let flat: Vec<usize> = faces.iter().flat_map(|&f| f).collect();
+                toJsUint32Array!(flat)
+            }
+            _ => panic!("visual is not a rigid mesh"),
         };
     }
 

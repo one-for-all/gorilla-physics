@@ -6,11 +6,14 @@ import {
   EdgesGeometry,
   LineBasicMaterial,
   LineSegments,
+  Matrix,
   Matrix4,
   Mesh,
   MeshPhongMaterial,
   Points,
   PointsMaterial,
+  Quaternion,
+  Vector3,
   WireframeGeometry,
 } from "three";
 import { Simulator } from "./Simulator";
@@ -20,6 +23,13 @@ declare module "./Simulator" {
   interface Simulator {
     addHybrid(state: InterfaceHybrid): void;
     updateHybrid(): void;
+    addRigidMesh(
+      name: string,
+      color: number,
+      vertices: Float32Array,
+      faces: Uint32Array,
+      offset: Matrix4,
+    ): void;
   }
 }
 
@@ -40,24 +50,36 @@ Simulator.prototype.addHybrid = function (state: InterfaceHybrid) {
       let n_visuals = state.n_visuals_articulated_body(i, j);
       for (let k = 0; k < n_visuals; k++) {
         let iso = state.iso_visual_to_body(i, j, k);
-        let visual_offset = new Matrix4().makeTranslation(
-          iso[4],
-          iso[5],
-          iso[6],
-        );
-        if (state.visual_type(i, j, k) == 0) {
+        let q = new Quaternion(iso[0], iso[1], iso[2], iso[3]);
+        let t = new Vector3(iso[4], iso[5], iso[6]);
+        let visual_offset = new Matrix4().compose(t, q, new Vector3(1, 1, 1)); // last arg is unit scale
+        let visual_type = state.visual_type(i, j, k);
+        let visual_name = frame + "-" + k;
+        if (visual_type == 0) {
           let r = state.visual_sphere_r(i, j, k);
-          this.addSphere(frame + "-" + k, 0xff0000, r, visual_offset);
-        } else if (state.visual_type(i, j, k) == 1) {
+          this.addSphere(visual_name, 0xff0000, r, visual_offset);
+        } else if (visual_type == 1) {
           let wdh = state.visual_cuboid_wdh(i, j, k);
           this.addCuboid(
-            frame + "-" + k,
+            visual_name,
             0xff0000,
             wdh[0],
             wdh[1],
             wdh[2],
             visual_offset,
           );
+        } else if (visual_type == 2) {
+          let vertices = state.visual_mesh_vertices(i, j, k);
+          let faces = state.visual_mesh_faces(i, j, k);
+          this.addRigidMesh(
+            visual_name,
+            0xff0000,
+            vertices,
+            faces,
+            visual_offset,
+          );
+        } else {
+          alert(`unknown visual type: ${visual_type}`);
         }
       }
     }
@@ -269,4 +291,30 @@ Simulator.prototype.updateHybrid = function () {
     let nodes = cloth_nodes_array[i];
     cloth.geometry.setAttribute("position", new BufferAttribute(nodes, 3));
   }
+};
+
+Simulator.prototype.addRigidMesh = function (
+  name: string,
+  color: number,
+  vertices: Float32Array,
+  faces: Uint32Array,
+  offset: Matrix4 = new Matrix4(),
+) {
+  const geometry = new BufferGeometry();
+  geometry.setAttribute("position", new BufferAttribute(vertices, 3));
+  geometry.applyMatrix4(offset);
+
+  geometry.setIndex(new BufferAttribute(faces, 1));
+  geometry.computeVertexNormals();
+
+  const material = new MeshPhongMaterial({
+    color: color,
+    side: DoubleSide, // Render both sides of faces
+    flatShading: true,
+  });
+
+  const mesh = new Mesh(geometry, material);
+  mesh.frustumCulled = false; // prevent mesh from disappearing
+  this.meshes.set(name, mesh);
+  this.graphics.scene.add(mesh);
 };
