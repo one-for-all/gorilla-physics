@@ -1026,7 +1026,9 @@ export class Simulator {
 
       // if (this.time > 1000 && !this.pendulum_raised) {
       if (!this.pendulum_raised) {
-        this.hybrid.set_joint_q(1, Math.PI + 0.1); // Math.PI - Math.PI / 2
+        // this.hybrid.set_joint_q(1, 0.3);
+        // this.hybrid.set_joint_q(2, 0.4); // Math.PI - Math.PI / 2
+        this.hybrid.set_joint_q(2, Math.PI);
         // this.hybrid.set_joint_v(1, 0.1);
         this.pendulum_raised = true;
       }

@@ -10,7 +10,7 @@ use crate::joint::{Joint, JointPosition, JointVelocity};
 use crate::na::vector;
 use crate::spatial::transform::Transform3D;
 use crate::types::Float;
-use crate::WORLD_FRAME;
+use crate::{flog, WORLD_FRAME};
 use crate::{hybrid::Hybrid, spatial::pose::Pose, toJsFloat32Array, toJsUint32Array};
 
 #[wasm_bindgen]
@@ -50,6 +50,16 @@ impl InterfaceHybrid {
             Visual::Cuboid(_) => 1,
             Visual::RigidMesh(_) => 2,
         };
+    }
+
+    /// Return color, or default
+    pub fn visual_color(&self, i: usize, j: usize, k: usize) -> Float32Array {
+        let color = &self.inner.articulated[i].bodies[j].visual[k].2;
+        if let Some(color) = color {
+            toJsFloat32Array!(color)
+        } else {
+            toJsFloat32Array!([1., 0., 0.])
+        }
     }
 
     pub fn visual_sphere_r(&self, i: usize, j: usize, k: usize) -> Float {

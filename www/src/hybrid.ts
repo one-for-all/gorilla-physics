@@ -25,7 +25,7 @@ declare module "./Simulator" {
     updateHybrid(): void;
     addRigidMesh(
       name: string,
-      color: number,
+      color: Float32Array,
       vertices: Float32Array,
       faces: Uint32Array,
       offset: Matrix4,
@@ -71,9 +71,10 @@ Simulator.prototype.addHybrid = function (state: InterfaceHybrid) {
         } else if (visual_type == 2) {
           let vertices = state.visual_mesh_vertices(i, j, k);
           let faces = state.visual_mesh_faces(i, j, k);
+          let visual_color = state.visual_color(i, j, k);
           this.addRigidMesh(
             visual_name,
-            0xff0000,
+            visual_color,
             vertices,
             faces,
             visual_offset,
@@ -295,7 +296,7 @@ Simulator.prototype.updateHybrid = function () {
 
 Simulator.prototype.addRigidMesh = function (
   name: string,
-  color: number,
+  color: Float32Array,
   vertices: Float32Array,
   faces: Uint32Array,
   offset: Matrix4 = new Matrix4(),
@@ -307,11 +308,11 @@ Simulator.prototype.addRigidMesh = function (
   geometry.setIndex(new BufferAttribute(faces, 1));
   geometry.computeVertexNormals();
 
-  const material = new MeshPhongMaterial({
-    color: color,
+  let material = new MeshPhongMaterial({
     side: DoubleSide, // Render both sides of faces
     flatShading: true,
   });
+  material.color.setRGB(color[0], color[1], color[2]);
 
   const mesh = new Mesh(geometry, material);
   mesh.frustumCulled = false; // prevent mesh from disappearing

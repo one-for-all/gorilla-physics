@@ -26,7 +26,7 @@ pub struct Rigid {
     pub pose: Pose,           // TODO: use Iso instead of Pose?
     pub twist: SpatialVector, // body velocity expressed in world frame
 
-    pub visual: Vec<(Visual, Isometry3<Float>)>, // geometry and the isometry from geometry frame to body frame
+    pub visual: Vec<(Visual, Isometry3<Float>, Option<Vector3<Float>>)>, // geometry and the isometry from geometry frame to body frame, and RGB color
 }
 
 impl Rigid {
@@ -78,7 +78,7 @@ impl Rigid {
         let iso = Isometry3::translation(com.x, com.y, com.z);
         rigid
             .visual
-            .push((Visual::Sphere(SphereGeometry { r }), iso));
+            .push((Visual::Sphere(SphereGeometry { r }), iso, None));
         rigid
     }
 
@@ -99,7 +99,7 @@ impl Rigid {
 
         let mut rigid = Rigid::new(inertia);
         let iso = Isometry3::translation(com.x, com.y, com.z);
-        rigid.visual.push((Visual::new_cuboid(w, d, h), iso));
+        rigid.visual.push((Visual::new_cuboid(w, d, h), iso, None));
         rigid
     }
 
@@ -112,7 +112,7 @@ impl Rigid {
         self.inertia += &inertia;
 
         let iso = Isometry3::translation(com.x, com.y, com.z);
-        self.visual.push((Visual::new_cuboid(w, d, h), iso));
+        self.visual.push((Visual::new_cuboid(w, d, h), iso, None));
     }
 
     /// free-motion velocity in body frame
@@ -165,7 +165,7 @@ pub fn rigid_deformable_cd(
     dt: Float,
 ) -> Vec<(Vector3<Float>, UnitVector3<Float>, Vec<(usize, Float)>)> {
     let mut result = vec![];
-    for (collider, iso_collider_to_body) in rigid.visual.iter() {
+    for (collider, iso_collider_to_body, _color) in rigid.visual.iter() {
         let iso = rigid.pose.to_isometry() * iso_collider_to_body;
         let collider_pos = iso.translation.vector;
 
@@ -277,7 +277,7 @@ pub fn rigid_cloth_ccd(
     dt: Float,
 ) -> Vec<(Vector3<Float>, UnitVector3<Float>, Vec<(usize, Float)>)> {
     let mut result = vec![];
-    for (collider, iso_collider_to_body) in rigid.visual.iter() {
+    for (collider, iso_collider_to_body, _color) in rigid.visual.iter() {
         let iso = rigid.pose.to_isometry() * iso_collider_to_body;
 
         match collider {
