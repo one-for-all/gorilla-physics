@@ -107,6 +107,24 @@ impl Joint {
     pub fn new_prismatic(transform: Transform3D, axis: UnitVector3<Float>) -> Self {
         Self::PrismaticJoint(PrismaticJoint::new(transform, axis))
     }
+
+    pub fn reset(&mut self) {
+        match self {
+            Joint::FixedJoint(_) => {}
+            Joint::RevoluteJoint(j) => {
+                j.q = 0.;
+                j.v = 0.
+            }
+            Joint::PrismaticJoint(j) => {
+                j.q = 0.;
+                j.v = 0.
+            }
+            Joint::FloatingJoint(j) => {
+                j.q = Pose::identity();
+                j.v = SpatialVector::zero();
+            }
+        }
+    }
 }
 
 pub trait ToFloatDVec {

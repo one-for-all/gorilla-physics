@@ -4,6 +4,7 @@ use web_sys::js_sys::{Float32Array, Uint32Array};
 
 use crate::hybrid::articulated::Articulated;
 use crate::hybrid::builders::{build_cube_frenzy, build_gripper_cube, build_teddy};
+use crate::hybrid::control::{ArticulatedController, NullArticulatedController};
 use crate::hybrid::{visual::Visual, Deformable, Rigid};
 use crate::interface::util::read_web_file;
 use crate::joint::{Joint, JointPosition, JointVelocity};
@@ -26,6 +27,16 @@ impl InterfaceHybrid {
 
 #[wasm_bindgen]
 impl InterfaceHybrid {
+    pub fn reset(&mut self) {
+        for articulated in self.inner.articulated.iter_mut() {
+            articulated.reset();
+        }
+    }
+
+    pub fn reboot_code_controller(&mut self, i: usize, code: &str) {
+        self.inner.controllers[i].reboot(code);
+    }
+
     pub fn n_rigid_bodies(&self) -> usize {
         self.inner.rigid_bodies.len()
     }

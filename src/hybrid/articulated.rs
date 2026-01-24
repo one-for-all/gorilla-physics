@@ -370,6 +370,13 @@ impl Articulated {
         }
     }
 
+    /// Reset all joints to default state
+    pub fn reset(&mut self) {
+        for joint in self.joints.iter_mut() {
+            joint.reset();
+        }
+    }
+
     pub fn potential_energy(&self) -> Float {
         self.bodies.iter().map(|b| b.potential_energy()).sum()
     }

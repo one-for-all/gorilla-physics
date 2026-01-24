@@ -20,6 +20,9 @@ pub trait ArticulatedController {
     fn step(&mut self, dt: Float, articulated: &Articulated) {}
 
     fn control(&mut self, articulated: &Articulated, input: &Vec<Float>) -> DVector<Float>;
+
+    /// re-boot the microcontroller to run code
+    fn reboot(&mut self, _code: &str) {}
 }
 
 pub struct NullArticulatedController {}
