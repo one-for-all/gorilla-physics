@@ -51,8 +51,6 @@ export class Simulator {
   fps: number;
   time: number;
 
-  pendulum_raised: boolean;
-
   constructor(simulator: InterfaceSimulator) {
     this.simulator = simulator;
 
@@ -72,8 +70,6 @@ export class Simulator {
     this.lines = new Map();
     this.fps = 60;
     this.time = 0.0;
-
-    this.pendulum_raised = false;
   }
 
   addFluid2D(fluid2D: InterfaceFluid2D) {
@@ -1024,14 +1020,7 @@ export class Simulator {
       // this.massSpring.step(dt);
       // this.updateMassSpring();
 
-      // if (this.time > 1000 && !this.pendulum_raised) {
-      if (!this.pendulum_raised) {
-        // this.hybrid.set_joint_q(1, 0.3);
-        // this.hybrid.set_joint_q(2, 0.4); // Math.PI - Math.PI / 2
-        this.hybrid.set_joint_q(2, Math.PI);
-        // this.hybrid.set_joint_v(1, 0.1);
-        this.pendulum_raised = true;
-      }
+      // if (this.time > 1000 ) {
 
       if (this.hybrid) {
         let sub_dt = dt / n_substeps;
