@@ -23,6 +23,11 @@ pub trait ArticulatedController {
 
     /// re-boot the microcontroller to run code
     fn reboot(&mut self, _code: &str) {}
+
+    /// Return data for debugging
+    fn debug_data(&self) -> Float {
+        0.
+    }
 }
 
 pub struct NullArticulatedController {}
