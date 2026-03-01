@@ -1,6 +1,6 @@
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{window, Response};
+use web_sys::{js_sys::Uint8Array, window, Response};
 
 /// Read a file into a string. File needs to be hosted on the site.
 pub async fn read_web_file(file_path: &str) -> String {
@@ -24,6 +24,26 @@ pub async fn read_web_file(file_path: &str) -> String {
     //     .expect("text decode failed");
 
     buf
+}
+
+pub async fn read_web_file_bytes(file_path: &str) -> Vec<u8> {
+    let window = window().expect("no global `window` exists");
+
+    // fetch()
+    let resp_value = JsFuture::from(window.fetch_with_str(file_path))
+        .await
+        .unwrap();
+
+    let resp: Response = resp_value.dyn_into().unwrap();
+
+    // response.array_buffer()
+    let buffer = JsFuture::from(resp.array_buffer().unwrap()).await.unwrap();
+
+    // Convert ArrayBuffer → Uint8Array
+    let u8_array = Uint8Array::new(&buffer);
+
+    // Copy into Rust Vec<u8>
+    u8_array.to_vec()
 }
 
 #[macro_export]
