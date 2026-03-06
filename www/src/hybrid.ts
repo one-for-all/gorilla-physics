@@ -79,6 +79,9 @@ Simulator.prototype.addHybrid = function (state: InterfaceHybrid) {
             faces,
             visual_offset,
           );
+        } else if (visual_type == 3) {
+          let r = 0.002; // default visual size for point
+          this.addSphere(visual_name, 0xff0000, r, visual_offset);
         } else {
           alert(`unknown visual type: ${visual_type}`);
         }
