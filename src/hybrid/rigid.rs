@@ -1,5 +1,5 @@
 use itertools::izip;
-use na::{dvector, vector, DMatrix, DVector, Isometry3, Matrix3, UnitVector3, Vector3};
+use na::{dvector, vector, DMatrix, DVector, Isometry, Isometry3, Matrix3, UnitVector3, Vector3};
 
 use crate::{
     collision::{
@@ -113,6 +113,11 @@ impl Rigid {
 
         let iso = Isometry3::translation(com.x, com.y, com.z);
         self.visual.push((Visual::new_cuboid(w, d, h), iso, None));
+    }
+
+    pub fn add_point_at(&mut self, pos: &Vector3<Float>) {
+        let iso = Isometry3::translation(pos.x, pos.y, pos.z);
+        self.visual.push((Visual::new_point(), iso, None));
     }
 
     /// free-motion velocity in body frame
@@ -262,7 +267,10 @@ pub fn rigid_deformable_cd(
                 }
             }
             Visual::RigidMesh(_) => {
-                panic!("collision detection between rigid mesh and deformable is not implemented")
+                panic!("collision detection between rigid mesh and deformable is not implemented");
+            }
+            Visual::Point(_) => {
+                panic!("collision detection between rigid point and deformable is not implemented");
             }
         }
     }
@@ -331,6 +339,9 @@ pub fn rigid_cloth_ccd(
             }
             Visual::RigidMesh(_) => {
                 panic!("collision detection between rigid mesh and deformable is not implemented")
+            }
+            Visual::Point(_) => {
+                panic!("collision detection between rigid point and deformable is not implemented")
             }
         }
     }

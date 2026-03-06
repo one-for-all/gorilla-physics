@@ -8,6 +8,8 @@ pub struct SphereGeometry {
     pub r: Float,
 }
 
+pub struct PointGeometry {}
+
 pub struct CuboidGeometry {
     pub w: Float, // width in x-axis
     pub d: Float, // depth in y-axis
@@ -120,6 +122,7 @@ pub enum Visual {
     Sphere(SphereGeometry),
     Cuboid(CuboidGeometry),
     RigidMesh(RigidMesh),
+    Point(PointGeometry),
 }
 
 impl Visual {
@@ -132,5 +135,9 @@ impl Visual {
             Self::Cuboid(cuboid) => cuboid,
             _ => panic!("not cuboid"),
         }
+    }
+
+    pub fn new_point() -> Visual {
+        Visual::Point(PointGeometry {})
     }
 }

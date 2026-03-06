@@ -96,6 +96,11 @@ impl Joint {
         Self::RevoluteJoint(RevoluteJoint::new(transform, axis))
     }
 
+    /// New revolute joint whose initial q is set
+    pub fn new_revolute_with_q(q: Float, transform: Transform3D, axis: UnitVector3<Float>) -> Self {
+        Self::RevoluteJoint(RevoluteJoint::new_with_q(q, transform, axis))
+    }
+
     pub fn new_floating(transform: Transform3D) -> Self {
         Self::FloatingJoint(FloatingJoint::new(transform))
     }

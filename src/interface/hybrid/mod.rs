@@ -60,6 +60,7 @@ impl InterfaceHybrid {
             Visual::Sphere(_) => 0,
             Visual::Cuboid(_) => 1,
             Visual::RigidMesh(_) => 2,
+            Visual::Point(_) => 3,
         };
     }
 
@@ -77,17 +78,15 @@ impl InterfaceHybrid {
         let visual = &self.inner.articulated[i].bodies[j].visual[k].0;
         return match visual {
             Visual::Sphere(sphere) => sphere.r,
-            Visual::Cuboid(_) => panic!("visual is not a sphere"),
-            Visual::RigidMesh(_) => panic!("visual is not a sphere"),
+            _ => panic!("visual is not a sphere"),
         };
     }
 
     pub fn visual_cuboid_wdh(&self, i: usize, j: usize, k: usize) -> Float32Array {
         let visual = &self.inner.articulated[i].bodies[j].visual[k].0;
         return match visual {
-            Visual::Sphere(_) => panic!("visual is not a cuboid"),
             Visual::Cuboid(cuboid) => toJsFloat32Array!([cuboid.w, cuboid.d, cuboid.h]),
-            Visual::RigidMesh(_) => panic!("visual is not a cuboid"),
+            _ => panic!("visual is not a cuboid"),
         };
     }
 

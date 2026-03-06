@@ -44,6 +44,17 @@ impl RevoluteJoint {
         }
     }
 
+    /// New joint with initial q and transform at this q
+    pub fn new_with_q(q: Float, transform: Transform3D, axis: UnitVector3<Float>) -> Self {
+        Self {
+            init_iso: transform.iso * UnitQuaternion::from_axis_angle(&axis, q).inverse(),
+            transform,
+            axis,
+            v: 0.,
+            q: q,
+        }
+    }
+
     /// Return the spatial acceleration of the successor with respect
     /// to its predecessor, expressed in the successor frame.
     pub fn spatial_acceleration(&self, vdot: Float) -> SpatialAcceleration {

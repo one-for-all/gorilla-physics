@@ -20,6 +20,7 @@ use crate::{
         control::{ArticulatedController, NullArticulatedController},
         deformable::deformable_deformable_ccd,
         rigid::{rigid_cloth_ccd, rigid_deformable_cd},
+        visual::Visual,
     },
     spatial::{
         pose::Pose, spatial_vector::SpatialVector, twist::compute_twist_transformation_matrix,
@@ -34,6 +35,7 @@ pub use rigid::Rigid;
 pub mod articulated;
 pub mod builders;
 pub mod cloth;
+pub mod collision;
 pub mod control;
 pub mod deformable;
 pub mod rigid;
@@ -148,7 +150,7 @@ impl Hybrid {
                 .flat_map(|v| v.data.as_vec().clone()),
         );
 
-        let offset_articulated = self.rigid_bodies.len() * 6; // starting offset for deformable velocity within stacked total velocity vector
+        let offset_articulated = self.rigid_bodies.len() * 6; // starting offset for articulated velocity within stacked total velocity vector
         let dof_articulated: usize = self.articulated.iter().map(|a| a.dof()).sum();
         let offset_deformable = offset_articulated + dof_articulated;
 
@@ -184,6 +186,67 @@ impl Hybrid {
                     }
                 }
                 i_deformable_offset += deformable.dof();
+            }
+        }
+
+        // halfspace - articulated collision detection
+        for halfspace in self.halfspaces.iter() {
+            let n = &halfspace.normal;
+            let mut icol_arti = offset_articulated;
+            for (_i_articulated, articulated) in self.articulated.iter().enumerate() {
+                let dof = articulated.dof();
+                let offsets = articulated.offsets();
+                let jacobians = articulated.jacobians();
+                for (i_joint, (rigid, joint)) in
+                    izip!(articulated.bodies.iter(), articulated.joints.iter()).enumerate()
+                {
+                    for (collider, iso_collider_to_body, _color) in rigid.visual.iter() {
+                        let iso = rigid.pose.to_isometry() * iso_collider_to_body;
+                        let collider_pos = iso.translation.vector;
+
+                        match collider {
+                            Visual::Point(_point) => {
+                                if halfspace.has_inside(&collider_pos) {
+                                    let cp = collider_pos;
+                                    let (t, b) = tangentials(n);
+                                    let C = Matrix3::from_rows(&[
+                                        1. / mu * n.transpose(),
+                                        t.transpose(),
+                                        b.transpose(),
+                                    ]);
+
+                                    let mut J = Matrix3xX::zeros(total_dof);
+                                    // set jacobian for articulated
+                                    let mut H = Matrix6xX::zeros(dof);
+                                    H.view_mut((0, offsets[i_joint]), (6, joint.dof()))
+                                        .copy_from(&jacobians[i_joint]);
+                                    let mut parent = i_joint;
+                                    while articulated.parents[parent] != parent {
+                                        parent = articulated.parents[parent];
+                                        H.view_mut(
+                                            (0, offsets[parent]),
+                                            (6, articulated.joints[parent].dof()),
+                                        )
+                                        .copy_from(&jacobians[parent]);
+                                    }
+
+                                    let mut X = Matrix3x6::zeros();
+                                    let r = cp;
+                                    X.columns_mut(0, 3).copy_from(&-skew_symmetric(&r));
+                                    X.columns_mut(3, 3).copy_from(&Matrix3::identity());
+
+                                    J.view_mut((0, icol_arti), (3, dof)).copy_from(&(C * X));
+
+                                    Js.push(J);
+                                }
+                            }
+                            _ => {
+                                panic!("collision detection between halfspace and articulated only implemented for point geometry");
+                            }
+                        }
+                    }
+                }
+                icol_arti += dof;
             }
         }
 
@@ -245,8 +308,6 @@ impl Hybrid {
                     let contacts =
                         rigid_deformable_cd(body, deformable, &body_twists[i_joint], v_deform, dt);
                     for (cp, n, node_weights) in contacts.iter() {
-                        let mut J = Matrix3xX::zeros(total_dof);
-
                         let (t, b) = tangentials(n);
                         let C = Matrix3::from_rows(&[
                             1. / mu * n.transpose(),
@@ -254,6 +315,7 @@ impl Hybrid {
                             b.transpose(),
                         ]);
 
+                        let mut J = Matrix3xX::zeros(total_dof);
                         // set jacobian for deformable part
                         for (i_node, weight) in node_weights.iter() {
                             let icol = offset_deformable + i_deformable_offset + i_node * 3;
