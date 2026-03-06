@@ -240,6 +240,9 @@ impl Hybrid {
                                     Js.push(J);
                                 }
                             }
+                            Visual::RigidMesh(_mesh) => {
+                                // println!("ignore collision detection between halfspace and articulated rigid mesh");
+                            }
                             _ => {
                                 panic!("collision detection between halfspace and articulated only implemented for point geometry");
                             }
