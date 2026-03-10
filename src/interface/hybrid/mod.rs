@@ -33,8 +33,16 @@ impl InterfaceHybrid {
         }
     }
 
+    pub fn get_uart(&self) -> String {
+        self.inner.controllers[0].get_uart()
+    }
+
     pub fn reboot_code_controller(&mut self, i: usize, code: &str) {
         self.inner.controllers[i].reboot(code);
+    }
+
+    pub fn reboot_esp32_controller(&mut self, i: usize, app_bin: Vec<u8>, symbols: &str) {
+        self.inner.controllers[i].reboot_esp32(app_bin, symbols);
     }
 
     pub fn n_rigid_bodies(&self) -> usize {

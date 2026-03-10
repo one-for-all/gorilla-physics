@@ -26,6 +26,20 @@ pub async fn read_web_file(file_path: &str) -> String {
     buf
 }
 
+pub async fn maybe_read_web_file(file_path: &str) -> Option<String> {
+    let window = window().expect("no global `window` exists");
+    let resp_value = JsFuture::from(window.fetch_with_str(file_path))
+        .await
+        .ok()?;
+    let resp: Response = resp_value.dyn_into().ok()?;
+    if !resp.ok() {
+        return None;
+    }
+    let buf = JsFuture::from(resp.text().ok()?).await.ok()?;
+    let buf = buf.as_string();
+    buf
+}
+
 pub async fn read_web_file_bytes(file_path: &str) -> Vec<u8> {
     let window = window().expect("no global `window` exists");
 

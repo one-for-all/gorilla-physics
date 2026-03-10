@@ -24,9 +24,15 @@ pub trait ArticulatedController {
     /// re-boot the microcontroller to run code
     fn reboot(&mut self, _code: &str) {}
 
+    fn reboot_esp32(&mut self, app_bin: Vec<u8>, symbols: &str) {}
+
     /// Return data for debugging
     fn debug_data(&self) -> Float {
         0.
+    }
+
+    fn get_uart(&self) -> String {
+        "".to_string()
     }
 }
 

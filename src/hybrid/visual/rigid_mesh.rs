@@ -2,7 +2,7 @@ use na::{vector, Vector3};
 
 use crate::types::Float;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RigidMesh {
     pub vertices: Vec<Vector3<Float>>,
     pub faces: Vec<[usize; 3]>,
