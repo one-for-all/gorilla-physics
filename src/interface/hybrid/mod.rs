@@ -37,6 +37,10 @@ impl InterfaceHybrid {
         self.inner.controllers[0].get_uart()
     }
 
+    pub fn send_uart(&mut self, payload: &str) {
+        self.inner.controllers[0].send_uart(payload);
+    }
+
     pub fn reboot_code_controller(&mut self, i: usize, code: &str) {
         self.inner.controllers[i].reboot(code);
     }

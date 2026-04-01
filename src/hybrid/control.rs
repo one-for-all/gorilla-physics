@@ -31,9 +31,13 @@ pub trait ArticulatedController {
         0.
     }
 
+    fn debug(&mut self) {}
+
     fn get_uart(&self) -> String {
         "".to_string()
     }
+
+    fn send_uart(&mut self, payload: &str) {}
 }
 
 pub struct NullArticulatedController {}
