@@ -38,6 +38,7 @@ pub mod cloth;
 pub mod collision;
 pub mod control;
 pub mod deformable;
+pub mod mesh;
 pub mod rigid;
 pub mod visual;
 

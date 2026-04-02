@@ -20,6 +20,8 @@ use crate::{
     GRAVITY, WORLD_FRAME,
 };
 
+pub mod helper;
+
 /// Rigid body
 pub struct Rigid {
     pub inertia: SpatialInertia,

@@ -118,6 +118,7 @@ console_error_panic_hook = "0.1"
 futures = "0.3"
 rand = "0.9.0"
 rand_chacha = "0.9" # for seedable deterministic randomness
+urdf-rs = "0.9.0"
 # faer = "0.20"
 # faer-ext = "0.4"
 # rayon = "1.10.0"
