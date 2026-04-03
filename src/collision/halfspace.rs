@@ -46,4 +46,17 @@ impl HalfSpace {
     pub fn distance(&self, point: &Vector3<Float>) -> Float {
         (point - self.point).dot(&self.normal)
     }
+
+    /// Returns the contact point if in contact
+    pub fn intersect_sphere(
+        &self,
+        center: &Vector3<Float>,
+        radius: Float,
+    ) -> Option<Vector3<Float>> {
+        let distance = (center - self.point).dot(&self.normal);
+        if distance <= radius {
+            return Some(center - distance * *self.normal);
+        }
+        None
+    }
 }

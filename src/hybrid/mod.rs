@@ -241,6 +241,42 @@ impl Hybrid {
                                     Js.push(J);
                                 }
                             }
+                            Visual::Sphere(sphere) => {
+                                if let Some(cp) =
+                                    halfspace.intersect_sphere(&collider_pos, sphere.r)
+                                {
+                                    let (t, b) = tangentials(n);
+                                    let C = Matrix3::from_rows(&[
+                                        1. / mu * n.transpose(),
+                                        t.transpose(),
+                                        b.transpose(),
+                                    ]);
+
+                                    let mut J = Matrix3xX::zeros(total_dof);
+                                    // set jacobian for articulated
+                                    let mut H = Matrix6xX::zeros(dof);
+                                    H.view_mut((0, offsets[i_joint]), (6, joint.dof()))
+                                        .copy_from(&jacobians[i_joint]);
+                                    let mut parent = i_joint;
+                                    while articulated.parents[parent] != parent {
+                                        parent = articulated.parents[parent];
+                                        H.view_mut(
+                                            (0, offsets[parent]),
+                                            (6, articulated.joints[parent].dof()),
+                                        )
+                                        .copy_from(&jacobians[parent]);
+                                    }
+
+                                    let mut X = Matrix3x6::zeros();
+                                    let r = cp;
+                                    X.columns_mut(0, 3).copy_from(&-skew_symmetric(&r));
+                                    X.columns_mut(3, 3).copy_from(&Matrix3::identity());
+
+                                    J.view_mut((0, icol_arti), (3, dof)).copy_from(&(C * X * H));
+
+                                    Js.push(J);
+                                }
+                            }
                             Visual::RigidMesh(_mesh) => {
                                 // println!("ignore collision detection between halfspace and articulated rigid mesh");
                             }

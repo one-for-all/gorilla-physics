@@ -64,15 +64,3 @@ pub fn build_joint(
     );
     joint
 }
-
-pub fn add_collision_points(rigid: &mut Rigid, frame: &str, urdf: &Robot) {
-    for i in 1..5 {
-        let point_frame_name = format!("{}_p{}_frame", frame, i);
-        let point_joint = urdf
-            .joints
-            .iter()
-            .find(|&j| j.name == point_frame_name)
-            .unwrap();
-        rigid.add_point_at(&Vector3::from(point_joint.origin.xyz.0));
-    }
-}

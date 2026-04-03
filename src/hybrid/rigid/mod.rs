@@ -109,6 +109,11 @@ impl Rigid {
         Self::new_cuboid_at(&vector![0., 0., 0.], m, w, d, h, frame)
     }
 
+    pub fn add_collision_sphere_at(&mut self, com: &Vector3<Float>, r: Float) {
+        let iso = Isometry3::translation(com.x, com.y, com.z);
+        self.visual.push((Visual::new_sphere(r), iso, None));
+    }
+
     pub fn add_cuboid_at(&mut self, com: &Vector3<Float>, m: Float, w: Float, d: Float, h: Float) {
         let inertia = SpatialInertia::cuboid_at(&com, m, w, d, h, &self.inertia.frame);
         self.inertia += &inertia;

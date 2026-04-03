@@ -1,6 +1,10 @@
 use na::{vector, Isometry3, Point3, UnitVector3, Vector3};
 
-use crate::{hybrid::visual::rigid_mesh::RigidMesh, types::Float};
+use crate::{
+    collision::halfspace::{self, HalfSpace},
+    hybrid::visual::rigid_mesh::RigidMesh,
+    types::Float,
+};
 
 pub mod rigid_mesh;
 
@@ -139,5 +143,9 @@ impl Visual {
 
     pub fn new_point() -> Visual {
         Visual::Point(PointGeometry {})
+    }
+
+    pub fn new_sphere(r: Float) -> Visual {
+        Visual::Sphere(SphereGeometry { r })
     }
 }
