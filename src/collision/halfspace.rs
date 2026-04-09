@@ -55,7 +55,7 @@ impl HalfSpace {
     ) -> Option<Vector3<Float>> {
         let distance = (center - self.point).dot(&self.normal);
         if distance <= radius {
-            return Some(center - distance * *self.normal);
+            return Some(center - radius * *self.normal);
         }
         None
     }
