@@ -53,6 +53,7 @@ pub struct Hybrid {
     pub controllers: Vec<Box<dyn ArticulatedController>>,
 
     gravity_enabled: bool,
+    friction_mu: Float,
 }
 
 impl Hybrid {
@@ -69,6 +70,7 @@ impl Hybrid {
             halfspaces: vec![],
             controllers: vec![],
             gravity_enabled: true,
+            friction_mu: 1.0,
         }
     }
 
@@ -81,7 +83,12 @@ impl Hybrid {
             halfspaces: vec![],
             controllers: vec![],
             gravity_enabled: true,
+            friction_mu: 1.0,
         }
+    }
+
+    pub fn set_friction_mu(&mut self, mu: Float) {
+        self.friction_mu = mu;
     }
 
     pub fn disable_gravity(&mut self) {
@@ -162,7 +169,7 @@ impl Hybrid {
         let total_dof = offset_cloth + cloth_dof;
 
         let mut Js: Vec<Matrix3xX<Float>> = vec![];
-        let mu = 1.0; // friction coefficient
+        let mu = self.friction_mu; // friction coefficient
 
         // halfspace - deformable collision detection
         for halfspace in self.halfspaces.iter() {
