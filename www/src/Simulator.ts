@@ -48,8 +48,13 @@ export class Simulator {
   edgesMeshes: Map<string, THREE.LineSegments>;
   lines: Map<string, Line2>;
 
-  fps: number;
-  time: number;
+  fps: number = 60;
+  lastStepTime: number = 0;
+  lastWallTime: number = 0;
+  simTimeAccumulator: number = 0;
+  wallTimeAccumulator: number = 0;
+  realtimeRatio: number = 0;
+  rtrSmoothingWindow: number = 0.5; // seconds of wall time to average over
 
   constructor(simulator: InterfaceSimulator) {
     this.simulator = simulator;
@@ -68,8 +73,6 @@ export class Simulator {
     this.meshSet = new Map();
     this.edgesMeshes = new Map();
     this.lines = new Map();
-    this.fps = 60;
-    this.time = 0.0;
   }
 
   addFluid2D(fluid2D: InterfaceFluid2D) {
@@ -1011,16 +1014,22 @@ export class Simulator {
     // TODO: Currently some steps might take longer because of more computation.
     // This results in inconsistent frame refresh rate. Make it consistent.
     let slow_motion_factor = 1; // create slow motion effect to better see the details of motion
-    if (timestamp - this.time >= slow_motion_factor * 1000 * dt) {
-      // let qs = this.simulator.step(dt, control_input as Float64Array);
 
-      // let poses = this.simulator.poses();
-      // this.updateBiped(poses);
+    const wallElapsed =
+      this.lastWallTime === 0 ? 0 : (timestamp - this.lastWallTime) / 1000; // seconds
+    this.lastWallTime = timestamp;
 
-      // this.massSpring.step(dt);
-      // this.updateMassSpring();
+    this.wallTimeAccumulator += wallElapsed;
+    if (this.wallTimeAccumulator >= this.rtrSmoothingWindow) {
+      this.realtimeRatio = this.simTimeAccumulator / this.wallTimeAccumulator;
+      // Reset accumulators for next window
+      this.simTimeAccumulator = 0;
+      this.wallTimeAccumulator = 0;
+    }
 
-      // if (this.time > 1000 ) {
+    // if (timestamp - this.lastStepTime >= slow_motion_factor * 1000 * dt) {
+    if (true) {
+      this.simTimeAccumulator += dt;
 
       if (this.hybrid) {
         let sub_dt = dt / n_substeps;
@@ -1030,76 +1039,8 @@ export class Simulator {
         this.updateHybrid();
       }
 
-      // this.cloth.step(dt);
-      // this.updateCloth();
-
-      this.time = timestamp;
+      this.lastStepTime = timestamp;
     }
-    // console.log("time: %ss", this.time);
-    // this.time += dt;
-
-    // let n_substep = 4;
-    // for (let i = 0; i < n_substep; i++) {
-    //   this.fluid2D.step(dt / n_substep);
-    // }
-    // this.updateFluid2D();
-
-    // if (this.femDeformable) {
-    //   // drag the body towards right
-    //   let tau = new Float32Array(this.femDeformable.vertices().length);
-    //   // tau[499 * 3] = 1.0;
-    //   // tau[0 * 3] = -10.0;
-    //   // for (let i = 0; i < this.femBunny.vertices().length; i += 3) {
-    //   //   tau[i + 2] = -9.8;
-    //   // }
-    //   await this.femDeformable.step(dt, tau);
-    //   this.updateDeformable();
-    //   console.log("time: %ss", this.time);
-    //   this.time += dt;
-    // }
-
-    // this.updateMesh(0, "mesh0");
-    // this.updateMesh(1, "mesh1");
-    // this.updateMesh(2, "mesh2");
-    // this.updateMesh(3, "mesh3");
-    // this.updateMesh(4, "mesh4");
-    // this.updateMesh(5, "gripper");
-    // this.updateMesh(6, "jaw");
-
-    // this.updateNavbot();
-
-    // let wheel_left = this.meshes.get("wheel_left");
-    // let wheel_left_center = this.simulator.sphere_center(4);
-    // wheel_left.position.set(
-    //   wheel_left_center[0],
-    //   wheel_left_center[1],
-    //   wheel_left_center[2],
-    // );
-
-    // let wheel_right = this.meshes.get("wheel_right");
-    // let wheel_right_center = this.simulator.sphere_center(8);
-    // wheel_right.position.set(
-    //   wheel_right_center[0],
-    //   wheel_right_center[1],
-    //   wheel_right_center[2],
-    // );
-
-    // this.updateLeg(poses);
-    // this.updateBiped(poses);
-
-    // this.setPose("sphere1", poses.subarray(0, 6));
-    // this.setPose("sphere2", poses.subarray(6, 12));
-
-    // this.updatePusher(poses);
-    // this.updateMockNavbot(poses);
-    // this.updateFourBarLinkage(poses);
-    // this.updateFourBarLinkageWithBase(poses);
-    // this.updateBalancingBotPose(poses);
-
-    // let contact_positions = this.simulator.contact_positions();
-    // this.updateQuadruped(poses, contact_positions);
-    // this.updateCube(poses);
-    // this.updatePusher(poses);
 
     requestAnimationFrame((timestamp) => this.run(n_substeps, timestamp));
   }
