@@ -12,6 +12,21 @@ pub struct SphereGeometry {
     pub r: Float,
 }
 
+/// Return the contact point, and contact normal from 1st to 2nd sphere
+pub fn sphere_collide(
+    center: &Vector3<Float>,
+    radius: Float,
+    center2: &Vector3<Float>,
+    radius2: Float,
+) -> Option<(Vector3<Float>, UnitVector3<Float>)> {
+    if (center - center2).norm() <= (radius + radius2) {
+        let dir = UnitVector3::new_normalize(center2 - center);
+        let cp = center + dir.scale(radius);
+        return Some((cp, dir));
+    }
+    None
+}
+
 pub struct PointGeometry {}
 
 pub struct CuboidGeometry {
