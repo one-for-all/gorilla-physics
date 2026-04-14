@@ -47,6 +47,7 @@ export class Simulator {
   meshSet: Map<string, Array<THREE.Mesh>>;
   edgesMeshes: Map<string, THREE.LineSegments>;
   lines: Map<string, Line2>;
+  showCollisionVisual: boolean = true;
 
   fps: number = 60;
   lastStepTime: number = 0;
@@ -304,8 +305,10 @@ export class Simulator {
     let pos = [poses[4], poses[5], poses[6]];
 
     let body = this.meshes.get(name);
-    body.rotation.setFromQuaternion(quaternion, "ZYX");
-    body.position.set(pos[0], pos[1], pos[2]);
+    if (body) {
+      body.rotation.setFromQuaternion(quaternion, "ZYX");
+      body.position.set(pos[0], pos[1], pos[2]);
+    }
 
     let edges = this.edgesMeshes.get(name);
     if (edges) {

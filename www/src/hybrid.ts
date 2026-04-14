@@ -56,18 +56,22 @@ Simulator.prototype.addHybrid = function (state: InterfaceHybrid) {
         let visual_type = state.visual_type(i, j, k);
         let visual_name = frame + "-" + k;
         if (visual_type == 0) {
-          let r = state.visual_sphere_r(i, j, k);
-          this.addSphere(visual_name, 0xff0000, r, visual_offset);
+          if (this.showCollisionVisual) {
+            let r = state.visual_sphere_r(i, j, k);
+            this.addSphere(visual_name, 0xff0000, r, visual_offset);
+          }
         } else if (visual_type == 1) {
-          let wdh = state.visual_cuboid_wdh(i, j, k);
-          this.addCuboid(
-            visual_name,
-            0xff0000,
-            wdh[0],
-            wdh[1],
-            wdh[2],
-            visual_offset,
-          );
+          if (this.showCollisionVisual) {
+            let wdh = state.visual_cuboid_wdh(i, j, k);
+            this.addCuboid(
+              visual_name,
+              0xff0000,
+              wdh[0],
+              wdh[1],
+              wdh[2],
+              visual_offset,
+            );
+          }
         } else if (visual_type == 2) {
           let vertices = state.visual_mesh_vertices(i, j, k);
           let faces = state.visual_mesh_faces(i, j, k);
@@ -80,8 +84,10 @@ Simulator.prototype.addHybrid = function (state: InterfaceHybrid) {
             visual_offset,
           );
         } else if (visual_type == 3) {
-          let r = 0.002; // default visual size for point
-          this.addSphere(visual_name, 0xff0000, r, visual_offset);
+          if (this.showCollisionVisual) {
+            let r = 0.002; // default visual size for point
+            this.addSphere(visual_name, 0xff0000, r, visual_offset);
+          }
         } else {
           alert(`unknown visual type: ${visual_type}`);
         }
