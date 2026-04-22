@@ -228,15 +228,17 @@ Simulator.prototype.addHybrid = function (state: InterfaceHybrid) {
   }
 
   // Add halfspaces
-  let halfspaces = state.halfspaces();
-  for (let i = 0; i < halfspaces.length; i += 4) {
-    let n = new FloatArray([
-      halfspaces[i],
-      halfspaces[i + 1],
-      halfspaces[i + 2],
-    ]);
-    let dist = halfspaces[i + 3];
-    this.addPlane(n, dist, 10);
+  if (this.showHalfspaces) {
+    let halfspaces = state.halfspaces();
+    for (let i = 0; i < halfspaces.length; i += 4) {
+      let n = new FloatArray([
+        halfspaces[i],
+        halfspaces[i + 1],
+        halfspaces[i + 2],
+      ]);
+      let dist = halfspaces[i + 3];
+      this.addPlane(n, dist, 10);
+    }
   }
 };
 

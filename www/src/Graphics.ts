@@ -8,7 +8,7 @@ export class Graphics {
   light: THREE.PointLight;
   controls: OrbitControls;
 
-  constructor() {
+  constructor(showGrid: boolean = true) {
     this.scene = new THREE.Scene();
 
     let view_div = document.getElementById("threejs").getBoundingClientRect();
@@ -34,10 +34,13 @@ export class Graphics {
     this.light = new THREE.PointLight(0xffffff, 1, 1000);
     this.scene.add(this.light);
 
-    const gridHelper = new THREE.GridHelper(10, 100, 0xff0000, 0x0000ff); // Red center line, blue grid lines
-    gridHelper.rotateOnAxis(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
-    // gridHelper.translateY(0.05 / 2);
-    this.scene.add(gridHelper);
+    // TODO: optionally show grid
+    if (showGrid) {
+      const gridHelper = new THREE.GridHelper(10, 100, 0xff0000, 0x0000ff); // Red center line, blue grid lines
+      gridHelper.rotateOnAxis(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
+      // gridHelper.translateY(0.05 / 2);
+      this.scene.add(gridHelper);
+    }
 
     let me = this;
     function onWindowResize() {

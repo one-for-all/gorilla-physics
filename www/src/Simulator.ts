@@ -48,6 +48,7 @@ export class Simulator {
   edgesMeshes: Map<string, THREE.LineSegments>;
   lines: Map<string, Line2>;
   showCollisionVisual: boolean = true;
+  showHalfspaces: boolean = true;
 
   fps: number = 60;
   lastStepTime: number = 0;
@@ -57,7 +58,7 @@ export class Simulator {
   realtimeRatio: number = 0;
   rtrSmoothingWindow: number = 0.5; // seconds of wall time to average over
 
-  constructor(simulator: InterfaceSimulator) {
+  constructor(simulator: InterfaceSimulator, showGrid: boolean = true) {
     this.simulator = simulator;
 
     this.massSpringDeformable = null;
@@ -69,7 +70,7 @@ export class Simulator {
     this.mpm2DMesh = null;
     this.massSpring = null;
 
-    this.graphics = new Graphics();
+    this.graphics = new Graphics(showGrid);
     this.meshes = new Map();
     this.meshSet = new Map();
     this.edgesMeshes = new Map();
