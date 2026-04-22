@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment";
 
 export class Graphics {
   scene: THREE.Scene;
@@ -21,6 +22,7 @@ export class Graphics {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(view_div.width, view_div.height);
     this.renderer.setClearColor(0x292929, 1);
+    // this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     // High pixel Ratio make the rendering extremely slow, so we cap it.
     const pixelRatio = window.devicePixelRatio
       ? Math.min(window.devicePixelRatio, 1.5)
@@ -33,6 +35,11 @@ export class Graphics {
     this.scene.add(ambientLight);
     this.light = new THREE.PointLight(0xffffff, 1, 1000);
     this.scene.add(this.light);
+
+    // Room Environment
+    // const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
+    // const envMap = pmremGenerator.fromScene(new RoomEnvironment()).texture;
+    // this.scene.environment = envMap;
 
     // TODO: optionally show grid
     if (showGrid) {
