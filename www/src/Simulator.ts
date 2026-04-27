@@ -47,7 +47,6 @@ export class Simulator {
   meshSet: Map<string, Array<THREE.Mesh>>;
   edgesMeshes: Map<string, THREE.LineSegments>;
   lines: Map<string, Line2>;
-  showCollisionVisual: boolean = true;
   showHalfspaces: boolean = true;
 
   fps: number = 60;

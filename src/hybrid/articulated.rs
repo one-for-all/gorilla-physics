@@ -23,6 +23,8 @@ pub struct Articulated {
     pub joints: Vec<Joint>, // joints[i] connects bodies[i] to its parent
 
     pub parents: Vec<usize>, // parents[i] -> index of parent body of body i, and parents[i] == i means parent is world
+
+    pub show_visual: bool,
 }
 
 impl Articulated {
@@ -46,6 +48,7 @@ impl Articulated {
             bodies: bodies,
             joints: joints,
             parents: parents,
+            show_visual: true,
         };
 
         state.update_body_states();

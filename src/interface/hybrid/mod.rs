@@ -76,6 +76,11 @@ impl InterfaceHybrid {
         };
     }
 
+    // Whether the visual in i-th articulated should be shown
+    pub fn visual_show(&self, i: usize) -> bool {
+        self.inner.articulated[i].show_visual
+    }
+
     /// Return color, or default
     pub fn visual_color(&self, i: usize, j: usize, k: usize) -> Float32Array {
         let color = &self.inner.articulated[i].bodies[j].visual[k].2;

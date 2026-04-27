@@ -56,12 +56,12 @@ Simulator.prototype.addHybrid = function (state: InterfaceHybrid) {
         let visual_type = state.visual_type(i, j, k);
         let visual_name = frame + "-" + k;
         if (visual_type == 0) {
-          if (this.showCollisionVisual) {
+          if (state.visual_show(i)) {
             let r = state.visual_sphere_r(i, j, k);
             this.addSphere(visual_name, 0xff0000, r, visual_offset);
           }
         } else if (visual_type == 1) {
-          if (this.showCollisionVisual) {
+          if (state.visual_show(i)) {
             let wdh = state.visual_cuboid_wdh(i, j, k);
             this.addCuboid(
               visual_name,
@@ -84,7 +84,7 @@ Simulator.prototype.addHybrid = function (state: InterfaceHybrid) {
             visual_offset,
           );
         } else if (visual_type == 3) {
-          if (this.showCollisionVisual) {
+          if (state.visual_show(i)) {
             let r = 0.002; // default visual size for point
             this.addSphere(visual_name, 0xff0000, r, visual_offset);
           }
