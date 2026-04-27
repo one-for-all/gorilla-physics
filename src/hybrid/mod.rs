@@ -288,7 +288,7 @@ impl Hybrid {
                                 // println!("ignore collision detection between halfspace and articulated rigid mesh");
                             }
                             _ => {
-                                panic!("collision detection between halfspace and articulated only implemented for point geometry");
+                                panic!("collision detection between halfspace and articulated only implemented for point and sphere geometry");
                             }
                         }
                     }
@@ -334,6 +334,110 @@ impl Hybrid {
                 }
                 i_deformable_offset += deformable.dof();
             }
+        }
+
+        // articulated - articulated collision detection
+        let mut icol_arti = offset_articulated;
+        for (i_articulated, articulated) in self.articulated.iter().enumerate() {
+            let dof = articulated.dof();
+            let offsets = articulated.offsets();
+            let jacobians = articulated.jacobians();
+            for (i_joint, (rigid, joint)) in
+                izip!(articulated.bodies.iter(), articulated.joints.iter()).enumerate()
+            {
+                let mut icol_arti2 = icol_arti + dof;
+                for (i_articulated2, articulated2) in
+                    self.articulated.iter().skip(i_articulated + 1).enumerate()
+                {
+                    let dof2 = articulated2.dof();
+                    let offsets2 = articulated2.offsets();
+                    let jacobians2 = articulated2.jacobians();
+                    for (i_joint2, (rigid2, joint2)) in
+                        izip!(articulated2.bodies.iter(), articulated2.joints.iter()).enumerate()
+                    {
+                        for (collider, iso_collider_to_body, _color) in rigid.visual.iter() {
+                            let iso = rigid.pose.to_isometry() * iso_collider_to_body;
+                            let collider_pos = iso.translation.vector;
+
+                            for (collider2, iso_collider_to_body2, _color2) in rigid2.visual.iter()
+                            {
+                                let iso2 = rigid2.pose.to_isometry() * iso_collider_to_body2;
+                                let collider_pos2 = iso2.translation.vector;
+
+                                match (collider, collider2) {
+                                    (Visual::Sphere(sphere), Visual::Sphere(sphere2)) => {
+                                        // swap 2 and 1, so that normal goes from 2 to 1
+                                        let Some((cp, n)) = sphere_collide(
+                                            &collider_pos2,
+                                            sphere2.r,
+                                            &collider_pos,
+                                            sphere.r,
+                                        ) else {
+                                            continue;
+                                        };
+
+                                        let (t, b) = tangentials(&n);
+                                        let C = Matrix3::from_rows(&[
+                                            1. / mu * n.transpose(),
+                                            t.transpose(),
+                                            b.transpose(),
+                                        ]);
+
+                                        let mut J = Matrix3xX::zeros(total_dof);
+                                        // set jacobian for articulated body 1
+                                        let mut H = Matrix6xX::zeros(dof);
+                                        H.view_mut((0, offsets[i_joint]), (6, joint.dof()))
+                                            .copy_from(&jacobians[i_joint]);
+                                        let mut parent = i_joint;
+                                        while articulated.parents[parent] != parent {
+                                            parent = articulated.parents[parent];
+                                            H.view_mut(
+                                                (0, offsets[parent]),
+                                                (6, articulated.joints[parent].dof()),
+                                            )
+                                            .copy_from(&jacobians[parent]);
+                                        }
+
+                                        // set jacobian for articulated body 2
+                                        let mut H2 = Matrix6xX::zeros(dof2);
+                                        H2.view_mut((0, offsets2[i_joint2]), (6, joint2.dof()))
+                                            .copy_from(&jacobians2[i_joint2]);
+                                        let mut parent = i_joint2;
+                                        while articulated2.parents[parent] != parent {
+                                            parent = articulated2.parents[parent];
+                                            H2.view_mut(
+                                                (0, offsets2[parent]),
+                                                (6, articulated2.joints[parent].dof()),
+                                            )
+                                            .copy_from(&jacobians2[parent]);
+                                        }
+
+                                        let mut X = Matrix3x6::zeros();
+                                        let r = cp;
+                                        X.columns_mut(0, 3).copy_from(&-skew_symmetric(&r));
+                                        X.columns_mut(3, 3).copy_from(&Matrix3::identity());
+
+                                        // println!("total dof: {}", total_dof);
+                                        // println!("icol_arti: {}", icol_arti);
+                                        // println!("dof: {}", dof);
+                                        J.view_mut((0, icol_arti), (3, dof))
+                                            .copy_from(&(C * X * H));
+                                        J.view_mut((0, icol_arti2), (3, dof2))
+                                            .copy_from(&(-C * X * H2));
+
+                                        Js.push(J);
+                                    }
+                                    _ => {
+                                        // only handle sphere-sphere collision for now
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    icol_arti2 += dof2;
+                }
+            }
+            icol_arti += dof;
         }
 
         // // articulated self sphere collision detection
