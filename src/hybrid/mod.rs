@@ -417,9 +417,6 @@ impl Hybrid {
                                         X.columns_mut(0, 3).copy_from(&-skew_symmetric(&r));
                                         X.columns_mut(3, 3).copy_from(&Matrix3::identity());
 
-                                        // println!("total dof: {}", total_dof);
-                                        // println!("icol_arti: {}", icol_arti);
-                                        // println!("dof: {}", dof);
                                         J.view_mut((0, icol_arti), (3, dof))
                                             .copy_from(&(C * X * H));
                                         J.view_mut((0, icol_arti2), (3, dof2))
