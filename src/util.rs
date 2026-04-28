@@ -134,6 +134,12 @@ pub fn tangentials(n: &UnitVector3<Float>) -> (UnitVector3<Float>, UnitVector3<F
     (t, b)
 }
 
+/// Multiplying the point velocity to obtain the dual friction cone constraint
+pub fn dual_friction_cone_multipler(n: &UnitVector3<Float>, mu: Float) -> Matrix3<Float> {
+    let (t, b) = tangentials(&n);
+    Matrix3::from_rows(&[1. / mu * n.transpose(), t.transpose(), b.transpose()])
+}
+
 /// Project a matrix to be symmetric & positive semi-definite
 pub fn project_symmetric_psd(matrix: &DMatrix<Float>) -> DMatrix<Float> {
     // Ensure the matrix is square

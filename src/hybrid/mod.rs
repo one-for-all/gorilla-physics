@@ -27,7 +27,8 @@ use crate::{
     },
     types::Float,
     util::{
-        quaternion_derivative, skew_symmetric, spatial_to_linear_velocity_multiplier, tangentials,
+        dual_friction_cone_multipler, quaternion_derivative, skew_symmetric,
+        spatial_to_linear_velocity_multiplier, tangentials,
     },
 };
 
@@ -170,6 +171,9 @@ impl Hybrid {
         let cloth_dof: usize = self.cloths.iter().map(|c| c.q.len()).sum();
         let total_dof = offset_cloth + cloth_dof;
 
+        // contact handling
+        // reference: Contact Models in Robotics, 2024
+
         let mut Js: Vec<Matrix3xX<Float>> = vec![];
         let mu = self.friction_mu; // friction coefficient
 
@@ -180,12 +184,7 @@ impl Hybrid {
             for (i_deform, deformable) in self.deformables.iter().enumerate() {
                 for (i_node, node) in deformable.get_positions().iter().enumerate() {
                     if halfspace.has_inside(node) {
-                        let (t, b) = tangentials(n);
-                        let C = Matrix3::from_rows(&[
-                            1. / mu * n.transpose(),
-                            t.transpose(),
-                            b.transpose(),
-                        ]);
+                        let C = dual_friction_cone_multipler(n, mu);
 
                         // set jacobian for deformable part
                         let icol = offset_deformable + i_deformable_offset + i_node * 3;
@@ -216,12 +215,7 @@ impl Hybrid {
                             Visual::Point(_point) => {
                                 if halfspace.has_inside(&collider_pos) {
                                     let cp = collider_pos;
-                                    let (t, b) = tangentials(n);
-                                    let C = Matrix3::from_rows(&[
-                                        1. / mu * n.transpose(),
-                                        t.transpose(),
-                                        b.transpose(),
-                                    ]);
+                                    let C = dual_friction_cone_multipler(n, mu);
 
                                     let mut J = Matrix3xX::zeros(total_dof);
                                     let H = articulated.total_jacobian_to_body(i_joint);
@@ -237,12 +231,7 @@ impl Hybrid {
                                 if let Some(cp) =
                                     halfspace.intersect_sphere(&collider_pos, sphere.r)
                                 {
-                                    let (t, b) = tangentials(n);
-                                    let C = Matrix3::from_rows(&[
-                                        1. / mu * n.transpose(),
-                                        t.transpose(),
-                                        b.transpose(),
-                                    ]);
+                                    let C = dual_friction_cone_multipler(n, mu);
 
                                     let mut J = Matrix3xX::zeros(total_dof);
                                     let H = articulated.total_jacobian_to_body(i_joint);
@@ -280,12 +269,7 @@ impl Hybrid {
                         let n = UnitVector3::new_normalize(translation - pos);
                         let cp = pos;
 
-                        let (t, b) = tangentials(&n);
-                        let C = Matrix3::from_rows(&[
-                            1. / mu * n.transpose(),
-                            t.transpose(),
-                            b.transpose(),
-                        ]);
+                        let C = dual_friction_cone_multipler(&n, mu);
 
                         // set jacobian for deformable part
                         let icol = offset_deformable + i_deformable_offset + i_node * 3;
@@ -339,12 +323,7 @@ impl Hybrid {
                                             continue;
                                         };
 
-                                        let (t, b) = tangentials(&n);
-                                        let C = Matrix3::from_rows(&[
-                                            1. / mu * n.transpose(),
-                                            t.transpose(),
-                                            b.transpose(),
-                                        ]);
+                                        let C = dual_friction_cone_multipler(&n, mu);
 
                                         let mut J = Matrix3xX::zeros(total_dof);
                                         let H = articulated.total_jacobian_to_body(i_joint);
@@ -486,12 +465,7 @@ impl Hybrid {
                     let contacts =
                         rigid_deformable_cd(body, deformable, &body_twists[i_joint], v_deform, dt);
                     for (cp, n, node_weights) in contacts.iter() {
-                        let (t, b) = tangentials(n);
-                        let C = Matrix3::from_rows(&[
-                            1. / mu * n.transpose(),
-                            t.transpose(),
-                            b.transpose(),
-                        ]);
+                        let C = dual_friction_cone_multipler(&n, mu);
 
                         let mut J = Matrix3xX::zeros(total_dof);
                         // set jacobian for deformable part
@@ -532,12 +506,7 @@ impl Hybrid {
                     for (cp, n, node_weights) in contacts.iter() {
                         let mut J = Matrix3xX::zeros(total_dof);
 
-                        let (t, b) = tangentials(n);
-                        let C = Matrix3::from_rows(&[
-                            1. / mu * n.transpose(),
-                            t.transpose(),
-                            b.transpose(),
-                        ]);
+                        let C = dual_friction_cone_multipler(n, mu);
 
                         // set jacobian for cloth part
                         for (i_node, weight) in node_weights.iter() {
@@ -571,12 +540,7 @@ impl Hybrid {
                 for (cp, n, n1_ws, n2_ws) in contacts.iter() {
                     let mut J = Matrix3xX::zeros(total_dof);
 
-                    let (t, b) = tangentials(n);
-                    let C = Matrix3::from_rows(&[
-                        1. / mu * n.transpose(),
-                        t.transpose(),
-                        b.transpose(),
-                    ]);
+                    let C = dual_friction_cone_multipler(n, mu);
 
                     // set jacobian for deformable1
                     for (i_node, weight) in n1_ws.iter() {
