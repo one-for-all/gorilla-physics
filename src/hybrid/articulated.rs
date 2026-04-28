@@ -349,6 +349,24 @@ impl Articulated {
             .collect()
     }
 
+    /// Jacobian from total v to the total spatial twist of ith body, expressed in world frame
+    pub fn total_jacobian_to_body(&self, i: usize) -> Matrix6xX<Float> {
+        let dof = self.dof();
+        let offsets = self.offsets();
+        let jacobians = self.jacobians();
+
+        let mut H = Matrix6xX::zeros(dof);
+        H.view_mut((0, offsets[i]), (6, self.joints[i].dof()))
+            .copy_from(&jacobians[i]);
+        let mut parent = i;
+        while self.parents[parent] != parent {
+            parent = self.parents[parent];
+            H.view_mut((0, offsets[parent]), (6, self.joints[parent].dof()))
+                .copy_from(&jacobians[parent]);
+        }
+        H
+    }
+
     pub fn step(&mut self, dt: Float) {
         let gravity_enabled = true;
         let v = self.free_velocity(dt, DVector::zeros(self.dof()), gravity_enabled);

@@ -224,19 +224,7 @@ impl Hybrid {
                                     ]);
 
                                     let mut J = Matrix3xX::zeros(total_dof);
-                                    // set jacobian for articulated
-                                    let mut H = Matrix6xX::zeros(dof);
-                                    H.view_mut((0, offsets[i_joint]), (6, joint.dof()))
-                                        .copy_from(&jacobians[i_joint]);
-                                    let mut parent = i_joint;
-                                    while articulated.parents[parent] != parent {
-                                        parent = articulated.parents[parent];
-                                        H.view_mut(
-                                            (0, offsets[parent]),
-                                            (6, articulated.joints[parent].dof()),
-                                        )
-                                        .copy_from(&jacobians[parent]);
-                                    }
+                                    let H = articulated.total_jacobian_to_body(i_joint);
 
                                     let mut X = Matrix3x6::zeros();
                                     let r = cp;
@@ -260,19 +248,7 @@ impl Hybrid {
                                     ]);
 
                                     let mut J = Matrix3xX::zeros(total_dof);
-                                    // set jacobian for articulated
-                                    let mut H = Matrix6xX::zeros(dof);
-                                    H.view_mut((0, offsets[i_joint]), (6, joint.dof()))
-                                        .copy_from(&jacobians[i_joint]);
-                                    let mut parent = i_joint;
-                                    while articulated.parents[parent] != parent {
-                                        parent = articulated.parents[parent];
-                                        H.view_mut(
-                                            (0, offsets[parent]),
-                                            (6, articulated.joints[parent].dof()),
-                                        )
-                                        .copy_from(&jacobians[parent]);
-                                    }
+                                    let H = articulated.total_jacobian_to_body(i_joint);
 
                                     let mut X = Matrix3x6::zeros();
                                     let r = cp;
@@ -384,33 +360,8 @@ impl Hybrid {
                                         ]);
 
                                         let mut J = Matrix3xX::zeros(total_dof);
-                                        // set jacobian for articulated body 1
-                                        let mut H = Matrix6xX::zeros(dof);
-                                        H.view_mut((0, offsets[i_joint]), (6, joint.dof()))
-                                            .copy_from(&jacobians[i_joint]);
-                                        let mut parent = i_joint;
-                                        while articulated.parents[parent] != parent {
-                                            parent = articulated.parents[parent];
-                                            H.view_mut(
-                                                (0, offsets[parent]),
-                                                (6, articulated.joints[parent].dof()),
-                                            )
-                                            .copy_from(&jacobians[parent]);
-                                        }
-
-                                        // set jacobian for articulated body 2
-                                        let mut H2 = Matrix6xX::zeros(dof2);
-                                        H2.view_mut((0, offsets2[i_joint2]), (6, joint2.dof()))
-                                            .copy_from(&jacobians2[i_joint2]);
-                                        let mut parent = i_joint2;
-                                        while articulated2.parents[parent] != parent {
-                                            parent = articulated2.parents[parent];
-                                            H2.view_mut(
-                                                (0, offsets2[parent]),
-                                                (6, articulated2.joints[parent].dof()),
-                                            )
-                                            .copy_from(&jacobians2[parent]);
-                                        }
+                                        let H = articulated.total_jacobian_to_body(i_joint);
+                                        let H2 = articulated2.total_jacobian_to_body(i_joint2);
 
                                         let mut X = Matrix3x6::zeros();
                                         let r = cp;
@@ -567,16 +518,8 @@ impl Hybrid {
                             J.fixed_view_mut::<3, 3>(0, icol).copy_from(&(-weight * C));
                         }
 
-                        // set jacobian for articulated body
-                        let mut H = Matrix6xX::zeros(dof);
-                        H.view_mut((0, offsets[i_joint]), (6, joint.dof()))
-                            .copy_from(&jacobians[i_joint]);
-                        let mut parent = i_joint;
-                        while articulated.parents[parent] != parent {
-                            parent = articulated.parents[parent];
-                            H.view_mut((0, offsets[parent]), (6, articulated.joints[parent].dof()))
-                                .copy_from(&jacobians[parent]);
-                        }
+                        // jacobian for articulated body
+                        let H = articulated.total_jacobian_to_body(i_joint);
 
                         let mut X = Matrix3x6::zeros();
                         let r = cp;
@@ -625,16 +568,8 @@ impl Hybrid {
                             J.fixed_view_mut::<3, 3>(0, icol).copy_from(&(-weight * C));
                         }
 
-                        // set jacobian for articulated body
-                        let mut H = Matrix6xX::zeros(dof);
-                        H.view_mut((0, offsets[i_joint]), (6, joint.dof()))
-                            .copy_from(&jacobians[i_joint]);
-                        let mut parent = i_joint;
-                        while articulated.parents[parent] != parent {
-                            parent = articulated.parents[parent];
-                            H.view_mut((0, offsets[parent]), (6, articulated.joints[parent].dof()))
-                                .copy_from(&jacobians[parent]);
-                        }
+                        // jacobian for articulated body
+                        let H = articulated.total_jacobian_to_body(i_joint);
 
                         let mut X = Matrix3x6::zeros();
                         let r = cp;
