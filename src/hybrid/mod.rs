@@ -26,7 +26,9 @@ use crate::{
         pose::Pose, spatial_vector::SpatialVector, twist::compute_twist_transformation_matrix,
     },
     types::Float,
-    util::{quaternion_derivative, skew_symmetric, tangentials},
+    util::{
+        quaternion_derivative, skew_symmetric, spatial_to_linear_velocity_multiplier, tangentials,
+    },
 };
 
 pub use deformable::Deformable;
@@ -224,10 +226,7 @@ impl Hybrid {
                                     let mut J = Matrix3xX::zeros(total_dof);
                                     let H = articulated.total_jacobian_to_body(i_joint);
 
-                                    let mut X = Matrix3x6::zeros();
-                                    let r = cp;
-                                    X.columns_mut(0, 3).copy_from(&-skew_symmetric(&r));
-                                    X.columns_mut(3, 3).copy_from(&Matrix3::identity());
+                                    let X = spatial_to_linear_velocity_multiplier(&cp);
 
                                     J.view_mut((0, icol_arti), (3, dof)).copy_from(&(C * X * H));
 
@@ -248,10 +247,7 @@ impl Hybrid {
                                     let mut J = Matrix3xX::zeros(total_dof);
                                     let H = articulated.total_jacobian_to_body(i_joint);
 
-                                    let mut X = Matrix3x6::zeros();
-                                    let r = cp;
-                                    X.columns_mut(0, 3).copy_from(&-skew_symmetric(&r));
-                                    X.columns_mut(3, 3).copy_from(&Matrix3::identity());
+                                    let X = spatial_to_linear_velocity_multiplier(&cp);
 
                                     J.view_mut((0, icol_arti), (3, dof)).copy_from(&(C * X * H));
 
@@ -297,10 +293,7 @@ impl Hybrid {
                         J.fixed_view_mut::<3, 3>(0, icol).copy_from(&-C);
 
                         // set jacobian for rigid body part
-                        let mut X = Matrix3x6::zeros();
-                        let r = cp;
-                        X.columns_mut(0, 3).copy_from(&-skew_symmetric(&r));
-                        X.columns_mut(3, 3).copy_from(&Matrix3::identity());
+                        let X = spatial_to_linear_velocity_multiplier(&cp);
                         J.fixed_view_mut::<3, 6>(0, i_rigid * 6)
                             .copy_from(&(C * X * T));
                         Js.push(J);
@@ -357,10 +350,7 @@ impl Hybrid {
                                         let H = articulated.total_jacobian_to_body(i_joint);
                                         let H2 = articulated2.total_jacobian_to_body(i_joint2);
 
-                                        let mut X = Matrix3x6::zeros();
-                                        let r = cp;
-                                        X.columns_mut(0, 3).copy_from(&-skew_symmetric(&r));
-                                        X.columns_mut(3, 3).copy_from(&Matrix3::identity());
+                                        let X = spatial_to_linear_velocity_multiplier(&cp);
 
                                         J.view_mut((0, icol_arti), (3, dof))
                                             .copy_from(&(C * X * H));
@@ -513,10 +503,7 @@ impl Hybrid {
                         // jacobian for articulated body
                         let H = articulated.total_jacobian_to_body(i_joint);
 
-                        let mut X = Matrix3x6::zeros();
-                        let r = cp;
-                        X.columns_mut(0, 3).copy_from(&-skew_symmetric(&r));
-                        X.columns_mut(3, 3).copy_from(&Matrix3::identity());
+                        let X = spatial_to_linear_velocity_multiplier(&cp);
 
                         J.view_mut((0, icol_arti), (3, dof)).copy_from(&(C * X * H));
                         Js.push(J);
@@ -561,10 +548,7 @@ impl Hybrid {
                         // jacobian for articulated body
                         let H = articulated.total_jacobian_to_body(i_joint);
 
-                        let mut X = Matrix3x6::zeros();
-                        let r = cp;
-                        X.columns_mut(0, 3).copy_from(&-skew_symmetric(&r));
-                        X.columns_mut(3, 3).copy_from(&Matrix3::identity());
+                        let X = spatial_to_linear_velocity_multiplier(&cp);
 
                         J.view_mut((0, icol_arti), (3, dof)).copy_from(&(C * X * H));
                         Js.push(J);
