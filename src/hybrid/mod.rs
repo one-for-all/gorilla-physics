@@ -203,8 +203,6 @@ impl Hybrid {
             let mut icol_arti = offset_articulated;
             for (_i_articulated, articulated) in self.articulated.iter().enumerate() {
                 let dof = articulated.dof();
-                let offsets = articulated.offsets();
-                let jacobians = articulated.jacobians();
                 for (i_joint, (rigid, joint)) in
                     izip!(articulated.bodies.iter(), articulated.joints.iter()).enumerate()
                 {
@@ -316,8 +314,6 @@ impl Hybrid {
         let mut icol_arti = offset_articulated;
         for (i_articulated, articulated) in self.articulated.iter().enumerate() {
             let dof = articulated.dof();
-            let offsets = articulated.offsets();
-            let jacobians = articulated.jacobians();
             for (i_joint, (rigid, joint)) in
                 izip!(articulated.bodies.iter(), articulated.joints.iter()).enumerate()
             {
@@ -326,8 +322,6 @@ impl Hybrid {
                     self.articulated.iter().skip(i_articulated + 1).enumerate()
                 {
                     let dof2 = articulated2.dof();
-                    let offsets2 = articulated2.offsets();
-                    let jacobians2 = articulated2.jacobians();
                     for (i_joint2, (rigid2, joint2)) in
                         izip!(articulated2.bodies.iter(), articulated2.joints.iter()).enumerate()
                     {
@@ -493,8 +487,6 @@ impl Hybrid {
             let body_twists = articulated.body_twists(v_art);
 
             let dof = articulated.dof();
-            let offsets = articulated.offsets();
-            let jacobians = articulated.jacobians();
             for (i_joint, (body, joint)) in
                 izip!(articulated.bodies.iter(), articulated.joints.iter()).enumerate()
             {
@@ -543,8 +535,6 @@ impl Hybrid {
             let body_twists = articulated.body_twists(v_art);
 
             let dof = articulated.dof();
-            let offsets = articulated.offsets();
-            let jacobians = articulated.jacobians();
             for (i_joint, (body, joint)) in
                 izip!(articulated.bodies.iter(), articulated.joints.iter()).enumerate()
             {
