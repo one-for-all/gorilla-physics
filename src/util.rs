@@ -4,7 +4,8 @@ use std::{
 };
 
 use na::{
-    DMatrix, DVector, Matrix3xX, Matrix4x3, Quaternion, SymmetricEigen, UnitQuaternion, UnitVector3,
+    DMatrix, DVector, Matrix3x6, Matrix3xX, Matrix4x3, Quaternion, SymmetricEigen, UnitQuaternion,
+    UnitVector3,
 };
 use nalgebra::{Matrix3, Vector3};
 use web_sys::{self};
@@ -108,6 +109,15 @@ pub fn skew_symmetric(v: &Vector3<Float>) -> Matrix3<Float> {
         v.z,    0.0,    -v.x,
         -v.y,   v.x,    0.0
     );
+}
+
+/// Given a spatial velocity v, spatial_to_linear_velocity_multiplier(r) * v == linear velocity at point r.
+/// In essence, linear velocity at r = v.linear + v.rotational.cross(r)
+pub fn spatial_to_linear_velocity_multiplier(r: &Vector3<Float>) -> Matrix3x6<Float> {
+    let mut X = Matrix3x6::zeros();
+    X.columns_mut(0, 3).copy_from(&-skew_symmetric(r)); // negative sign because -skew_symmetric(r) * w = w * skew_symmetric(r) = w.cross(r), which gives the linear velocity at r due to rotation
+    X.columns_mut(3, 3).copy_from(&Matrix3::identity());
+    X
 }
 
 /// Given a normal direction, produces two tangential directions
