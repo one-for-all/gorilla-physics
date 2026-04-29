@@ -17,6 +17,7 @@ use crate::{
     hybrid::{
         articulated::Articulated,
         cloth::Cloth,
+        collision::sphere_cuboid_collide,
         control::{ArticulatedController, NullArticulatedController},
         deformable::deformable_deformable_ccd,
         rigid::{rigid_cloth_ccd, rigid_deformable_cd},
@@ -335,7 +336,30 @@ impl Hybrid {
                                             .copy_from(&(C * X * H));
                                         J.view_mut((0, icol_arti2), (3, dof2))
                                             .copy_from(&(-C * X * H2));
+                                        Js.push(J);
+                                    }
+                                    (Visual::Sphere(sphere), Visual::Cuboid(cuboid)) => {
+                                        let Some((cp, n)) = sphere_cuboid_collide(
+                                            &collider_pos,
+                                            sphere,
+                                            &iso2,
+                                            cuboid,
+                                        ) else {
+                                            continue;
+                                        };
 
+                                        let C = dual_friction_cone_multipler(&n, mu);
+
+                                        let mut J = Matrix3xX::zeros(total_dof);
+                                        let H = articulated.total_jacobian_to_body(i_joint);
+                                        let H2 = articulated2.total_jacobian_to_body(i_joint2);
+
+                                        let X = spatial_to_linear_velocity_multiplier(&cp);
+
+                                        J.view_mut((0, icol_arti), (3, dof))
+                                            .copy_from(&(-C * X * H));
+                                        J.view_mut((0, icol_arti2), (3, dof2))
+                                            .copy_from(&(C * X * H2));
                                         Js.push(J);
                                     }
                                     _ => {
