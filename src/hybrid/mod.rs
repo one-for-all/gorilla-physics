@@ -244,6 +244,25 @@ impl Hybrid {
                                     Js.push(J);
                                 }
                             }
+                            Visual::Cuboid(cuboid) => {
+                                for point in cuboid.points(&iso) {
+                                    if halfspace.has_inside(&point) {
+                                        let cp = point;
+                                        let C = dual_friction_cone_multipler(n, mu);
+
+                                        let mut J = Matrix3xX::zeros(total_dof);
+                                        let H = articulated.total_jacobian_to_body(i_joint);
+
+                                        let X = spatial_to_linear_velocity_multiplier(&cp);
+
+                                        J.view_mut((0, icol_arti), (3, dof))
+                                            .copy_from(&(C * X * H));
+
+                                        Js.push(J);
+                                    }
+                                }
+                            }
+
                             Visual::RigidMesh(_mesh) => {
                                 // println!("ignore collision detection between halfspace and articulated rigid mesh");
                             }
