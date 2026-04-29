@@ -1,6 +1,7 @@
 use na::{Isometry3, UnitVector1, UnitVector3, Vector3};
 
 use crate::{
+    collision::cuboid,
     hybrid::visual::{CuboidGeometry, SphereGeometry},
     types::Float,
 };
@@ -12,11 +13,36 @@ pub fn sphere_cuboid_collide(
     cuboid_iso: &Isometry3<Float>,
     cuboid_geometry: &CuboidGeometry,
 ) -> Option<(Vector3<Float>, UnitVector3<Float>)> {
+    // vertex collision detection
     let cuboid_points = cuboid_geometry.points(cuboid_iso);
     for point in cuboid_points.iter() {
         let sphere_to_point = point - sphere_center;
         if sphere_to_point.norm() <= sphere_geometry.r {
             return Some((*point, UnitVector3::new_normalize(sphere_to_point)));
+        }
+    }
+
+    // edge collision detection
+    let edges = cuboid_geometry.edges(cuboid_iso);
+    for edge in edges.iter() {
+        let e1 = edge[0];
+        let e2 = edge[1];
+        let e1e2 = e2 - e1;
+        let length = e1e2.norm();
+        let e1e2_unit = e1e2.scale(1. / length);
+
+        // e1 + e1e2_unit.scale(proj_length) should be closest point on the line (e1 to e2) to the sphere center
+        let proj_length = (sphere_center - e1).dot(&e1e2_unit);
+        if proj_length < 0. || proj_length > length {
+            continue; // closest point is outside the edge
+        }
+        let closest_point = e1 + e1e2_unit.scale(proj_length);
+        let sphere_center_to_closest_point = closest_point - sphere_center;
+        if sphere_center_to_closest_point.norm() <= sphere_geometry.r {
+            return Some((
+                closest_point,
+                UnitVector3::new_normalize(sphere_center_to_closest_point),
+            ));
         }
     }
 
@@ -165,7 +191,7 @@ mod collision_tests {
         assert_vec_close!(sphere_v, sphere2_v, 1e-3);
     }
 
-    /// Contact handling between a sphere and a cuboid
+    /// Contact handling between a sphere and a cuboid's vertex
     #[test]
     fn articulated_sphere_cuboid_vertex() {
         // Arrange
@@ -216,6 +242,63 @@ mod collision_tests {
         let cuboid_pose = state.articulated[1].bodies[0].pose;
         assert!(cuboid_pose.translation.x > sphere_pose.translation.x);
         assert!(cuboid_pose.translation.y > sphere_pose.translation.y);
+        assert!(cuboid_pose.translation.z > sphere_pose.translation.z);
+        let cuboid_v = state.articulated[1].body_twists()[0];
+        assert_vec_close!(cuboid_v.linear, sphere_v.linear, 1e-2);
+        assert_vec_close!(cuboid_v.angular, Vector3::<Float>::zeros(), 1e-6);
+    }
+
+    /// Contact handling between a sphere and a cuboid's edge
+    #[test]
+    fn articulated_sphere_cuboid_edge() {
+        // Arrange
+        let mut state = Hybrid::empty();
+        state.disable_gravity();
+
+        let m = 1.0;
+        let r = 1.0;
+        let sphere = Articulated::new_sphere("sphere", m, r);
+
+        let v = -10.0;
+        let w = 2. * r + 0.1;
+        let x_init = r + w;
+        let mut cuboid = Articulated::new_cube_at("cuboid", m, w, &vector![x_init, 0., x_init]);
+        cuboid.set_joint_v(
+            0,
+            JointVelocity::Spatial(SpatialVector::linear(vector![v, 0., v])),
+        );
+
+        state.add_articulated(sphere);
+        state.add_articulated(cuboid);
+
+        // Act
+        let final_time = 1.0;
+        let dt = 1e-3;
+        let num_steps = (final_time / dt) as usize;
+        for _s in 0..num_steps {
+            state.step(dt, &vec![]);
+        }
+
+        // Assert
+        // Perfectly inelastic collision
+        let sphere_pose = state.articulated[0].bodies[0].pose;
+        assert_vec_close!(
+            UnitVector3::new_normalize(sphere_pose.translation),
+            UnitVector3::new_normalize(vector![-1., 0., -1.]),
+            1e-3
+        );
+        assert!(sphere_pose.rotation.angle() < 1e-6);
+        let sphere_v = state.articulated[0].body_twists()[0];
+        assert_vec_close!(
+            UnitVector3::new_normalize(sphere_v.linear),
+            UnitVector3::new_normalize(vector![-1., 0., -1.]),
+            1e-3
+        );
+        assert_vec_close!(sphere_v.angular, Vector3::<Float>::zeros(), 1e-6);
+
+        let cuboid_pose = state.articulated[1].bodies[0].pose;
+        assert!(cuboid_pose.translation.x > sphere_pose.translation.x);
+        assert_eq!(cuboid_pose.translation.y, sphere_pose.translation.y);
         assert!(cuboid_pose.translation.z > sphere_pose.translation.z);
         let cuboid_v = state.articulated[1].body_twists()[0];
         assert_vec_close!(cuboid_v.linear, sphere_v.linear, 1e-2);
