@@ -126,17 +126,10 @@ mod collision_tests {
 
         let m = 1.0;
         let r = 1.0;
-        let sphere_frame = "sphere";
-        let sphere_body = Rigid::new_sphere(m, r, sphere_frame);
-        let sphere_joint = Joint::new_floating(Transform3D::identity(sphere_frame, WORLD_FRAME));
-        let sphere = Articulated::new(vec![sphere_body], vec![sphere_joint]);
+        let sphere = Articulated::new_sphere("sphere", m, r);
 
         let v = -5.0;
-        let sphere2_frame = "sphere2";
-        let sphere2_body = Rigid::new_sphere(m, r, sphere2_frame);
-        let sphere2_joint =
-            Joint::new_floating(Transform3D::move_x(sphere2_frame, WORLD_FRAME, 3. * r));
-        let mut sphere2 = Articulated::new(vec![sphere2_body], vec![sphere2_joint]);
+        let mut sphere2 = Articulated::new_sphere_at("sphere2", m, r, &vector![3. * r, 0., 0.]);
         sphere2.set_joint_v(
             0,
             JointVelocity::Spatial(SpatialVector::linear(vector![v, 0., 0.])),
@@ -180,10 +173,7 @@ mod collision_tests {
 
         let m = 1.0;
         let r = 1.0;
-        let sphere_frame = "sphere";
-        let sphere_body = Rigid::new_sphere(m, r, sphere_frame);
-        let sphere_joint = Joint::new_floating(Transform3D::identity(sphere_frame, WORLD_FRAME));
-        let sphere = Articulated::new(vec![sphere_body], vec![sphere_joint]);
+        let sphere = Articulated::new_sphere("sphere", m, r);
 
         let v = -5.0;
         let w = 1.0;

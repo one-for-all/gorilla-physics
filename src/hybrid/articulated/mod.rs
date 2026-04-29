@@ -17,6 +17,8 @@ use crate::{
     GRAVITY, WORLD_FRAME,
 };
 
+pub mod helper;
+
 /// bodies connected to each other through joints
 pub struct Articulated {
     pub bodies: Vec<Rigid>, // all the rigid bodies in it

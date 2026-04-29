@@ -341,9 +341,9 @@ impl Hybrid {
                                     (Visual::Sphere(sphere), Visual::Cuboid(cuboid)) => {
                                         let Some((cp, n)) = sphere_cuboid_collide(
                                             &collider_pos,
-                                            sphere,
+                                            &sphere,
                                             &iso2,
-                                            cuboid,
+                                            &cuboid,
                                         ) else {
                                             continue;
                                         };
