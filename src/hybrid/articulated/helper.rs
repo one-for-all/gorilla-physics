@@ -24,6 +24,18 @@ impl Articulated {
             pos.y,
             pos.z,
         ));
-        Articulated::new(vec![body], vec![joint])
+        Self::new(vec![body], vec![joint])
+    }
+
+    pub fn new_cube_at(frame: &str, m: Float, w: Float, pos: &Vector3<Float>) -> Self {
+        let body = Rigid::new_cuboid(m, w, w, w, frame);
+        let joint = Joint::new_floating(Transform3D::move_xyz(
+            frame,
+            WORLD_FRAME,
+            pos.x,
+            pos.y,
+            pos.z,
+        ));
+        Self::new(vec![body], vec![joint])
     }
 }

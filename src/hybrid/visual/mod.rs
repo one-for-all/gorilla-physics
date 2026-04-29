@@ -1,10 +1,6 @@
 use na::{vector, Isometry3, Point3, UnitVector3, Vector3};
 
-use crate::{
-    collision::halfspace::{self, HalfSpace},
-    hybrid::visual::rigid_mesh::RigidMesh,
-    types::Float,
-};
+use crate::{hybrid::visual::rigid_mesh::RigidMesh, types::Float};
 
 pub mod rigid_mesh;
 

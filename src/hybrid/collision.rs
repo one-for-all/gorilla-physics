@@ -179,16 +179,7 @@ mod collision_tests {
         let v = -5.0;
         let w = 1.0;
         let x_init = r + w;
-        let cuboid_frame = "cuboid";
-        let cuboid_body = Rigid::new_cuboid(m, w, w, w, cuboid_frame);
-        let cuboid_joint = Joint::new_floating(Transform3D::move_xyz(
-            cuboid_frame,
-            WORLD_FRAME,
-            x_init,
-            x_init,
-            x_init,
-        ));
-        let mut cuboid = Articulated::new(vec![cuboid_body], vec![cuboid_joint]);
+        let mut cuboid = Articulated::new_cube_at("cuboid", m, w, &vector![x_init, x_init, x_init]);
         cuboid.set_joint_v(
             0,
             JointVelocity::Spatial(SpatialVector::linear(vector![v, v, v])),
