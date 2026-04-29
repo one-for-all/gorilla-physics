@@ -477,7 +477,7 @@ impl Hybrid {
         for (i_articulated, articulated) in self.articulated.iter().enumerate() {
             let v_art = &v_articulated[i_articulated];
 
-            let body_twists = articulated.body_twists(v_art);
+            let body_twists = articulated.body_twists_at(v_art);
 
             let dof = articulated.dof();
             for (i_joint, (body, joint)) in
@@ -517,7 +517,7 @@ impl Hybrid {
         for (i_art, articulated) in self.articulated.iter().enumerate() {
             let v_art = &v_articulated[i_art];
 
-            let body_twists = articulated.body_twists(v_art);
+            let body_twists = articulated.body_twists_at(v_art);
 
             let dof = articulated.dof();
             for (i_joint, (body, joint)) in

@@ -235,7 +235,7 @@ impl Articulated {
     }
 
     /// Compute the body twists in world frame, at the given joint velocities
-    pub fn body_twists(&self, v: &DVector<Float>) -> Vec<SpatialVector> {
+    pub fn body_twists_at(&self, v: &DVector<Float>) -> Vec<SpatialVector> {
         let mut iv = 0;
         let mut body_twists = vec![];
         for (i, joint) in self.joints.iter().enumerate() {
@@ -263,6 +263,11 @@ impl Articulated {
             iv += joint.dof();
         }
         body_twists
+    }
+
+    /// Compute the current body twists in world frame
+    pub fn body_twists(&self) -> Vec<SpatialVector> {
+        self.body_twists_at(&self.v())
     }
 
     /// Total degrees of freedom

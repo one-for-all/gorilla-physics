@@ -25,7 +25,7 @@ pub fn sphere_cuboid_collide(
 
 #[cfg(test)]
 mod collision_tests {
-    use na::{vector, Quaternion, UnitQuaternion, Vector3};
+    use na::{vector, Quaternion, UnitQuaternion, UnitVector3, Vector3};
 
     use crate::{
         assert_close, assert_vec_close,
@@ -34,6 +34,7 @@ mod collision_tests {
         inertia::SpatialInertia,
         joint::{Joint, JointVelocity},
         spatial::{pose::Pose, spatial_vector::SpatialVector, transform::Transform3D},
+        types::Float,
         WORLD_FRAME,
     };
 
@@ -207,20 +208,26 @@ mod collision_tests {
         // Assert
         // Perfectly inelastic collision
         let sphere_pose = state.articulated[0].bodies[0].pose;
-        assert!(sphere_pose.translation.x < 0.);
-        assert!(sphere_pose.translation.y < 0.);
-        assert!(sphere_pose.translation.z < 0.);
+        assert_vec_close!(
+            UnitVector3::new_normalize(sphere_pose.translation),
+            UnitVector3::new_normalize(vector![-1., -1., -1.]),
+            1e-3
+        );
         assert!(sphere_pose.rotation.angle() < 1e-6);
-        let sphere_v = state.articulated[0].v();
-        assert!(sphere_v[3] < 0.);
-        assert!(sphere_v[4] < 0.);
-        assert!(sphere_v[5] < 0.);
+        let sphere_v = state.articulated[0].body_twists()[0];
+        assert_vec_close!(
+            UnitVector3::new_normalize(sphere_v.linear),
+            UnitVector3::new_normalize(vector![-1., -1., -1.]),
+            1e-3
+        );
+        assert_vec_close!(sphere_v.angular, Vector3::<Float>::zeros(), 1e-6);
 
         let cuboid_pose = state.articulated[1].bodies[0].pose;
         assert!(cuboid_pose.translation.x > sphere_pose.translation.x);
         assert!(cuboid_pose.translation.y > sphere_pose.translation.y);
         assert!(cuboid_pose.translation.z > sphere_pose.translation.z);
-        let cuboid_v = state.articulated[1].v();
-        assert_vec_close!(sphere_v, cuboid_v, 1e-2);
+        let cuboid_v = state.articulated[1].body_twists()[0];
+        assert_vec_close!(cuboid_v.linear, sphere_v.linear, 1e-2);
+        assert_vec_close!(cuboid_v.angular, Vector3::<Float>::zeros(), 1e-6);
     }
 }
