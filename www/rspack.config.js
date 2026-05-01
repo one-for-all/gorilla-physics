@@ -7,46 +7,48 @@ const dist = path.resolve(__dirname, "dist");
 
 const featureGPU = process.env.FEATURE_GPU === "1";
 
-const rspackConfig = {
-  mode: isDev ? "development" : "production",
-  entry: "./src/demo.ts",
-  devtool: isDev ? "inline-source-map" : false,
-  output: {
-    path: dist,
-    filename: "index.js",
-  },
-  resolve: {
-    extensions: [".ts", ".js"],
-  },
-  experiments: {
-    asyncWebAssembly: true,
-    syncWebAssembly: true,
-  },
-  module: {
-    rules: [
-      {
-        test: /\.ts$/,
-        loader: "builtin:swc-loader",
-      },
+module.exports = (env) => {
+  const entryName = env.entry || "demo";
+
+  return {
+    mode: isDev ? "development" : "production",
+    entry: `./src/${entryName}.ts`,
+    devtool: isDev ? "inline-source-map" : false,
+    output: {
+      path: dist,
+      filename: "index.js",
+    },
+    resolve: {
+      extensions: [".ts", ".js"],
+    },
+    experiments: {
+      asyncWebAssembly: true,
+      syncWebAssembly: true,
+    },
+    module: {
+      rules: [
+        {
+          test: /\.ts$/,
+          loader: "builtin:swc-loader",
+        },
+      ],
+    },
+    plugins: [
+      new rspack.CopyRspackPlugin({
+        patterns: [{ from: "static", to: dist }],
+      }),
+
+      new WasmPackPlugin({
+        crateDirectory: "../",
+        extraArgs: featureGPU ? "--features gpu" : "",
+      }),
     ],
-  },
-  plugins: [
-    new rspack.CopyRspackPlugin({
-      patterns: [{ from: "static", to: dist }],
-    }),
-
-    new WasmPackPlugin({
-      crateDirectory: "../",
-      extraArgs: featureGPU ? "--features gpu" : "",
-    }),
-  ],
-  // To disable warning on screen
-  stats: {
-    warnings: false,
-  },
-  performance: {
-    hints: false,
-  },
+    // To disable warning on screen
+    stats: {
+      warnings: false,
+    },
+    performance: {
+      hints: false,
+    },
+  };
 };
-
-module.exports = rspackConfig;
