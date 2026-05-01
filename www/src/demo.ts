@@ -35,7 +35,7 @@ import { FloatArray } from "./type";
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader";
 import { Color, EquirectangularReflectionMapping } from "three";
 
-export const keysPressed: Record<string, boolean> = {};
+const keysPressed: Record<string, boolean> = {};
 
 document.addEventListener("keydown", (e) => {
   keysPressed[e.key.toLowerCase()] = true;
@@ -142,6 +142,6 @@ import("gorilla-physics").then((gorilla) => {
     };
     simulator.graphics.lookAt(cameraPosition);
 
-    simulator.run(2, 0);
+    simulator.run(2, 0, keysPressed);
   });
 });
