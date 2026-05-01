@@ -1,4 +1,4 @@
-use na::Isometry3;
+use na::{Isometry, Isometry3, Point3};
 
 use crate::{
     hybrid::{visual::rigid_mesh::RigidMesh, Hybrid, Rigid},
@@ -7,12 +7,14 @@ use crate::{
 
 pub struct StaticBody {
     pub mesh: RigidMesh,
-    pub iso: Isometry3<Float>,
 }
 
 impl StaticBody {
-    pub fn new(mesh: RigidMesh, iso: Isometry3<Float>) -> Self {
-        Self { mesh, iso }
+    pub fn new(mut mesh: RigidMesh, iso: Isometry3<Float>) -> Self {
+        for vertex in mesh.vertices.iter_mut() {
+            *vertex = iso.transform_point(&Point3::from(*vertex)).coords;
+        }
+        Self { mesh }
     }
 }
 

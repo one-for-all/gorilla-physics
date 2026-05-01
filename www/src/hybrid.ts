@@ -245,14 +245,8 @@ Simulator.prototype.addHybrid = function (state: InterfaceHybrid) {
   for (let i = 0; i < state.n_static_bodies(); i++) {
     let vertices = state.static_body_vertices(i);
     let faces = state.static_body_faces(i);
-
-    let iso = state.static_body_iso(i);
-    let q = new Quaternion(iso[0], iso[1], iso[2], iso[3]);
-    let t = new Vector3(iso[4], iso[5], iso[6]);
-    let offset = new Matrix4().compose(t, q, new Vector3(1, 1, 1)); // last arg is unit scale
-
     let name = "static body " + i;
-    this.addRigidMesh(name, [0.0, 1.0, 0.0], vertices, faces, offset);
+    this.addRigidMesh(name, [0.0, 1.0, 0.0], vertices, faces);
   }
 };
 

@@ -286,14 +286,6 @@ impl InterfaceHybrid {
         toJsUint32Array!(flat)
     }
 
-    pub fn static_body_iso(&self, i: usize) -> Float32Array {
-        let iso = &self.inner.static_bodies[i].iso;
-        let mut q: Vec<Float> = vec![];
-        q.extend(iso.rotation.coords.iter());
-        q.extend(iso.translation.vector.iter());
-        toJsFloat32Array!(q)
-    }
-
     pub fn step(&mut self, dt: Float, input: Vec<Float>) {
         let n_substep = 1;
         let dt = dt / (n_substep as Float);
