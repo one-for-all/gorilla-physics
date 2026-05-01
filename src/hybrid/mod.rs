@@ -403,102 +403,45 @@ impl Hybrid {
             icol_arti += dof;
         }
 
-        // // articulated self sphere collision detection
-        // let mut icol_arti = offset_articulated;
-        // for (i_articulated, articulated) in self.articulated.iter().enumerate() {
-        //     let dof = articulated.dof();
-        //     let offsets = articulated.offsets();
-        //     let jacobians = articulated.jacobians();
-        //     for (i_joint, (rigid, joint)) in
-        //         izip!(articulated.bodies.iter(), articulated.joints.iter()).enumerate()
-        //     {
-        //         for (collider, iso_collider_to_body, _color) in rigid.visual.iter() {
-        //             let iso = rigid.pose.to_isometry() * iso_collider_to_body;
-        //             let collider_pos = iso.translation.vector;
-        //             match collider {
-        //                 Visual::Sphere(sphere) => {
-        //                     for (i_joint2, (rigid2, joint2)) in
-        //                         izip!(articulated.bodies.iter(), articulated.joints.iter())
-        //                             .enumerate()
-        //                     {
-        //                         if i_joint == i_joint2 {
-        //                             continue;
-        //                         }
-        //                         for (collider2, iso_collider_to_body2, _color2) in
-        //                             rigid2.visual.iter()
-        //                         {
-        //                             let iso2 = rigid2.pose.to_isometry() * iso_collider_to_body2;
-        //                             let collider_pos2 = iso2.translation.vector;
-        //                             match collider2 {
-        //                                 Visual::Sphere(sphere2) => {
-        //                                     // swap 2 and 1, so that normal goes from 2 to 1
-        //                                     let Some((cp, n)) = sphere_collide(
-        //                                         &collider_pos2,
-        //                                         sphere2.r,
-        //                                         &collider_pos,
-        //                                         sphere.r,
-        //                                     ) else {
-        //                                         continue;
-        //                                     };
+        // static - articulated collision detection
+        for static_body in self.static_bodies.iter() {
+            let mut icol_arti = offset_articulated;
+            for articulated in self.articulated.iter() {
+                let dof = articulated.dof();
+                for (i_joint, rigid) in articulated.bodies.iter().enumerate() {
+                    for (collider, iso_collider_to_body, _color) in rigid.visual.iter() {
+                        let iso = rigid.pose.to_isometry() * iso_collider_to_body;
+                        let collider_pos = iso.translation.vector;
+                        // flog!("sphere pos: {}", collider_pos);
 
-        //                                     let (t, b) = tangentials(&n);
-        //                                     let C = Matrix3::from_rows(&[
-        //                                         1. / mu * n.transpose(),
-        //                                         t.transpose(),
-        //                                         b.transpose(),
-        //                                     ]);
+                        match collider {
+                            Visual::Sphere(sphere) => {
+                                // flog!("sphere r: {}", sphere.r);
+                                for vertex in static_body.mesh.vertices.iter() {
+                                    if (vertex - collider_pos).norm() <= sphere.r {
+                                        let n = UnitVector3::new_normalize(collider_pos - vertex);
+                                        let cp = vertex;
 
-        //                                     let mut J = Matrix3xX::zeros(total_dof);
-        //                                     // set jacobian for articulated body 1
-        //                                     let mut H = Matrix6xX::zeros(dof);
-        //                                     H.view_mut((0, offsets[i_joint]), (6, joint.dof()))
-        //                                         .copy_from(&jacobians[i_joint]);
-        //                                     let mut parent = i_joint;
-        //                                     while articulated.parents[parent] != parent {
-        //                                         parent = articulated.parents[parent];
-        //                                         H.view_mut(
-        //                                             (0, offsets[parent]),
-        //                                             (6, articulated.joints[parent].dof()),
-        //                                         )
-        //                                         .copy_from(&jacobians[parent]);
-        //                                     }
+                                        let C = dual_friction_cone_multipler(&n, mu);
+                                        let mut J = Matrix3xX::zeros(total_dof);
+                                        let H = articulated.total_jacobian_to_body(i_joint);
+                                        let X = spatial_to_linear_velocity_multiplier(&cp);
+                                        J.view_mut((0, icol_arti), (3, dof))
+                                            .copy_from(&(C * X * H));
 
-        //                                     // set jacobian for articulated body 2
-        //                                     let mut H2 = Matrix6xX::zeros(dof);
-        //                                     H2.view_mut((0, offsets[i_joint2]), (6, joint2.dof()))
-        //                                         .copy_from(&jacobians[i_joint2]);
-        //                                     let mut parent = i_joint2;
-        //                                     while articulated.parents[parent] != parent {
-        //                                         parent = articulated.parents[parent];
-        //                                         H2.view_mut(
-        //                                             (0, offsets[parent]),
-        //                                             (6, articulated.joints[parent].dof()),
-        //                                         )
-        //                                         .copy_from(&jacobians[parent]);
-        //                                     }
-
-        //                                     H -= H2;
-
-        //                                     let mut X = Matrix3x6::zeros();
-        //                                     let r = cp;
-        //                                     X.columns_mut(0, 3).copy_from(&-skew_symmetric(&r));
-        //                                     X.columns_mut(3, 3).copy_from(&Matrix3::identity());
-
-        //                                     J.view_mut((0, icol_arti), (3, dof))
-        //                                         .copy_from(&(C * X * H));
-
-        //                                     Js.push(J);
-        //                                 }
-        //                                 _ => {}
-        //                             }
-        //                         }
-        //                     }
-        //                 }
-        //                 _ => {}
-        //             }
-        //         }
-        //     }
-        // }
+                                        Js.push(J);
+                                    }
+                                }
+                            }
+                            _ => {
+                                panic!("not implemented yet");
+                            }
+                        }
+                    }
+                }
+                icol_arti += dof;
+            }
+        }
 
         // articulated-deformable collision detection
         let mut icol_arti = offset_articulated;

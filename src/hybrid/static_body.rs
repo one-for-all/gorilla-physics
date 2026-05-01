@@ -20,16 +20,25 @@ impl StaticBody {
 
 #[cfg(test)]
 mod static_body_tests {
-    use crate::hybrid::builders::build_table;
+    use na::Vector3;
+
+    use crate::{assert_vec_close, hybrid::builders::build_table, types::Float};
 
     #[tokio::test]
     async fn table() {
         // Arrange
-        let table = build_table().await;
+        let mut state = build_table().await;
 
         // Act
+        let final_time = 1.0;
+        let dt = 1e-3;
+        let num_steps = (final_time / dt) as usize;
+        for _s in 0..num_steps {
+            state.step(dt, &vec![]);
+        }
 
         // Assert
-        println!("{}", table.static_bodies[0].mesh.vertices.len());
+        let body_v = state.articulated[0].body_twists()[0];
+        assert_vec_close!(body_v.linear, Vector3::<Float>::zeros(), 1e-3);
     }
 }
