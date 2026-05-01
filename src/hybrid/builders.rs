@@ -4,8 +4,8 @@ use rand::Rng;
 use crate::{
     collision::halfspace::HalfSpace,
     hybrid::{
-        articulated::Articulated, cloth::Cloth, control::GripperController, Deformable, Hybrid,
-        Rigid,
+        articulated::Articulated, cloth::Cloth, control::GripperController,
+        static_body::StaticBody, visual::rigid_mesh::RigidMesh, Deformable, Hybrid, Rigid,
     },
     joint::{Joint, JointVelocity},
     spatial::transform::Transform3D,
@@ -233,6 +233,18 @@ pub fn build_cube_frenzy() -> Hybrid {
     }
 
     state.add_halfspace(HalfSpace::new(Vector3::z_axis(), 0.));
+
+    state
+}
+
+pub fn build_table() -> Hybrid {
+    let mut state = Hybrid::empty();
+
+    let buffer = read_file("data/table/table.obj");
+    let mesh = RigidMesh::new_from_obj(&buffer);
+    let table = StaticBody::new(mesh);
+
+    state.add_static_body(table);
 
     state
 }

@@ -21,6 +21,7 @@ use crate::{
         control::{ArticulatedController, NullArticulatedController},
         deformable::deformable_deformable_ccd,
         rigid::{rigid_cloth_ccd, rigid_deformable_cd},
+        static_body::StaticBody,
         visual::{sphere_collide, Visual},
     },
     spatial::{
@@ -44,6 +45,7 @@ pub mod control;
 pub mod deformable;
 pub mod mesh;
 pub mod rigid;
+pub mod static_body;
 pub mod visual;
 
 pub struct Hybrid {
@@ -53,6 +55,7 @@ pub struct Hybrid {
     pub cloths: Vec<Cloth>,
 
     pub halfspaces: Vec<HalfSpace>,
+    pub static_bodies: Vec<StaticBody>,
 
     pub controllers: Vec<Box<dyn ArticulatedController>>,
 
@@ -72,6 +75,7 @@ impl Hybrid {
             deformables: vec![deformable],
             cloths: vec![],
             halfspaces: vec![],
+            static_bodies: vec![],
             controllers: vec![],
             gravity_enabled: true,
             friction_mu: 1.0,
@@ -85,6 +89,7 @@ impl Hybrid {
             deformables: vec![],
             cloths: vec![],
             halfspaces: vec![],
+            static_bodies: vec![],
             controllers: vec![],
             gravity_enabled: true,
             friction_mu: 1.0,
@@ -119,6 +124,10 @@ impl Hybrid {
 
     pub fn add_halfspace(&mut self, halfspace: HalfSpace) {
         self.halfspaces.push(halfspace);
+    }
+
+    pub fn add_static_body(&mut self, static_body: StaticBody) {
+        self.static_bodies.push(static_body);
     }
 
     pub fn step(&mut self, dt: Float, input: &Vec<Float>) {
