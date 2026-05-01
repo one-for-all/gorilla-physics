@@ -73,6 +73,7 @@ import("gorilla-physics").then((gorilla) => {
 
     // let controller = gorilla.createNavbotController(1.0 / 600.0);
     // let interfaceSimulator = new gorilla.InterfaceSimulator(state, controller);
+
     let interfaceSimulator = null;
     let simulator = new Simulator(interfaceSimulator);
     simulator.addHybrid(state);

@@ -3,13 +3,14 @@ use std::collections::HashMap;
 use na::{vector, Isometry3, Translation3, UnitQuaternion, Vector3};
 use urdf_rs::Robot;
 
-use crate::{
-    hybrid::visual::rigid_mesh::RigidMesh, interface::util::maybe_read_web_file, types::Float,
-};
+use crate::{hybrid::visual::rigid_mesh::RigidMesh, types::Float};
 
 pub struct URDFMeshes {
     pub meshes: HashMap<String, Vec<(RigidMesh, Isometry3<Float>, Vector3<Float>)>>,
 }
+
+#[cfg(any(target_arch = "wasm32", rust_analyzer))]
+use crate::interface::util::maybe_read_web_file;
 
 impl URDFMeshes {
     pub fn empty() -> Self {
@@ -18,6 +19,7 @@ impl URDFMeshes {
         }
     }
 
+    #[cfg(any(target_arch = "wasm32", rust_analyzer))]
     pub async fn new(urdf: &Robot) -> Self {
         let mut meshes: HashMap<String, Vec<(RigidMesh, Isometry3<Float>, Vector3<Float>)>> =
             HashMap::new();
