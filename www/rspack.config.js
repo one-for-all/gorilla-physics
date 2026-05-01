@@ -1,5 +1,4 @@
-const webpack = require("webpack");
-const CopyPlugin = require("copy-webpack-plugin");
+const { rspack } = require("@rspack/core");
 const WasmPackPlugin = require("@wasm-tool/wasm-pack-plugin");
 const path = require("path");
 
@@ -8,10 +7,7 @@ const dist = path.resolve(__dirname, "dist");
 
 const featureGPU = process.env.FEATURE_GPU === "1";
 
-/**
- * @type {import('webpack').Configuration}
- */
-const webpackConfig = {
+const rspackConfig = {
   mode: isDev ? "development" : "production",
   entry: "./src/demo.ts",
   devtool: isDev ? "inline-source-map" : false,
@@ -30,12 +26,12 @@ const webpackConfig = {
     rules: [
       {
         test: /\.ts$/,
-        use: "ts-loader",
+        loader: "builtin:swc-loader",
       },
     ],
   },
   plugins: [
-    new CopyPlugin({
+    new rspack.CopyRspackPlugin({
       patterns: [{ from: "static", to: dist }],
     }),
 
@@ -53,4 +49,4 @@ const webpackConfig = {
   },
 };
 
-module.exports = webpackConfig;
+module.exports = rspackConfig;
