@@ -1,4 +1,4 @@
-use na::{vector, UnitQuaternion, Vector, Vector3};
+use na::{vector, Isometry3, UnitQuaternion, UnitVector3, Vector, Vector3};
 use rand::Rng;
 
 #[cfg(any(target_arch = "wasm32", rust_analyzer))]
@@ -249,7 +249,7 @@ pub async fn build_table() -> Hybrid {
     let buffer = read_web_file("table/table.obj").await;
 
     let mesh = RigidMesh::new_from_obj(&buffer);
-    let table = StaticBody::new(mesh);
+    let table = StaticBody::new(mesh, Isometry3::rotation(Vector3::x_axis().scale(PI / 2.)));
 
     state.add_static_body(table);
 

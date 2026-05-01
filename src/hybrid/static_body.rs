@@ -1,12 +1,18 @@
-use crate::hybrid::{visual::rigid_mesh::RigidMesh, Hybrid, Rigid};
+use na::Isometry3;
+
+use crate::{
+    hybrid::{visual::rigid_mesh::RigidMesh, Hybrid, Rigid},
+    types::Float,
+};
 
 pub struct StaticBody {
     pub mesh: RigidMesh,
+    pub iso: Isometry3<Float>,
 }
 
 impl StaticBody {
-    pub fn new(mesh: RigidMesh) -> Self {
-        Self { mesh }
+    pub fn new(mesh: RigidMesh, iso: Isometry3<Float>) -> Self {
+        Self { mesh, iso }
     }
 }
 
