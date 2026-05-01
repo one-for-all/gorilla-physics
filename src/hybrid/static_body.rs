@@ -14,10 +14,10 @@ impl StaticBody {
 mod static_body_tests {
     use crate::hybrid::builders::build_table;
 
-    #[test]
-    fn table() {
+    #[tokio::test]
+    async fn table() {
         // Arrange
-        let table = build_table();
+        let table = build_table().await;
 
         // Act
 

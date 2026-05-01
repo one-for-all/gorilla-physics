@@ -240,6 +240,14 @@ Simulator.prototype.addHybrid = function (state: InterfaceHybrid) {
       this.addPlane(n, dist, 10);
     }
   }
+
+  // Add static bodies
+  for (let i = 0; i < state.n_static_bodies(); i++) {
+    let vertices = state.static_body_vertices(i);
+    let faces = state.static_body_faces(i);
+    let name = "static body " + i;
+    this.addRigidMesh(name, [1.0, 0.0, 0.0], vertices, faces);
+  }
 };
 
 Simulator.prototype.updateHybrid = function () {

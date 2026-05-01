@@ -1,6 +1,8 @@
 use na::{vector, UnitQuaternion, Vector, Vector3};
 use rand::Rng;
 
+#[cfg(any(target_arch = "wasm32", rust_analyzer))]
+use crate::interface::util::read_web_file;
 use crate::{
     collision::halfspace::HalfSpace,
     hybrid::{
@@ -237,10 +239,15 @@ pub fn build_cube_frenzy() -> Hybrid {
     state
 }
 
-pub fn build_table() -> Hybrid {
+pub async fn build_table() -> Hybrid {
     let mut state = Hybrid::empty();
 
+    #[cfg(not(any(target_arch = "wasm32", rust_analyzer)))]
     let buffer = read_file("data/table/table.obj");
+
+    #[cfg(any(target_arch = "wasm32", rust_analyzer))]
+    let buffer = read_web_file("table/table.obj").await;
+
     let mesh = RigidMesh::new_from_obj(&buffer);
     let table = StaticBody::new(mesh);
 

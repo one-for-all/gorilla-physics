@@ -14,6 +14,8 @@ use crate::types::Float;
 use crate::{flog, WORLD_FRAME};
 use crate::{hybrid::Hybrid, spatial::pose::Pose, toJsFloat32Array, toJsUint32Array};
 
+pub mod creator;
+
 #[wasm_bindgen]
 pub struct InterfaceHybrid {
     pub(crate) inner: Hybrid,
@@ -264,6 +266,24 @@ impl InterfaceHybrid {
             q.extend([n.x, n.y, n.z, -halfspace.distance(&Vector3::zeros())]);
         }
         toJsFloat32Array!(q)
+    }
+
+    pub fn n_static_bodies(&self) -> usize {
+        self.inner.static_bodies.len()
+    }
+
+    pub fn static_body_vertices(&self, i: usize) -> Float32Array {
+        let mesh = &self.inner.static_bodies[i].mesh;
+        let vertices = &mesh.vertices;
+        let flat: Vec<Float> = vertices.iter().flat_map(|v| v.iter().cloned()).collect();
+        toJsFloat32Array!(flat)
+    }
+
+    pub fn static_body_faces(&self, i: usize) -> Uint32Array {
+        let mesh = &self.inner.static_bodies[i].mesh;
+        let faces = &mesh.faces;
+        let flat: Vec<usize> = faces.iter().flat_map(|&f| f).collect();
+        toJsUint32Array!(flat)
     }
 
     pub fn step(&mut self, dt: Float, input: Vec<Float>) {
