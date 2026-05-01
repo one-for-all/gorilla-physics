@@ -24,14 +24,14 @@ import {
   createGripperHybrid,
   createTeddy,
 } from "gorilla-physics";
-import { Simulator } from "./Simulator";
-import "./biped";
-import "./cube";
-import "./cloth";
-import "./mpm";
-import "./mass_spring";
-import "./hybrid";
-import { FloatArray } from "./type";
+import { Simulator } from "../Simulator";
+import "../biped";
+import "../cube";
+import "../cloth";
+import "../mpm";
+import "../mass_spring";
+import "../hybrid";
+import { FloatArray } from "../type";
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader";
 import { Color, EquirectangularReflectionMapping } from "three";
 

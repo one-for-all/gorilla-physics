@@ -12,7 +12,7 @@ module.exports = (env) => {
 
   return {
     mode: isDev ? "development" : "production",
-    entry: `./src/${entryName}.ts`,
+    entry: `./src/demo/${entryName}.ts`,
     devtool: isDev ? "inline-source-map" : false,
     output: {
       path: dist,
