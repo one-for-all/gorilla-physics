@@ -12,7 +12,7 @@ use na::{
 };
 
 use crate::{
-    collision::halfspace::HalfSpace,
+    collision::{halfspace::HalfSpace, mesh::projected_barycentric_coord},
     flog,
     hybrid::{
         articulated::Articulated,
@@ -366,6 +366,7 @@ impl Hybrid {
                                             .copy_from(&(-C * X * H2));
                                         Js.push(J);
                                     }
+                                    // TODO: Cuboid - Sphere as well
                                     (Visual::Sphere(sphere), Visual::Cuboid(cuboid)) => {
                                         let Some((cp, n)) = sphere_cuboid_collide(
                                             &collider_pos,
@@ -411,16 +412,55 @@ impl Hybrid {
                 for (i_joint, rigid) in articulated.bodies.iter().enumerate() {
                     for (collider, iso_collider_to_body, _color) in rigid.visual.iter() {
                         let iso = rigid.pose.to_isometry() * iso_collider_to_body;
-                        let collider_pos = iso.translation.vector;
-                        // flog!("sphere pos: {}", collider_pos);
 
                         match collider {
                             Visual::Sphere(sphere) => {
-                                // flog!("sphere r: {}", sphere.r);
-                                for vertex in static_body.mesh.vertices.iter() {
-                                    if (vertex - collider_pos).norm() <= sphere.r {
-                                        let n = UnitVector3::new_normalize(collider_pos - vertex);
+                                let sphere_center = iso.translation.vector;
+                                let vertices = &static_body.mesh.vertices;
+                                for vertex in vertices.iter() {
+                                    if (vertex - sphere_center).norm() <= sphere.r {
+                                        let n = UnitVector3::new_normalize(sphere_center - vertex);
                                         let cp = vertex;
+
+                                        let C = dual_friction_cone_multipler(&n, mu);
+                                        let mut J = Matrix3xX::zeros(total_dof);
+                                        let H = articulated.total_jacobian_to_body(i_joint);
+                                        let X = spatial_to_linear_velocity_multiplier(&cp);
+                                        J.view_mut((0, icol_arti), (3, dof))
+                                            .copy_from(&(C * X * H));
+
+                                        Js.push(J);
+                                    }
+                                }
+
+                                for face in static_body.mesh.faces.iter() {
+                                    let v1 = vertices[face[0]];
+                                    let v2 = vertices[face[1]];
+                                    let v3 = vertices[face[2]];
+                                    let edge1 = v2 - v1;
+                                    let edge2 = v3 - v1;
+
+                                    let (w1, w2, w3) = projected_barycentric_coord(
+                                        &sphere_center,
+                                        &v1,
+                                        &edge1,
+                                        &edge2,
+                                    );
+
+                                    // Check if closest point is inside the face
+                                    if w1 < 0. || w2 < 0. || w3 < 0. {
+                                        continue;
+                                    }
+
+                                    // Check if closest point is close enough to the sphere
+                                    let closest_point = w1 * v1 + w2 * v2 + w3 * v3;
+                                    let closest_point_to_sphere_center =
+                                        sphere_center - closest_point;
+                                    if closest_point_to_sphere_center.norm() <= sphere.r {
+                                        let n = UnitVector3::new_normalize(
+                                            closest_point_to_sphere_center,
+                                        );
+                                        let cp = closest_point;
 
                                         let C = dual_friction_cone_multipler(&n, mu);
                                         let mut J = Matrix3xX::zeros(total_dof);

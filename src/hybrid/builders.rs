@@ -254,7 +254,7 @@ pub async fn build_table() -> Hybrid {
     state.add_static_body(table);
 
     // Add sphere
-    let sphere = Articulated::new_sphere_at("sphere", 1.0, 0.5, &vector![0., 0., 2.0]);
+    let sphere = Articulated::new_sphere_at("sphere", 1.0, 0.1, &vector![0., 0., 1.2]);
     state.add_articulated(sphere);
 
     state
