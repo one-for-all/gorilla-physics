@@ -61,6 +61,7 @@ pub fn sphere_cuboid_collide(
         let v1_to_closest_point = closest_point - v1;
 
         // Check if closest point is inside the face
+        // Note: can not use w1 < 0. || w2 < 0. || w3 < 0. check, because here the face is a rectangle not triangle
         let proj_edge1 = v1_to_closest_point.dot(&UnitVector3::new_normalize(edge1));
         if proj_edge1 < 0. || proj_edge1 > edge1.norm() {
             continue;
