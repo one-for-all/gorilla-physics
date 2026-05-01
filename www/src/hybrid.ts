@@ -252,7 +252,7 @@ Simulator.prototype.addHybrid = function (state: InterfaceHybrid) {
     let offset = new Matrix4().compose(t, q, new Vector3(1, 1, 1)); // last arg is unit scale
 
     let name = "static body " + i;
-    this.addRigidMesh(name, [1.0, 0.0, 0.0], vertices, faces, offset);
+    this.addRigidMesh(name, [0.0, 1.0, 0.0], vertices, faces, offset);
   }
 };
 

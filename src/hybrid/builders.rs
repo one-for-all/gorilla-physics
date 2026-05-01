@@ -242,6 +242,7 @@ pub fn build_cube_frenzy() -> Hybrid {
 pub async fn build_table() -> Hybrid {
     let mut state = Hybrid::empty();
 
+    // Add table
     #[cfg(not(any(target_arch = "wasm32", rust_analyzer)))]
     let buffer = read_file("data/table/table.obj");
 
@@ -250,8 +251,11 @@ pub async fn build_table() -> Hybrid {
 
     let mesh = RigidMesh::new_from_obj(&buffer);
     let table = StaticBody::new(mesh, Isometry3::rotation(Vector3::x_axis().scale(PI / 2.)));
-
     state.add_static_body(table);
+
+    // Add sphere
+    let sphere = Articulated::new_sphere_at("sphere", 1.0, 0.1, &vector![0., 0., 1.5]);
+    state.add_articulated(sphere);
 
     state
 }
