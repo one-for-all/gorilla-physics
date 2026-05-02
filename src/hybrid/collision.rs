@@ -2,7 +2,7 @@ use na::{Isometry3, UnitVector1, UnitVector3, Vector3};
 
 use crate::{
     collision::{cuboid, mesh::projected_barycentric_coord},
-    hybrid::visual::{CuboidGeometry, SphereGeometry},
+    hybrid::visual::{rigid_mesh::RigidMesh, CuboidGeometry, SphereGeometry},
     types::Float,
 };
 
@@ -82,6 +82,53 @@ pub fn sphere_cuboid_collide(
     }
 
     None
+}
+
+/// Collision detection between mesh and sphere
+/// Returns a list of (contact point, normal) where normal points from mesh to sphere
+pub fn mesh_sphere_collide(
+    sphere_center: &Vector3<Float>,
+    sphere_radius: Float,
+    mesh: &RigidMesh,
+) -> Vec<(Vector3<Float>, UnitVector3<Float>)> {
+    let mut cp_normal_list = vec![];
+
+    let vertices = &mesh.vertices;
+    for vertex in vertices.iter() {
+        if (vertex - sphere_center).norm() <= sphere_radius {
+            let n = UnitVector3::new_normalize(sphere_center - vertex);
+            let cp = vertex;
+            cp_normal_list.push((*cp, n));
+        }
+    }
+
+    for face in mesh.faces.iter() {
+        let v1 = vertices[face[0]];
+        let v2 = vertices[face[1]];
+        let v3 = vertices[face[2]];
+        let edge1 = v2 - v1;
+        let edge2 = v3 - v1;
+
+        let (w1, w2, w3) = projected_barycentric_coord(&sphere_center, &v1, &edge1, &edge2);
+
+        // Check if closest point is inside the face
+        if w1 < 0. || w2 < 0. || w3 < 0. {
+            continue;
+        }
+
+        // Check if closest point is close enough to the sphere
+        let closest_point = w1 * v1 + w2 * v2 + w3 * v3;
+        let closest_point_to_sphere_center = sphere_center - closest_point;
+        if closest_point_to_sphere_center.norm() <= sphere_radius {
+            let n = UnitVector3::new_normalize(closest_point_to_sphere_center);
+            let cp = closest_point;
+            cp_normal_list.push((cp, n));
+        }
+    }
+
+    // TODO: sphere - edge collision detection
+
+    cp_normal_list
 }
 
 #[cfg(test)]
