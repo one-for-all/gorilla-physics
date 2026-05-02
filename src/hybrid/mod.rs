@@ -17,7 +17,9 @@ use crate::{
     hybrid::{
         articulated::Articulated,
         cloth::Cloth,
-        collision::{mesh_point_collide, mesh_sphere_collide, sphere_cuboid_collide},
+        collision::{
+            mesh_cuboid_collide, mesh_point_collide, mesh_sphere_collide, sphere_cuboid_collide,
+        },
         control::{ArticulatedController, NullArticulatedController},
         deformable::deformable_deformable_ccd,
         rigid::{rigid_cloth_ccd, rigid_deformable_cd},
@@ -433,6 +435,11 @@ impl Hybrid {
                                 cp_normal_list
                                     .extend(mesh_point_collide(&static_body.mesh, &point));
                             }
+                            Visual::Cuboid(cuboid) => cp_normal_list.extend(mesh_cuboid_collide(
+                                &static_body.mesh,
+                                &iso,
+                                cuboid,
+                            )),
                             _ => {
                                 // panic!("not implemented yet");
                             }

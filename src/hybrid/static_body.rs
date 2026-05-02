@@ -89,4 +89,33 @@ mod static_body_tests {
             state.pop_articulated();
         }
     }
+
+    #[tokio::test]
+    async fn table_cuboid_collision() {
+        // Arrange
+        let mut state = build_table().await;
+        let mut rng = rng();
+
+        for _ in 0..5 {
+            let x = rng.random_range(-0.5..0.5);
+            let y = rng.random_range(-0.2..0.2);
+            let cube = Articulated::new_cube_at("cube", 1.0, 0.1, &vector![x, y, 1.2]);
+            state.add_articulated(cube);
+
+            // Act
+            let final_time = 0.5;
+            let dt = 1e-3;
+            let num_steps = (final_time / dt) as usize;
+            for _s in 0..num_steps {
+                state.step(dt, &vec![]);
+            }
+
+            // Assert
+            let body_v = state.articulated[0].body_twists()[0];
+            assert_vec_close!(body_v.linear, Vector3::<Float>::zeros(), 1e-3);
+
+            // Clean up
+            state.pop_articulated();
+        }
+    }
 }

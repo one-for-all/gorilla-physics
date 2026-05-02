@@ -158,12 +158,56 @@ pub fn mesh_point_collide(
         // check if point is close to the face
         // TODO: do ccd to avoid the passing through case
         if (point - closest_point).norm() < 1e-2 {
-            let normal = -UnitVector3::new_normalize(edge2.cross(&edge1)); // opposite of the outward normal of the face
+            let normal = UnitVector3::new_normalize(edge1.cross(&edge2)); // outward normal of the face
             return Some((*point, normal));
         }
     }
-
     None
+}
+
+/// Collision detection between a mesh and a cuboid
+/// Returns a list of (contact point, normal) where normal points from mesh to cuboid
+pub fn mesh_cuboid_collide(
+    mesh: &RigidMesh,
+    cuboid_iso: &Isometry3<Float>,
+    cuboid_geometry: &CuboidGeometry,
+) -> Vec<(Vector3<Float>, UnitVector3<Float>)> {
+    let mut cp_normal_list = vec![];
+
+    let vertices = &mesh.vertices;
+
+    // cuboid point - mesh face
+    let cuboid_points = cuboid_geometry.points(cuboid_iso);
+    for face in mesh.faces.iter() {
+        let v1 = vertices[face[0]];
+        let v2 = vertices[face[1]];
+        let v3 = vertices[face[2]];
+        let edge1 = v2 - v1;
+        let edge2 = v3 - v1;
+        for point in cuboid_points.iter() {
+            let (w1, w2, w3) = projected_barycentric_coord(point, &v1, &edge1, &edge2);
+
+            // Check if closest point is inside the face
+            if w1 < 0. || w2 < 0. || w3 < 0. {
+                continue;
+            }
+
+            // Projected point
+            let closest_point = w1 * v1 + w2 * v2 + w3 * v3;
+
+            // check if point is close to the face
+            // TODO: do ccd to avoid the passing through case
+            if (point - closest_point).norm() < 1e-2 {
+                let normal = UnitVector3::new_normalize(edge1.cross(&edge2)); // outward normal of the face
+                cp_normal_list.push((*point, normal));
+            }
+        }
+    }
+
+    // TODO: cuboid face - mesh point
+    // TODO: edge - edge
+
+    cp_normal_list
 }
 
 #[cfg(test)]
