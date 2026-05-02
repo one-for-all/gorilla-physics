@@ -17,7 +17,7 @@ use crate::{
     hybrid::{
         articulated::Articulated,
         cloth::Cloth,
-        collision::{mesh_sphere_collide, sphere_cuboid_collide},
+        collision::{mesh_point_collide, mesh_sphere_collide, sphere_cuboid_collide},
         control::{ArticulatedController, NullArticulatedController},
         deformable::deformable_deformable_ccd,
         rigid::{rigid_cloth_ccd, rigid_deformable_cd},
@@ -422,7 +422,7 @@ impl Hybrid {
                             Visual::Sphere(sphere) => {
                                 let sphere_center = iso.translation.vector;
                                 for (cp, n) in
-                                    mesh_sphere_collide(&sphere_center, sphere.r, &static_body.mesh)
+                                    mesh_sphere_collide(&static_body.mesh, &sphere_center, sphere.r)
                                         .iter()
                                 {
                                     let C = dual_friction_cone_multipler(&n, mu);
@@ -434,8 +434,21 @@ impl Hybrid {
                                     Js.push(J);
                                 }
                             }
+                            Visual::Point(_point) => {
+                                let point = iso.translation.vector;
+                                for (cp, n) in mesh_point_collide(&static_body.mesh, &point).iter()
+                                {
+                                    let C = dual_friction_cone_multipler(&n, mu);
+                                    let mut J = Matrix3xX::zeros(total_dof);
+                                    let H = articulated.total_jacobian_to_body(i_joint);
+                                    let X = spatial_to_linear_velocity_multiplier(&cp);
+                                    J.view_mut((0, icol_arti), (3, dof)).copy_from(&(C * X * H));
+
+                                    Js.push(J);
+                                }
+                            }
                             _ => {
-                                panic!("not implemented yet");
+                                // panic!("not implemented yet");
                             }
                         }
                     }

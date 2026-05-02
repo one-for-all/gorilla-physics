@@ -87,9 +87,9 @@ pub fn sphere_cuboid_collide(
 /// Collision detection between mesh and sphere
 /// Returns a list of (contact point, normal) where normal points from mesh to sphere
 pub fn mesh_sphere_collide(
+    mesh: &RigidMesh,
     sphere_center: &Vector3<Float>,
     sphere_radius: Float,
-    mesh: &RigidMesh,
 ) -> Vec<(Vector3<Float>, UnitVector3<Float>)> {
     let mut cp_normal_list = vec![];
 
@@ -129,6 +129,41 @@ pub fn mesh_sphere_collide(
     // TODO: sphere - edge collision detection
 
     cp_normal_list
+}
+
+/// Collision detection between a mesh and a point
+/// Returns a list of (contact point, normal) where normal points from mesh to point
+pub fn mesh_point_collide(
+    mesh: &RigidMesh,
+    point: &Vector3<Float>,
+) -> Option<(Vector3<Float>, UnitVector3<Float>)> {
+    let vertices = &mesh.vertices;
+    for face in mesh.faces.iter() {
+        let v1 = vertices[face[0]];
+        let v2 = vertices[face[1]];
+        let v3 = vertices[face[2]];
+        let edge1 = v2 - v1;
+        let edge2 = v3 - v1;
+
+        let (w1, w2, w3) = projected_barycentric_coord(point, &v1, &edge1, &edge2);
+
+        // Check if closest point is inside the face
+        if w1 < 0. || w2 < 0. || w3 < 0. {
+            continue;
+        }
+
+        // Projected point
+        let closest_point = w1 * v1 + w2 * v2 + w3 * v3;
+
+        // check if point is close to the face
+        // TODO: do ccd to avoid the passing through case
+        if (point - closest_point).norm() < 1e-2 {
+            let normal = -UnitVector3::new_normalize(edge2.cross(&edge1)); // opposite of the outward normal of the face
+            return Some((*point, normal));
+        }
+    }
+
+    None
 }
 
 #[cfg(test)]
