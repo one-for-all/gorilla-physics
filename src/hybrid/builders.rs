@@ -253,9 +253,5 @@ pub async fn build_table() -> Hybrid {
     let table = StaticBody::new(mesh, Isometry3::rotation(Vector3::x_axis().scale(PI / 2.)));
     state.add_static_body(table);
 
-    // Add sphere
-    let sphere = Articulated::new_sphere_at("sphere", 1.0, 0.1, &vector![0., 0., 1.2]);
-    state.add_articulated(sphere);
-
     state
 }

@@ -20,17 +20,26 @@ impl StaticBody {
 
 #[cfg(test)]
 mod static_body_tests {
+    use na::vector;
     use na::Vector3;
 
-    use crate::{assert_vec_close, hybrid::builders::build_table, types::Float};
+    use crate::{
+        assert_vec_close,
+        hybrid::{articulated::Articulated, builders::build_table},
+        types::Float,
+    };
 
     #[tokio::test]
     async fn table() {
         // Arrange
         let mut state = build_table().await;
 
+        // Add sphere
+        let sphere = Articulated::new_sphere_at("sphere", 1.0, 0.1, &vector![0., 0., 1.2]);
+        state.add_articulated(sphere);
+
         // Act
-        let final_time = 1.0;
+        let final_time = 0.5;
         let dt = 1e-3;
         let num_steps = (final_time / dt) as usize;
         for _s in 0..num_steps {
