@@ -114,6 +114,11 @@ impl Hybrid {
             .push(Box::new(NullArticulatedController {}));
     }
 
+    pub fn pop_articulated(&mut self) {
+        self.articulated.pop();
+        self.controllers.pop();
+    }
+
     pub fn add_deformable(&mut self, deformable: Deformable) {
         self.deformables.push(deformable);
     }
