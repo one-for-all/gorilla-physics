@@ -415,42 +415,39 @@ impl Hybrid {
             for articulated in self.articulated.iter() {
                 let dof = articulated.dof();
                 for (i_joint, rigid) in articulated.bodies.iter().enumerate() {
+                    let mut cp_normal_list = vec![];
                     for (collider, iso_collider_to_body, _color) in rigid.visual.iter() {
                         let iso = rigid.pose.to_isometry() * iso_collider_to_body;
 
                         match collider {
                             Visual::Sphere(sphere) => {
                                 let sphere_center = iso.translation.vector;
-                                for (cp, n) in
-                                    mesh_sphere_collide(&static_body.mesh, &sphere_center, sphere.r)
-                                        .iter()
-                                {
-                                    let C = dual_friction_cone_multipler(&n, mu);
-                                    let mut J = Matrix3xX::zeros(total_dof);
-                                    let H = articulated.total_jacobian_to_body(i_joint);
-                                    let X = spatial_to_linear_velocity_multiplier(&cp);
-                                    J.view_mut((0, icol_arti), (3, dof)).copy_from(&(C * X * H));
-
-                                    Js.push(J);
-                                }
+                                cp_normal_list.extend(mesh_sphere_collide(
+                                    &static_body.mesh,
+                                    &sphere_center,
+                                    sphere.r,
+                                ));
                             }
                             Visual::Point(_point) => {
                                 let point = iso.translation.vector;
-                                for (cp, n) in mesh_point_collide(&static_body.mesh, &point).iter()
-                                {
-                                    let C = dual_friction_cone_multipler(&n, mu);
-                                    let mut J = Matrix3xX::zeros(total_dof);
-                                    let H = articulated.total_jacobian_to_body(i_joint);
-                                    let X = spatial_to_linear_velocity_multiplier(&cp);
-                                    J.view_mut((0, icol_arti), (3, dof)).copy_from(&(C * X * H));
-
-                                    Js.push(J);
-                                }
+                                cp_normal_list
+                                    .extend(mesh_point_collide(&static_body.mesh, &point));
                             }
                             _ => {
                                 // panic!("not implemented yet");
                             }
                         }
+                    }
+
+                    // Add contact constraint jacobians
+                    for (cp, n) in cp_normal_list.iter() {
+                        let C = dual_friction_cone_multipler(&n, mu);
+                        let mut J = Matrix3xX::zeros(total_dof);
+                        let H = articulated.total_jacobian_to_body(i_joint);
+                        let X = spatial_to_linear_velocity_multiplier(&cp);
+                        J.view_mut((0, icol_arti), (3, dof)).copy_from(&(C * X * H));
+
+                        Js.push(J);
                     }
                 }
                 icol_arti += dof;
