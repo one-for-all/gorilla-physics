@@ -9,6 +9,7 @@ use na::vector;
 pub async fn createDesktop() -> InterfaceHybrid {
     let mut state = Hybrid::empty();
     state.add_static_body(import_static_body("table/table.obj").await);
+    state.add_static_body(import_static_body("soundbox/soundbox.obj").await);
 
     // Add sphere
     let sphere = Articulated::new_sphere_at("sphere", 1.0, 0.1, &vector![0., 0., 1.2]);
