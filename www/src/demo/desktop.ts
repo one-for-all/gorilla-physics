@@ -1,8 +1,8 @@
-import { createTable } from "gorilla-physics";
+import { createDesktop } from "gorilla-physics";
 import { Simulator } from "../Simulator";
 import "../hybrid";
 
-createTable().then((state) => {
+createDesktop().then((state) => {
   let simulator = new Simulator(null);
   simulator.addHybrid(state);
   simulator.updateHybrid();

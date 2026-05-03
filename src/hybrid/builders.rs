@@ -239,9 +239,20 @@ pub fn build_cube_frenzy() -> Hybrid {
     state
 }
 
-pub async fn build_table() -> Hybrid {
-    let mut state = Hybrid::empty();
+pub async fn import_static_body(filepath: &str) -> StaticBody {
+    #[cfg(not(any(target_arch = "wasm32", rust_analyzer)))]
+    let buffer = read_file(&format!("data/{}", filepath));
 
+    #[cfg(any(target_arch = "wasm32", rust_analyzer))]
+    let buffer = read_web_file(filepath).await;
+
+    let mesh = RigidMesh::new_from_obj(&buffer);
+    let body = StaticBody::new(mesh, Isometry3::rotation(Vector3::x_axis().scale(PI / 2.)));
+
+    body
+}
+
+pub async fn build_soundbox() -> StaticBody {
     // Add table
     #[cfg(not(any(target_arch = "wasm32", rust_analyzer)))]
     let buffer = read_file("data/table/table.obj");
@@ -251,7 +262,6 @@ pub async fn build_table() -> Hybrid {
 
     let mesh = RigidMesh::new_from_obj(&buffer);
     let table = StaticBody::new(mesh, Isometry3::rotation(Vector3::x_axis().scale(PI / 2.)));
-    state.add_static_body(table);
 
-    state
+    table
 }

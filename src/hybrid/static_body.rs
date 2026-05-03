@@ -25,17 +25,19 @@ mod static_body_tests {
     use rand::rng;
     use rand::Rng;
 
+    use crate::hybrid::Hybrid;
     use crate::util::test_utils::random_vector3;
     use crate::{
         assert_vec_close,
-        hybrid::{articulated::Articulated, builders::build_table},
+        hybrid::{articulated::Articulated, builders::import_static_body},
         types::Float,
     };
 
     #[tokio::test]
     async fn table_sphere_collision() {
         // Arrange
-        let mut state = build_table().await;
+        let mut state = Hybrid::empty();
+        state.add_static_body(import_static_body("table/table.obj").await);
         let mut rng = rng();
 
         for _ in 0..5 {
@@ -64,7 +66,8 @@ mod static_body_tests {
     #[tokio::test]
     async fn table_point_collision() {
         // Arrange
-        let mut state = build_table().await;
+        let mut state = Hybrid::empty();
+        state.add_static_body(import_static_body("table/table.obj").await);
         let mut rng = rng();
 
         for _ in 0..5 {
@@ -93,7 +96,8 @@ mod static_body_tests {
     #[tokio::test]
     async fn table_cuboid_collision() {
         // Arrange
-        let mut state = build_table().await;
+        let mut state = Hybrid::empty();
+        state.add_static_body(import_static_body("table/table.obj").await);
         let mut rng = rng();
 
         for _ in 0..5 {
