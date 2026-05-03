@@ -1,7 +1,7 @@
 use na::{Isometry3, UnitVector1, UnitVector3, Vector3};
 
 use crate::{
-    collision::{cuboid, mesh::projected_barycentric_coord},
+    collision::mesh::projected_barycentric_coord,
     hybrid::visual::{rigid_mesh::RigidMesh, CuboidGeometry, SphereGeometry},
     types::Float,
 };
@@ -157,7 +157,7 @@ pub fn mesh_point_collide(
 
         // check if point is close to the face
         // TODO: do ccd to avoid the passing through case
-        if (point - closest_point).norm() < 1e-2 {
+        if (point - closest_point).norm() < 1e-3 {
             let normal = UnitVector3::new_normalize(edge1.cross(&edge2)); // outward normal of the face
             return Some((*point, normal));
         }
