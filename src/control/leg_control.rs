@@ -9,8 +9,8 @@ use clarabel::{
 };
 use itertools::izip;
 use na::{
-    vector, zero, DMatrix, DVector, Matrix1xX, Matrix2x3, Matrix2xX, Matrix4,
-    Matrix4x2, Matrix6xX, Vector6,
+    vector, zero, DMatrix, DVector, Matrix1xX, Matrix2x3, Matrix2xX, Matrix4, Matrix4x2, Matrix6xX,
+    Vector6,
 };
 use na::{Matrix4x3, Vector3};
 
@@ -280,7 +280,8 @@ impl Controller for LegFromFootController {
             &b.as_slice(),
             &cone,
             settings,
-        );
+        )
+        .unwrap();
 
         solver.solve();
         let sol = solver.solution.x;
@@ -614,7 +615,8 @@ impl Controller for LegController {
             &b.as_slice(),
             &cone,
             settings,
-        );
+        )
+        .unwrap();
 
         solver.solve();
         let sol = solver.solution.x;

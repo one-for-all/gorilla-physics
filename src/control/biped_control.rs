@@ -465,7 +465,8 @@ impl Controller for BipedController {
             &b.as_slice(),
             &cone,
             settings,
-        );
+        )
+        .unwrap();
 
         solver.solve();
         let sol = solver.solution.x;

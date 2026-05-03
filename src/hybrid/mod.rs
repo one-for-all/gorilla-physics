@@ -636,7 +636,7 @@ impl Hybrid {
             .verbose(false)
             .build()
             .unwrap();
-        let mut solver = DefaultSolver::new(&P, &q, &A_, &b, &cones, settings);
+        let mut solver = DefaultSolver::new(&P, &q, &A_, &b, &cones, settings).unwrap();
 
         let v_sol = if total_dof > 0 {
             solver.solve();

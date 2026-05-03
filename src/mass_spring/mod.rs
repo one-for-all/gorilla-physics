@@ -239,7 +239,7 @@ impl MassSpring {
             .verbose(false)
             .build()
             .unwrap();
-        let mut solver = DefaultSolver::new(&P, &q, &A_, &b, &cones, settings);
+        let mut solver = DefaultSolver::new(&P, &q, &A_, &b, &cones, settings).unwrap();
         solver.solve();
         let v_sol = DVector::from(solver.solution.x);
 

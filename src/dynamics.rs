@@ -710,7 +710,7 @@ pub fn solve_constraint_and_contact(
             .verbose(false)
             .build()
             .unwrap();
-        let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
+        let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings).unwrap();
         solver.solve();
         let lambda = DVector::from(solver.solution.x);
 
@@ -845,7 +845,7 @@ pub fn solve_cone_complementarity(P: &CscMatrix<Float>, g: &DVector<Float>) -> D
         .verbose(false)
         .build()
         .unwrap();
-    let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings).unwrap();
     solver.solve();
 
     DVector::from(solver.solution.x)
