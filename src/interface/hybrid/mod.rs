@@ -305,7 +305,10 @@ impl InterfaceHybrid {
 
 #[wasm_bindgen]
 pub async fn createHybridSphereAndTetra() -> InterfaceHybrid {
-    let mut state = Hybrid::new_canonical();
+    let mut state = Hybrid::empty();
+    state.add_rigid(Rigid::new_sphere(1., 1., "sphere"));
+    state.add_deformable(Deformable::new_tetrahedron());
+
     state.set_rigid_poses(vec![Pose::translation(vector![2.5, 0., 0.])]);
     let v_rigid = vector![-1., 0., 0.];
     state.set_rigid_velocities(vec![v_rigid]);
