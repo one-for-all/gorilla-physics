@@ -186,9 +186,13 @@ impl Hybrid {
 
         // contact handling
         // reference: Contact Models in Robotics, 2024
-
         let mut Js: Vec<Matrix3xX<Float>> = vec![];
         let mu = self.friction_mu; // friction coefficient
+
+        // update jacobians before-hand as cached result
+        for articulated in self.articulated.iter_mut() {
+            articulated.update_jacobians();
+        }
 
         // halfspace - deformable collision detection
         for halfspace in self.halfspaces.iter() {

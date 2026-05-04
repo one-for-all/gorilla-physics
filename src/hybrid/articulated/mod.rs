@@ -27,6 +27,8 @@ pub struct Articulated {
     pub parents: Vec<usize>, // parents[i] -> index of parent body of body i, and parents[i] == i means parent is world
 
     pub show_visual: bool,
+
+    jacobians: Vec<Matrix6xX<Float>>, // Jacobian from each joint v to body spatial twist expressed in world frame
 }
 
 impl Articulated {
@@ -51,6 +53,7 @@ impl Articulated {
             joints: joints,
             parents: parents,
             show_visual: true,
+            jacobians: vec![],
         };
 
         state.update_body_states();
@@ -350,17 +353,17 @@ impl Articulated {
     }
 
     /// Jacobian from each joint v to body spatial twist expressed in world frame
-    pub fn jacobians(&self) -> Vec<Matrix6xX<Float>> {
-        izip!(self.joints.iter(), self.bodies.iter())
+    pub fn update_jacobians(&mut self) {
+        self.jacobians = izip!(self.joints.iter(), self.bodies.iter())
             .map(|(j, b)| j.motion_subspace().as_s().transform(&b.pose).as_matrix())
-            .collect()
+            .collect();
     }
 
     /// Jacobian from total v to the total spatial twist of ith body, expressed in world frame
     pub fn total_jacobian_to_body(&self, i: usize) -> Matrix6xX<Float> {
         let dof = self.dof();
         let offsets = self.offsets();
-        let jacobians = self.jacobians();
+        let jacobians = &self.jacobians;
 
         let mut H = Matrix6xX::zeros(dof);
         H.view_mut((0, offsets[i]), (6, self.joints[i].dof()))
