@@ -29,6 +29,7 @@ pub struct Articulated {
     pub show_visual: bool,
 
     jacobians: Vec<Matrix6xX<Float>>, // Jacobian from each joint v to body spatial twist expressed in world frame
+    pub mass_matrix: DMatrix<Float>,
 }
 
 impl Articulated {
@@ -54,6 +55,7 @@ impl Articulated {
             parents: parents,
             show_visual: true,
             jacobians: vec![],
+            mass_matrix: DMatrix::<Float>::zeros(0, 0),
         };
 
         state.update_body_states();
@@ -163,14 +165,14 @@ impl Articulated {
         }
         let c = DVector::from_vec(torques); // dynamics bias
 
-        let mass_matrix = self.mass_matrix();
+        let mass_matrix = self.mass_matrix.clone();
 
         let vdot = mass_matrix.cholesky().unwrap().solve(&(tau - c));
 
         self.v() + vdot * dt
     }
 
-    pub fn mass_matrix(&self) -> DMatrix<Float> {
+    pub fn update_mass_matrix(&mut self) {
         // Compute and store motion subspaces, expressed in world frame
         let motion_subspaces: Vec<MotionSubspace> = izip!(self.joints.iter(), self.bodies.iter())
             .map(|(j, b)| j.motion_subspace().as_s().transform(&b.pose))
@@ -234,7 +236,8 @@ impl Articulated {
                 parent = self.parents[j];
             }
         }
-        mass_matrix
+
+        self.mass_matrix = mass_matrix;
     }
 
     /// Compute the body twists in world frame, at the given joint velocities
@@ -378,6 +381,9 @@ impl Articulated {
     }
 
     pub fn step(&mut self, dt: Float) {
+        self.update_jacobians();
+        self.update_mass_matrix();
+
         let gravity_enabled = true;
         let v = self.free_velocity(dt, DVector::zeros(self.dof()), gravity_enabled);
         self.integrate(v, dt);

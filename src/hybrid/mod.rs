@@ -134,6 +134,12 @@ impl Hybrid {
     }
 
     pub fn step(&mut self, dt: Float, input: &Vec<Float>) {
+        // update jacobians and mass_matrix before-hand as cached result
+        for articulated in self.articulated.iter_mut() {
+            articulated.update_jacobians();
+            articulated.update_mass_matrix();
+        }
+
         let taus: Vec<DVector<Float>> = izip!(self.controllers.iter_mut(), self.articulated.iter())
             .map(|(c, a)| c.control(a, input))
             .collect();
@@ -188,11 +194,6 @@ impl Hybrid {
         // reference: Contact Models in Robotics, 2024
         let mut Js: Vec<Matrix3xX<Float>> = vec![];
         let mu = self.friction_mu; // friction coefficient
-
-        // update jacobians before-hand as cached result
-        for articulated in self.articulated.iter_mut() {
-            articulated.update_jacobians();
-        }
 
         // halfspace - deformable collision detection
         for halfspace in self.halfspaces.iter() {
@@ -590,7 +591,7 @@ impl Hybrid {
         for articulated in self.articulated.iter() {
             let dof = articulated.dof();
             A.view_mut((i, i), (dof, dof))
-                .copy_from(&articulated.mass_matrix());
+                .copy_from(&articulated.mass_matrix);
             i += dof;
         }
 
