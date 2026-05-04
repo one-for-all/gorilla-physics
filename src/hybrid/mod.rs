@@ -63,10 +63,23 @@ pub struct Hybrid {
 
     gravity_enabled: bool,
     friction_mu: Float,
+
+    solver: DefaultSolver,
 }
 
 impl Hybrid {
     pub fn empty() -> Self {
+        let P = CscMatrix::identity(0);
+        let q = vec![];
+        let A = CscMatrix::identity(0);
+        let b = vec![];
+        let cones = vec![];
+        let settings = DefaultSettingsBuilder::default()
+            .verbose(false)
+            .build()
+            .unwrap();
+        let solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings).unwrap();
+
         Hybrid {
             rigid_bodies: vec![],
             articulated: vec![],
@@ -77,6 +90,7 @@ impl Hybrid {
             controllers: vec![],
             gravity_enabled: true,
             friction_mu: 1.0,
+            solver,
         }
     }
 
@@ -556,6 +570,7 @@ impl Hybrid {
             d1_offset += d1.dof();
         }
 
+        // A needs to be computed per step because it depends on the current joint q
         let mut A: DMatrix<Float> = DMatrix::zeros(total_dof, total_dof);
 
         // Assemble A for rigid bodies
@@ -614,15 +629,12 @@ impl Hybrid {
         let b = vec![0.; Js.len() * 3];
         let cones: Vec<SupportedConeT<Float>> = vec![SecondOrderConeT(3); Js.len()];
 
-        let settings = DefaultSettingsBuilder::default()
-            .verbose(false)
-            .build()
-            .unwrap();
-        let mut solver = DefaultSolver::new(&P, &q, &A_, &b, &cones, settings).unwrap();
+        self.solver =
+            DefaultSolver::new(&P, &q, &A_, &b, &cones, self.solver.settings().clone()).unwrap();
 
         let v_sol = if total_dof > 0 {
-            solver.solve();
-            DVector::from(solver.solution.x)
+            self.solver.solve();
+            DVector::from(self.solver.solution.x.clone())
         } else {
             DVector::zeros(0)
         };
