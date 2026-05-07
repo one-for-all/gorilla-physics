@@ -83,6 +83,10 @@ impl InterfaceHybrid {
         self.inner.articulated[i].show_visual
     }
 
+    pub fn static_visual_show(&self, i: usize) -> bool {
+        self.inner.static_bodies[i].show_visual
+    }
+
     /// Return color, or default
     pub fn visual_color(&self, i: usize, j: usize, k: usize) -> Float32Array {
         let color = &self.inner.articulated[i].bodies[j].visual[k].2;

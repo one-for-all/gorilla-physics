@@ -243,10 +243,12 @@ Simulator.prototype.addHybrid = function (state: InterfaceHybrid) {
 
   // Add static bodies
   for (let i = 0; i < state.n_static_bodies(); i++) {
-    let vertices = state.static_body_vertices(i);
-    let faces = state.static_body_faces(i);
-    let name = "static body " + i;
-    this.addRigidMesh(name, [0.0, 1.0, 0.0], vertices, faces);
+    if (state.static_visual_show(i)) {
+      let vertices = state.static_body_vertices(i);
+      let faces = state.static_body_faces(i);
+      let name = "static body " + i;
+      this.addRigidMesh(name, [0.0, 1.0, 0.0], vertices, faces);
+    }
   }
 };
 

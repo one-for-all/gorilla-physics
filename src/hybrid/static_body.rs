@@ -1,4 +1,4 @@
-use na::{Isometry, Isometry3, Point3};
+use na::{Isometry, Isometry3, Point3, Vector3};
 
 use crate::{
     hybrid::{visual::rigid_mesh::RigidMesh, Hybrid, Rigid},
@@ -7,6 +7,7 @@ use crate::{
 
 pub struct StaticBody {
     pub mesh: RigidMesh,
+    pub show_visual: bool,
 }
 
 impl StaticBody {
@@ -14,7 +15,22 @@ impl StaticBody {
         for vertex in mesh.vertices.iter_mut() {
             *vertex = iso.transform_point(&Point3::from(*vertex)).coords;
         }
-        Self { mesh }
+        Self {
+            mesh,
+            show_visual: true,
+        }
+    }
+
+    pub fn scale(&mut self, scale: Vector3<Float>) {
+        for vertex in self.mesh.vertices.iter_mut() {
+            *vertex = vertex.component_mul(&scale);
+        }
+    }
+
+    pub fn update_pose(&mut self, iso: Isometry3<Float>) {
+        for vertex in self.mesh.vertices.iter_mut() {
+            *vertex = iso.transform_point(&Point3::from(*vertex)).coords;
+        }
     }
 }
 
