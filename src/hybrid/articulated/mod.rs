@@ -399,8 +399,8 @@ impl Articulated {
     pub fn set_joint_q(&mut self, i: usize, q: JointPosition) {
         match &mut self.joints[i] {
             Joint::FixedJoint(_) => panic!("can't set fixed joint v"),
-            Joint::RevoluteJoint(j) => j.q = q.float(),
-            Joint::PrismaticJoint(j) => j.q = q.float(),
+            Joint::RevoluteJoint(j) => j.set_q(q.float()),
+            Joint::PrismaticJoint(j) => j.set_q(q.float()),
             Joint::FloatingJoint(j) => j.set_q(*q.pose()),
         }
         self.update_body_states();

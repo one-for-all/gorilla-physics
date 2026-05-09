@@ -50,8 +50,8 @@ impl Joint {
     pub fn q(&self) -> DVector<Float> {
         match self {
             Joint::FixedJoint(_) => dvector![],
-            Joint::RevoluteJoint(j) => dvector![j.q],
-            Joint::PrismaticJoint(j) => dvector![j.q],
+            Joint::RevoluteJoint(j) => dvector![j.get_q()],
+            Joint::PrismaticJoint(j) => dvector![j.get_q()],
             Joint::FloatingJoint(j) => j.get_q().as_dvec(),
         }
     }
@@ -117,11 +117,11 @@ impl Joint {
         match self {
             Joint::FixedJoint(_) => {}
             Joint::RevoluteJoint(j) => {
-                j.q = 0.;
+                j.set_q(0.);
                 j.v = 0.
             }
             Joint::PrismaticJoint(j) => {
-                j.q = 0.;
+                j.set_q(0.);
                 j.v = 0.
             }
             Joint::FloatingJoint(j) => {

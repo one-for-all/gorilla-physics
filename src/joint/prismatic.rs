@@ -25,7 +25,7 @@ pub struct PrismaticJoint {
     pub axis: UnitVector3<Float>, // axis expressed in successor body frame
 
     pub v: Float, // velocity of this joint
-    pub q: Float, // position of this joint
+    q: Float,     // position of this joint
 
     pub spring: Option<JointSpring>,
 }

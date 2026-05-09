@@ -20,7 +20,7 @@ pub struct RevoluteJoint {
     pub axis: UnitVector3<Float>,   // axis of rotation expressed in successor body frame
 
     pub v: Float, // velocity of this joint
-    pub q: Float, // position of this joint
+    q: Float,     // position of this joint
 }
 
 impl RevoluteJoint {
