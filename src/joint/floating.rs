@@ -27,8 +27,7 @@ impl FloatingJoint {
         self.q = q;
 
         // Update the transform to be intial transform multiplied by pose
-        let iso = self.init_iso * self.q.to_isometry();
-        self.transform.iso = iso;
+        self.transform.iso = self.init_iso * self.q.to_isometry();
     }
 
     pub fn get_q(&self) -> &Pose {

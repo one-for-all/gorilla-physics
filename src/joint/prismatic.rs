@@ -83,12 +83,7 @@ impl PrismaticJoint {
         self.q = q;
 
         // Update the transform to be intial transform moved along axis by q
-        let iso = self.init_iso * Translation3::from(self.axis.scale(q));
-        self.transform = Transform3D {
-            from: self.transform.from.clone(),
-            to: self.transform.to.clone(),
-            iso: iso,
-        };
+        self.transform.iso = self.init_iso * Translation3::from(self.axis.scale(q));
     }
 
     pub fn get_q(&self) -> Float {
