@@ -226,6 +226,7 @@ impl Hybrid {
                 for (i_joint, (rigid, joint)) in
                     izip!(articulated.bodies.iter(), articulated.joints.iter()).enumerate()
                 {
+                    let mut cp_normal_list = vec![];
                     for (collider, iso_collider_to_body, _color) in rigid.visual.iter() {
                         let iso = rigid.pose.to_isometry() * iso_collider_to_body;
                         let collider_pos = iso.translation.vector;
@@ -233,50 +234,20 @@ impl Hybrid {
                         match collider {
                             Visual::Point(_point) => {
                                 if halfspace.has_inside(&collider_pos) {
-                                    let cp = collider_pos;
-                                    let C = dual_friction_cone_multipler(n, mu);
-
-                                    let mut J = Matrix3xX::zeros(total_dof);
-                                    let H = articulated.total_jacobian_to_body(i_joint);
-
-                                    let X = spatial_to_linear_velocity_multiplier(&cp);
-
-                                    J.view_mut((0, icol_arti), (3, dof)).copy_from(&(C * X * H));
-
-                                    Js.push(J);
+                                    cp_normal_list.push((collider_pos, n));
                                 }
                             }
                             Visual::Sphere(sphere) => {
                                 if let Some(cp) =
                                     halfspace.intersect_sphere(&collider_pos, sphere.r)
                                 {
-                                    let C = dual_friction_cone_multipler(n, mu);
-
-                                    let mut J = Matrix3xX::zeros(total_dof);
-                                    let H = articulated.total_jacobian_to_body(i_joint);
-
-                                    let X = spatial_to_linear_velocity_multiplier(&cp);
-
-                                    J.view_mut((0, icol_arti), (3, dof)).copy_from(&(C * X * H));
-
-                                    Js.push(J);
+                                    cp_normal_list.push((cp, n));
                                 }
                             }
                             Visual::Cuboid(cuboid) => {
                                 for point in cuboid.points(&iso) {
                                     if halfspace.has_inside(&point) {
-                                        let cp = point;
-                                        let C = dual_friction_cone_multipler(n, mu);
-
-                                        let mut J = Matrix3xX::zeros(total_dof);
-                                        let H = articulated.total_jacobian_to_body(i_joint);
-
-                                        let X = spatial_to_linear_velocity_multiplier(&cp);
-
-                                        J.view_mut((0, icol_arti), (3, dof))
-                                            .copy_from(&(C * X * H));
-
-                                        Js.push(J);
+                                        cp_normal_list.push((point, n));
                                     }
                                 }
                             }
@@ -288,6 +259,17 @@ impl Hybrid {
                                 panic!("collision detection between halfspace and articulated only implemented for point and sphere geometry");
                             }
                         }
+                    }
+
+                    // Assemble all the contact constraint joint jacobians for this body
+                    for (cp, n) in cp_normal_list.iter() {
+                        let C = dual_friction_cone_multipler(&n, mu);
+                        let mut J = Matrix3xX::zeros(total_dof);
+                        let H = articulated.total_jacobian_to_body(i_joint);
+                        let X = spatial_to_linear_velocity_multiplier(&cp);
+                        J.view_mut((0, icol_arti), (3, dof)).copy_from(&(C * X * H));
+
+                        Js.push(J);
                     }
                 }
                 icol_arti += dof;
