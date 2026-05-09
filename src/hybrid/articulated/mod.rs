@@ -333,12 +333,12 @@ impl Articulated {
                         vector![v[i], v[i + 1], v[i + 2]],
                         vector![v[i + 3], v[i + 4], v[i + 5]],
                     );
-                    let quaternion_dot = quaternion_derivative(&j.q.rotation, &j.v.angular);
-                    let translation_dot = j.q.rotation * j.v.linear;
+                    let quaternion_dot = quaternion_derivative(&j.get_q().rotation, &j.v.angular);
+                    let translation_dot = j.get_q().rotation * j.v.linear;
                     let new_q = Pose {
-                        translation: j.q.translation + translation_dot * dt,
+                        translation: j.get_q().translation + translation_dot * dt,
                         rotation: UnitQuaternion::from_quaternion(
-                            j.q.rotation.quaternion() + quaternion_dot * dt,
+                            j.get_q().rotation.quaternion() + quaternion_dot * dt,
                         ),
                     };
                     j.set_q(new_q);
@@ -401,7 +401,7 @@ impl Articulated {
             Joint::FixedJoint(_) => panic!("can't set fixed joint v"),
             Joint::RevoluteJoint(j) => j.q = q.float(),
             Joint::PrismaticJoint(j) => j.q = q.float(),
-            Joint::FloatingJoint(j) => j.q = *q.pose(),
+            Joint::FloatingJoint(j) => j.set_q(*q.pose()),
         }
         self.update_body_states();
     }

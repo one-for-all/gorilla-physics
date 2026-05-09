@@ -10,7 +10,7 @@ pub struct FloatingJoint {
     pub transform: Transform3D,     // transform from successor frame to predecessor frame
 
     pub v: SpatialVector, // velocity of this joint
-    pub q: Pose,          // position of this joint
+    q: Pose,              // position of this joint
 }
 
 impl FloatingJoint {

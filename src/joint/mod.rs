@@ -52,7 +52,7 @@ impl Joint {
             Joint::FixedJoint(_) => dvector![],
             Joint::RevoluteJoint(j) => dvector![j.q],
             Joint::PrismaticJoint(j) => dvector![j.q],
-            Joint::FloatingJoint(j) => j.q.as_dvec(),
+            Joint::FloatingJoint(j) => j.get_q().as_dvec(),
         }
     }
 
@@ -125,7 +125,7 @@ impl Joint {
                 j.v = 0.
             }
             Joint::FloatingJoint(j) => {
-                j.q = Pose::identity();
+                j.set_q(Pose::identity());
                 j.v = SpatialVector::zero();
             }
         }
