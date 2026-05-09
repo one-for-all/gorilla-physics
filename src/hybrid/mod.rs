@@ -51,7 +51,6 @@ pub mod static_body;
 pub mod visual;
 
 pub struct Hybrid {
-    pub rigid_bodies: Vec<Rigid>,
     pub articulated: Vec<Articulated>,
     pub deformables: Vec<Deformable>,
     pub cloths: Vec<Cloth>,
@@ -82,7 +81,6 @@ impl Hybrid {
         let solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings).unwrap();
 
         Hybrid {
-            rigid_bodies: vec![],
             articulated: vec![],
             deformables: vec![],
             cloths: vec![],
@@ -101,10 +99,6 @@ impl Hybrid {
 
     pub fn disable_gravity(&mut self) {
         self.gravity_enabled = false;
-    }
-
-    pub fn add_rigid(&mut self, rigid: Rigid) {
-        self.rigid_bodies.push(rigid);
     }
 
     pub fn add_articulated(&mut self, articulated: Articulated) {
@@ -151,11 +145,6 @@ impl Hybrid {
             controller.step(dt, articulated);
         }
 
-        let v_rigids: Vec<DVector<Float>> = self
-            .rigid_bodies
-            .iter()
-            .map(|b| b.free_velocity(dt))
-            .collect();
         let v_articulated: Vec<DVector<Float>> =
             izip!(self.articulated.iter_mut(), taus.into_iter())
                 .map(|(a, t)| a.free_velocity(dt, t, self.gravity_enabled))
@@ -167,21 +156,19 @@ impl Hybrid {
             .collect();
         let v_cloths: Vec<DVector<Float>> =
             self.cloths.iter().map(|c| c.free_velocity(dt)).collect();
-        let total_len = v_rigids.iter().map(|v| v.len()).sum::<usize>()
-            + v_articulated.iter().map(|v| v.len()).sum::<usize>()
+        let total_len = v_articulated.iter().map(|v| v.len()).sum::<usize>()
             + v_deformables.iter().map(|v| v.len()).sum::<usize>()
             + v_cloths.iter().map(|v| v.len()).sum::<usize>();
         let v_star: DVector<Float> = DVector::from_iterator(
             total_len,
-            v_rigids
+            v_articulated
                 .iter()
-                .chain(v_articulated.iter())
                 .chain(v_deformables.iter())
                 .chain(v_cloths.iter())
                 .flat_map(|v| v.data.as_vec().clone()),
         );
 
-        let offset_articulated = self.rigid_bodies.len() * 6; // starting offset for articulated velocity within stacked total velocity vector
+        let offset_articulated = 0; // starting offset for articulated velocity within stacked total velocity vector
         let dof_articulated: usize = self.articulated.iter().map(|a| a.dof()).sum();
         let offset_deformable = offset_articulated + dof_articulated;
 
@@ -273,37 +260,6 @@ impl Hybrid {
                     }
                 }
                 icol_arti += dof;
-            }
-        }
-
-        // rigid-deformable point-sphere collision detection
-        for (i_rigid, rigid) in self.rigid_bodies.iter().enumerate() {
-            let iso = rigid.pose.to_isometry();
-            let translation = rigid.pose.translation;
-            let T = compute_twist_transformation_matrix(&iso);
-
-            let mut i_deformable_offset = 0;
-            for (i_deform, deformable) in self.deformables.iter().enumerate() {
-                for (i_node, pos) in deformable.get_positions().iter().enumerate() {
-                    if (pos - translation).norm() <= 1.0 {
-                        let n = UnitVector3::new_normalize(translation - pos);
-                        let cp = pos;
-
-                        let C = dual_friction_cone_multipler(&n, mu);
-
-                        // set jacobian for deformable part
-                        let icol = offset_deformable + i_deformable_offset + i_node * 3;
-                        let mut J = Matrix3xX::zeros(total_dof);
-                        J.fixed_view_mut::<3, 3>(0, icol).copy_from(&-C);
-
-                        // set jacobian for rigid body part
-                        let X = spatial_to_linear_velocity_multiplier(&cp);
-                        J.fixed_view_mut::<3, 6>(0, i_rigid * 6)
-                            .copy_from(&(C * X * T));
-                        Js.push(J);
-                    }
-                }
-                i_deformable_offset += deformable.dof();
             }
         }
 
@@ -561,14 +517,6 @@ impl Hybrid {
         // A needs to be computed per step because it depends on the current joint q
         let mut A: DMatrix<Float> = DMatrix::zeros(total_dof, total_dof);
 
-        // Assemble A for rigid bodies
-        let mut i = 0;
-        for rigid in self.rigid_bodies.iter() {
-            A.view_mut((i, i), (6, 6))
-                .copy_from(&rigid.inertia.to_matrix());
-            i += 6;
-        }
-
         // Assemble A for articulated bodies
         let mut i = offset_articulated;
         for articulated in self.articulated.iter() {
@@ -627,26 +575,6 @@ impl Hybrid {
             DVector::zeros(0)
         };
 
-        // Update rigid body velocities and poses
-        let mut i = 0;
-        for rigid in self.rigid_bodies.iter_mut() {
-            let v_rigid = SpatialVector {
-                angular: vector![v_sol[i], v_sol[i + 1], v_sol[i + 2]],
-                linear: vector![v_sol[i + 3], v_sol[i + 4], v_sol[i + 5]],
-            };
-            rigid.twist = v_rigid;
-            let qi = rigid.pose;
-            let quaternion_dot = quaternion_derivative(&qi.rotation, &v_rigid.angular);
-            let translation_dot = qi.rotation * v_rigid.linear;
-            rigid.pose = Pose {
-                translation: qi.translation + translation_dot * dt,
-                rotation: UnitQuaternion::from_quaternion(
-                    qi.rotation.quaternion() + quaternion_dot * dt,
-                ),
-            };
-            i += 6;
-        }
-
         // Update articulated velocities and poses
         let mut i = offset_articulated;
         for articulated in self.articulated.iter_mut() {
@@ -677,21 +605,9 @@ impl Hybrid {
         }
     }
 
-    pub fn set_rigid_poses(&mut self, poses: Vec<Pose>) {
-        for (rigid, pose) in izip!(self.rigid_bodies.iter_mut(), poses.iter()) {
-            rigid.pose = *pose;
-        }
-    }
-
     pub fn set_deformable_velocities(&mut self, vel: Vec<Vec<Vector3<Float>>>) {
         for (v, deformable) in izip!(vel.iter(), self.deformables.iter_mut()) {
             deformable.set_velocity(v.clone());
-        }
-    }
-
-    pub fn set_rigid_velocities(&mut self, vel: Vec<Vector3<Float>>) {
-        for (v, rigid) in izip!(vel.iter(), self.rigid_bodies.iter_mut()) {
-            rigid.twist.linear = *v;
         }
     }
 

@@ -35,11 +35,6 @@ declare module "./Simulator" {
 
 Simulator.prototype.addHybrid = function (state: InterfaceHybrid) {
   this.hybrid = state;
-  // add rigid body
-  let n_rigid_bodies = state.n_rigid_bodies();
-  for (let i = 0; i < n_rigid_bodies; i++) {
-    this.addSphere("sphere " + i, 0xff0000, 1.0);
-  }
 
   // add articulated
   let n_articulated = state.n_articulated();
@@ -254,13 +249,6 @@ Simulator.prototype.addHybrid = function (state: InterfaceHybrid) {
 
 Simulator.prototype.updateHybrid = function () {
   let state = this.hybrid;
-
-  // update rigid body poses
-  let poses = state.rigid_body_poses();
-  let n_rigid_bodies = state.n_rigid_bodies();
-  for (let i = 0; i < n_rigid_bodies; i++) {
-    this.setPose("sphere " + i, poses.subarray(i * 7, i * 7 + 7));
-  }
 
   // update articulated bodies poses
   let n_articulated = state.n_articulated();

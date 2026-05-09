@@ -9,6 +9,7 @@ use crate::hybrid::{visual::Visual, Deformable, Rigid};
 use crate::interface::util::read_web_file;
 use crate::joint::{Joint, JointPosition, JointVelocity};
 use crate::na::vector;
+use crate::spatial::spatial_vector::SpatialVector;
 use crate::spatial::transform::Transform3D;
 use crate::types::Float;
 use crate::{flog, WORLD_FRAME};
@@ -49,10 +50,6 @@ impl InterfaceHybrid {
 
     pub fn reboot_esp32_controller(&mut self, i: usize, app_bin: Vec<u8>, symbols: &str) {
         self.inner.controllers[i].reboot_esp32(app_bin, symbols);
-    }
-
-    pub fn n_rigid_bodies(&self) -> usize {
-        self.inner.rigid_bodies.len()
     }
 
     pub fn n_articulated(&self) -> usize {
@@ -152,14 +149,6 @@ impl InterfaceHybrid {
     pub fn pose_articulated_body(&self, i: usize, j: usize) -> Float32Array {
         let body = &self.inner.articulated[i].bodies[j];
         toJsFloat32Array!(body.pose.to_array())
-    }
-
-    pub fn rigid_body_poses(&self) -> Float32Array {
-        let mut q = vec![];
-        for rigid in self.inner.rigid_bodies.iter() {
-            q.extend(rigid.pose.to_array());
-        }
-        toJsFloat32Array!(q)
     }
 
     pub fn deformable_nodes(&self) -> Float32Array {
@@ -310,12 +299,17 @@ impl InterfaceHybrid {
 #[wasm_bindgen]
 pub async fn createHybridSphereAndTetra() -> InterfaceHybrid {
     let mut state = Hybrid::empty();
-    state.add_rigid(Rigid::new_sphere(1., 1., "sphere"));
-    state.add_deformable(Deformable::new_tetrahedron());
 
-    state.set_rigid_poses(vec![Pose::translation(vector![2.5, 0., 0.])]);
-    let v_rigid = vector![-1., 0., 0.];
-    state.set_rigid_velocities(vec![v_rigid]);
+    let mut sphere = Articulated::new_sphere("sphere", 1., 1.);
+    sphere.set_joint_q(
+        0,
+        JointPosition::Pose(Pose::translation(vector![2.5, 0., 0.])),
+    );
+    let v_sphere = vector![-1., 0., 0.];
+    sphere.set_joint_v(0, JointVelocity::Spatial(SpatialVector::linear(v_sphere)));
+    state.add_articulated(sphere);
+
+    state.add_deformable(Deformable::new_tetrahedron());
 
     let v = vector![0.25, 0., 0.];
     let v = vec![v, v, v, v];
@@ -327,13 +321,26 @@ pub async fn createHybridSphereAndTetra() -> InterfaceHybrid {
 #[wasm_bindgen]
 pub async fn createHybridCube() -> InterfaceHybrid {
     let mut state = Hybrid::empty();
-    state.add_rigid(Rigid::new_sphere(1., 1., "sphere"));
-    state.add_rigid(Rigid::new_sphere(1., 1., "sphere"));
-    state.set_rigid_poses(vec![
-        Pose::translation(vector![2.5, 0., 0.]),
-        Pose::translation(vector![-1.5, 0., 0.]),
-    ]);
-    state.set_rigid_velocities(vec![vector![-1., 0., 0.], vector![1., 0., 0.]]);
+
+    // Add first sphere
+    let mut sphere = Articulated::new_sphere("sphere", 1., 1.);
+    sphere.set_joint_q(
+        0,
+        JointPosition::Pose(Pose::translation(vector![2.5, 0., 0.])),
+    );
+    let v_sphere = vector![-1., 0., 0.];
+    sphere.set_joint_v(0, JointVelocity::Spatial(SpatialVector::linear(v_sphere)));
+    state.add_articulated(sphere);
+
+    // Add second sphere
+    let mut sphere = Articulated::new_sphere("sphere", 1., 1.);
+    sphere.set_joint_q(
+        0,
+        JointPosition::Pose(Pose::translation(vector![-1.5, 0., 0.])),
+    );
+    let v_sphere = vector![1., 0., 0.];
+    sphere.set_joint_v(0, JointVelocity::Spatial(SpatialVector::linear(v_sphere)));
+    state.add_articulated(sphere);
 
     state.add_deformable(Deformable::new_cube(1e2));
     // let v = vector![1. / 7., 0., 0.];
