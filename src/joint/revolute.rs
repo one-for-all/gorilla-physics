@@ -77,13 +77,19 @@ impl RevoluteJoint {
         }
     }
 
-    /// Update the transform to be intial transform rotated around axis by q
-    pub fn update(&mut self, q: Float) {
+    pub fn set_q(&mut self, q: Float) {
+        self.q = q;
+
+        // Update the transform to be intial transform rotated around axis by q
         self.transform = Transform3D {
             from: self.transform.from.clone(),
             to: self.transform.to.clone(),
             iso: self.init_iso * UnitQuaternion::from_axis_angle(&self.axis, q),
         };
+    }
+
+    pub fn get_q(&self) -> Float {
+        self.q
     }
 }
 

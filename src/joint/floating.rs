@@ -23,10 +23,16 @@ impl FloatingJoint {
         }
     }
 
-    /// Update the transform to be intial transform multiplied by pose
-    pub fn update(&mut self, q: &Pose) {
-        let iso = self.init_iso * q.to_isometry();
+    pub fn set_q(&mut self, q: Pose) {
+        self.q = q;
+
+        // Update the transform to be intial transform multiplied by pose
+        let iso = self.init_iso * self.q.to_isometry();
         self.transform.iso = iso;
+    }
+
+    pub fn get_q(&self) -> &Pose {
+        &self.q
     }
 
     pub fn motion_subspace(&self) -> GeometricJacobian {

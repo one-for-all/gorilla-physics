@@ -79,14 +79,19 @@ impl PrismaticJoint {
         }
     }
 
-    /// Update the transform to be intial transform moved along axis by q
-    pub fn update(&mut self, q: Float) {
-        let iso = self.init_iso * Translation3::from(self.axis.scale(q));
+    pub fn set_q(&mut self, q: Float) {
+        self.q = q;
 
+        // Update the transform to be intial transform moved along axis by q
+        let iso = self.init_iso * Translation3::from(self.axis.scale(q));
         self.transform = Transform3D {
             from: self.transform.from.clone(),
             to: self.transform.to.clone(),
             iso: iso,
         };
+    }
+
+    pub fn get_q(&self) -> Float {
+        self.q
     }
 }

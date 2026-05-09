@@ -322,13 +322,11 @@ impl Articulated {
                 Joint::FixedJoint(_) => {}
                 Joint::RevoluteJoint(j) => {
                     j.v = v[i];
-                    j.q += j.v * dt;
-                    j.update(j.q);
+                    j.set_q(j.get_q() + j.v * dt);
                 }
                 Joint::PrismaticJoint(j) => {
                     j.v = v[i];
-                    j.q += j.v * dt;
-                    j.update(j.q);
+                    j.set_q(j.get_q() + j.v * dt);
                 }
                 Joint::FloatingJoint(j) => {
                     j.v = SpatialVector::new(
@@ -343,8 +341,7 @@ impl Articulated {
                             j.q.rotation.quaternion() + quaternion_dot * dt,
                         ),
                     };
-                    j.q = new_q;
-                    j.update(&new_q);
+                    j.set_q(new_q);
                 }
             }
 
@@ -396,6 +393,7 @@ impl Articulated {
             Joint::PrismaticJoint(j) => j.v = v.float(),
             Joint::FloatingJoint(j) => j.v = *v.spatial(),
         }
+        self.update_body_states();
     }
 
     pub fn set_joint_q(&mut self, i: usize, q: JointPosition) {
@@ -405,6 +403,7 @@ impl Articulated {
             Joint::PrismaticJoint(j) => j.q = q.float(),
             Joint::FloatingJoint(j) => j.q = *q.pose(),
         }
+        self.update_body_states();
     }
 
     /// Reset all joints to default state

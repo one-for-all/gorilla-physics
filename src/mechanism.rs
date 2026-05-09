@@ -219,21 +219,21 @@ impl MechanismState {
             match joint {
                 Joint::RevoluteJoint(j) => {
                     if let JointPosition::Float(qi) = qi {
-                        j.update(*qi)
+                        j.set_q(*qi);
                     } else {
                         panic!("Revolute joint expects a Float position");
                     }
                 }
                 Joint::PrismaticJoint(j) => {
                     if let JointPosition::Float(qi) = qi {
-                        j.update(*qi)
+                        j.set_q(*qi);
                     } else {
                         panic!("Prismatic joint expects a Float position");
                     }
                 }
                 Joint::FloatingJoint(j) => {
                     if let JointPosition::Pose(qi) = qi {
-                        j.update(qi)
+                        j.set_q(*qi);
                     } else {
                         panic!("Floating joint expects a Pose position");
                     }
@@ -292,21 +292,21 @@ impl MechanismState {
         match &mut self.treejoints[jointid - 1] {
             Joint::RevoluteJoint(j) => {
                 if let JointPosition::Float(q) = q {
-                    (*j).update(q)
+                    (*j).set_q(q);
                 } else {
                     panic!("Revolute joint expects a Float position");
                 }
             }
             Joint::PrismaticJoint(j) => {
                 if let JointPosition::Float(q) = q {
-                    (*j).update(q)
+                    (*j).set_q(q);
                 } else {
                     panic!("Prismatic joint expects a Float position");
                 }
             }
             Joint::FloatingJoint(j) => {
                 if let JointPosition::Pose(q) = q {
-                    (*j).update(&q)
+                    (*j).set_q(q);
                 } else {
                     panic!("Floating joint expects a Pose position");
                 }
