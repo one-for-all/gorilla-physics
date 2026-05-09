@@ -701,10 +701,16 @@ impl Hybrid {
     }
 
     /// Computes total linear momentum
+    /// TODO: include other entities besides articulated and deformables
     pub fn linear_momentum(&self) -> Vector3<Float> {
-        self.rigid_bodies
+        self.articulated
             .iter()
-            .map(|b| b.linear_momentum())
+            .map(|art| {
+                art.bodies
+                    .iter()
+                    .map(|b| b.linear_momentum())
+                    .sum::<Vector3<Float>>()
+            })
             .sum::<Vector3<Float>>()
             + self
                 .deformables
@@ -725,8 +731,8 @@ mod hybrid_tests {
             builders::{build_cube_cloth, build_cube_frenzy, build_gripper_cube, build_teddy},
             Deformable, Hybrid, Rigid,
         },
-        joint::{Joint, JointVelocity},
-        spatial::{pose::Pose, transform::Transform3D},
+        joint::{Joint, JointPosition, JointVelocity},
+        spatial::{pose::Pose, spatial_vector::SpatialVector, transform::Transform3D},
         util::read_file,
         WORLD_FRAME,
     };
@@ -735,12 +741,17 @@ mod hybrid_tests {
     fn no_collision() {
         // Arrange
         let mut state = Hybrid::empty();
-        state.add_rigid(Rigid::new_sphere(1., 1., "sphere"));
-        state.add_deformable(Deformable::new_tetrahedron());
 
-        state.set_rigid_poses(vec![Pose::translation(vector![2.1, 0., 0.])]);
-        let v_rigid = vector![1., 0., 0.];
-        state.set_rigid_velocities(vec![v_rigid]);
+        let mut sphere = Articulated::new_sphere("sphere", 1., 1.);
+        sphere.set_joint_q(
+            0,
+            JointPosition::Pose(Pose::translation(vector![2.1, 0., 0.])),
+        );
+        let v_sphere = vector![1., 0., 0.];
+        sphere.set_joint_v(0, JointVelocity::Spatial(SpatialVector::linear(v_sphere)));
+
+        state.add_articulated(sphere);
+        state.add_deformable(Deformable::new_tetrahedron());
 
         let v = vector![-1., 0., 0.];
         let v = vec![v, v, v, v];
@@ -761,9 +772,9 @@ mod hybrid_tests {
         }
 
         // Assert
-        let rigid = &state.rigid_bodies[0];
-        assert_vec_close!(rigid.twist.linear, v_rigid, 1e-3);
-        assert_vec_close!(rigid.twist.angular, vector![0., 0., 0.], 1e-3);
+        let sphere = &state.articulated[0].bodies[0];
+        assert_vec_close!(sphere.twist.linear, v_sphere, 1e-3);
+        assert_vec_close!(sphere.twist.angular, vector![0., 0., 0.], 1e-3);
 
         let deformable = &state.deformables[0];
         assert_vec_close!(&deformable.qdot, qdot0, 1e-3);
@@ -773,10 +784,16 @@ mod hybrid_tests {
     fn collision() {
         // Arrange
         let mut state = Hybrid::empty();
-        state.add_rigid(Rigid::new_sphere(1., 1., "sphere"));
-        state.set_rigid_poses(vec![Pose::translation(vector![2.5, 0., 0.])]);
-        let v_rigid = vector![-1., 0., 0.];
-        state.set_rigid_velocities(vec![v_rigid]);
+
+        // add rigid sphere
+        let mut sphere = Articulated::new_sphere("sphere", 1., 1.);
+        sphere.set_joint_q(
+            0,
+            JointPosition::Pose(Pose::translation(vector![2.5, 0., 0.])),
+        );
+        let v_sphere = vector![-1., 0., 0.];
+        sphere.set_joint_v(0, JointVelocity::Spatial(SpatialVector::linear(v_sphere)));
+        state.add_articulated(sphere);
 
         state.add_deformable(Deformable::new_octahedron());
         let v_deformable = vector![1. / 7., 0., 0.];
@@ -796,8 +813,8 @@ mod hybrid_tests {
         }
 
         // Assert
-        let rigid = &state.rigid_bodies[0];
-        assert!((rigid.twist.linear - v_rigid).x > 0.);
+        let sphere = &state.articulated[0].bodies[0];
+        assert!((sphere.twist.linear - v_sphere).x > 0.);
 
         let deformable = &state.deformables[0];
         for vel in deformable.get_velocities() {
