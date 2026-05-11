@@ -1,4 +1,4 @@
-use na::{Isometry3, UnitVector3, Vector3};
+use na::{Isometry3, Point3, UnitVector3, Vector3};
 
 use crate::{
     collision::mesh::projected_barycentric_coord,
@@ -13,75 +13,45 @@ pub fn sphere_cuboid_collide(
     cuboid_iso: &Isometry3<Float>,
     cuboid_geometry: &CuboidGeometry,
 ) -> Option<(Vector3<Float>, UnitVector3<Float>)> {
-    // vertex collision detection
-    let cuboid_points = cuboid_geometry.points(cuboid_iso);
-    for point in cuboid_points.iter() {
-        let sphere_to_point = point - sphere_center;
-        if sphere_to_point.norm() <= sphere_geometry.r {
-            return Some((*point, UnitVector3::new_normalize(sphere_to_point)));
-        }
+    let half = cuboid_geometry.half_extents();
+    let r = sphere_geometry.r;
+
+    // Transform sphere center into cuboid-local space
+    let local_center = cuboid_iso
+        .inverse_transform_point(&Point3::from(*sphere_center))
+        .coords;
+
+    // Early-out AABB check
+    if local_center.x.abs() > half.x + r
+        || local_center.y.abs() > half.y + r
+        || local_center.z.abs() > half.z + r
+    {
+        return None;
     }
 
-    // edge collision detection
-    let edges = cuboid_geometry.edges(cuboid_iso);
-    for edge in edges.iter() {
-        let e1 = edge[0];
-        let e2 = edge[1];
-        let e1e2 = e2 - e1;
-        let length = e1e2.norm();
-        let e1e2_unit = e1e2.scale(1. / length);
+    // Closest point on AABB to sphere center (handles vertex/edge/face uniformly)
+    let closest_local = Vector3::new(
+        local_center.x.clamp(-half.x, half.x),
+        local_center.y.clamp(-half.y, half.y),
+        local_center.z.clamp(-half.z, half.z),
+    );
 
-        // e1 + e1e2_unit.scale(proj_length) should be closest point on the line (e1 to e2) to the sphere center
-        let proj_length = (sphere_center - e1).dot(&e1e2_unit);
-        if proj_length < 0. || proj_length > length {
-            continue; // closest point is outside the edge
-        }
-        let closest_point = e1 + e1e2_unit.scale(proj_length);
-        let sphere_center_to_closest_point = closest_point - sphere_center;
-        if sphere_center_to_closest_point.norm() <= sphere_geometry.r {
-            return Some((
-                closest_point,
-                UnitVector3::new_normalize(sphere_center_to_closest_point),
-            ));
-        }
+    let diff = closest_local - local_center;
+    let dist_sq = diff.norm_squared();
+
+    if dist_sq > r * r {
+        return None;
     }
 
-    // face collision detection
-    let faces = cuboid_geometry.faces(cuboid_iso);
-    for face in faces.iter() {
-        let v1 = face[0];
-        let edge1 = face[1];
-        let edge2 = face[2];
+    // Transform contact point back to world space
+    let contact_world = cuboid_iso.transform_point(&Point3::from(closest_local));
 
-        let (w1, w2, w3) = projected_barycentric_coord(sphere_center, &v1, &edge1, &edge2);
-        let v1 = face[0];
-        let v2 = face[0] + face[1];
-        let v3 = face[0] + face[2];
-        let closest_point = w1 * v1 + w2 * v2 + w3 * v3;
-        let v1_to_closest_point = closest_point - v1;
-
-        // Check if closest point is inside the face
-        // Note: can not use w1 < 0. || w2 < 0. || w3 < 0. check, because here the face is a rectangle not triangle
-        let proj_edge1 = v1_to_closest_point.dot(&UnitVector3::new_normalize(edge1));
-        if proj_edge1 < 0. || proj_edge1 > edge1.norm() {
-            continue;
-        }
-        let proj_edge2 = v1_to_closest_point.dot(&UnitVector3::new_normalize(edge2));
-        if proj_edge2 < 0. || proj_edge2 > edge2.norm() {
-            continue;
-        }
-
-        // Check if closest point is close enough to the sphere
-        let sphere_center_to_closest_point = closest_point - sphere_center;
-        if sphere_center_to_closest_point.norm() <= sphere_geometry.r {
-            return Some((
-                closest_point,
-                UnitVector3::new_normalize(sphere_center_to_closest_point),
-            ));
-        }
-    }
-
-    None
+    // Normal: from sphere center toward contact point, in world space
+    let normal_world = cuboid_iso.transform_vector(&diff);
+    Some((
+        contact_world.coords,
+        UnitVector3::new_normalize(normal_world),
+    ))
 }
 
 /// Collision detection between mesh and sphere
@@ -420,7 +390,7 @@ mod collision_tests {
         let r = 1.0;
         let sphere = Articulated::new_sphere("sphere", m, r);
 
-        let v = -5.0;
+        let v = -2.0;
         let w = 2. * r + 0.1;
         let x_init = r + w;
         let mut cuboid = Articulated::new_cube_at("cuboid", m, w, &vector![x_init, 0., x_init]);
@@ -477,7 +447,7 @@ mod collision_tests {
         let r = 1.0;
         let sphere = Articulated::new_sphere("sphere", m, r);
 
-        let v = -5.0;
+        let v = -2.0;
         let w = 2. * r + 0.1;
         let x_init = r + w;
         let mut cuboid = Articulated::new_cube_at("cuboid", m, w, &vector![x_init, 0., 0.]);

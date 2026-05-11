@@ -32,6 +32,10 @@ pub struct CuboidGeometry {
 }
 
 impl CuboidGeometry {
+    pub fn half_extents(&self) -> Vector3<Float> {
+        Vector3::new(self.w / 2., self.d / 2., self.h / 2.)
+    }
+
     /// Returns all the corner points of the cuboid
     /// Ordered as left-front-bottom, left-front-top, left-back-bottom, left-back-top, right-[]
     pub fn points(&self, iso: &Isometry3<Float>) -> Vec<Vector3<Float>> {
