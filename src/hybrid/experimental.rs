@@ -1,5 +1,5 @@
 use clarabel::{
-    algebra::CscMatrix,
+    algebra::{CscMatrix, MatrixMathMut},
     solver::{
         DefaultSolver, IPSolver,
         SupportedConeT::{self, SecondOrderConeT},
@@ -11,7 +11,10 @@ use na::{DMatrix, DVector, Matrix1xX, Matrix3, Matrix3xX};
 use crate::{
     hybrid::{visual::Visual, Hybrid},
     types::Float,
-    util::{friction_cone_multipler, spatial_to_linear_velocity_multiplier},
+    util::{
+        dual_friction_cone_multipler, friction_cone_multipler,
+        spatial_to_linear_velocity_multiplier,
+    },
 };
 
 impl Hybrid {
@@ -176,6 +179,126 @@ impl Hybrid {
             let v = v_sol.rows(i, dof).into_owned();
             articulated.integrate(v, dt);
             i += dof;
+        }
+    }
+
+    /// Solve for each articulated individually, in the hope of speeding up.
+    /// However, seems that there is no effect.
+    pub fn step_individually(&mut self, dt: Float, input: &Vec<Float>) {
+        assert_eq!(self.deformables.len(), 0);
+        assert_eq!(self.cloths.len(), 0);
+        assert_eq!(self.static_bodies.len(), 0);
+
+        // update jacobians and mass_matrix before-hand as cached result
+        for articulated in self.articulated.iter_mut() {
+            articulated.update_jacobians();
+            articulated.update_mass_matrix();
+        }
+
+        // Compute controller torques
+        let taus: Vec<DVector<Float>> = izip!(self.controllers.iter_mut(), self.articulated.iter())
+            .map(|(c, a)| c.control(a, input))
+            .collect();
+
+        // Step the controllers for time effect
+        for (controller, articulated) in izip!(self.controllers.iter_mut(), self.articulated.iter())
+        {
+            controller.step(dt, articulated);
+        }
+
+        for (articulated, tau) in izip!(self.articulated.iter_mut(), taus.into_iter()) {
+            let v_star: DVector<Float> = articulated.free_velocity(dt, tau, self.gravity_enabled);
+            let dof = articulated.dof();
+
+            // Contact handling
+            let mut Js: Vec<Matrix3xX<Float>> = vec![];
+            let mu = self.friction_mu; // friction coefficient
+
+            // halfspace - articulated collision detection
+            for halfspace in self.halfspaces.iter() {
+                let n = &halfspace.normal;
+                for (i_joint, (rigid, _joint)) in
+                    izip!(articulated.bodies.iter(), articulated.joints.iter()).enumerate()
+                {
+                    let mut cp_normal_list = vec![];
+                    for (collider, iso_collider_to_body, _color) in rigid.visual.iter() {
+                        let iso = rigid.pose.to_isometry() * iso_collider_to_body;
+                        let collider_pos = iso.translation.vector;
+
+                        match collider {
+                            Visual::Point(_point) => {
+                                if halfspace.has_inside(&collider_pos) {
+                                    cp_normal_list.push((collider_pos, n));
+                                }
+                            }
+                            Visual::Sphere(sphere) => {
+                                if let Some(cp) =
+                                    halfspace.intersect_sphere(&collider_pos, sphere.r)
+                                {
+                                    cp_normal_list.push((cp, n));
+                                }
+                            }
+                            Visual::Cuboid(cuboid) => {
+                                for point in cuboid.points(&iso) {
+                                    if halfspace.has_inside(&point) {
+                                        cp_normal_list.push((point, n));
+                                    }
+                                }
+                            }
+
+                            Visual::RigidMesh(_mesh) => {
+                                // println!("ignore collision detection between halfspace and articulated rigid mesh");
+                            }
+                        }
+                    }
+
+                    // Assemble all the contact constraint joint jacobians for this body
+                    for (cp, n) in cp_normal_list.iter() {
+                        let C = dual_friction_cone_multipler(&n, mu);
+
+                        let H = articulated.total_jacobian_to_body(i_joint);
+                        let X = spatial_to_linear_velocity_multiplier(&cp);
+                        let J: Matrix3xX<Float> = C * X * H;
+                        Js.push(J);
+                    }
+                }
+            }
+
+            let M = &articulated.mass_matrix;
+
+            // Solve convex optimization to resolve contact
+            let P = CscMatrix::from(M.row_iter());
+            let g = -v_star.transpose() * M;
+            let q: Vec<Float> = Vec::from(g.as_slice());
+
+            let A = if Js.len() > 0 {
+                let mut rows: Vec<Matrix1xX<Float>> = vec![];
+                for contact_J in Js.iter() {
+                    rows.extend(contact_J.row_iter().map(|r| r.into_owned()));
+                }
+                let J = DMatrix::from_rows(&rows);
+
+                let mut J = CscMatrix::from(J.row_iter());
+                J.scale(-1.);
+                J
+            } else {
+                CscMatrix::zeros((0, dof))
+            };
+            let b = vec![0.; Js.len() * 3];
+            let cones: Vec<SupportedConeT<Float>> = vec![SecondOrderConeT(3); Js.len()];
+
+            self.solver =
+                DefaultSolver::new(&P, &q, &A, &b, &cones, self.solver.settings().clone()).unwrap();
+
+            let v_sol = if dof > 0 {
+                self.solver.solve();
+                DVector::from(self.solver.solution.x.clone())
+            } else {
+                DVector::zeros(0)
+            };
+
+            // Update articulated velocities and poses
+            articulated.integrate(v_sol, dt);
         }
     }
 }
