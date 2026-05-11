@@ -66,7 +66,7 @@ impl Hybrid {
         let cones = vec![];
         let settings = DefaultSettingsBuilder::default()
             .verbose(false)
-            // .tol_gap_rel(1e-7)
+            .tol_gap_rel(1e-7)
             .build()
             .unwrap();
         let solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings).unwrap();

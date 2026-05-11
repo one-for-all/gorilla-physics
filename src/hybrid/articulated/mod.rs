@@ -165,9 +165,10 @@ impl Articulated {
         }
         let c = DVector::from_vec(torques); // dynamics bias
 
+        // Solve for velocity
+        let total_tau = tau - c;
         let mass_matrix = self.mass_matrix.clone();
-
-        let vdot = mass_matrix.cholesky().unwrap().solve(&(tau - c));
+        let vdot = mass_matrix.cholesky().unwrap().solve(&total_tau);
 
         self.v() + vdot * dt
     }
