@@ -9,7 +9,7 @@ use itertools::izip;
 use na::{DMatrix, DVector, Matrix1xX, Matrix3xX, Vector3};
 
 use crate::{
-    collision::halfspace::HalfSpace,
+    collision::{cuboid, halfspace::HalfSpace},
     hybrid::{
         articulated::Articulated,
         cloth::Cloth,
@@ -300,6 +300,9 @@ impl Hybrid {
                                         ) {
                                             cp_normals_list.push((cp, -n));
                                         }
+                                    }
+                                    (Visual::Point(point), Visual::Cuboid(cuboid)) => {
+                                        // TODO: Point - Sphere collision detection
                                     }
                                     _ => {
                                         // only handle sphere-sphere collision for now
