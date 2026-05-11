@@ -9,7 +9,10 @@ pub struct URDFMeshes {
 }
 
 #[cfg(any(target_arch = "wasm32", rust_analyzer))]
-use crate::interface::util::maybe_read_web_file;
+use {
+    crate::interface::util::maybe_read_web_file, na::vector, na::Translation3, na::UnitQuaternion,
+    urdf_rs::Robot,
+};
 
 impl URDFMeshes {
     pub fn empty() -> Self {

@@ -265,6 +265,7 @@ impl Hybrid {
                     for (i_joint2, (rigid2, _joint2)) in
                         izip!(articulated2.bodies.iter(), articulated2.joints.iter()).enumerate()
                     {
+                        let mut cp_normals_list = vec![];
                         for (collider, iso_collider_to_body, _color) in rigid.visual.iter() {
                             let iso = rigid.pose.to_isometry() * iso_collider_to_body;
                             let collider_pos = iso.translation.vector;
@@ -277,59 +278,45 @@ impl Hybrid {
                                 match (collider, collider2) {
                                     (Visual::Sphere(sphere), Visual::Sphere(sphere2)) => {
                                         // swap 2 and 1, so that normal goes from 2 to 1
-                                        let Some((cp, n)) = sphere_collide(
+                                        if let Some((cp, n)) = sphere_collide(
                                             &collider_pos2,
                                             sphere2.r,
                                             &collider_pos,
                                             sphere.r,
-                                        ) else {
-                                            continue;
-                                        };
-
-                                        let C = dual_friction_cone_multipler(&n, mu);
-
-                                        let mut J = Matrix3xX::zeros(total_dof);
-                                        let H = articulated.total_jacobian_to_body(i_joint);
-                                        let H2 = articulated2.total_jacobian_to_body(i_joint2);
-
-                                        let X = spatial_to_linear_velocity_multiplier(&cp);
-
-                                        J.view_mut((0, icol_arti), (3, dof))
-                                            .copy_from(&(C * X * H));
-                                        J.view_mut((0, icol_arti2), (3, dof2))
-                                            .copy_from(&(-C * X * H2));
-                                        Js.push(J);
+                                        ) {
+                                            cp_normals_list.push((cp, n));
+                                        }
                                     }
                                     // TODO: Cuboid - Sphere as well
                                     (Visual::Sphere(sphere), Visual::Cuboid(cuboid)) => {
-                                        let Some((cp, n)) = sphere_cuboid_collide(
+                                        if let Some((cp, n)) = sphere_cuboid_collide(
                                             &collider_pos,
                                             &sphere,
                                             &iso2,
                                             &cuboid,
-                                        ) else {
-                                            continue;
-                                        };
-
-                                        let C = dual_friction_cone_multipler(&n, mu);
-
-                                        let mut J = Matrix3xX::zeros(total_dof);
-                                        let H = articulated.total_jacobian_to_body(i_joint);
-                                        let H2 = articulated2.total_jacobian_to_body(i_joint2);
-
-                                        let X = spatial_to_linear_velocity_multiplier(&cp);
-
-                                        J.view_mut((0, icol_arti), (3, dof))
-                                            .copy_from(&(-C * X * H));
-                                        J.view_mut((0, icol_arti2), (3, dof2))
-                                            .copy_from(&(C * X * H2));
-                                        Js.push(J);
+                                        ) {
+                                            cp_normals_list.push((cp, -n));
+                                        }
                                     }
                                     _ => {
                                         // only handle sphere-sphere collision for now
                                     }
                                 }
                             }
+                        }
+                        for (cp, n) in cp_normals_list.iter() {
+                            let C = dual_friction_cone_multipler(&n, mu);
+
+                            let mut J = Matrix3xX::zeros(total_dof);
+                            let H = articulated.total_jacobian_to_body(i_joint);
+                            let H2 = articulated2.total_jacobian_to_body(i_joint2);
+
+                            let X = spatial_to_linear_velocity_multiplier(&cp);
+
+                            J.view_mut((0, icol_arti), (3, dof)).copy_from(&(C * X * H));
+                            J.view_mut((0, icol_arti2), (3, dof2))
+                                .copy_from(&(-C * X * H2));
+                            Js.push(J);
                         }
                     }
                     icol_arti2 += dof2;
