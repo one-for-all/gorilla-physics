@@ -35,6 +35,7 @@ pub mod cloth;
 pub mod collision;
 pub mod control;
 pub mod deformable;
+pub mod experimental;
 pub mod mesh;
 pub mod rigid;
 pub mod static_body;
@@ -125,6 +126,7 @@ impl Hybrid {
             articulated.update_mass_matrix();
         }
 
+        // Compute controller torques
         let taus: Vec<DVector<Float>> = izip!(self.controllers.iter_mut(), self.articulated.iter())
             .map(|(c, a)| c.control(a, input))
             .collect();
@@ -170,6 +172,7 @@ impl Hybrid {
 
         // contact handling
         // reference: Contact Models in Robotics, 2024
+        //            equation (21) - Optimization on the primal
         let mut Js: Vec<Matrix3xX<Float>> = vec![];
         let mu = self.friction_mu; // friction coefficient
 
@@ -488,42 +491,42 @@ impl Hybrid {
             d1_offset += d1.dof();
         }
 
-        // A needs to be computed per step because it depends on the current joint q
-        let mut A: DMatrix<Float> = DMatrix::zeros(total_dof, total_dof);
+        // Mass matrix needs to be computed per step because it depends on the current joint q
+        let mut M: DMatrix<Float> = DMatrix::zeros(total_dof, total_dof);
 
-        // Assemble A for articulated bodies
+        // Assemble M for articulated bodies
         let mut i = offset_articulated;
         for articulated in self.articulated.iter() {
             let dof = articulated.dof();
-            A.view_mut((i, i), (dof, dof))
+            M.view_mut((i, i), (dof, dof))
                 .copy_from(&articulated.mass_matrix);
             i += dof;
         }
 
-        // Assemble A for deformables
+        // Assemble M for deformables
         let mut i = offset_deformable;
         for deformable in self.deformables.iter() {
             let dof = deformable.dof();
-            A.view_mut((i, i), (dof, dof))
+            M.view_mut((i, i), (dof, dof))
                 .copy_from(&deformable.mass_matrix());
             i += dof;
         }
 
-        // Assemble A for cloths
+        // Assemble M for cloths
         let mut i = offset_cloth;
         for cloth in self.cloths.iter() {
             let dof = cloth.dof();
-            A.view_mut((i, i), (dof, dof))
+            M.view_mut((i, i), (dof, dof))
                 .copy_from(&cloth.mass_matrix());
             i += dof;
         }
 
         // Solve convex optimization to resolve contact
-        let P = CscMatrix::from(A.row_iter());
-        let g = -v_star.transpose() * A;
+        let P = CscMatrix::from(M.row_iter());
+        let g = -v_star.transpose() * M;
         let q: Vec<Float> = Vec::from(g.as_slice());
 
-        let A_ = if Js.len() > 0 {
+        let A = if Js.len() > 0 {
             let mut rows: Vec<Matrix1xX<Float>> = vec![];
             for contact_J in Js.iter() {
                 rows.extend(contact_J.row_iter().map(|r| r.into_owned()));
@@ -540,7 +543,7 @@ impl Hybrid {
         let cones: Vec<SupportedConeT<Float>> = vec![SecondOrderConeT(3); Js.len()];
 
         self.solver =
-            DefaultSolver::new(&P, &q, &A_, &b, &cones, self.solver.settings().clone()).unwrap();
+            DefaultSolver::new(&P, &q, &A, &b, &cones, self.solver.settings().clone()).unwrap();
 
         let v_sol = if total_dof > 0 {
             self.solver.solve();

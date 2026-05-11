@@ -140,6 +140,12 @@ pub fn dual_friction_cone_multipler(n: &UnitVector3<Float>, mu: Float) -> Matrix
     Matrix3::from_rows(&[1. / mu * n.transpose(), t.transpose(), b.transpose()])
 }
 
+/// Friction cone multiplier used to form a friction cone constraint in clarable
+pub fn friction_cone_multipler(n: &UnitVector3<Float>, mu: Float) -> Matrix3<Float> {
+    let (t, b) = tangentials(&n);
+    Matrix3::from_rows(&[mu * n.transpose(), t.transpose(), b.transpose()])
+}
+
 /// Project a matrix to be symmetric & positive semi-definite
 pub fn project_symmetric_psd(matrix: &DMatrix<Float>) -> DMatrix<Float> {
     // Ensure the matrix is square

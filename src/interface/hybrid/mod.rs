@@ -287,6 +287,14 @@ impl InterfaceHybrid {
         }
     }
 
+    pub fn step_dual(&mut self, dt: Float, input: Vec<Float>) {
+        let n_substep = 1;
+        let dt = dt / (n_substep as Float);
+        for _ in 0..n_substep {
+            self.inner.step_dual(dt, &input);
+        }
+    }
+
     pub fn set_joint_q(&mut self, i: usize, value: Float) {
         self.inner.articulated[0].set_joint_q(i, JointPosition::Float(value));
     }
