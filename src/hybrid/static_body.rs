@@ -1,9 +1,6 @@
 use na::{Isometry3, Point3, Vector3};
 
-use crate::{
-    hybrid::visual::rigid_mesh::RigidMesh,
-    types::Float,
-};
+use crate::{hybrid::visual::rigid_mesh::RigidMesh, types::Float};
 
 pub struct StaticBody {
     pub mesh: RigidMesh,
@@ -42,7 +39,6 @@ mod static_body_tests {
     use rand::Rng;
 
     use crate::hybrid::Hybrid;
-    use crate::util::test_utils::random_vector3;
     use crate::{
         assert_vec_close,
         hybrid::{articulated::Articulated, builders::import_static_body},

@@ -6,9 +6,7 @@ use clarabel::{
     },
 };
 use itertools::izip;
-use na::{
-    DMatrix, DVector, Matrix1xX, Matrix3xX, Vector3,
-};
+use na::{DMatrix, DVector, Matrix1xX, Matrix3xX, Vector3};
 
 use crate::{
     collision::halfspace::HalfSpace,
@@ -25,10 +23,7 @@ use crate::{
         visual::{sphere_collide, Visual},
     },
     types::Float,
-    util::{
-        dual_friction_cone_multipler,
-        spatial_to_linear_velocity_multiplier,
-    },
+    util::{dual_friction_cone_multipler, spatial_to_linear_velocity_multiplier},
 };
 
 pub use deformable::Deformable;
@@ -236,9 +231,6 @@ impl Hybrid {
 
                             Visual::RigidMesh(_mesh) => {
                                 // println!("ignore collision detection between halfspace and articulated rigid mesh");
-                            }
-                            _ => {
-                                panic!("collision detection between halfspace and articulated only implemented for point and sphere geometry");
                             }
                         }
                     }

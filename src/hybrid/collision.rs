@@ -212,12 +212,12 @@ pub fn mesh_cuboid_collide(
 
 #[cfg(test)]
 mod collision_tests {
-    use na::{vector, Quaternion, UnitQuaternion, UnitVector3, Vector3};
+    use na::{vector, UnitQuaternion, UnitVector3, Vector3};
 
     use crate::{
-        assert_close, assert_vec_close,
-        collision::{cuboid, halfspace::HalfSpace, sphere},
-        hybrid::{articulated::Articulated, visual::Visual, Hybrid, Rigid},
+        assert_vec_close,
+        collision::halfspace::HalfSpace,
+        hybrid::{articulated::Articulated, Hybrid, Rigid},
         inertia::SpatialInertia,
         joint::{Joint, JointVelocity},
         spatial::{pose::Pose, spatial_vector::SpatialVector, transform::Transform3D},

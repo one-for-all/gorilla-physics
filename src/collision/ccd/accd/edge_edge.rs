@@ -1,5 +1,4 @@
-
-use na::{Matrix2, Normed, SVector, UnitVector3, Vector2, Vector3};
+use na::{Matrix2, SVector, UnitVector3, Vector2, Vector3};
 
 use crate::{
     collision::ccd::accd::{
