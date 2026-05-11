@@ -1,4 +1,4 @@
-use na::{Isometry3, UnitVector1, UnitVector3, Vector3};
+use na::{Isometry3, UnitVector3, Vector3};
 
 use crate::{
     collision::mesh::projected_barycentric_coord,

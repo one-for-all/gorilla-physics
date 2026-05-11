@@ -1,4 +1,4 @@
-use na::{vector, Isometry3, UnitQuaternion, UnitVector3, Vector, Vector3};
+use na::{vector, Isometry3, UnitQuaternion, Vector3};
 use rand::Rng;
 
 #[cfg(any(target_arch = "wasm32", rust_analyzer))]

@@ -5,7 +5,7 @@ use crate::{
     spatial::transform::Transform3D,
     types::Float,
 };
-use nalgebra::{Matrix3, UnitVector3, Vector, Vector3};
+use nalgebra::{Matrix3, UnitVector3, Vector};
 use urdf_rs::Robot;
 
 pub fn build_rigid(frame: &str, link_name: &str, urdf: &Robot, meshes: &mut URDFMeshes) -> Rigid {

@@ -1,7 +1,7 @@
-use na::{Isometry, Isometry3, Point3, Vector3};
+use na::{Isometry3, Point3, Vector3};
 
 use crate::{
-    hybrid::{visual::rigid_mesh::RigidMesh, Hybrid, Rigid},
+    hybrid::visual::rigid_mesh::RigidMesh,
     types::Float,
 };
 

@@ -7,13 +7,11 @@ use clarabel::{
 };
 use itertools::izip;
 use na::{
-    vector, DMatrix, DVector, Matrix1xX, Matrix3, Matrix3x6, Matrix3xX, Matrix6xX, UnitQuaternion,
-    UnitVector3, Vector3,
+    DMatrix, DVector, Matrix1xX, Matrix3xX, Vector3,
 };
 
 use crate::{
-    collision::{halfspace::HalfSpace, mesh::projected_barycentric_coord},
-    flog,
+    collision::halfspace::HalfSpace,
     hybrid::{
         articulated::Articulated,
         cloth::Cloth,
@@ -26,13 +24,10 @@ use crate::{
         static_body::StaticBody,
         visual::{sphere_collide, Visual},
     },
-    spatial::{
-        pose::Pose, spatial_vector::SpatialVector, twist::compute_twist_transformation_matrix,
-    },
     types::Float,
     util::{
-        dual_friction_cone_multipler, quaternion_derivative, skew_symmetric,
-        spatial_to_linear_velocity_multiplier, tangentials,
+        dual_friction_cone_multipler,
+        spatial_to_linear_velocity_multiplier,
     },
 };
 
@@ -187,7 +182,7 @@ impl Hybrid {
         for halfspace in self.halfspaces.iter() {
             let n = &halfspace.normal;
             let mut i_deformable_offset = 0;
-            for (i_deform, deformable) in self.deformables.iter().enumerate() {
+            for (_i_deform, deformable) in self.deformables.iter().enumerate() {
                 for (i_node, node) in deformable.get_positions().iter().enumerate() {
                     if halfspace.has_inside(node) {
                         let C = dual_friction_cone_multipler(n, mu);
@@ -210,7 +205,7 @@ impl Hybrid {
             let mut icol_arti = offset_articulated;
             for (_i_articulated, articulated) in self.articulated.iter().enumerate() {
                 let dof = articulated.dof();
-                for (i_joint, (rigid, joint)) in
+                for (i_joint, (rigid, _joint)) in
                     izip!(articulated.bodies.iter(), articulated.joints.iter()).enumerate()
                 {
                     let mut cp_normal_list = vec![];
@@ -267,15 +262,15 @@ impl Hybrid {
         let mut icol_arti = offset_articulated;
         for (i_articulated, articulated) in self.articulated.iter().enumerate() {
             let dof = articulated.dof();
-            for (i_joint, (rigid, joint)) in
+            for (i_joint, (rigid, _joint)) in
                 izip!(articulated.bodies.iter(), articulated.joints.iter()).enumerate()
             {
                 let mut icol_arti2 = icol_arti + dof;
-                for (i_articulated2, articulated2) in
+                for (_i_articulated2, articulated2) in
                     self.articulated.iter().skip(i_articulated + 1).enumerate()
                 {
                     let dof2 = articulated2.dof();
-                    for (i_joint2, (rigid2, joint2)) in
+                    for (i_joint2, (rigid2, _joint2)) in
                         izip!(articulated2.bodies.iter(), articulated2.joints.iter()).enumerate()
                     {
                         for (collider, iso_collider_to_body, _color) in rigid.visual.iter() {
@@ -409,7 +404,7 @@ impl Hybrid {
             let body_twists = articulated.body_twists_at(v_art);
 
             let dof = articulated.dof();
-            for (i_joint, (body, joint)) in
+            for (i_joint, (body, _joint)) in
                 izip!(articulated.bodies.iter(), articulated.joints.iter()).enumerate()
             {
                 let mut i_deformable_offset = 0;
@@ -449,7 +444,7 @@ impl Hybrid {
             let body_twists = articulated.body_twists_at(v_art);
 
             let dof = articulated.dof();
-            for (i_joint, (body, joint)) in
+            for (i_joint, (body, _joint)) in
                 izip!(articulated.bodies.iter(), articulated.joints.iter()).enumerate()
             {
                 let mut i_cloth_offset = 0;
@@ -490,7 +485,7 @@ impl Hybrid {
             for (i2, d2) in self.deformables.iter().enumerate().skip(i1 + 1) {
                 let v2 = &v_deformables[i2];
                 let contacts = deformable_deformable_ccd(d1, d2, v1, v2, dt);
-                for (cp, n, n1_ws, n2_ws) in contacts.iter() {
+                for (_cp, n, n1_ws, n2_ws) in contacts.iter() {
                     let mut J = Matrix3xX::zeros(total_dof);
 
                     let C = dual_friction_cone_multipler(n, mu);

@@ -1,6 +1,6 @@
 use na::{Matrix2, UnitVector3, Vector2, Vector3};
 
-use crate::{collision::ccd::solver::solve_cubic, flog, types::Float};
+use crate::{collision::ccd::solver::solve_cubic, types::Float};
 
 /// Returns (contact point on edge 1, contact normal, barycentric coords of cp on edge 1, and that on edge 2)
 /// contact normal is from edge 1 to edge 2

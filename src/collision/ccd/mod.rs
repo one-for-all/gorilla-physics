@@ -8,9 +8,9 @@ pub mod solver;
 
 /// Returns (contact point, contact normal, barycentric coords) if vertex collides with face.
 pub fn point_face_ccd(
-    p: &Vector3<Float>,
-    f: &[Vector3<Float>; 3],
-    dt: Float,
+    _p: &Vector3<Float>,
+    _f: &[Vector3<Float>; 3],
+    _dt: Float,
 ) -> Option<(Vector3<Float>, UnitVector3<Float>, [Float; 3])> {
     None
 }

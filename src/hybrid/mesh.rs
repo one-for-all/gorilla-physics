@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
-use na::{vector, Isometry3, Translation3, UnitQuaternion, Vector3};
-use urdf_rs::Robot;
+use na::{Isometry3, Vector3};
 
 use crate::{hybrid::visual::rigid_mesh::RigidMesh, types::Float};
 

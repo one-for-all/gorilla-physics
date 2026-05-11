@@ -65,7 +65,7 @@ pub fn main() {
     let mut t = 0.0;
     let final_time = 10.0;
     let dt = 1.0 / 100.0;
-    let num_steps = (final_time / dt) as usize;
+    let _num_steps = (final_time / dt) as usize;
     while t < final_time {
         let torque = swingup_cart_pole(&state, m_cart, m_pole, l_pole);
         // let torque = dvector![0.0, 0.0];

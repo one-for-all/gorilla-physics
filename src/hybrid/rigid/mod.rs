@@ -1,5 +1,5 @@
 use itertools::izip;
-use na::{dvector, vector, DMatrix, DVector, Isometry, Isometry3, Matrix3, UnitVector3, Vector3};
+use na::{dvector, vector, DMatrix, DVector, Isometry3, Matrix3, UnitVector3, Vector3};
 
 use crate::{
     collision::{
@@ -11,7 +11,7 @@ use crate::{
     },
     hybrid::{
         cloth::Cloth,
-        visual::{rigid_mesh::RigidMesh, vertex_rect_face_collision, SphereGeometry, Visual},
+        visual::{vertex_rect_face_collision, SphereGeometry, Visual},
         Deformable,
     },
     inertia::SpatialInertia,
@@ -298,10 +298,10 @@ pub fn rigid_cloth_ccd(
         match collider {
             Visual::Sphere(_) => {}
             Visual::Cuboid(cuboid) => {
-                let cuboid_points = cuboid.points(&iso);
+                let _cuboid_points = cuboid.points(&iso);
                 let nodes = cloth.get_positions();
                 let cloth_faces = &cloth.faces;
-                let cloth_face_coords: Vec<[Vector3<Float>; 3]> =
+                let _cloth_face_coords: Vec<[Vector3<Float>; 3]> =
                     cloth_faces.iter().map(|f| f.map(|fi| nodes[fi])).collect();
 
                 let cloth_edges = &cloth.edges;

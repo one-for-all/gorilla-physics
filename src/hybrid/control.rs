@@ -13,18 +13,18 @@ pub trait ArticulatedController {
 
     /// Access the float stored in eeprom addr
     /// TODO: make this cleaner
-    fn eeprom_float(&mut self, addr: usize) -> Float {
+    fn eeprom_float(&mut self, _addr: usize) -> Float {
         0.
     }
 
-    fn step(&mut self, dt: Float, articulated: &Articulated) {}
+    fn step(&mut self, _dt: Float, _articulated: &Articulated) {}
 
     fn control(&mut self, articulated: &Articulated, input: &Vec<Float>) -> DVector<Float>;
 
     /// re-boot the microcontroller to run code
     fn reboot(&mut self, _code: &str) {}
 
-    fn reboot_esp32(&mut self, app_bin: Vec<u8>, symbols: &str) {}
+    fn reboot_esp32(&mut self, _app_bin: Vec<u8>, _symbols: &str) {}
 
     /// Return data for debugging
     fn debug_data(&self) -> Float {
@@ -37,13 +37,13 @@ pub trait ArticulatedController {
         "".to_string()
     }
 
-    fn send_uart(&mut self, payload: &str) {}
+    fn send_uart(&mut self, _payload: &str) {}
 }
 
 pub struct NullArticulatedController {}
 
 impl ArticulatedController for NullArticulatedController {
-    fn control(&mut self, articulated: &Articulated, input: &Vec<Float>) -> DVector<Float> {
+    fn control(&mut self, articulated: &Articulated, _input: &Vec<Float>) -> DVector<Float> {
         DVector::zeros(articulated.dof())
     }
 }
@@ -87,7 +87,7 @@ impl ArticulatedController for GripperController {
         };
         let mut fz = self.pi_vz.compute(vz_target - vz);
 
-        let base_mass = 10.;
+        let _base_mass = 10.;
         fz += (articulated.mass()) * GRAVITY;
 
         let q_closed = 1.5 / 2.;
