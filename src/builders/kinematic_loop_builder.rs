@@ -5,10 +5,8 @@ use crate::{
     inertia::SpatialInertia,
     joint::{
         constraint::constraint_revolute::RevoluteConstraintJoint,
-        constraint::cylindrical_constraint::{Constraint, CylindricalConstraintJoint},
-        floating::FloatingJoint,
-        revolute::RevoluteJoint,
-        Joint,
+        constraint::cylindrical_constraint::CylindricalConstraintJoint, constraint::Constraint,
+        floating::FloatingJoint, revolute::RevoluteJoint, Joint,
     },
     mechanism::MechanismState,
     rigid_body::RigidBody,
