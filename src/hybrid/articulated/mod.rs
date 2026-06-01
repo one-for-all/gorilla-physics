@@ -6,7 +6,7 @@ use na::{vector, DMatrix, DVector, Matrix6xX, UnitQuaternion};
 use crate::{
     hybrid::rigid::Rigid,
     inertia::SpatialInertia,
-    joint::{Joint, JointPosition, JointVelocity},
+    joint::{cylindrical_constraint::Constraint, Joint, JointPosition, JointVelocity},
     spatial::{
         geometric_jacobian::{Momentum, MotionSubspace},
         pose::Pose,
@@ -30,6 +30,8 @@ pub struct Articulated {
 
     jacobians: Vec<Matrix6xX<Float>>, // Jacobian from each joint v to body spatial twist expressed in world frame
     pub mass_matrix: DMatrix<Float>,
+
+    pub constraints: Vec<Constraint>, // Joint constraints for kine
 }
 
 impl Articulated {
@@ -56,10 +58,15 @@ impl Articulated {
             show_visual: true,
             jacobians: vec![],
             mass_matrix: DMatrix::<Float>::zeros(0, 0),
+            constraints: vec![],
         };
 
         state.update_body_states();
         state
+    }
+
+    pub fn add_constraints(&mut self, constraints: Vec<Constraint>) {
+        self.constraints.extend(constraints);
     }
 
     fn update_body_states(&mut self) {

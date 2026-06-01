@@ -9,7 +9,10 @@ use crate::{
         articulated::Articulated, cloth::Cloth, control::GripperController,
         static_body::StaticBody, visual::rigid_mesh::RigidMesh, Deformable, Hybrid, Rigid,
     },
-    joint::{Joint, JointVelocity},
+    joint::{
+        constraint_revolute::RevoluteConstraintJoint, cylindrical_constraint::Constraint, Joint,
+        JointVelocity,
+    },
     spatial::transform::Transform3D,
     types::Float,
     util::read_file,
@@ -301,10 +304,19 @@ pub fn build_parallel_bar() -> Hybrid {
         Vector3::y_axis(),
     );
 
-    let articulated = Articulated::new(
+    let mut articulated = Articulated::new(
         vec![bar1, bar2, bar3, bar4],
         vec![bar1_joint, bar2_joint, bar3_joint, bar4_joint],
     );
+
+    articulated.add_constraints(vec![Constraint::Revolute(RevoluteConstraintJoint::new(
+        bar4_frame,
+        Isometry3::translation(0., 0., l),
+        bar1_frame,
+        Isometry3::identity(),
+        Vector3::y_axis(),
+    ))]);
+
     state.add_articulated(articulated);
 
     state

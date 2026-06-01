@@ -2,7 +2,7 @@ use clarabel::{
     algebra::{CscMatrix, MatrixMathMut},
     solver::{
         DefaultSettingsBuilder, DefaultSolver, IPSolver,
-        SupportedConeT::{self, SecondOrderConeT},
+        SupportedConeT::{self, SecondOrderConeT, ZeroConeT},
     },
 };
 use itertools::izip;
@@ -23,7 +23,10 @@ use crate::{
         visual::{sphere_collide, Visual},
     },
     types::Float,
-    util::{dual_friction_cone_multipler, spatial_to_linear_velocity_multiplier},
+    util::{
+        dual_friction_cone_multipler, spatial_to_linear_velocity_multiplier,
+        spatial_vector_transform_multiplier,
+    },
 };
 
 pub use deformable::Deformable;
@@ -173,7 +176,7 @@ impl Hybrid {
         // contact handling
         // reference: Contact Models in Robotics, 2024
         //            equation (21) - Optimization on the primal
-        let mut Js: Vec<Matrix3xX<Float>> = vec![];
+        let mut contact_Js: Vec<Matrix3xX<Float>> = vec![];
         let mu = self.friction_mu; // friction coefficient
 
         // halfspace - deformable collision detection
@@ -190,7 +193,7 @@ impl Hybrid {
                         let mut J = Matrix3xX::zeros(total_dof);
                         J.fixed_view_mut::<3, 3>(0, icol).copy_from(&C);
 
-                        Js.push(J);
+                        contact_Js.push(J);
                     }
                 }
                 i_deformable_offset += deformable.dof();
@@ -246,7 +249,7 @@ impl Hybrid {
                         let X = spatial_to_linear_velocity_multiplier(&cp);
                         J.view_mut((0, icol_arti), (3, dof)).copy_from(&(C * X * H));
 
-                        Js.push(J);
+                        contact_Js.push(J);
                     }
                 }
                 icol_arti += dof;
@@ -322,7 +325,7 @@ impl Hybrid {
                             J.view_mut((0, icol_arti), (3, dof)).copy_from(&(C * X * H));
                             J.view_mut((0, icol_arti2), (3, dof2))
                                 .copy_from(&(-C * X * H2));
-                            Js.push(J);
+                            contact_Js.push(J);
                         }
                     }
                     icol_arti2 += dof2;
@@ -374,7 +377,7 @@ impl Hybrid {
                         let X = spatial_to_linear_velocity_multiplier(&cp);
                         J.view_mut((0, icol_arti), (3, dof)).copy_from(&(C * X * H));
 
-                        Js.push(J);
+                        contact_Js.push(J);
                     }
                 }
                 icol_arti += dof;
@@ -413,7 +416,7 @@ impl Hybrid {
                         let X = spatial_to_linear_velocity_multiplier(&cp);
 
                         J.view_mut((0, icol_arti), (3, dof)).copy_from(&(C * X * H));
-                        Js.push(J);
+                        contact_Js.push(J);
                     }
                     i_deformable_offset += deformable.dof();
                 }
@@ -453,7 +456,7 @@ impl Hybrid {
                         let X = spatial_to_linear_velocity_multiplier(&cp);
 
                         J.view_mut((0, icol_arti), (3, dof)).copy_from(&(C * X * H));
-                        Js.push(J);
+                        contact_Js.push(J);
                     }
                     i_cloth_offset += cloth.dof();
                 }
@@ -487,11 +490,48 @@ impl Hybrid {
                         J.fixed_view_mut::<3, 3>(0, icol).copy_from(&(*weight * C));
                     }
 
-                    Js.push(J);
+                    contact_Js.push(J);
                 }
                 d2_offset += d2.dof();
             }
             d1_offset += d1.dof();
+        }
+
+        // Constraint handling
+        let mut constraint_Js: Vec<DMatrix<Float>> = vec![]; // Jacobian from total v to constraint velocities (that need to be constrained to zero) in each constraint frame
+        let mut icol_arti = offset_articulated;
+        for articulated in self.articulated.iter() {
+            let dof = articulated.dof();
+            for constraint in articulated.constraints.iter() {
+                // Compute jacobian to each constrained body's spatial velocity (expressed in world frame)
+                let i_body1 = articulated
+                    .bodies
+                    .iter()
+                    .position(|b| b.inertia.frame == constraint.frame1())
+                    .unwrap();
+                let i_body2 = articulated
+                    .bodies
+                    .iter()
+                    .position(|b| b.inertia.frame == constraint.frame2())
+                    .unwrap();
+                let H1 = articulated.total_jacobian_to_body(i_body1);
+                let H2 = articulated.total_jacobian_to_body(i_body2);
+
+                // Compute transform from world frame to constraint frame
+                let frame1_to_world = &articulated.bodies[i_body1].pose.to_isometry();
+                let constraint_to_frame1 = constraint.to_frame1();
+                let constraint_to_world = frame1_to_world * constraint_to_frame1;
+                let world_to_constraint = constraint_to_world.inverse();
+
+                let X = spatial_vector_transform_multiplier(&world_to_constraint);
+                // Transform matrix of spatial velocity to constraint velocity
+                let C = constraint.constraint_matrix();
+                let mut J = DMatrix::zeros(C.nrows(), total_dof);
+                J.view_mut((0, icol_arti), (C.nrows(), dof))
+                    .copy_from(&(C * X * (H1 - H2)));
+                constraint_Js.push(J);
+            }
+            icol_arti += dof;
         }
 
         // Mass matrix needs to be computed per step because it depends on the current joint q
@@ -529,21 +569,28 @@ impl Hybrid {
         let g = -v_star.transpose() * M;
         let q: Vec<Float> = Vec::from(g.as_slice());
 
-        let A = if Js.len() > 0 {
-            let mut rows: Vec<Matrix1xX<Float>> = vec![];
-            for contact_J in Js.iter() {
-                rows.extend(contact_J.row_iter().map(|r| r.into_owned()));
-            }
-            let J = DMatrix::from_rows(&rows);
+        let mut rows: Vec<Matrix1xX<Float>> = vec![];
+        for contact_J in contact_Js.iter() {
+            // Note: multiply by -1 to fit the second order cone formulation
+            rows.extend(contact_J.row_iter().map(|r| -r.into_owned()));
+        }
+        for constraint_J in constraint_Js.iter() {
+            rows.extend(constraint_J.row_iter().map(|r| r.into_owned()));
+        }
 
-            let mut J = CscMatrix::from(J.row_iter());
-            J.scale(-1.);
-            J
+        let A = if rows.len() > 0 {
+            let J = DMatrix::from_rows(&rows);
+            CscMatrix::from(J.row_iter())
         } else {
             CscMatrix::zeros((0, total_dof))
         };
-        let b = vec![0.; Js.len() * 3];
-        let cones: Vec<SupportedConeT<Float>> = vec![SecondOrderConeT(3); Js.len()];
+        let b = vec![0.; A.m];
+        let mut cones: Vec<SupportedConeT<Float>> = vec![SecondOrderConeT(3); contact_Js.len()];
+        let constraint_dof: usize = constraint_Js.iter().map(|j| j.shape().0).sum();
+        assert_eq!(constraint_dof, A.m - contact_Js.len() * 3);
+        if constraint_dof > 0 {
+            cones.append(&mut vec![ZeroConeT(constraint_dof)]);
+        }
 
         self.solver =
             DefaultSolver::new(&P, &q, &A, &b, &cones, self.solver.settings().clone()).unwrap();

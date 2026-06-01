@@ -4,8 +4,8 @@ use std::{
 };
 
 use na::{
-    DMatrix, DVector, Matrix3x6, Matrix3xX, Matrix4x3, Quaternion, SymmetricEigen, UnitQuaternion,
-    UnitVector3,
+    DMatrix, DVector, Isometry3, Matrix3x6, Matrix3xX, Matrix4x3, Matrix6, Quaternion,
+    SymmetricEigen, UnitQuaternion, UnitVector3,
 };
 use nalgebra::{Matrix3, Vector3};
 use web_sys::{self};
@@ -117,6 +117,26 @@ pub fn spatial_to_linear_velocity_multiplier(r: &Vector3<Float>) -> Matrix3x6<Fl
     let mut X = Matrix3x6::zeros();
     X.columns_mut(0, 3).copy_from(&-skew_symmetric(r)); // negative sign because -skew_symmetric(r) * w = w * skew_symmetric(r) = w.cross(r), which gives the linear velocity at r due to rotation
     X.columns_mut(3, 3).copy_from(&Matrix3::identity());
+    X
+}
+
+/// Given isometry of frame A relative to B (i.e. A_to_B), and a spatial vector v expressed in frame A, return the matrix that will transform v to be expressed in frame B.
+/// fn(v_A) = v_B
+/// Block structure:
+///   X = | R      0 |
+///       | t̂×R   R |
+pub fn spatial_vector_transform_multiplier(iso: &Isometry3<Float>) -> Matrix6<Float> {
+    let r = iso.rotation.to_rotation_matrix();
+    let r = r.matrix();
+    let t = iso.translation.vector;
+
+    let tx = skew_symmetric(&t);
+    let tx_r = tx * r;
+
+    let mut X = Matrix6::zeros();
+    X.fixed_view_mut::<3, 3>(0, 0).copy_from(r);
+    X.fixed_view_mut::<3, 3>(3, 0).copy_from(&tx_r);
+    X.fixed_view_mut::<3, 3>(3, 3).copy_from(r);
     X
 }
 
