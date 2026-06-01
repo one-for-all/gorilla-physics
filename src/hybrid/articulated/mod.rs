@@ -281,7 +281,7 @@ impl Articulated {
 
     /// Compute the current body twists in world frame
     pub fn body_twists(&self) -> Vec<SpatialVector> {
-        self.body_twists_at(&self.v())
+        self.bodies.iter().map(|b| b.twist).collect()
     }
 
     /// Total degrees of freedom
