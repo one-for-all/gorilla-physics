@@ -508,19 +508,19 @@ impl Hybrid {
                 let i_body1 = articulated
                     .bodies
                     .iter()
-                    .position(|b| b.inertia.frame == constraint.frame1())
+                    .position(|b| b.inertia.frame == constraint.body1_frame())
                     .unwrap();
                 let i_body2 = articulated
                     .bodies
                     .iter()
-                    .position(|b| b.inertia.frame == constraint.frame2())
+                    .position(|b| b.inertia.frame == constraint.body2_frame())
                     .unwrap();
                 let H1 = articulated.total_jacobian_to_body(i_body1);
                 let H2 = articulated.total_jacobian_to_body(i_body2);
 
                 // Compute transform from world frame to constraint frame
                 let frame1_to_world = &articulated.bodies[i_body1].pose.to_isometry();
-                let constraint_to_frame1 = constraint.to_frame1();
+                let constraint_to_frame1 = constraint.iso_to_body1();
                 let constraint_to_world = frame1_to_world * constraint_to_frame1;
                 let world_to_constraint = constraint_to_world.inverse();
 

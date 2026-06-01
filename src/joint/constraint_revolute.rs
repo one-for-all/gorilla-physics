@@ -9,27 +9,27 @@ use crate::types::Float;
 pub struct RevoluteConstraintJoint {
     pub axis: UnitVector3<Float>, // axis expressed in the frame after frame 1
 
-    pub frame1: String,
-    pub to_frame1: Isometry3<Float>,
+    pub body1_frame: String,
+    pub to_body1: Isometry3<Float>,
 
-    pub frame2: String,
-    pub to_frame2: Isometry3<Float>,
+    pub body2_frame: String,
+    pub to_body2: Isometry3<Float>,
 }
 
 impl RevoluteConstraintJoint {
     pub fn new(
-        frame1: &str,
-        to_frame1: Isometry3<Float>,
-        frame2: &str,
-        to_frame2: Isometry3<Float>,
+        body1_frame: &str,
+        to_body1: Isometry3<Float>,
+        body2_frame: &str,
+        to_body2: Isometry3<Float>,
         axis: UnitVector3<Float>,
     ) -> Self {
         Self {
             axis,
-            frame1: frame1.to_string(),
-            to_frame1,
-            frame2: frame2.to_string(),
-            to_frame2,
+            body1_frame: body1_frame.to_string(),
+            to_body1,
+            body2_frame: body2_frame.to_string(),
+            to_body2,
         }
     }
 

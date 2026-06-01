@@ -8,24 +8,24 @@ pub enum Constraint {
 }
 
 impl Constraint {
-    pub fn frame1(&self) -> &str {
+    pub fn body1_frame(&self) -> &str {
         match self {
-            Self::Revolute(constraint) => constraint.frame1.as_str(),
-            Self::Cylindrical(constraint) => constraint.frame1.as_str(),
+            Self::Revolute(constraint) => constraint.body1_frame.as_str(),
+            Self::Cylindrical(constraint) => constraint.body1_frame.as_str(),
         }
     }
 
-    pub fn frame2(&self) -> &str {
+    pub fn body2_frame(&self) -> &str {
         match self {
-            Self::Revolute(constraint) => constraint.frame2.as_str(),
-            Self::Cylindrical(constraint) => constraint.frame2.as_str(),
+            Self::Revolute(constraint) => constraint.body2_frame.as_str(),
+            Self::Cylindrical(constraint) => constraint.body2_frame.as_str(),
         }
     }
 
-    pub fn to_frame1(&self) -> &Isometry3<Float> {
+    pub fn iso_to_body1(&self) -> &Isometry3<Float> {
         match self {
-            Self::Revolute(constraint) => &constraint.to_frame1,
-            Self::Cylindrical(constraint) => &constraint.to_frame1,
+            Self::Revolute(constraint) => &constraint.to_body1,
+            Self::Cylindrical(constraint) => &constraint.to_body1,
         }
     }
 
@@ -39,29 +39,29 @@ impl Constraint {
 
 /// Constrains two frames to only have relative cylindrical motion
 pub struct CylindricalConstraintJoint {
-    pub axis: UnitVector3<Float>, // axis expressed in the frame after frame 1
+    pub axis: UnitVector3<Float>, // axis expressed in the frame after body1 frame
 
-    pub frame1: String,
-    pub to_frame1: Isometry3<Float>,
+    pub body1_frame: String,
+    pub to_body1: Isometry3<Float>,
 
-    pub frame2: String,
-    pub to_frame2: Isometry3<Float>,
+    pub body2_frame: String,
+    pub to_body2: Isometry3<Float>,
 }
 
 impl CylindricalConstraintJoint {
     pub fn new(
-        frame1: &str,
-        to_frame1: Isometry3<Float>,
-        frame2: &str,
-        to_frame2: Isometry3<Float>,
+        body1_frame: &str,
+        to_body1: Isometry3<Float>,
+        body2_frame: &str,
+        to_body2: Isometry3<Float>,
         axis: UnitVector3<Float>,
     ) -> Self {
         Self {
             axis,
-            frame1: frame1.to_string(),
-            to_frame1,
-            frame2: frame2.to_string(),
-            to_frame2,
+            body1_frame: body1_frame.to_string(),
+            to_body1,
+            body2_frame: body2_frame.to_string(),
+            to_body2,
         }
     }
 
