@@ -1,7 +1,7 @@
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::hybrid::articulated::Articulated;
-use crate::hybrid::builders::build_parallel_bar;
+use crate::hybrid::builders::{build_constrained_joint, build_parallel_bar};
 use crate::hybrid::{Hybrid, Rigid};
 use crate::joint::Joint;
 use crate::spatial::transform::Transform3D;
@@ -28,7 +28,8 @@ pub async fn createDesktop() -> InterfaceHybrid {
 
 #[wasm_bindgen]
 pub async fn createParallelBar() -> InterfaceHybrid {
-    let state = build_parallel_bar();
+    // let state = build_parallel_bar();
+    let state = build_constrained_joint();
 
     InterfaceHybrid { inner: state }
 }

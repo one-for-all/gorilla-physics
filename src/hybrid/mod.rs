@@ -2,7 +2,7 @@ use clarabel::{
     algebra::{CscMatrix, MatrixMathMut},
     solver::{
         DefaultSettingsBuilder, DefaultSolver, IPSolver,
-        SupportedConeT::{self, SecondOrderConeT, ZeroConeT},
+        SupportedConeT::{self, NonnegativeConeT, SecondOrderConeT, ZeroConeT},
     },
 };
 use itertools::izip;
@@ -27,6 +27,7 @@ use crate::{
         dual_friction_cone_multipler, spatial_to_linear_velocity_multiplier,
         spatial_vector_transform_multiplier,
     },
+    PI,
 };
 
 pub use deformable::Deformable;
@@ -534,6 +535,22 @@ impl Hybrid {
             icol_arti += dof;
         }
 
+        // unilateral velocity constraint
+        let mut vel_constraint_Js: Vec<Matrix1xX<Float>> = vec![];
+        // let q = self.articulated[0].q();
+        // if q[1] - PI / 4. >= q[0] {
+        //     let mut v_c = Matrix1xX::zeros(total_dof);
+        //     v_c[0] = 1.;
+        //     v_c[1] = -1.;
+        //     vel_constraint_Js.push(-v_c);
+        // }
+        // if q[1] + PI / 4. <= q[0] {
+        //     let mut v_c = Matrix1xX::zeros(total_dof);
+        //     v_c[0] = -1.;
+        //     v_c[1] = 1.;
+        //     vel_constraint_Js.push(-v_c);
+        // }
+
         // Mass matrix needs to be computed per step because it depends on the current joint q
         let mut M: DMatrix<Float> = DMatrix::zeros(total_dof, total_dof);
 
@@ -569,6 +586,10 @@ impl Hybrid {
         let g = -v_star.transpose() * M;
         let q: Vec<Float> = Vec::from(g.as_slice());
 
+        let contact_dof: usize = contact_Js.len() * 3;
+        let constraint_dof: usize = constraint_Js.iter().map(|j| j.shape().0).sum();
+        let vel_constraint_dof: usize = vel_constraint_Js.len();
+
         let mut rows: Vec<Matrix1xX<Float>> = vec![];
         for contact_J in contact_Js.iter() {
             // Note: multiply by -1 to fit the second order cone formulation
@@ -577,6 +598,7 @@ impl Hybrid {
         for constraint_J in constraint_Js.iter() {
             rows.extend(constraint_J.row_iter().map(|r| r.into_owned()));
         }
+        rows.extend(vel_constraint_Js);
 
         let A = if rows.len() > 0 {
             let J = DMatrix::from_rows(&rows);
@@ -586,10 +608,12 @@ impl Hybrid {
         };
         let b = vec![0.; A.m];
         let mut cones: Vec<SupportedConeT<Float>> = vec![SecondOrderConeT(3); contact_Js.len()];
-        let constraint_dof: usize = constraint_Js.iter().map(|j| j.shape().0).sum();
-        assert_eq!(constraint_dof, A.m - contact_Js.len() * 3);
+        assert_eq!(contact_dof + constraint_dof + vel_constraint_dof, A.m);
         if constraint_dof > 0 {
             cones.append(&mut vec![ZeroConeT(constraint_dof)]);
+        }
+        if vel_constraint_dof > 0 {
+            cones.append(&mut vec![NonnegativeConeT(vel_constraint_dof)]);
         }
 
         self.solver =
