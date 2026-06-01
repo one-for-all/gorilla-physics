@@ -265,3 +265,47 @@ pub async fn build_soundbox() -> StaticBody {
 
     table
 }
+
+pub fn build_parallel_bar() -> Hybrid {
+    let mut state = Hybrid::empty();
+
+    let l = 1.;
+    let w = 0.1;
+    let m = 1.0;
+
+    let bar1_frame = "bar1";
+    let bar1 = Rigid::new_cuboid_at(&vector![l / 2., 0., 0.], m, l, w, w, bar1_frame);
+    let bar1_joint = Joint::new_revolute(
+        Transform3D::identity(bar1_frame, WORLD_FRAME),
+        Vector3::y_axis(),
+    );
+
+    let bar2_frame = "bar2";
+    let bar2 = Rigid::new_cuboid_at(&vector![0., 0., -l / 2.], m, w, w, l, bar2_frame);
+    let bar2_joint = Joint::new_revolute(
+        Transform3D::move_x(bar2_frame, bar1_frame, l),
+        Vector3::y_axis(),
+    );
+
+    let bar3_frame = "bar3";
+    let bar3 = Rigid::new_cuboid_at(&vector![-l / 2., 0., 0.], m, l, w, w, bar3_frame);
+    let bar3_joint = Joint::new_revolute(
+        Transform3D::move_z(bar3_frame, bar2_frame, -l),
+        Vector3::y_axis(),
+    );
+
+    let bar4_frame = "bar4";
+    let bar4 = Rigid::new_cuboid_at(&vector![0., 0., l / 2.], m, w, w, l, bar4_frame);
+    let bar4_joint = Joint::new_revolute(
+        Transform3D::move_x(bar4_frame, bar3_frame, -l),
+        Vector3::y_axis(),
+    );
+
+    let articulated = Articulated::new(
+        vec![bar1, bar2, bar3, bar4],
+        vec![bar1_joint, bar2_joint, bar3_joint, bar4_joint],
+    );
+    state.add_articulated(articulated);
+
+    state
+}

@@ -624,7 +624,10 @@ mod hybrid_tests {
         assert_vec_close,
         hybrid::{
             articulated::Articulated,
-            builders::{build_cube_cloth, build_cube_frenzy, build_gripper_cube, build_teddy},
+            builders::{
+                build_cube_cloth, build_cube_frenzy, build_gripper_cube, build_parallel_bar,
+                build_teddy,
+            },
             Deformable, Hybrid, Rigid,
         },
         joint::{Joint, JointPosition, JointVelocity},
@@ -870,6 +873,16 @@ mod hybrid_tests {
         for _s in 0..num_steps {
             state.step(dt, &vec![]);
         }
+
+        // Assert
+    }
+
+    #[test]
+    fn parallel_bar() {
+        // Arrange
+        let mut state = build_parallel_bar();
+
+        // Act
 
         // Assert
     }

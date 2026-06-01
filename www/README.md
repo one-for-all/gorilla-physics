@@ -1,6 +1,6 @@
 Run the local dev server:
 
-`npm run start`
+`npm run start -- --env entry=gripper`
 
 Run the local dev server with GPU implementation enabled:
 

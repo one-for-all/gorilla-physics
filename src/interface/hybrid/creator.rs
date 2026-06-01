@@ -1,9 +1,13 @@
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::hybrid::articulated::Articulated;
-use crate::hybrid::Hybrid;
+use crate::hybrid::builders::build_parallel_bar;
+use crate::hybrid::{Hybrid, Rigid};
+use crate::joint::Joint;
+use crate::spatial::transform::Transform3D;
+use crate::WORLD_FRAME;
 use crate::{hybrid::builders::import_static_body, interface::hybrid::InterfaceHybrid};
-use na::vector;
+use na::{vector, Vector3};
 
 #[wasm_bindgen]
 pub async fn createDesktop() -> InterfaceHybrid {
@@ -18,6 +22,13 @@ pub async fn createDesktop() -> InterfaceHybrid {
     // Add point
     let point = Articulated::new_point_at("point", 1.0, &vector![0.5, 0., 1.2]);
     state.add_articulated(point);
+
+    InterfaceHybrid { inner: state }
+}
+
+#[wasm_bindgen]
+pub async fn createParallelBar() -> InterfaceHybrid {
+    let state = build_parallel_bar();
 
     InterfaceHybrid { inner: state }
 }
