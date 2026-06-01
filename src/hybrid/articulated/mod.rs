@@ -6,7 +6,7 @@ use na::{vector, DMatrix, DVector, Matrix6xX, UnitQuaternion};
 use crate::{
     hybrid::rigid::Rigid,
     inertia::SpatialInertia,
-    joint::{cylindrical_constraint::Constraint, Joint, JointPosition, JointVelocity},
+    joint::{constraint::cylindrical_constraint::Constraint, Joint, JointPosition, JointVelocity},
     spatial::{
         geometric_jacobian::{Momentum, MotionSubspace},
         pose::Pose,

@@ -4,8 +4,9 @@ use crate::{
     collision::{mesh::Mesh, sphere::Sphere},
     inertia::SpatialInertia,
     joint::{
-        constraint_revolute::RevoluteConstraintJoint, cylindrical_constraint::Constraint,
-        floating::FloatingJoint, revolute::RevoluteJoint, Joint,
+        constraint::constraint_revolute::RevoluteConstraintJoint,
+        constraint::cylindrical_constraint::Constraint, floating::FloatingJoint,
+        revolute::RevoluteJoint, Joint,
     },
     mechanism::MechanismState,
     rigid_body::{Collider, RigidBody},

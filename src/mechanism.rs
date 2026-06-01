@@ -8,7 +8,7 @@ use crate::energy::spring_elastic_energy;
 use crate::inertia::compute_inertias;
 use crate::inertia::kinetic_energy;
 use crate::inertia::SpatialInertia;
-use crate::joint::cylindrical_constraint::Constraint;
+use crate::joint::constraint::cylindrical_constraint::Constraint;
 use crate::joint::Joint;
 use crate::joint::JointPosition;
 use crate::joint::JointVelocity;

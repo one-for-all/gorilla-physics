@@ -1,6 +1,6 @@
 use na::{Isometry3, MatrixXx6, UnitVector3, Vector3};
 
-use crate::{joint::constraint_revolute::RevoluteConstraintJoint, types::Float};
+use crate::{joint::constraint::constraint_revolute::RevoluteConstraintJoint, types::Float};
 
 pub enum Constraint {
     Revolute(RevoluteConstraintJoint),

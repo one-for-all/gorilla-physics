@@ -12,8 +12,7 @@ use crate::spatial::{
 };
 use crate::types::Float;
 
-pub mod constraint_revolute;
-pub mod cylindrical_constraint;
+pub mod constraint;
 pub mod fixed;
 pub mod floating;
 pub mod prismatic;

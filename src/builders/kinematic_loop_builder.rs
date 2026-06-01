@@ -4,8 +4,8 @@ use crate::{
     contact::ContactPoint,
     inertia::SpatialInertia,
     joint::{
-        constraint_revolute::RevoluteConstraintJoint,
-        cylindrical_constraint::{Constraint, CylindricalConstraintJoint},
+        constraint::constraint_revolute::RevoluteConstraintJoint,
+        constraint::cylindrical_constraint::{Constraint, CylindricalConstraintJoint},
         floating::FloatingJoint,
         revolute::RevoluteJoint,
         Joint,

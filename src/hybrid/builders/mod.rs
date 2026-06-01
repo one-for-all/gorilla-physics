@@ -10,8 +10,8 @@ use crate::{
         static_body::StaticBody, visual::rigid_mesh::RigidMesh, Deformable, Hybrid, Rigid,
     },
     joint::{
-        constraint_revolute::RevoluteConstraintJoint, cylindrical_constraint::Constraint, Joint,
-        JointVelocity,
+        constraint::constraint_revolute::RevoluteConstraintJoint,
+        constraint::cylindrical_constraint::Constraint, Joint, JointVelocity,
     },
     spatial::transform::Transform3D,
     types::Float,
