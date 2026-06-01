@@ -120,6 +120,12 @@ pub fn spatial_to_linear_velocity_multiplier(r: &Vector3<Float>) -> Matrix3x6<Fl
     X
 }
 
+/// Given a spatial velocity vector v, and a point r, compute the linear velocity at point r
+/// Everything expressed in the same frame
+pub fn spatial_to_linear_velocity(v: &SpatialVector, r: &Vector3<Float>) -> Vector3<Float> {
+    v.linear + v.angular.cross(r)
+}
+
 /// Given isometry of frame A relative to B (i.e. A_to_B), and a spatial vector v expressed in frame A, return the matrix that will transform v to be expressed in frame B.
 /// fn(v_A) = v_B
 /// Block structure:
