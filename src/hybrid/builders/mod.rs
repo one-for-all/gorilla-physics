@@ -359,3 +359,65 @@ pub fn build_range_constrained_joint() -> Hybrid {
 
     state
 }
+
+pub fn build_parallel_bar_with_range_constraint() -> Hybrid {
+    let mut state = Hybrid::empty();
+
+    let l = 1.;
+    let w = 0.1;
+    let m = 1.0;
+
+    // downward bar
+    let bar1_frame = "bar1";
+    let bar1 = Rigid::new_cuboid_at(&vector![0., 0., -l / 2.], m, w, w, l, bar1_frame);
+    let bar1_joint = Joint::new_revolute(
+        Transform3D::identity(bar1_frame, WORLD_FRAME),
+        Vector3::y_axis(),
+    );
+
+    // rightward bar
+    let bar2_frame = "bar2";
+    let bar2 = Rigid::new_cuboid_at(&vector![l / 2., 0., 0.], m, l, w, w, bar2_frame);
+    let bar2_joint = Joint::new_revolute(
+        Transform3D::identity(bar2_frame, WORLD_FRAME),
+        Vector3::y_axis(),
+    );
+
+    let bar3_frame = "bar3";
+    let bar3 = Rigid::new_cuboid_at(&vector![0., 0., -l / 2.], m, w, w, l, bar3_frame);
+    let bar3_joint = Joint::new_revolute(
+        Transform3D::move_x(bar3_frame, bar2_frame, l),
+        Vector3::y_axis(),
+    );
+
+    let bar4_frame = "bar4";
+    let bar4 = Rigid::new_cuboid_at(&vector![-l / 2., 0., 0.], m, l, w, w, bar4_frame);
+    let bar4_joint = Joint::new_revolute(
+        Transform3D::move_z(bar4_frame, bar3_frame, -l),
+        Vector3::y_axis(),
+    );
+
+    let mut articulated = Articulated::new(
+        vec![bar1, bar2, bar3, bar4],
+        vec![bar1_joint, bar2_joint, bar3_joint, bar4_joint],
+    );
+
+    articulated.add_constraints(vec![Constraint::Revolute(RevoluteConstraintJoint::new(
+        bar1_frame,
+        Isometry3::translation(0., 0., -l),
+        bar4_frame,
+        Isometry3::translation(-l, 0., 0.),
+        Vector3::y_axis(),
+    ))]);
+
+    articulated.add_range_constraints(vec![RangeConstraint::new(
+        bar2_frame,
+        bar1_frame,
+        -PI / 4.,
+        PI / 4.,
+    )]);
+
+    state.add_articulated(articulated);
+
+    state
+}
