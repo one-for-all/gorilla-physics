@@ -322,13 +322,14 @@ pub fn build_parallel_bar() -> Hybrid {
     state
 }
 
-pub fn build_constrained_joint() -> Hybrid {
+pub fn build_range_constrained_joint() -> Hybrid {
     let mut state = Hybrid::empty();
 
     let l = 1.;
     let w = 0.1;
     let m = 1.0;
 
+    // downward bar
     let bar1_frame = "bar1";
     let bar1 = Rigid::new_cuboid_at(&vector![0., 0., -l / 2.], m, w, w, l, bar1_frame);
     let bar1_joint = Joint::new_revolute(
@@ -336,6 +337,7 @@ pub fn build_constrained_joint() -> Hybrid {
         Vector3::y_axis(),
     );
 
+    // rightward bar
     let bar2_frame = "bar2";
     let bar2 = Rigid::new_cuboid_at(&vector![l / 2., 0., 0.], m, l, w, w, bar2_frame);
     let bar2_joint = Joint::new_revolute(

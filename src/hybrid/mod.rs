@@ -717,14 +717,14 @@ mod hybrid_tests {
             articulated::Articulated,
             builders::{
                 build_cube_cloth, build_cube_frenzy, build_gripper_cube, build_parallel_bar,
-                build_teddy,
+                build_range_constrained_joint, build_teddy,
             },
             Deformable, Hybrid, Rigid,
         },
         joint::{Joint, JointPosition, JointVelocity},
         spatial::{pose::Pose, spatial_vector::SpatialVector, transform::Transform3D},
         util::{read_file, spatial_to_linear_velocity},
-        WORLD_FRAME,
+        PI, WORLD_FRAME,
     };
 
     #[test]
@@ -986,5 +986,25 @@ mod hybrid_tests {
         let v = bar4.twist;
         let origin = vector![0., 0., 0.];
         assert_vec_close!(spatial_to_linear_velocity(&v, &origin), [0., 0., 0.], 1e-4);
+    }
+
+    #[test]
+    fn range_constrained_joint() {
+        // Arrange
+        let mut state = build_range_constrained_joint();
+        let tol = 1e-2;
+
+        // Act
+        let final_time = 2.0;
+        let dt = 1e-3;
+        let num_steps = (final_time / dt) as usize;
+        for _s in 0..num_steps {
+            state.step(dt, &vec![]);
+
+            // Assert
+            let q = state.articulated[0].q();
+            assert!(q[1] >= q[0] - PI / 4. - tol);
+            assert!(q[1] <= q[0] + PI / 4. + tol);
+        }
     }
 }
