@@ -535,21 +535,41 @@ impl Hybrid {
             icol_arti += dof;
         }
 
-        // unilateral velocity constraint
+        // Handle joint value range constraints,
+        // which gets transformed into conditional relative velocity constraint
         let mut vel_constraint_Js: Vec<Matrix1xX<Float>> = vec![];
-        // let q = self.articulated[0].q();
-        // if q[1] - PI / 4. >= q[0] {
-        //     let mut v_c = Matrix1xX::zeros(total_dof);
-        //     v_c[0] = 1.;
-        //     v_c[1] = -1.;
-        //     vel_constraint_Js.push(-v_c);
-        // }
-        // if q[1] + PI / 4. <= q[0] {
-        //     let mut v_c = Matrix1xX::zeros(total_dof);
-        //     v_c[0] = -1.;
-        //     v_c[1] = 1.;
-        //     vel_constraint_Js.push(-v_c);
-        // }
+        let mut icol_arti = offset_articulated;
+        for articulated in self.articulated.iter() {
+            let dof = articulated.dof();
+            for range_constaint in articulated.range_constraints.iter() {
+                let i_body1 = articulated
+                    .bodies
+                    .iter()
+                    .position(|b| b.inertia.frame == range_constaint.body1_frame)
+                    .unwrap();
+                let i_body2 = articulated
+                    .bodies
+                    .iter()
+                    .position(|b| b.inertia.frame == range_constaint.body2_frame)
+                    .unwrap();
+                let q = articulated.q();
+                let q1 = q[i_body1];
+                let q2 = q[i_body2];
+                if q1 <= q2 + range_constaint.min {
+                    let mut v_c = Matrix1xX::zeros(total_dof);
+                    v_c[icol_arti + i_body1] = 1.;
+                    v_c[icol_arti + i_body2] = -1.;
+                    vel_constraint_Js.push(-v_c);
+                }
+                if q1 >= q2 + range_constaint.max {
+                    let mut v_c = Matrix1xX::zeros(total_dof);
+                    v_c[icol_arti + i_body1] = -1.;
+                    v_c[icol_arti + i_body2] = 1.;
+                    vel_constraint_Js.push(-v_c);
+                }
+            }
+            icol_arti += dof;
+        }
 
         // Mass matrix needs to be computed per step because it depends on the current joint q
         let mut M: DMatrix<Float> = DMatrix::zeros(total_dof, total_dof);

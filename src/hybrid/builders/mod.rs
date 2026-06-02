@@ -10,8 +10,8 @@ use crate::{
         static_body::StaticBody, visual::rigid_mesh::RigidMesh, Deformable, Hybrid, Rigid,
     },
     joint::{
-        constraint::constraint_revolute::RevoluteConstraintJoint, constraint::Constraint, Joint,
-        JointVelocity,
+        constraint::{constraint_revolute::RevoluteConstraintJoint, Constraint, RangeConstraint},
+        Joint, JointVelocity,
     },
     spatial::transform::Transform3D,
     types::Float,
@@ -344,6 +344,13 @@ pub fn build_constrained_joint() -> Hybrid {
     );
 
     let mut articulated = Articulated::new(vec![bar1, bar2], vec![bar1_joint, bar2_joint]);
+    articulated.add_range_constraints(vec![RangeConstraint::new(
+        bar2_frame,
+        bar1_frame,
+        -PI / 4.,
+        PI / 4.,
+    )]);
+
     articulated.set_joint_v(1, JointVelocity::Float(-5.));
 
     state.add_articulated(articulated);

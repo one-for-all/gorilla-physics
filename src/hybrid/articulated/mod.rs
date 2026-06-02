@@ -6,7 +6,10 @@ use na::{vector, DMatrix, DVector, Matrix6xX, UnitQuaternion};
 use crate::{
     hybrid::rigid::Rigid,
     inertia::SpatialInertia,
-    joint::{constraint::Constraint, Joint, JointPosition, JointVelocity},
+    joint::{
+        constraint::{Constraint, RangeConstraint},
+        Joint, JointPosition, JointVelocity,
+    },
     spatial::{
         geometric_jacobian::{Momentum, MotionSubspace},
         pose::Pose,
@@ -31,7 +34,8 @@ pub struct Articulated {
     jacobians: Vec<Matrix6xX<Float>>, // Jacobian from each joint v to body spatial twist expressed in world frame
     pub mass_matrix: DMatrix<Float>,
 
-    pub constraints: Vec<Constraint>, // Joint constraints for kine
+    pub constraints: Vec<Constraint>, // Joint constraints for kinematic loops
+    pub range_constraints: Vec<RangeConstraint>,
 }
 
 impl Articulated {
@@ -59,6 +63,7 @@ impl Articulated {
             jacobians: vec![],
             mass_matrix: DMatrix::<Float>::zeros(0, 0),
             constraints: vec![],
+            range_constraints: vec![],
         };
 
         state.update_body_states();
@@ -67,6 +72,10 @@ impl Articulated {
 
     pub fn add_constraints(&mut self, constraints: Vec<Constraint>) {
         self.constraints.extend(constraints);
+    }
+
+    pub fn add_range_constraints(&mut self, constraints: Vec<RangeConstraint>) {
+        self.range_constraints.extend(constraints);
     }
 
     fn update_body_states(&mut self) {
