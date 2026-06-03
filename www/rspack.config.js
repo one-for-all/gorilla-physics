@@ -8,7 +8,7 @@ const dist = path.resolve(__dirname, "dist");
 const featureGPU = process.env.FEATURE_GPU === "1";
 
 module.exports = (env) => {
-  const entryName = env.entry || "demo";
+  const entryName = env.entry || "desktop";
 
   return {
     mode: isDev ? "development" : "production",
