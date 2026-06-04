@@ -31,9 +31,11 @@ impl InterfaceHybrid {
 #[wasm_bindgen]
 impl InterfaceHybrid {
     pub fn reset(&mut self) {
-        for articulated in self.inner.articulated.iter_mut() {
-            articulated.reset();
-        }
+        self.inner.reset();
+    }
+
+    pub fn time(&self) -> Float {
+        self.inner.time
     }
 
     pub fn get_uart(&self) -> String {
@@ -297,6 +299,10 @@ impl InterfaceHybrid {
 
     pub fn set_joint_q(&mut self, i: usize, value: Float) {
         self.inner.articulated[0].set_joint_q(i, JointPosition::Float(value));
+    }
+
+    pub fn joint_q(&mut self) -> Float32Array {
+        toJsFloat32Array!(self.inner.articulated[0].q())
     }
 
     pub fn set_joint_v(&mut self, i: usize, value: Float) {

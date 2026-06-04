@@ -59,6 +59,8 @@ pub struct Hybrid {
     friction_mu: Float,
 
     solver: DefaultSolver,
+
+    pub time: Float, // total time since reset
 }
 
 impl Hybrid {
@@ -85,6 +87,7 @@ impl Hybrid {
             gravity_enabled: true,
             friction_mu: 1.0,
             solver,
+            time: 0.,
         }
     }
 
@@ -123,7 +126,16 @@ impl Hybrid {
         self.static_bodies.push(static_body);
     }
 
+    pub fn reset(&mut self) {
+        self.time = 0.;
+        for articulated in self.articulated.iter_mut() {
+            articulated.reset();
+        }
+    }
+
     pub fn step(&mut self, dt: Float, input: &Vec<Float>) {
+        self.time += dt;
+
         // update jacobians and mass_matrix before-hand as cached result
         for articulated in self.articulated.iter_mut() {
             articulated.update_jacobians();
