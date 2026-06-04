@@ -564,19 +564,29 @@ impl Hybrid {
                     .iter()
                     .position(|b| b.inertia.frame == range_constaint.body2_frame)
                     .unwrap();
-                let q = articulated.q();
-                let q1 = q[i_body1];
-                let q2 = q[i_body2];
+                let q1 = {
+                    let q = articulated.joint_q(i_body1);
+                    assert_eq!(q.len(), 1);
+                    q[0]
+                };
+                let q2 = {
+                    let q = articulated.joint_q(i_body2);
+                    assert_eq!(q.len(), 1);
+                    q[0]
+                };
+                let dof_offsets = articulated.offsets();
+                let i_dof_body1: usize = dof_offsets[i_body1];
+                let i_dof_body2: usize = dof_offsets[i_body2];
                 if q1 <= q2 + range_constaint.min {
                     let mut v_c = Matrix1xX::zeros(total_dof);
-                    v_c[icol_arti + i_body1] = 1.;
-                    v_c[icol_arti + i_body2] = -1.;
+                    v_c[icol_arti + i_dof_body1] = 1.;
+                    v_c[icol_arti + i_dof_body2] = -1.;
                     vel_constraint_Js.push(-v_c);
                 }
                 if q1 >= q2 + range_constaint.max {
                     let mut v_c = Matrix1xX::zeros(total_dof);
-                    v_c[icol_arti + i_body1] = -1.;
-                    v_c[icol_arti + i_body2] = 1.;
+                    v_c[icol_arti + i_dof_body1] = -1.;
+                    v_c[icol_arti + i_dof_body2] = 1.;
                     vel_constraint_Js.push(-v_c);
                 }
             }

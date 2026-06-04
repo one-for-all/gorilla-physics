@@ -327,6 +327,11 @@ impl Articulated {
         DVector::from_vec(q)
     }
 
+    /// i-th joint's q vector
+    pub fn joint_q(&self, i: usize) -> DVector<Float> {
+        self.joints[i].q()
+    }
+
     pub fn mass(&self) -> Float {
         self.bodies.iter().map(|b| b.inertia.mass).sum()
     }
