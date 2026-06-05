@@ -1,10 +1,11 @@
 use crate::{
     hybrid::{mesh::URDFMeshes, visual::Visual, Rigid},
     inertia::SpatialInertia,
-    joint::Joint,
+    joint::{constraint::constraint_revolute::RevoluteConstraintJoint, Joint},
     spatial::transform::Transform3D,
     types::Float,
 };
+use na::{Isometry, Isometry3, Translation3, UnitQuaternion, Vector3};
 use nalgebra::{Matrix3, UnitVector3, Vector};
 use urdf_rs::Robot;
 
@@ -63,4 +64,47 @@ pub fn build_joint(
         axis,
     );
     joint
+}
+
+pub fn build_revolute_constraint(
+    body1_frame: &str,
+    body2_frame: &str,
+    closing_joint_name: &str,
+    urdf: &Robot,
+) -> RevoluteConstraintJoint {
+    let closing_joint_1_name = format!("closing_{}_1_frame", closing_joint_name);
+    let closing_joint_1 = urdf
+        .joints
+        .iter()
+        .find(|&j| j.name == closing_joint_1_name)
+        .unwrap();
+
+    let xyz = closing_joint_1.origin.xyz;
+    let rpy = closing_joint_1.origin.rpy;
+    let iso_to_body1 = Isometry3::from_parts(
+        Translation3::new(xyz[0], xyz[1], xyz[2]),
+        UnitQuaternion::from_euler_angles(rpy[0], rpy[1], rpy[1]),
+    );
+
+    let closing_joint_2_name = format!("closing_{}_2_frame", closing_joint_name);
+    let closing_joint_2 = urdf
+        .joints
+        .iter()
+        .find(|&j| j.name == closing_joint_2_name)
+        .unwrap();
+
+    let xyz = closing_joint_2.origin.xyz;
+    let rpy = closing_joint_2.origin.rpy;
+    let iso_to_body2 = Isometry3::from_parts(
+        Translation3::new(xyz[0], xyz[1], xyz[2]),
+        UnitQuaternion::from_euler_angles(rpy[0], rpy[1], rpy[1]),
+    );
+
+    RevoluteConstraintJoint::new(
+        body1_frame,
+        iso_to_body1,
+        body2_frame,
+        iso_to_body2,
+        Vector3::z_axis(),
+    )
 }
