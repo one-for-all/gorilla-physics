@@ -553,7 +553,7 @@ impl Hybrid {
         let mut icol_arti = offset_articulated;
         for articulated in self.articulated.iter() {
             let dof = articulated.dof();
-            for range_constaint in articulated.range_constraints.iter() {
+            for range_constaint in articulated.relative_range_constraints.iter() {
                 let i_body1 = articulated
                     .bodies
                     .iter()

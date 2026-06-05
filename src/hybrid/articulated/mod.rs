@@ -35,7 +35,7 @@ pub struct Articulated {
     pub mass_matrix: DMatrix<Float>,
 
     pub constraints: Vec<Constraint>, // Joint constraints for kinematic loops
-    pub range_constraints: Vec<RelativeRangeConstraint>,
+    pub relative_range_constraints: Vec<RelativeRangeConstraint>,
 }
 
 impl Articulated {
@@ -63,7 +63,7 @@ impl Articulated {
             jacobians: vec![],
             mass_matrix: DMatrix::<Float>::zeros(0, 0),
             constraints: vec![],
-            range_constraints: vec![],
+            relative_range_constraints: vec![],
         };
 
         state.update_body_states();
@@ -75,7 +75,7 @@ impl Articulated {
     }
 
     pub fn add_relative_range_constraints(&mut self, constraints: Vec<RelativeRangeConstraint>) {
-        self.range_constraints.extend(constraints);
+        self.relative_range_constraints.extend(constraints);
     }
 
     fn update_body_states(&mut self) {
