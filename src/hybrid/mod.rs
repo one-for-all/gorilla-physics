@@ -553,6 +553,8 @@ impl Hybrid {
         let mut icol_arti = offset_articulated;
         for articulated in self.articulated.iter() {
             let dof = articulated.dof();
+
+            // First, handle relative range constraints
             for range_constaint in articulated.relative_range_constraints.iter() {
                 let i_body1 = articulated
                     .bodies
@@ -590,6 +592,33 @@ impl Hybrid {
                     vel_constraint_Js.push(-v_c);
                 }
             }
+
+            // Second, handle self range constraints
+            for range_constaint in articulated.range_constraints.iter() {
+                let i_body = articulated
+                    .bodies
+                    .iter()
+                    .position(|b| b.inertia.frame == range_constaint.body_frame)
+                    .unwrap();
+                let q = {
+                    let q = articulated.joint_q(i_body);
+                    assert_eq!(q.len(), 1);
+                    q[0]
+                };
+                let dof_offsets = articulated.offsets();
+                let i_dof_body: usize = dof_offsets[i_body];
+                if q <= range_constaint.min {
+                    let mut v_c = Matrix1xX::zeros(total_dof);
+                    v_c[icol_arti + i_dof_body] = 1.;
+                    vel_constraint_Js.push(-v_c);
+                }
+                if q >= range_constaint.max {
+                    let mut v_c = Matrix1xX::zeros(total_dof);
+                    v_c[icol_arti + i_dof_body] = -1.;
+                    vel_constraint_Js.push(-v_c);
+                }
+            }
+
             icol_arti += dof;
         }
 

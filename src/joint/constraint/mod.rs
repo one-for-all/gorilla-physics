@@ -66,3 +66,21 @@ impl RelativeRangeConstraint {
         }
     }
 }
+
+/// This constraint keeps q to be within [min, max]
+pub struct RangeConstraint {
+    pub body_frame: String,
+
+    pub min: Float,
+    pub max: Float,
+}
+
+impl RangeConstraint {
+    pub fn new(body_frame: &str, min: Float, max: Float) -> Self {
+        Self {
+            body_frame: body_frame.to_string(),
+            min,
+            max,
+        }
+    }
+}
