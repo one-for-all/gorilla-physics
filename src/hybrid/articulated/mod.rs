@@ -7,7 +7,7 @@ use crate::{
     hybrid::rigid::Rigid,
     inertia::SpatialInertia,
     joint::{
-        constraint::{Constraint, RangeConstraint},
+        constraint::{Constraint, RelativeRangeConstraint},
         Joint, JointPosition, JointVelocity,
     },
     spatial::{
@@ -35,7 +35,7 @@ pub struct Articulated {
     pub mass_matrix: DMatrix<Float>,
 
     pub constraints: Vec<Constraint>, // Joint constraints for kinematic loops
-    pub range_constraints: Vec<RangeConstraint>,
+    pub range_constraints: Vec<RelativeRangeConstraint>,
 }
 
 impl Articulated {
@@ -74,7 +74,7 @@ impl Articulated {
         self.constraints.extend(constraints);
     }
 
-    pub fn add_range_constraints(&mut self, constraints: Vec<RangeConstraint>) {
+    pub fn add_relative_range_constraints(&mut self, constraints: Vec<RelativeRangeConstraint>) {
         self.range_constraints.extend(constraints);
     }
 

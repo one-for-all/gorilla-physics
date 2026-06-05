@@ -10,7 +10,9 @@ use crate::{
         static_body::StaticBody, visual::rigid_mesh::RigidMesh, Deformable, Hybrid, Rigid,
     },
     joint::{
-        constraint::{constraint_revolute::RevoluteConstraintJoint, Constraint, RangeConstraint},
+        constraint::{
+            constraint_revolute::RevoluteConstraintJoint, Constraint, RelativeRangeConstraint,
+        },
         Joint, JointVelocity,
     },
     spatial::transform::Transform3D,
@@ -346,7 +348,7 @@ pub fn build_range_constrained_joint() -> Hybrid {
     );
 
     let mut articulated = Articulated::new(vec![bar1, bar2], vec![bar1_joint, bar2_joint]);
-    articulated.add_range_constraints(vec![RangeConstraint::new(
+    articulated.add_relative_range_constraints(vec![RelativeRangeConstraint::new(
         bar2_frame,
         bar1_frame,
         -PI / 4.,
@@ -410,7 +412,7 @@ pub fn build_parallel_bar_with_range_constraint() -> Hybrid {
         Vector3::y_axis(),
     ))]);
 
-    articulated.add_range_constraints(vec![RangeConstraint::new(
+    articulated.add_relative_range_constraints(vec![RelativeRangeConstraint::new(
         bar2_frame,
         bar1_frame,
         -PI / 4.,

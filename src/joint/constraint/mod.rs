@@ -48,7 +48,7 @@ impl Constraint {
 
 /// For body1's q1 and body2's q2
 /// This constraint keeps q1 to be within [q2+min, q2+max]
-pub struct RangeConstraint {
+pub struct RelativeRangeConstraint {
     pub body1_frame: String,
     pub body2_frame: String,
 
@@ -56,7 +56,7 @@ pub struct RangeConstraint {
     pub max: Float,
 }
 
-impl RangeConstraint {
+impl RelativeRangeConstraint {
     pub fn new(body1_frame: &str, body2_frame: &str, min: Float, max: Float) -> Self {
         Self {
             body1_frame: body1_frame.to_string(),
