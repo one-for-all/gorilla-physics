@@ -4,6 +4,7 @@ use crate::{
     joint::{constraint::constraint_revolute::RevoluteConstraintJoint, Joint},
     spatial::transform::Transform3D,
     types::Float,
+    PI,
 };
 use na::{Isometry, Isometry3, Translation3, UnitQuaternion, Vector3};
 use nalgebra::{Matrix3, UnitVector3, Vector};
@@ -53,16 +54,32 @@ pub fn build_joint(
     q: Float,
 ) -> Joint {
     let urdf_joint = urdf.joints.iter().find(|&j| j.name == joint_name).unwrap();
+
+    let rpy;
+    // Note: this is hack to make sure urdf number gets rounded to its true value
+    // TODO: remove the hack. make general
+    if joint_name == "left_front_spring" {
+        rpy = Vec::from([PI, 0., 0.]);
+    } else {
+        rpy = Vec::from(urdf_joint.origin.rpy.0);
+    }
+
     let joint = Joint::new_revolute_with_q(
         q,
-        Transform3D::new_xyz_rpy(
-            from,
-            to,
-            &Vec::from(urdf_joint.origin.xyz.0),
-            &Vec::from(urdf_joint.origin.rpy.0),
-        ),
+        Transform3D::new_xyz_rpy(from, to, &Vec::from(urdf_joint.origin.xyz.0), &rpy),
         axis,
     );
+    joint
+}
+
+pub fn build_fixed_joint(from: &str, to: &str, joint_name: &str, urdf: &Robot) -> Joint {
+    let urdf_joint = urdf.joints.iter().find(|&j| j.name == joint_name).unwrap();
+    let joint = Joint::new_fixed(Transform3D::new_xyz_rpy(
+        from,
+        to,
+        &Vec::from(urdf_joint.origin.xyz.0),
+        &Vec::from(urdf_joint.origin.rpy.0),
+    ));
     joint
 }
 
