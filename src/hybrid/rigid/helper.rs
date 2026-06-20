@@ -83,7 +83,7 @@ pub fn build_revolute_constraint(
     let rpy = closing_joint_1.origin.rpy;
     let iso_to_body1 = Isometry3::from_parts(
         Translation3::new(xyz[0], xyz[1], xyz[2]),
-        UnitQuaternion::from_euler_angles(rpy[0], rpy[1], rpy[1]),
+        UnitQuaternion::from_euler_angles(rpy[0], rpy[1], rpy[2]),
     );
 
     let closing_joint_2_name = format!("closing_{}_2_frame", closing_joint_name);
@@ -97,7 +97,7 @@ pub fn build_revolute_constraint(
     let rpy = closing_joint_2.origin.rpy;
     let iso_to_body2 = Isometry3::from_parts(
         Translation3::new(xyz[0], xyz[1], xyz[2]),
-        UnitQuaternion::from_euler_angles(rpy[0], rpy[1], rpy[1]),
+        UnitQuaternion::from_euler_angles(rpy[0], rpy[1], rpy[2]),
     );
 
     RevoluteConstraintJoint::new(
