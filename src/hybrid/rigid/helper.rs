@@ -58,11 +58,18 @@ pub fn build_joint(
     let rpy;
     // Note: this is hack to make sure urdf number gets rounded to its true value
     // TODO: remove the hack. make general
-    if joint_name == "left_front_spring" {
-        rpy = Vec::from([PI, 0., 0.]);
-    } else {
-        rpy = Vec::from(urdf_joint.origin.rpy.0);
-    }
+    rpy = Vec::from(urdf_joint.origin.rpy.0)
+        .iter_mut()
+        .map(|x| {
+            let values_to_check = [PI, -PI, PI / 2., -PI / 2., 0.];
+            for v in values_to_check {
+                if (*x - v).abs() < 1e-3 {
+                    *x = v;
+                }
+            }
+            *x
+        })
+        .collect::<Vec<f64>>();
 
     let joint = Joint::new_revolute_with_q(
         q,
@@ -97,7 +104,23 @@ pub fn build_revolute_constraint(
         .unwrap();
 
     let xyz = closing_joint_1.origin.xyz;
-    let rpy = closing_joint_1.origin.rpy;
+    // let rpy = closing_joint_1.origin.rpy;
+    let rpy: Vec<f64> = closing_joint_1
+        .origin
+        .rpy
+        .0
+        .clone()
+        .iter_mut()
+        .map(|x| {
+            let values_to_check = [PI, -PI, PI / 2., -PI / 2., 0.];
+            for v in values_to_check {
+                if (*x - v).abs() < 1e-3 {
+                    *x = v;
+                }
+            }
+            *x
+        })
+        .collect();
     let iso_to_body1 = Isometry3::from_parts(
         Translation3::new(xyz[0], xyz[1], xyz[2]),
         UnitQuaternion::from_euler_angles(rpy[0], rpy[1], rpy[2]),
@@ -111,7 +134,23 @@ pub fn build_revolute_constraint(
         .unwrap();
 
     let xyz = closing_joint_2.origin.xyz;
-    let rpy = closing_joint_2.origin.rpy;
+    // let rpy = closing_joint_2.origin.rpy;
+    let rpy: Vec<f64> = closing_joint_2
+        .origin
+        .rpy
+        .0
+        .clone()
+        .iter_mut()
+        .map(|x| {
+            let values_to_check = [PI, -PI, PI / 2., -PI / 2., 0.];
+            for v in values_to_check {
+                if (*x - v).abs() < 1e-3 {
+                    *x = v;
+                }
+            }
+            *x
+        })
+        .collect();
     let iso_to_body2 = Isometry3::from_parts(
         Translation3::new(xyz[0], xyz[1], xyz[2]),
         UnitQuaternion::from_euler_angles(rpy[0], rpy[1], rpy[2]),
