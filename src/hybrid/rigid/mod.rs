@@ -122,6 +122,11 @@ impl Rigid {
         self.visual.push((Visual::new_cuboid(w, d, h), iso, None));
     }
 
+    pub fn add_collision_cuboid_at(&mut self, com: &Vector3<Float>, w: Float, d: Float, h: Float) {
+        let iso = Isometry3::translation(com.x, com.y, com.z);
+        self.visual.push((Visual::new_cuboid(w, d, h), iso, None));
+    }
+
     pub fn add_point_at(&mut self, pos: &Vector3<Float>) {
         let iso = Isometry3::translation(pos.x, pos.y, pos.z);
         self.visual.push((Visual::new_point(), iso, None));
