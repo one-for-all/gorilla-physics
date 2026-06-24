@@ -222,28 +222,28 @@ impl Hybrid {
                 for (i_joint, (rigid, _joint)) in
                     izip!(articulated.bodies.iter(), articulated.joints.iter()).enumerate()
                 {
-                    let mut cp_normal_list = vec![];
-                    for (collider, iso_collider_to_body, _color) in rigid.visual.iter() {
+                    let mut cp_normal_mu_list = vec![];
+                    for (collider, iso_collider_to_body, _color, mu) in rigid.visual.iter() {
                         let iso = rigid.pose.to_isometry() * iso_collider_to_body;
                         let collider_pos = iso.translation.vector;
 
                         match collider {
                             Visual::Point(_point) => {
                                 if halfspace.has_inside(&collider_pos) {
-                                    cp_normal_list.push((collider_pos, n));
+                                    cp_normal_mu_list.push((collider_pos, n, *mu));
                                 }
                             }
                             Visual::Sphere(sphere) => {
                                 if let Some(cp) =
                                     halfspace.intersect_sphere(&collider_pos, sphere.r)
                                 {
-                                    cp_normal_list.push((cp, n));
+                                    cp_normal_mu_list.push((cp, n, *mu));
                                 }
                             }
                             Visual::Cuboid(cuboid) => {
                                 for point in cuboid.points(&iso) {
                                     if halfspace.has_inside(&point) {
-                                        cp_normal_list.push((point, n));
+                                        cp_normal_mu_list.push((point, n, *mu));
                                     }
                                 }
                             }
@@ -255,7 +255,8 @@ impl Hybrid {
                     }
 
                     // Assemble all the contact constraint joint jacobians for this body
-                    for (cp, n) in cp_normal_list.iter() {
+                    for (cp, n, custom_mu) in cp_normal_mu_list.iter() {
+                        let mu = custom_mu.unwrap_or(mu);
                         let C = dual_friction_cone_multipler(&n, mu);
                         let mut J = Matrix3xX::zeros(total_dof);
                         let H = articulated.total_jacobian_to_body(i_joint);
@@ -285,11 +286,12 @@ impl Hybrid {
                         izip!(articulated2.bodies.iter(), articulated2.joints.iter()).enumerate()
                     {
                         let mut cp_normals_list = vec![];
-                        for (collider, iso_collider_to_body, _color) in rigid.visual.iter() {
+                        for (collider, iso_collider_to_body, _color, _mu) in rigid.visual.iter() {
                             let iso = rigid.pose.to_isometry() * iso_collider_to_body;
                             let collider_pos = iso.translation.vector;
 
-                            for (collider2, iso_collider_to_body2, _color2) in rigid2.visual.iter()
+                            for (collider2, iso_collider_to_body2, _color2, _mu2) in
+                                rigid2.visual.iter()
                             {
                                 let iso2 = rigid2.pose.to_isometry() * iso_collider_to_body2;
                                 let collider_pos2 = iso2.translation.vector;
@@ -354,7 +356,7 @@ impl Hybrid {
                 let dof = articulated.dof();
                 for (i_joint, rigid) in articulated.bodies.iter().enumerate() {
                     let mut cp_normal_list = vec![];
-                    for (collider, iso_collider_to_body, _color) in rigid.visual.iter() {
+                    for (collider, iso_collider_to_body, _color, _mu) in rigid.visual.iter() {
                         let iso = rigid.pose.to_isometry() * iso_collider_to_body;
 
                         match collider {

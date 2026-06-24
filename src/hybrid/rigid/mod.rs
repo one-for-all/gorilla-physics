@@ -28,7 +28,12 @@ pub struct Rigid {
     pub pose: Pose,           // TODO: use Iso instead of Pose?
     pub twist: SpatialVector, // body velocity expressed in world frame
 
-    pub visual: Vec<(Visual, Isometry3<Float>, Option<Vector3<Float>>)>, // geometry and the isometry from geometry frame to body frame, and RGB color
+    pub visual: Vec<(
+        Visual,
+        Isometry3<Float>,
+        Option<Vector3<Float>>,
+        Option<Float>,
+    )>, // geometry and the isometry from geometry frame to body frame, and RGB color, and friction coefficient
 }
 
 impl Rigid {
@@ -80,7 +85,7 @@ impl Rigid {
         let iso = Isometry3::translation(com.x, com.y, com.z);
         rigid
             .visual
-            .push((Visual::Sphere(SphereGeometry { r }), iso, None));
+            .push((Visual::Sphere(SphereGeometry { r }), iso, None, None));
         rigid
     }
 
@@ -101,7 +106,9 @@ impl Rigid {
 
         let mut rigid = Rigid::new(inertia);
         let iso = Isometry3::translation(com.x, com.y, com.z);
-        rigid.visual.push((Visual::new_cuboid(w, d, h), iso, None));
+        rigid
+            .visual
+            .push((Visual::new_cuboid(w, d, h), iso, None, None));
         rigid
     }
 
@@ -111,7 +118,13 @@ impl Rigid {
 
     pub fn add_collision_sphere_at(&mut self, com: &Vector3<Float>, r: Float) {
         let iso = Isometry3::translation(com.x, com.y, com.z);
-        self.visual.push((Visual::new_sphere(r), iso, None));
+        self.visual.push((Visual::new_sphere(r), iso, None, None));
+    }
+
+    pub fn add_collision_sphere_with_mu_at(&mut self, com: &Vector3<Float>, r: Float, mu: Float) {
+        let iso = Isometry3::translation(com.x, com.y, com.z);
+        self.visual
+            .push((Visual::new_sphere(r), iso, None, Some(mu)));
     }
 
     pub fn add_cuboid_at(&mut self, com: &Vector3<Float>, m: Float, w: Float, d: Float, h: Float) {
@@ -119,17 +132,19 @@ impl Rigid {
         self.inertia += &inertia;
 
         let iso = Isometry3::translation(com.x, com.y, com.z);
-        self.visual.push((Visual::new_cuboid(w, d, h), iso, None));
+        self.visual
+            .push((Visual::new_cuboid(w, d, h), iso, None, None));
     }
 
     pub fn add_collision_cuboid_at(&mut self, com: &Vector3<Float>, w: Float, d: Float, h: Float) {
         let iso = Isometry3::translation(com.x, com.y, com.z);
-        self.visual.push((Visual::new_cuboid(w, d, h), iso, None));
+        self.visual
+            .push((Visual::new_cuboid(w, d, h), iso, None, None));
     }
 
     pub fn add_point_at(&mut self, pos: &Vector3<Float>) {
         let iso = Isometry3::translation(pos.x, pos.y, pos.z);
-        self.visual.push((Visual::new_point(), iso, None));
+        self.visual.push((Visual::new_point(), iso, None, None));
     }
 
     /// free-motion velocity in body frame
@@ -182,7 +197,7 @@ pub fn rigid_deformable_cd(
     dt: Float,
 ) -> Vec<(Vector3<Float>, UnitVector3<Float>, Vec<(usize, Float)>)> {
     let mut result = vec![];
-    for (collider, iso_collider_to_body, _color) in rigid.visual.iter() {
+    for (collider, iso_collider_to_body, _color, _mu) in rigid.visual.iter() {
         let iso = rigid.pose.to_isometry() * iso_collider_to_body;
         let collider_pos = iso.translation.vector;
 
@@ -297,7 +312,7 @@ pub fn rigid_cloth_ccd(
     dt: Float,
 ) -> Vec<(Vector3<Float>, UnitVector3<Float>, Vec<(usize, Float)>)> {
     let mut result = vec![];
-    for (collider, iso_collider_to_body, _color) in rigid.visual.iter() {
+    for (collider, iso_collider_to_body, _color, _mu) in rigid.visual.iter() {
         let iso = rigid.pose.to_isometry() * iso_collider_to_body;
 
         match collider {

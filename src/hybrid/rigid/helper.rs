@@ -39,7 +39,7 @@ pub fn build_rigid(frame: &str, link_name: &str, urdf: &Robot, meshes: &mut URDF
     if let Some(link_meshes) = meshes.meshes.remove(link_name) {
         for (mesh, iso, color) in link_meshes.into_iter() {
             body.visual
-                .push((Visual::RigidMesh(mesh), iso, Some(color)));
+                .push((Visual::RigidMesh(mesh), iso, Some(color), None));
         }
     }
     body
