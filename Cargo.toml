@@ -90,6 +90,10 @@ path = "examples/constraint_contact.rs"
 name = "unconstrained_qp"
 path = "examples/unconstrained_qp.rs"
 
+[[bin]]
+name = "profile"
+path = "examples/profile.rs"
+
 [dependencies]
 cfg-if = "1"
 itertools = "0.13.0"
