@@ -26,24 +26,55 @@ impl URDFMeshes {
 
     #[cfg(any(target_arch = "wasm32", rust_analyzer))]
     pub async fn new(urdf: &Robot) -> Self {
+        use futures::future::join_all;
+
+        // Collect the unique mesh files referenced by the URDF. Many visuals
+        // point at the same mesh (e.g. the four identical leg servos), so we
+        // fetch each file only once.
+        let mut bases: Vec<String> = Vec::new();
+        for link in urdf.links.iter() {
+            for visual in link.visual.iter() {
+                if let urdf_rs::Geometry::Mesh { filename, .. } = &visual.geometry {
+                    let path = filename.strip_prefix("package://assets/").unwrap();
+                    let base = path.strip_suffix(".stl").unwrap().to_string();
+                    if !bases.contains(&base) {
+                        bases.push(base);
+                    }
+                }
+            }
+        }
+
+        // Fetch all unique meshes concurrently rather than one at a time. Each
+        // fetch prefers the pre-gzipped `.obj.gz` (much smaller over the wire,
+        // since hosts don't gzip `.obj`), falling back to the raw `.obj` for
+        // consumers that don't ship `.gz` assets.
+        let buffers: Vec<Option<String>> = join_all(bases.iter().map(|base| async move {
+            let gz_fname = format!("mesh/{}.obj.gz", base);
+            match maybe_read_web_file_gz(&gz_fname).await {
+                Some(buffer) => Some(buffer),
+                None => {
+                    let local_fname = format!("mesh/{}.obj", base);
+                    maybe_read_web_file(&local_fname).await
+                }
+            }
+        }))
+        .await;
+
+        let buffer_by_base: HashMap<&str, &str> = bases
+            .iter()
+            .zip(buffers.iter())
+            .filter_map(|(base, buffer)| buffer.as_deref().map(|b| (base.as_str(), b)))
+            .collect();
+
         let mut meshes: HashMap<String, Vec<(RigidMesh, Isometry3<Float>, Vector3<Float>)>> =
             HashMap::new();
 
         for link in urdf.links.iter() {
             for visual in link.visual.iter() {
-                if let urdf_rs::Geometry::Mesh { filename, scale } = &visual.geometry {
+                if let urdf_rs::Geometry::Mesh { filename, .. } = &visual.geometry {
                     let path = filename.strip_prefix("package://assets/").unwrap();
                     let base = path.strip_suffix(".stl").unwrap();
-                    // Prefer the pre-gzipped mesh (much smaller over the wire,
-                    // since hosts don't gzip `.obj`), falling back to the raw
-                    // `.obj` for consumers that don't ship `.gz` assets.
-                    let gz_fname = format!("mesh/{}.obj.gz", base);
-                    let local_fname = format!("mesh/{}.obj", base);
-                    let buffer = match maybe_read_web_file_gz(&gz_fname).await {
-                        Some(buffer) => Some(buffer),
-                        None => maybe_read_web_file(&local_fname).await,
-                    };
-                    if let Some(buffer) = buffer {
+                    if let Some(&buffer) = buffer_by_base.get(base) {
                         let [r, p, y] = visual.origin.rpy.0;
                         let iso = Isometry3::from_parts(
                             Translation3::from(visual.origin.xyz.0),
@@ -62,7 +93,7 @@ impl URDFMeshes {
                         let color = vector![r, g, b];
 
                         meshes.entry(link.name.clone()).or_default().push((
-                            RigidMesh::new_from_obj(&buffer),
+                            RigidMesh::new_from_obj(buffer),
                             iso,
                             color,
                         ));
