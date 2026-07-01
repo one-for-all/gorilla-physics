@@ -10,7 +10,10 @@ pub struct URDFMeshes {
 
 #[cfg(any(target_arch = "wasm32", rust_analyzer))]
 use {
-    crate::interface::util::maybe_read_web_file, na::vector, na::Translation3, na::UnitQuaternion,
+    crate::interface::util::{maybe_read_web_file, maybe_read_web_file_gz},
+    na::vector,
+    na::Translation3,
+    na::UnitQuaternion,
     urdf_rs::Robot,
 };
 
@@ -31,8 +34,16 @@ impl URDFMeshes {
                 if let urdf_rs::Geometry::Mesh { filename, scale } = &visual.geometry {
                     let path = filename.strip_prefix("package://assets/").unwrap();
                     let base = path.strip_suffix(".stl").unwrap();
+                    // Prefer the pre-gzipped mesh (much smaller over the wire,
+                    // since hosts don't gzip `.obj`), falling back to the raw
+                    // `.obj` for consumers that don't ship `.gz` assets.
+                    let gz_fname = format!("mesh/{}.obj.gz", base);
                     let local_fname = format!("mesh/{}.obj", base);
-                    if let Some(buffer) = maybe_read_web_file(&local_fname).await {
+                    let buffer = match maybe_read_web_file_gz(&gz_fname).await {
+                        Some(buffer) => Some(buffer),
+                        None => maybe_read_web_file(&local_fname).await,
+                    };
+                    if let Some(buffer) = buffer {
                         let [r, p, y] = visual.origin.rpy.0;
                         let iso = Isometry3::from_parts(
                             Translation3::from(visual.origin.xyz.0),

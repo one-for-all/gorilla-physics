@@ -96,6 +96,7 @@ path = "examples/profile.rs"
 
 [dependencies]
 cfg-if = "1"
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 itertools = "0.13.0"
 nalgebra = { version = "0.33", features = [] }
 nalgebra-sparse = "0.10"

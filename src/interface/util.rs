@@ -40,6 +40,33 @@ pub async fn maybe_read_web_file(file_path: &str) -> Option<String> {
     buf
 }
 
+/// Read a gzip-compressed text file (e.g. `mesh/foo.obj.gz`) into a string,
+/// decompressing in-wasm. Returns `None` if the fetch fails or the response is
+/// not OK, so callers can fall back to fetching the uncompressed file.
+///
+/// GitHub Pages serves `.obj` files as `application/x-tgif`, which is not on its
+/// gzip content-type whitelist, so the raw meshes ship uncompressed. Fetching a
+/// pre-gzipped `.obj.gz` and inflating it here avoids that.
+pub async fn maybe_read_web_file_gz(file_path: &str) -> Option<String> {
+    use std::io::Read;
+
+    let window = window().expect("no global `window` exists");
+    let resp_value = JsFuture::from(window.fetch_with_str(file_path))
+        .await
+        .ok()?;
+    let resp: Response = resp_value.dyn_into().ok()?;
+    if !resp.ok() {
+        return None;
+    }
+    let buffer = JsFuture::from(resp.array_buffer().ok()?).await.ok()?;
+    let bytes = Uint8Array::new(&buffer).to_vec();
+
+    let mut decoder = flate2::read::GzDecoder::new(&bytes[..]);
+    let mut out = String::new();
+    decoder.read_to_string(&mut out).ok()?;
+    Some(out)
+}
+
 pub async fn read_web_file_bytes(file_path: &str) -> Vec<u8> {
     let window = window().expect("no global `window` exists");
 
