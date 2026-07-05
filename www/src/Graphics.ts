@@ -8,6 +8,7 @@ export class Graphics {
   renderer: THREE.WebGLRenderer;
   light: THREE.PointLight;
   controls: OrbitControls;
+  onResize?: () => void;
 
   constructor(showGrid: boolean = true) {
     this.scene = new THREE.Scene();
@@ -49,23 +50,65 @@ export class Graphics {
       this.scene.add(gridHelper);
     }
 
+    // Keep the canvas filling the #threejs container. On desktop a plain
+    // window 'resize' is enough, but on iOS Safari the container's height
+    // (100dvh) grows/shrinks as the browser toolbar hides/shows, and that
+    // does NOT reliably fire window 'resize' — it fires visualViewport
+    // 'resize'/'scroll' instead. If we miss those, the canvas stays shorter
+    // than the container and the page background shows through beneath it.
+    // So re-measure the container on all of these signals.
     let me = this;
-    function onWindowResize() {
-      let _view_div = document
-        .getElementById("threejs")
-        .getBoundingClientRect();
-      if (!!me.camera) {
-        me.camera.aspect = _view_div.width / _view_div.height;
-        me.camera.updateProjectionMatrix();
-        me.renderer.setSize(_view_div.width, _view_div.height);
-      }
+    let lastWidth = Math.round(view_div.width);
+    let lastHeight = Math.round(view_div.height);
+    let rafId = 0;
+
+    function applyResize() {
+      rafId = 0;
+      if (!me.camera) return;
+      const rect = document.getElementById("threejs").getBoundingClientRect();
+      const width = Math.round(rect.width);
+      const height = Math.round(rect.height);
+      // Skip redundant work: reallocating the drawing buffer on every event
+      // during the toolbar animation is expensive, so only resize when the
+      // measured size actually changes.
+      if (width === lastWidth && height === lastHeight) return;
+      lastWidth = width;
+      lastHeight = height;
+      me.camera.aspect = width / height;
+      me.camera.updateProjectionMatrix();
+      me.renderer.setSize(width, height);
     }
-    window.addEventListener("resize", onWindowResize, false);
+
+    // Collapse bursts of viewport events into a single resize per frame.
+    function scheduleResize() {
+      if (rafId) return;
+      rafId = requestAnimationFrame(applyResize);
+    }
+
+    this.onResize = scheduleResize;
+    window.addEventListener("resize", scheduleResize, false);
+    window.addEventListener("orientationchange", scheduleResize, false);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", scheduleResize);
+      window.visualViewport.addEventListener("scroll", scheduleResize);
+    }
 
     // Customize control's rotation axis
     this.camera.up.set(0, 0, 1);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = false;
+  }
+
+  dispose() {
+    if (this.onResize) {
+      window.removeEventListener("resize", this.onResize, false);
+      window.removeEventListener("orientationchange", this.onResize, false);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener("resize", this.onResize);
+        window.visualViewport.removeEventListener("scroll", this.onResize);
+      }
+      this.onResize = undefined;
+    }
   }
 
   render() {
