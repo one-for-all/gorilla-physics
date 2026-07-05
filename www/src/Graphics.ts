@@ -29,7 +29,8 @@ export class Graphics {
       ? Math.min(window.devicePixelRatio, 1.5)
       : 1;
     this.renderer.setPixelRatio(pixelRatio);
-    document.getElementById("threejs").appendChild(this.renderer.domElement);
+    const container = document.getElementById("threejs");
+    container.appendChild(this.renderer.domElement);
 
     let ambientLight = new THREE.AmbientLight(0x606060);
     // let ambientLight = new THREE.AmbientLight(0xffffff);
@@ -77,6 +78,9 @@ export class Graphics {
       me.camera.aspect = width / height;
       me.camera.updateProjectionMatrix();
       me.renderer.setSize(width, height);
+      // Repaint immediately so the freshly-sized (and just-cleared) buffer
+      // isn't left blank until the next sim-driven render frame.
+      me.renderer.render(me.scene, me.camera);
     }
 
     // Collapse bursts of viewport events into a single resize per frame.
