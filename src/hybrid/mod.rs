@@ -19,7 +19,7 @@ use crate::{
         control::{ArticulatedController, NullArticulatedController},
         deformable::deformable_deformable_ccd,
         rigid::{rigid_cloth_ccd, rigid_deformable_cd},
-        static_body::StaticBody,
+        static_body::{StaticBody, StaticCuboid},
         visual::{sphere_collide, Visual},
     },
     types::Float,
@@ -52,6 +52,7 @@ pub struct Hybrid {
 
     pub halfspaces: Vec<HalfSpace>,
     pub static_bodies: Vec<StaticBody>,
+    pub static_cuboids: Vec<StaticCuboid>,
 
     pub controllers: Vec<Box<dyn ArticulatedController>>,
 
@@ -83,6 +84,7 @@ impl Hybrid {
             cloths: vec![],
             halfspaces: vec![],
             static_bodies: vec![],
+            static_cuboids: vec![],
             controllers: vec![],
             gravity_enabled: true,
             friction_mu: 1.0,
@@ -124,6 +126,10 @@ impl Hybrid {
 
     pub fn add_static_body(&mut self, static_body: StaticBody) {
         self.static_bodies.push(static_body);
+    }
+
+    pub fn add_static_cuboid(&mut self, static_cuboid: StaticCuboid) {
+        self.static_cuboids.push(static_cuboid);
     }
 
     pub fn reset(&mut self) {
@@ -320,7 +326,7 @@ impl Hybrid {
                                         }
                                     }
                                     (Visual::Point(point), Visual::Cuboid(cuboid)) => {
-                                        // TODO: Point - Sphere collision detection
+                                        // TODO: Point - cuboid collision detection
                                     }
                                     _ => {
                                         // only handle sphere-sphere collision for now
@@ -384,6 +390,53 @@ impl Hybrid {
                         }
                     }
 
+                    // Add contact constraint jacobians
+                    for (cp, n) in cp_normal_list.iter() {
+                        let C = dual_friction_cone_multipler(&n, mu);
+                        let mut J = Matrix3xX::zeros(total_dof);
+                        let H = articulated.total_jacobian_to_body(i_joint);
+                        let X = spatial_to_linear_velocity_multiplier(&cp);
+                        J.view_mut((0, icol_arti), (3, dof)).copy_from(&(C * X * H));
+
+                        contact_Js.push(J);
+                    }
+                }
+                icol_arti += dof;
+            }
+        }
+
+        for static_cuboid in self.static_cuboids.iter() {
+            let mut icol_arti = offset_articulated;
+            for articulated in self.articulated.iter() {
+                let dof = articulated.dof();
+                for (i_joint, rigid) in articulated.bodies.iter().enumerate() {
+                    let mut cp_normal_list = vec![];
+                    for (collider, iso_collider_to_body, _color, _mu) in rigid.visual.iter() {
+                        let iso = rigid.pose.to_isometry() * iso_collider_to_body;
+                        let collider_pos = iso.translation.vector;
+
+                        match collider {
+                            Visual::Sphere(sphere) => {
+                                let sphere_center = iso.translation.vector;
+                                if let Some((cp, n)) = sphere_cuboid_collide(
+                                    &collider_pos,
+                                    &sphere,
+                                    &static_cuboid.iso,
+                                    &static_cuboid.geom,
+                                ) {
+                                    cp_normal_list.push((cp, -n));
+                                }
+                            }
+                            Visual::Point(_point) => {
+                                // if let Some((cp, n)) = cuboid_point_collide() {
+                                //     cp_normal_list.push((cp, n));
+                                // }
+                            }
+                            _ => {
+                                // panic!("not implemented yet");
+                            }
+                        }
+                    }
                     // Add contact constraint jacobians
                     for (cp, n) in cp_normal_list.iter() {
                         let C = dual_friction_cone_multipler(&n, mu);
