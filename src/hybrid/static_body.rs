@@ -195,4 +195,47 @@ mod static_body_tests {
             state.pop_articulated();
         }
     }
+
+    #[test]
+    fn cuboid_point_collision() {
+        // Arrange
+        let mut state = Hybrid::empty();
+        let cuboid_h = 0.1;
+
+        let cuboid_x = 1.0;
+        let cuboid_z = 0.5;
+        state.add_static_cuboid(StaticCuboid::new(
+            1.,
+            1.,
+            cuboid_h,
+            Isometry3::translation(cuboid_x, 0., cuboid_z),
+        ));
+        let mut rng = rng();
+
+        for _ in 0..5 {
+            let x = cuboid_x + rng.random_range(-0.2..0.2);
+            let y = rng.random_range(-0.2..0.2);
+            let z = cuboid_z + cuboid_h / 2. + rng.random_range((0.)..0.2);
+            let point = Articulated::new_point_at("sphere", 1.0, &vector![x, y, z]);
+            state.add_articulated(point);
+
+            // Act
+
+            let final_time = 0.5;
+            let dt = 1e-3;
+            let num_steps = (final_time / dt) as usize;
+            for _s in 0..num_steps {
+                state.step(dt, &vec![]);
+            }
+
+            // Assert
+            let body_v = state.articulated[0].body_twists()[0];
+            assert_vec_close!(body_v.linear, Vector3::<Float>::zeros(), 1e-3);
+            let body_pos = state.articulated[0].bodies[0].pose.translation;
+            assert_vec_close!(body_pos, vector![x, y, cuboid_z + cuboid_h / 2.], 1e-2);
+
+            // Clean up
+            state.pop_articulated();
+        }
+    }
 }

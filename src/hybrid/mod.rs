@@ -14,7 +14,8 @@ use crate::{
         articulated::Articulated,
         cloth::Cloth,
         collision::{
-            mesh_cuboid_collide, mesh_point_collide, mesh_sphere_collide, sphere_cuboid_collide,
+            cuboid_point_collide, mesh_cuboid_collide, mesh_point_collide, mesh_sphere_collide,
+            sphere_cuboid_collide,
         },
         control::{ArticulatedController, NullArticulatedController},
         deformable::deformable_deformable_ccd,
@@ -417,7 +418,6 @@ impl Hybrid {
 
                         match collider {
                             Visual::Sphere(sphere) => {
-                                let sphere_center = iso.translation.vector;
                                 if let Some((cp, n)) = sphere_cuboid_collide(
                                     &collider_pos,
                                     &sphere,
@@ -428,9 +428,13 @@ impl Hybrid {
                                 }
                             }
                             Visual::Point(_point) => {
-                                // if let Some((cp, n)) = cuboid_point_collide() {
-                                //     cp_normal_list.push((cp, n));
-                                // }
+                                if let Some((cp, n)) = cuboid_point_collide(
+                                    &static_cuboid.iso,
+                                    &static_cuboid.geom,
+                                    &collider_pos,
+                                ) {
+                                    cp_normal_list.push((cp, n));
+                                }
                             }
                             _ => {
                                 // panic!("not implemented yet");

@@ -54,6 +54,42 @@ pub fn sphere_cuboid_collide(
     ))
 }
 
+/// Return the contact point, and contact normal outward from the cuboid, if in contact
+pub fn cuboid_point_collide(
+    cuboid_iso: &Isometry3<Float>,
+    cuboid_geometry: &CuboidGeometry,
+    point: &Vector3<Float>,
+) -> Option<(Vector3<Float>, UnitVector3<Float>)> {
+    let half = cuboid_geometry.half_extents();
+
+    // Transform point into cuboid-local space
+    let local_point = cuboid_iso
+        .inverse_transform_point(&Point3::from(*point))
+        .coords;
+
+    // Early-out AABB check
+    if local_point.x.abs() > half.x || local_point.y.abs() > half.y || local_point.z.abs() > half.z
+    {
+        return None;
+    }
+
+    // Point is inside the cuboid; find the face of least penetration
+    let mut min_depth = Float::MAX;
+    let mut local_normal = Vector3::zeros();
+    for axis in 0..3 {
+        let depth = half[axis] - local_point[axis].abs();
+        if depth < min_depth {
+            min_depth = depth;
+            let mut n = Vector3::zeros();
+            n[axis] = if local_point[axis] >= 0. { 1. } else { -1. };
+            local_normal = n;
+        }
+    }
+
+    let normal_world = cuboid_iso.transform_vector(&local_normal);
+    Some((*point, UnitVector3::new_normalize(normal_world)))
+}
+
 /// Collision detection between mesh and sphere
 /// Returns a list of (contact point, normal) where normal points from mesh to sphere
 pub fn mesh_sphere_collide(
