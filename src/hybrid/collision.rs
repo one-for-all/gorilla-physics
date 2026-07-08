@@ -1,7 +1,7 @@
 use na::{Isometry3, Point3, UnitVector3, Vector3};
 
 use crate::{
-    collision::mesh::{closest_point_on_triangle, projected_barycentric_coord},
+    collision::mesh::{closest_point_on_triangle, projected_barycentric_coord, TriangleRegion},
     hybrid::visual::{rigid_mesh::RigidMesh, CuboidGeometry, SphereGeometry},
     types::Float,
 };
@@ -151,21 +151,60 @@ pub fn mesh_sphere_collide(
     let vertices = &mesh.vertices;
     let radius_sq = sphere_radius * sphere_radius;
 
+    // The mesh feature (in global vertex indices) that a closest point lies on
+    enum Feature {
+        Face([usize; 3]),
+        Edge(usize, usize),
+        Vertex(usize),
+    }
+
     // Only faces whose AABB overlaps the sphere's AABB can be in contact
     let r_vec = Vector3::repeat(sphere_radius);
-    let candidates = mesh
+    let mut candidates: Vec<(Vector3<Float>, Vector3<Float>, Feature)> = vec![];
+    for i_face in mesh
         .bvh
-        .collect_overlapping(&(sphere_center - r_vec), &(sphere_center + r_vec));
-    for i_face in candidates {
+        .collect_overlapping(&(sphere_center - r_vec), &(sphere_center + r_vec))
+    {
         let face = &mesh.faces[i_face];
         let v1 = vertices[face[0]];
         let v2 = vertices[face[1]];
         let v3 = vertices[face[2]];
 
         // Closest point on the triangle, handling vertex/edge/face regions
-        let closest_point = closest_point_on_triangle(sphere_center, &v1, &v2, &v3);
+        let (closest_point, region) = closest_point_on_triangle(sphere_center, &v1, &v2, &v3);
         let closest_point_to_sphere_center = sphere_center - closest_point;
         if closest_point_to_sphere_center.norm_squared() > radius_sq {
+            continue;
+        }
+
+        let feature = match region {
+            TriangleRegion::Face => Feature::Face(*face),
+            TriangleRegion::Edge(a, b) => Feature::Edge(face[a], face[b]),
+            TriangleRegion::Vertex(a) => Feature::Vertex(face[a]),
+        };
+        candidates.push((closest_point, closest_point_to_sphere_center, feature));
+    }
+
+    // Contact welding: a contact on an edge or vertex is redundant when an
+    // adjacent triangle already contacts the sphere on its interior, since
+    // that triangle owns the region around the shared feature; keeping the
+    // edge/vertex contact would add a duplicate with a tilted normal that
+    // pushes the sphere sideways on flat, triangulated surfaces. Contacts on
+    // boundary features (e.g. the rim of a table) have no such adjacent
+    // face contact and survive.
+    for (closest_point, diff, feature) in candidates.iter() {
+        let covered = match feature {
+            Feature::Face(_) => false,
+            Feature::Edge(i, j) => candidates.iter().any(|(_, _, f)| {
+                matches!(f, Feature::Face(vs) if vs.contains(i) && vs.contains(j))
+            }),
+            Feature::Vertex(i) => candidates.iter().any(|(_, _, f)| match f {
+                Feature::Face(vs) => vs.contains(i),
+                Feature::Edge(a, b) => a == i || b == i,
+                Feature::Vertex(_) => false,
+            }),
+        };
+        if covered {
             continue;
         }
 
@@ -178,8 +217,8 @@ pub fn mesh_sphere_collide(
             continue;
         }
 
-        let n = UnitVector3::new_normalize(closest_point_to_sphere_center);
-        cp_normal_list.push((closest_point, n));
+        let n = UnitVector3::new_normalize(*diff);
+        cp_normal_list.push((*closest_point, n));
     }
 
     cp_normal_list
