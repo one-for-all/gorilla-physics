@@ -54,6 +54,48 @@ pub fn sphere_cuboid_collide(
     ))
 }
 
+/// Return the contact point, and contact normal from sphere to cuboid, if in contact
+///
+/// World-frame variant of `sphere_cuboid_collide`: the closest point is built
+/// directly in world coordinates by projecting onto the cuboid's world-frame
+/// axes, instead of round-tripping the sphere center through the cuboid-local
+/// frame. This keeps the contact point numerically stable from frame to frame.
+pub fn sphere_cuboid_collide_world(
+    sphere_center: &Vector3<Float>,
+    sphere_geometry: &SphereGeometry,
+    cuboid_iso: &Isometry3<Float>,
+    cuboid_geometry: &CuboidGeometry,
+) -> Option<(Vector3<Float>, UnitVector3<Float>)> {
+    let half = cuboid_geometry.half_extents();
+    let r = sphere_geometry.r;
+
+    let cuboid_center = cuboid_iso.translation.vector;
+    let rotation = cuboid_iso.rotation.to_rotation_matrix();
+
+    // Vector from cuboid center to sphere center, in world frame
+    let d = sphere_center - cuboid_center;
+
+    // Closest point on the cuboid to the sphere center, accumulated in world
+    // frame: project d onto each cuboid axis, clamp to the half extent, and
+    // add the clamped extent along that world-frame axis.
+    let mut closest_world = cuboid_center;
+    for axis in 0..3 {
+        let u = rotation.matrix().column(axis);
+        let dist = d.dot(&u).clamp(-half[axis], half[axis]);
+        closest_world += dist * u;
+    }
+
+    let diff = closest_world - sphere_center;
+    let dist_sq = diff.norm_squared();
+
+    if dist_sq > r * r {
+        return None;
+    }
+
+    // Normal: from sphere center toward contact point
+    Some((closest_world, UnitVector3::new_normalize(diff)))
+}
+
 /// Return the contact point, and contact normal outward from the cuboid, if in contact
 pub fn cuboid_point_collide(
     cuboid_iso: &Isometry3<Float>,
@@ -230,6 +272,47 @@ mod collision_tests {
         types::Float,
         WORLD_FRAME,
     };
+
+    /// The world-frame variant agrees with the local-frame one on vertex,
+    /// edge, and face contacts of a rotated cuboid
+    #[test]
+    fn sphere_cuboid_collide_world_matches_local() {
+        use na::Isometry3;
+
+        use crate::hybrid::{
+            collision::{sphere_cuboid_collide, sphere_cuboid_collide_world},
+            visual::{CuboidGeometry, SphereGeometry},
+        };
+
+        let sphere = SphereGeometry { r: 1.0 };
+        let cuboid = CuboidGeometry {
+            w: 2.0,
+            d: 1.0,
+            h: 0.5,
+        };
+        let iso = Isometry3::new(vector![0.3, -0.2, 0.1], vector![0.4, 0.5, 0.6]);
+
+        // Sphere centers producing face, edge, vertex contacts, and a miss
+        let centers = [
+            vector![0.3, -0.2, 1.2], // near top face
+            vector![1.5, 0.5, 0.5],  // near an edge
+            vector![1.5, 0.9, 0.6],  // near a vertex
+            vector![5.0, 5.0, 5.0],  // no contact
+        ];
+
+        for center in centers.iter() {
+            let local = sphere_cuboid_collide(center, &sphere, &iso, &cuboid);
+            let world = sphere_cuboid_collide_world(center, &sphere, &iso, &cuboid);
+            match (local, world) {
+                (Some((cp_l, n_l)), Some((cp_w, n_w))) => {
+                    assert_vec_close!(cp_l, cp_w, 1e-9);
+                    assert_vec_close!(n_l, n_w, 1e-9);
+                }
+                (None, None) => {}
+                (l, w) => panic!("variants disagree: local={:?} world={:?}", l, w),
+            }
+        }
+    }
 
     /// collision between a halfspace and an articulated with point contacts
     #[test]

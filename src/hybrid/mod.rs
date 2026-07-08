@@ -6,10 +6,10 @@ use clarabel::{
     },
 };
 use itertools::izip;
-use na::{DMatrix, DVector, Matrix1xX, Matrix3xX, Vector3};
+use na::{vector, DMatrix, DVector, Matrix1xX, Matrix3xX, Vector3};
 
 use crate::{
-    collision::{cuboid, halfspace::HalfSpace},
+    collision::halfspace::HalfSpace,
     hybrid::{
         articulated::Articulated,
         cloth::Cloth,
@@ -28,7 +28,6 @@ use crate::{
         dual_friction_cone_multipler, spatial_to_linear_velocity_multiplier,
         spatial_vector_transform_multiplier,
     },
-    PI,
 };
 
 pub use deformable::Deformable;
@@ -245,6 +244,10 @@ impl Hybrid {
                                     halfspace.intersect_sphere(&collider_pos, sphere.r)
                                 {
                                     cp_normal_mu_list.push((cp, n, *mu));
+                                    // console_log(&format!(
+                                    //     "collision normal: {:?}, \ncp: {}",
+                                    //     n, cp
+                                    // ));
                                 }
                             }
                             Visual::Cuboid(cuboid) => {
@@ -441,6 +444,7 @@ impl Hybrid {
                             }
                         }
                     }
+                    // console_log(&format!("number of contacts: {}", cp_normal_list.len()));
                     // Add contact constraint jacobians
                     for (cp, n) in cp_normal_list.iter() {
                         let C = dual_friction_cone_multipler(&n, mu);
