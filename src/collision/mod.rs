@@ -13,6 +13,7 @@ pub mod gjk;
 pub mod halfspace;
 pub mod mesh;
 pub mod polytope;
+pub mod sized_halfspace;
 pub mod sphere;
 pub mod triangle;
 
