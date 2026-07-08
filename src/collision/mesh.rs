@@ -331,6 +331,70 @@ pub fn projected_barycentric_coord(
     (w1, w2, w3)
 }
 
+/// Computes the closest point to p on the triangle (a, b, c), handling the
+/// vertex, edge, and face regions.
+/// Ref: Real-Time Collision Detection, by Christer Ericson, section 5.1.5
+pub fn closest_point_on_triangle(
+    p: &Vector3<Float>,
+    a: &Vector3<Float>,
+    b: &Vector3<Float>,
+    c: &Vector3<Float>,
+) -> Vector3<Float> {
+    let ab = b - a;
+    let ac = c - a;
+
+    // Vertex region a
+    let ap = p - a;
+    let d1 = ab.dot(&ap);
+    let d2 = ac.dot(&ap);
+    if d1 <= 0. && d2 <= 0. {
+        return *a;
+    }
+
+    // Vertex region b
+    let bp = p - b;
+    let d3 = ab.dot(&bp);
+    let d4 = ac.dot(&bp);
+    if d3 >= 0. && d4 <= d3 {
+        return *b;
+    }
+
+    // Edge region ab
+    let vc = d1 * d4 - d3 * d2;
+    if vc <= 0. && d1 >= 0. && d3 <= 0. {
+        let v = d1 / (d1 - d3);
+        return a + v * ab;
+    }
+
+    // Vertex region c
+    let cp = p - c;
+    let d5 = ab.dot(&cp);
+    let d6 = ac.dot(&cp);
+    if d6 >= 0. && d5 <= d6 {
+        return *c;
+    }
+
+    // Edge region ac
+    let vb = d5 * d2 - d1 * d6;
+    if vb <= 0. && d2 >= 0. && d6 <= 0. {
+        let w = d2 / (d2 - d6);
+        return a + w * ac;
+    }
+
+    // Edge region bc
+    let va = d3 * d6 - d5 * d4;
+    if va <= 0. && d4 - d3 >= 0. && d5 - d6 >= 0. {
+        let w = (d4 - d3) / ((d4 - d3) + (d5 - d6));
+        return b + w * (c - b);
+    }
+
+    // Face region
+    let denom = 1. / (va + vb + vc);
+    let v = vb * denom;
+    let w = vc * denom;
+    a + ab * v + ac * w
+}
+
 /// Returns (contact point, contact normal, barycentric coords) if vertex collides with face.
 pub fn vertex_face_collision(
     vertex: &Vector3<Float>,

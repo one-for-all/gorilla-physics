@@ -1,7 +1,7 @@
 use na::{Isometry3, Point3, UnitVector3, Vector3};
 
 use crate::{
-    collision::mesh::projected_barycentric_coord,
+    collision::mesh::{closest_point_on_triangle, projected_barycentric_coord},
     hybrid::visual::{rigid_mesh::RigidMesh, CuboidGeometry, SphereGeometry},
     types::Float,
 };
@@ -149,39 +149,31 @@ pub fn mesh_sphere_collide(
     }
 
     let vertices = &mesh.vertices;
-    for vertex in vertices.iter() {
-        if (vertex - sphere_center).norm() <= sphere_radius {
-            let n = UnitVector3::new_normalize(sphere_center - vertex);
-            let cp = vertex;
-            cp_normal_list.push((*cp, n));
-        }
-    }
-
+    let radius_sq = sphere_radius * sphere_radius;
     for face in mesh.faces.iter() {
         let v1 = vertices[face[0]];
         let v2 = vertices[face[1]];
         let v3 = vertices[face[2]];
-        let edge1 = v2 - v1;
-        let edge2 = v3 - v1;
 
-        let (w1, w2, w3) = projected_barycentric_coord(&sphere_center, &v1, &edge1, &edge2);
-
-        // Check if closest point is inside the face
-        if w1 < 0. || w2 < 0. || w3 < 0. {
+        // Closest point on the triangle, handling vertex/edge/face regions
+        let closest_point = closest_point_on_triangle(sphere_center, &v1, &v2, &v3);
+        let closest_point_to_sphere_center = sphere_center - closest_point;
+        if closest_point_to_sphere_center.norm_squared() > radius_sq {
             continue;
         }
 
-        // Check if closest point is close enough to the sphere
-        let closest_point = w1 * v1 + w2 * v2 + w3 * v3;
-        let closest_point_to_sphere_center = sphere_center - closest_point;
-        if closest_point_to_sphere_center.norm() <= sphere_radius {
-            let n = UnitVector3::new_normalize(closest_point_to_sphere_center);
-            let cp = closest_point;
-            cp_normal_list.push((cp, n));
+        // Skip duplicate contacts from adjacent faces sharing the vertex or
+        // edge that the closest point lies on
+        if cp_normal_list
+            .iter()
+            .any(|(cp, _): &(Vector3<Float>, _)| (cp - closest_point).norm_squared() < 1e-12)
+        {
+            continue;
         }
-    }
 
-    // TODO: sphere - edge collision detection
+        let n = UnitVector3::new_normalize(closest_point_to_sphere_center);
+        cp_normal_list.push((closest_point, n));
+    }
 
     cp_normal_list
 }
@@ -221,7 +213,7 @@ pub fn mesh_point_collide(
 
         // check if point is close to the face
         // TODO: do ccd to avoid the passing through case
-        if (point - closest_point).norm() < tol {
+        if (point - closest_point).norm_squared() < tol * tol {
             let normal = UnitVector3::new_normalize(edge1.cross(&edge2)); // outward normal of the face
             return Some((*point, normal));
         }
@@ -237,7 +229,7 @@ pub fn mesh_cuboid_collide(
     cuboid_geometry: &CuboidGeometry,
 ) -> Vec<(Vector3<Float>, UnitVector3<Float>)> {
     let mut cp_normal_list = vec![];
-    let tol = 1e-2;
+    let tol = 1e-3;
 
     // Early-out: contact requires a cuboid corner within tol of a mesh face,
     // so the cuboid's world-frame AABB must overlap the mesh AABB inflated by
@@ -256,7 +248,21 @@ pub fn mesh_cuboid_collide(
     let vertices = &mesh.vertices;
 
     // cuboid point - mesh face
-    let cuboid_points = cuboid_geometry.points(cuboid_iso);
+    // Only corners within tol of the mesh AABB can contact a face; filter the
+    // rest out once instead of testing them against every face
+    let tol_sq = tol * tol;
+    let cuboid_points: Vec<Vector3<Float>> = cuboid_geometry
+        .points(cuboid_iso)
+        .into_iter()
+        .filter(|p| {
+            let closest = p.sup(&mesh.aabb_min).inf(&mesh.aabb_max);
+            (closest - p).norm_squared() <= tol_sq
+        })
+        .collect();
+    if cuboid_points.is_empty() {
+        return cp_normal_list;
+    }
+
     for face in mesh.faces.iter() {
         let v1 = vertices[face[0]];
         let v2 = vertices[face[1]];
@@ -276,7 +282,7 @@ pub fn mesh_cuboid_collide(
 
             // check if point is close to the face
             // TODO: do ccd to avoid the passing through case
-            if (point - closest_point).norm() < tol {
+            if (point - closest_point).norm_squared() < tol_sq {
                 let normal = UnitVector3::new_normalize(edge1.cross(&edge2)); // outward normal of the face
                 cp_normal_list.push((*point, normal));
             }
