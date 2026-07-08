@@ -1,6 +1,6 @@
 use na::{vector, Vector3};
 
-use crate::types::Float;
+use crate::{collision::bvh::Bvh, types::Float};
 
 #[derive(Clone, Debug)]
 pub struct RigidMesh {
@@ -12,6 +12,10 @@ pub struct RigidMesh {
     /// vertices are mutated.
     pub aabb_min: Vector3<Float>,
     pub aabb_max: Vector3<Float>,
+
+    /// AABB tree over the faces, used to prune per-face collision tests.
+    /// Kept in sync with the vertices by `recompute_aabb` as well.
+    pub bvh: Bvh,
 }
 
 impl RigidMesh {
@@ -88,13 +92,14 @@ impl RigidMesh {
             faces,
             aabb_min: Vector3::zeros(),
             aabb_max: Vector3::zeros(),
+            bvh: Bvh::default(),
         };
         mesh.recompute_aabb();
         mesh
     }
 
-    /// Recompute the cached axis-aligned bounding box from the vertices.
-    /// Call after any mutation of `vertices`.
+    /// Recompute the cached axis-aligned bounding box and rebuild the face
+    /// BVH from the vertices. Call after any mutation of `vertices`.
     pub fn recompute_aabb(&mut self) {
         let mut min = Vector3::repeat(Float::MAX);
         let mut max = Vector3::repeat(Float::MIN);
@@ -104,6 +109,7 @@ impl RigidMesh {
         }
         self.aabb_min = min;
         self.aabb_max = max;
+        self.bvh = Bvh::build(&self.vertices, &self.faces);
     }
 
     // Old more readable implemenation

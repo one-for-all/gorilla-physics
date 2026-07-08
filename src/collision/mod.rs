@@ -6,6 +6,7 @@ use polytope::Polytope;
 
 use crate::types::Float;
 
+pub mod bvh;
 pub mod ccd;
 pub mod cuboid;
 pub mod epa;

@@ -150,7 +150,14 @@ pub fn mesh_sphere_collide(
 
     let vertices = &mesh.vertices;
     let radius_sq = sphere_radius * sphere_radius;
-    for face in mesh.faces.iter() {
+
+    // Only faces whose AABB overlaps the sphere's AABB can be in contact
+    let r_vec = Vector3::repeat(sphere_radius);
+    let candidates = mesh
+        .bvh
+        .collect_overlapping(&(sphere_center - r_vec), &(sphere_center + r_vec));
+    for i_face in candidates {
+        let face = &mesh.faces[i_face];
         let v1 = vertices[face[0]];
         let v2 = vertices[face[1]];
         let v3 = vertices[face[2]];
@@ -194,7 +201,14 @@ pub fn mesh_point_collide(
     }
 
     let vertices = &mesh.vertices;
-    for face in mesh.faces.iter() {
+
+    // Only faces whose AABB overlaps the tol-inflated point can be in contact
+    let tol_vec = Vector3::repeat(tol);
+    let candidates = mesh
+        .bvh
+        .collect_overlapping(&(point - tol_vec), &(point + tol_vec));
+    for i_face in candidates {
+        let face = &mesh.faces[i_face];
         let v1 = vertices[face[0]];
         let v2 = vertices[face[1]];
         let v3 = vertices[face[2]];
@@ -263,7 +277,21 @@ pub fn mesh_cuboid_collide(
         return cp_normal_list;
     }
 
-    for face in mesh.faces.iter() {
+    // Only faces whose AABB overlaps the tol-inflated AABB of the surviving
+    // corners can be in contact
+    let mut qmin = Vector3::repeat(Float::MAX);
+    let mut qmax = Vector3::repeat(Float::MIN);
+    for point in cuboid_points.iter() {
+        qmin = qmin.inf(point);
+        qmax = qmax.sup(point);
+    }
+    let tol_vec = Vector3::repeat(tol);
+    let candidates = mesh
+        .bvh
+        .collect_overlapping(&(qmin - tol_vec), &(qmax + tol_vec));
+
+    for i_face in candidates {
+        let face = &mesh.faces[i_face];
         let v1 = vertices[face[0]];
         let v2 = vertices[face[1]];
         let v3 = vertices[face[2]];
