@@ -141,6 +141,13 @@ pub fn mesh_sphere_collide(
 ) -> Vec<(Vector3<Float>, UnitVector3<Float>)> {
     let mut cp_normal_list = vec![];
 
+    // Early-out: every contact point lies on the mesh, hence inside its AABB;
+    // no contact if the sphere center is farther than the radius from the AABB
+    let closest = sphere_center.sup(&mesh.aabb_min).inf(&mesh.aabb_max);
+    if (closest - sphere_center).norm_squared() > sphere_radius * sphere_radius {
+        return cp_normal_list;
+    }
+
     let vertices = &mesh.vertices;
     for vertex in vertices.iter() {
         if (vertex - sphere_center).norm() <= sphere_radius {
@@ -185,6 +192,15 @@ pub fn mesh_point_collide(
     mesh: &RigidMesh,
     point: &Vector3<Float>,
 ) -> Option<(Vector3<Float>, UnitVector3<Float>)> {
+    let tol = 1e-3;
+
+    // Early-out: contact requires the point to be within tol of a face, and
+    // every face lies inside the mesh AABB
+    let closest = point.sup(&mesh.aabb_min).inf(&mesh.aabb_max);
+    if (closest - point).norm_squared() > tol * tol {
+        return None;
+    }
+
     let vertices = &mesh.vertices;
     for face in mesh.faces.iter() {
         let v1 = vertices[face[0]];
@@ -205,7 +221,7 @@ pub fn mesh_point_collide(
 
         // check if point is close to the face
         // TODO: do ccd to avoid the passing through case
-        if (point - closest_point).norm() < 1e-3 {
+        if (point - closest_point).norm() < tol {
             let normal = UnitVector3::new_normalize(edge1.cross(&edge2)); // outward normal of the face
             return Some((*point, normal));
         }
@@ -221,6 +237,21 @@ pub fn mesh_cuboid_collide(
     cuboid_geometry: &CuboidGeometry,
 ) -> Vec<(Vector3<Float>, UnitVector3<Float>)> {
     let mut cp_normal_list = vec![];
+    let tol = 1e-2;
+
+    // Early-out: contact requires a cuboid corner within tol of a mesh face,
+    // so the cuboid's world-frame AABB must overlap the mesh AABB inflated by
+    // tol. The cuboid's AABB half-extent along each world axis is |R| * half.
+    let half = cuboid_geometry.half_extents();
+    let extent = cuboid_iso.rotation.to_rotation_matrix().matrix().abs() * half;
+    let center = cuboid_iso.translation.vector;
+    for axis in 0..3 {
+        if center[axis] - extent[axis] > mesh.aabb_max[axis] + tol
+            || center[axis] + extent[axis] < mesh.aabb_min[axis] - tol
+        {
+            return cp_normal_list;
+        }
+    }
 
     let vertices = &mesh.vertices;
 
@@ -245,7 +276,7 @@ pub fn mesh_cuboid_collide(
 
             // check if point is close to the face
             // TODO: do ccd to avoid the passing through case
-            if (point - closest_point).norm() < 1e-2 {
+            if (point - closest_point).norm() < tol {
                 let normal = UnitVector3::new_normalize(edge1.cross(&edge2)); // outward normal of the face
                 cp_normal_list.push((*point, normal));
             }

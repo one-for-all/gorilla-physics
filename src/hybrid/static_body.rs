@@ -27,6 +27,7 @@ impl StaticBody {
         for vertex in mesh.vertices.iter_mut() {
             *vertex = iso.transform_point(&Point3::from(*vertex)).coords;
         }
+        mesh.recompute_aabb();
         Self {
             mesh,
             show_visual: true,
@@ -37,12 +38,14 @@ impl StaticBody {
         for vertex in self.mesh.vertices.iter_mut() {
             *vertex = vertex.component_mul(&scale);
         }
+        self.mesh.recompute_aabb();
     }
 
     pub fn update_pose(&mut self, iso: Isometry3<Float>) {
         for vertex in self.mesh.vertices.iter_mut() {
             *vertex = iso.transform_point(&Point3::from(*vertex)).coords;
         }
+        self.mesh.recompute_aabb();
     }
 }
 

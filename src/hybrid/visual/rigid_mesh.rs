@@ -6,6 +6,12 @@ use crate::types::Float;
 pub struct RigidMesh {
     pub vertices: Vec<Vector3<Float>>,
     pub faces: Vec<[usize; 3]>,
+
+    /// Axis-aligned bounding box of the vertices, used for collision
+    /// early-outs. Must be kept in sync via `recompute_aabb` whenever the
+    /// vertices are mutated.
+    pub aabb_min: Vector3<Float>,
+    pub aabb_max: Vector3<Float>,
 }
 
 impl RigidMesh {
@@ -77,7 +83,27 @@ impl RigidMesh {
             i += 1;
         }
 
-        Self { vertices, faces }
+        let mut mesh = Self {
+            vertices,
+            faces,
+            aabb_min: Vector3::zeros(),
+            aabb_max: Vector3::zeros(),
+        };
+        mesh.recompute_aabb();
+        mesh
+    }
+
+    /// Recompute the cached axis-aligned bounding box from the vertices.
+    /// Call after any mutation of `vertices`.
+    pub fn recompute_aabb(&mut self) {
+        let mut min = Vector3::repeat(Float::MAX);
+        let mut max = Vector3::repeat(Float::MIN);
+        for v in self.vertices.iter() {
+            min = min.inf(v);
+            max = max.sup(v);
+        }
+        self.aabb_min = min;
+        self.aabb_max = max;
     }
 
     // Old more readable implemenation
