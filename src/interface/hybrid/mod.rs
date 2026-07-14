@@ -24,6 +24,7 @@ pub struct InterfaceHybrid {
 
 impl InterfaceHybrid {
     pub fn new(hybrid: Hybrid) -> Self {
+        console_error_panic_hook::set_once(); // Make panic messages show up in console
         Self { inner: hybrid }
     }
 }
