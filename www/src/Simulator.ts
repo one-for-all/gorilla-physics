@@ -54,7 +54,7 @@ export class Simulator {
   realtimeRatio: number = 0;
   rtrSmoothingWindow: number = 0.5; // seconds of wall time to average over
 
-  constructor(simulator: InterfaceSimulator, showGrid: boolean = true) {
+  constructor(simulator: InterfaceSimulator | null, showGrid: boolean = true) {
     this.simulator = simulator;
 
     this.massSpringDeformable = null;
