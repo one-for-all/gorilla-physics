@@ -14,8 +14,8 @@ use crate::{
         articulated::Articulated,
         cloth::Cloth,
         collision::{
-            cuboid_point_collide, mesh_cuboid_collide, mesh_point_collide, mesh_sphere_collide,
-            sphere_cuboid_collide,
+            cuboid_point_collide, mesh_cuboid_collide, mesh_halfspace_collide, mesh_point_collide,
+            mesh_sphere_collide, sphere_cuboid_collide,
         },
         control::{ArticulatedController, NullArticulatedController},
         deformable::deformable_deformable_ccd,
@@ -95,6 +95,36 @@ impl Hybrid {
 
     pub fn set_friction_mu(&mut self, mu: Float) {
         self.friction_mu = mu;
+    }
+
+    /// Tighten the contact solver's convergence tolerance.
+    ///
+    /// The default is fine at a coarse timestep, but the smaller the substep the
+    /// less the per-step gravity impulse stands out against the solver's own
+    /// tolerance, and what is left over is a residual velocity that a resting
+    /// body integrates into a slow creep across the ground. A body whose centre
+    /// of mass sits far from its link origin feels it first, since the resulting
+    /// off-diagonal mass terms make the solve harder to begin with.
+    ///
+    /// At dt = 1/3600 s, taking this from the default 1e-7 to 1e-10 cut the creep
+    /// of a 16 g part from 6 cm/hour to 0.06 mm/hour, and cost roughly 2x in the
+    /// contact solve -- hence opt-in rather than the default.
+    pub fn set_solver_tolerance(&mut self, tolerance: Float) {
+        let settings = DefaultSettingsBuilder::default()
+            .verbose(false)
+            .tol_gap_rel(tolerance)
+            .tol_gap_abs(tolerance)
+            .tol_feas(tolerance)
+            .build()
+            .unwrap();
+
+        // `step` rebuilds the solver from these settings on every call
+        let P = CscMatrix::identity(0);
+        let q = vec![];
+        let A = CscMatrix::identity(0);
+        let b = vec![];
+        let cones = vec![];
+        self.solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings).unwrap();
     }
 
     pub fn disable_gravity(&mut self) {
@@ -236,14 +266,14 @@ impl Hybrid {
                         match collider {
                             Visual::Point(_point) => {
                                 if halfspace.has_inside(&collider_pos) {
-                                    cp_normal_mu_list.push((collider_pos, n, *mu));
+                                    cp_normal_mu_list.push((collider_pos, *n, *mu));
                                 }
                             }
                             Visual::Sphere(sphere) => {
                                 if let Some(cp) =
                                     halfspace.intersect_sphere(&collider_pos, sphere.r)
                                 {
-                                    cp_normal_mu_list.push((cp, n, *mu));
+                                    cp_normal_mu_list.push((cp, *n, *mu));
                                     // console_log(&format!(
                                     //     "collision normal: {:?}, \ncp: {}",
                                     //     n, cp
@@ -253,13 +283,15 @@ impl Hybrid {
                             Visual::Cuboid(cuboid) => {
                                 for point in cuboid.points(&iso) {
                                     if halfspace.has_inside(&point) {
-                                        cp_normal_mu_list.push((point, n, *mu));
+                                        cp_normal_mu_list.push((point, *n, *mu));
                                     }
                                 }
                             }
 
-                            Visual::RigidMesh(_mesh) => {
-                                // println!("ignore collision detection between halfspace and articulated rigid mesh");
+                            Visual::RigidMesh(mesh) => {
+                                for (cp, normal) in mesh_halfspace_collide(mesh, &iso, halfspace) {
+                                    cp_normal_mu_list.push((cp, normal, *mu));
+                                }
                             }
                         }
                     }

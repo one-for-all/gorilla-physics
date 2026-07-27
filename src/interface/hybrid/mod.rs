@@ -27,6 +27,12 @@ impl InterfaceHybrid {
         console_error_panic_hook::set_once(); // Make panic messages show up in console
         Self { inner: hybrid }
     }
+
+    /// Mutable access to the wrapped scene, so downstream crates can add bodies
+    /// to a simulation that is already running.
+    pub fn hybrid_mut(&mut self) -> &mut Hybrid {
+        &mut self.inner
+    }
 }
 
 #[wasm_bindgen]

@@ -9,7 +9,7 @@ use itertools::izip;
 use na::{DMatrix, DVector, Matrix1xX, Matrix3, Matrix3xX};
 
 use crate::{
-    hybrid::{visual::Visual, Hybrid},
+    hybrid::{collision::mesh_halfspace_collide, visual::Visual, Hybrid},
     types::Float,
     util::{
         dual_friction_cone_multipler, friction_cone_multipler,
@@ -80,26 +80,27 @@ impl Hybrid {
                         match collider {
                             Visual::Point(_point) => {
                                 if halfspace.has_inside(&collider_pos) {
-                                    cp_normal_list.push((collider_pos, n));
+                                    cp_normal_list.push((collider_pos, *n));
                                 }
                             }
                             Visual::Sphere(sphere) => {
                                 if let Some(cp) =
                                     halfspace.intersect_sphere(&collider_pos, sphere.r)
                                 {
-                                    cp_normal_list.push((cp, n));
+                                    cp_normal_list.push((cp, *n));
                                 }
                             }
                             Visual::Cuboid(cuboid) => {
                                 for point in cuboid.points(&iso) {
                                     if halfspace.has_inside(&point) {
-                                        cp_normal_list.push((point, n));
+                                        cp_normal_list.push((point, *n));
                                     }
                                 }
                             }
 
-                            Visual::RigidMesh(_mesh) => {
-                                // println!("ignore collision detection between halfspace and articulated rigid mesh");
+                            Visual::RigidMesh(mesh) => {
+                                cp_normal_list
+                                    .extend(mesh_halfspace_collide(mesh, &iso, halfspace));
                             }
                         }
                     }
@@ -228,26 +229,27 @@ impl Hybrid {
                         match collider {
                             Visual::Point(_point) => {
                                 if halfspace.has_inside(&collider_pos) {
-                                    cp_normal_list.push((collider_pos, n));
+                                    cp_normal_list.push((collider_pos, *n));
                                 }
                             }
                             Visual::Sphere(sphere) => {
                                 if let Some(cp) =
                                     halfspace.intersect_sphere(&collider_pos, sphere.r)
                                 {
-                                    cp_normal_list.push((cp, n));
+                                    cp_normal_list.push((cp, *n));
                                 }
                             }
                             Visual::Cuboid(cuboid) => {
                                 for point in cuboid.points(&iso) {
                                     if halfspace.has_inside(&point) {
-                                        cp_normal_list.push((point, n));
+                                        cp_normal_list.push((point, *n));
                                     }
                                 }
                             }
 
-                            Visual::RigidMesh(_mesh) => {
-                                // println!("ignore collision detection between halfspace and articulated rigid mesh");
+                            Visual::RigidMesh(mesh) => {
+                                cp_normal_list
+                                    .extend(mesh_halfspace_collide(mesh, &iso, halfspace));
                             }
                         }
                     }
