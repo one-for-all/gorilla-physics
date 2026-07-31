@@ -49,6 +49,15 @@ impl InterfaceHybrid {
         self.inner.controllers[0].get_uart()
     }
 
+    /// UART output of the controller running articulated `i`.
+    ///
+    /// `get_uart` above answers for the first articulated, which is all a scene
+    /// built around one robot needs. A scene that gains robots at runtime has to
+    /// say which one it means -- as `reboot_code_controller` already does.
+    pub fn get_uart_at(&self, i: usize) -> String {
+        self.inner.controllers[i].get_uart()
+    }
+
     pub fn send_uart(&mut self, payload: &str) {
         self.inner.controllers[0].send_uart(payload);
     }
