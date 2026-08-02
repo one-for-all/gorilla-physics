@@ -28,7 +28,9 @@ pub struct RevoluteJoint {
     /// own diagonal of the mass matrix rather than to a body's spatial inertia.
     pub armature: Float,
 
-    /// Max static force that resists the motion of this joint, in Newtons
+    /// Max dry friction torque that resists the motion of this joint, in N*m.
+    /// The joint stays put while the torque driving it stays under this, and
+    /// gives up exactly this much torque to friction once it moves.
     pub static_friction: Float,
 }
 

@@ -718,9 +718,27 @@ impl Hybrid {
             icol_arti += dof;
         }
 
+        // Collect the joints that resist motion with dry friction, as the column
+        // of the joint's velocity within the stacked velocity, and its friction torque.
+        let mut friction_joints: Vec<(usize, Float)> = vec![];
+        let mut icol_arti = offset_articulated;
+        for articulated in self.articulated.iter() {
+            let offsets = articulated.offsets();
+            for (i_joint, joint) in articulated.joints.iter().enumerate() {
+                let friction = joint.static_friction();
+                if friction > 0. {
+                    // only single-dof joints carry friction, so one column each
+                    friction_joints.push((icol_arti + offsets[i_joint], friction));
+                }
+            }
+            icol_arti += articulated.dof();
+        }
+        let num_friction = friction_joints.len();
+
         // Set up and solve the optimization on the primal for the final velocity
-        // min_v,t 1/2 * (||v - v_free||_M)^2 + γ^T * t
-        //      s.t. Jv ∈ (K, ||Sv|| <= t)
+        // min_v,t 1/2 * (||v - v_free||_M)^2 + dt * γ^T * t
+        //      s.t. Jv ∈ K
+        //           |Sv| <= t, elementwise
         //  where
         //      v is the final velocity, t is the auxiliary variable for modeling static friction
         //      γ is the non-zero static friction on each joint
@@ -729,6 +747,19 @@ impl Hybrid {
         //      J is the Jacobian that maps system velocity to constraint space velocity
         //      K is the velocity constraint cone
         //      S is the selection matrix for non-zero static friction joints
+        //
+        // The friction term is the max-dissipation form of Coulomb friction: at the
+        // optimum t = |Sv|, so it contributes dt * Σ γ_j*|v_j|, whose subgradient puts
+        //      M(v - v_free) = -dt * γ*sign(v) + J^T*λ
+        // into the stationarity condition -- a torque of magnitude γ_j opposing motion
+        // once the joint slides, and anything within [-γ_j, γ_j] holding it still while
+        // it sticks. The dt turns that torque into an impulse, so both terms of the
+        // objective are energies; without it friction would grow as the step shrinks.
+        //
+        // Each joint gets its own t_j. One shared ||Sv|| <= t would couple them, letting
+        // a fast joint inflate t and pay for a second joint's motion. Per joint, |v_j| <=
+        // t_j is a pair of half-spaces, which is cheaper than a second order cone.
+        let num_var = total_dof + num_friction; // v, then one t per friction joint
 
         // Mass matrix needs to be computed per step because it depends on the current joint q
         let mut M: DMatrix<Float> = DMatrix::zeros(total_dof, total_dof);
@@ -761,13 +792,22 @@ impl Hybrid {
         }
 
         // Solve convex optimization to resolve contact
-        let P = CscMatrix::from(M.row_iter());
+        let P = if num_friction > 0 {
+            // t only ever enters the objective linearly, so its block of P is zero
+            let mut P_full: DMatrix<Float> = DMatrix::zeros(num_var, num_var);
+            P_full.view_mut((0, 0), (total_dof, total_dof)).copy_from(&M);
+            CscMatrix::from(P_full.row_iter())
+        } else {
+            CscMatrix::from(M.row_iter())
+        };
         let g = -v_free.transpose() * M;
-        let q: Vec<Float> = Vec::from(g.as_slice());
+        let mut q: Vec<Float> = Vec::from(g.as_slice());
+        q.extend(friction_joints.iter().map(|(_, friction)| friction * dt));
 
         let contact_dof: usize = contact_Js.len() * 3;
         let constraint_dof: usize = constraint_Js.iter().map(|j| j.shape().0).sum();
         let vel_constraint_dof: usize = vel_constraint_Js.len();
+        let friction_dof: usize = num_friction * 2; // two half-spaces per joint
 
         let mut rows: Vec<Matrix1xX<Float>> = vec![];
         for contact_J in contact_Js.iter() {
@@ -779,20 +819,38 @@ impl Hybrid {
         }
         rows.extend(vel_constraint_Js);
 
-        let A = if rows.len() > 0 {
-            let J = DMatrix::from_rows(&rows);
+        let A = if rows.len() + friction_dof > 0 {
+            let mut J: DMatrix<Float> = DMatrix::zeros(rows.len() + friction_dof, num_var);
+            for (irow, row) in rows.iter().enumerate() {
+                J.view_mut((irow, 0), (1, total_dof)).copy_from(row);
+            }
+            // |v_j| <= t_j, as the half-space pair v_j - t_j <= 0 and -v_j - t_j <= 0
+            for (i_friction, (icol_v, _)) in friction_joints.iter().enumerate() {
+                let irow = rows.len() + i_friction * 2;
+                let icol_t = total_dof + i_friction;
+                J[(irow, *icol_v)] = 1.;
+                J[(irow, icol_t)] = -1.;
+                J[(irow + 1, *icol_v)] = -1.;
+                J[(irow + 1, icol_t)] = -1.;
+            }
             CscMatrix::from(J.row_iter())
         } else {
-            CscMatrix::zeros((0, total_dof))
+            CscMatrix::zeros((0, num_var))
         };
         let b = vec![0.; A.m];
         let mut cones: Vec<SupportedConeT<Float>> = vec![SecondOrderConeT(3); contact_Js.len()];
-        assert_eq!(contact_dof + constraint_dof + vel_constraint_dof, A.m);
+        assert_eq!(
+            contact_dof + constraint_dof + vel_constraint_dof + friction_dof,
+            A.m
+        );
         if constraint_dof > 0 {
             cones.append(&mut vec![ZeroConeT(constraint_dof)]);
         }
         if vel_constraint_dof > 0 {
             cones.append(&mut vec![NonnegativeConeT(vel_constraint_dof)]);
+        }
+        if friction_dof > 0 {
+            cones.append(&mut vec![NonnegativeConeT(friction_dof)]);
         }
 
         self.solver =
@@ -800,7 +858,8 @@ impl Hybrid {
 
         let v_sol = if total_dof > 0 {
             self.solver.solve();
-            DVector::from(self.solver.solution.x.clone())
+            // drop the trailing friction slacks t, keeping the velocity
+            DVector::from(self.solver.solution.x[..total_dof].to_vec())
         } else {
             DVector::zeros(0)
         };
@@ -871,7 +930,7 @@ mod hybrid_tests {
     use na::{vector, DVector, Vector3};
 
     use crate::{
-        assert_vec_close,
+        assert_close, assert_vec_close,
         hybrid::{
             articulated::Articulated,
             builders::{
@@ -882,8 +941,9 @@ mod hybrid_tests {
         },
         joint::{Joint, JointPosition, JointVelocity},
         spatial::{pose::Pose, spatial_vector::SpatialVector, transform::Transform3D},
+        types::Float,
         util::{read_file, spatial_to_linear_velocity},
-        PI, WORLD_FRAME,
+        GRAVITY, PI, WORLD_FRAME,
     };
 
     #[test]
@@ -1145,6 +1205,96 @@ mod hybrid_tests {
         let v = bar4.twist;
         let origin = vector![0., 0., 0.];
         assert_vec_close!(spatial_to_linear_velocity(&v, &origin), [0., 0., 0.], 1e-4);
+    }
+
+    /// Dry friction should slow a joint down at exactly γ/I, then hold it at rest
+    /// instead of letting it run backwards.
+    #[test]
+    fn joint_friction_decelerates_and_stops() {
+        // Arrange
+        let mut state = Hybrid::empty();
+
+        let m = 1.0;
+        let r = 0.5;
+        let inertia = 2. / 5. * m * r * r; // sphere spinning about its own center
+        let friction = 0.2;
+        let v0 = 2.0;
+
+        let frame = "flywheel";
+        let body = Rigid::new_sphere(m, r, frame);
+        let joint =
+            Joint::new_revolute(Transform3D::identity(frame, WORLD_FRAME), Vector3::z_axis())
+                .with_static_friction(friction);
+        let mut articulated = Articulated::new(vec![body], vec![joint]);
+        articulated.set_joint_v(0, JointVelocity::Float(v0));
+        state.add_articulated(articulated);
+        state.disable_gravity();
+
+        let decel = friction / inertia;
+        let t_stop = v0 / decel;
+
+        // Act
+        let dt = 1e-3;
+        let num_steps = (2. * t_stop / dt) as usize;
+        for s in 0..num_steps {
+            state.step(dt, &vec![]);
+
+            // Assert - friction is a torque, so the impulse it removes each step
+            // scales with dt, making the deceleration independent of the timestep.
+            // The tolerance is for the one step that lands on the kink of |v|, where
+            // both half-spaces go active at once and the interior point solver is at
+            // its least accurate; every other step is exact to ~1e-9.
+            let t = (s + 1) as Float * dt;
+            let v_expected = (v0 - decel * t).max(0.);
+            assert_close!(state.articulated[0].v()[0], v_expected, 2e-4);
+        }
+
+        // Assert - it settles to a true stop rather than creeping or reversing
+        assert_close!(state.articulated[0].v()[0], 0., 1e-9);
+        // Assert - it swept the angle it takes to stop
+        assert_close!(
+            state.articulated[0].q()[0],
+            v0 * v0 / (2. * decel),
+            v0 * dt // discretization drift of the ramp down to zero
+        );
+    }
+
+    /// A joint stays put while the torque driving it stays under the friction limit,
+    /// and moves once it does not.
+    #[test]
+    fn joint_friction_holds_against_gravity() {
+        // Arrange
+        let m = 1.0;
+        let r = 0.05;
+        let l = 0.5;
+        let frame = "arm";
+        let gravity_torque = m * GRAVITY * l; // arm sticking straight out from the joint
+
+        let build = |friction: Float| {
+            let mut state = Hybrid::empty();
+            let body = Rigid::new_sphere_at(&vector![l, 0., 0.], m, r, frame);
+            let joint =
+                Joint::new_revolute(Transform3D::identity(frame, WORLD_FRAME), Vector3::y_axis())
+                    .with_static_friction(friction);
+            state.add_articulated(Articulated::new(vec![body], vec![joint]));
+            state
+        };
+        let mut stuck = build(1.5 * gravity_torque);
+        let mut slipping = build(0.5 * gravity_torque);
+
+        // Act
+        let final_time = 0.2;
+        let dt = 1e-3;
+        let num_steps = (final_time / dt) as usize;
+        for _s in 0..num_steps {
+            stuck.step(dt, &vec![]);
+            slipping.step(dt, &vec![]);
+        }
+
+        // Assert
+        assert_close!(stuck.articulated[0].v()[0], 0., 1e-6);
+        assert_close!(stuck.articulated[0].q()[0], 0., 1e-6);
+        assert!(slipping.articulated[0].q()[0].abs() > 0.1);
     }
 
     #[test]
