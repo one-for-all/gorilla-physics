@@ -189,6 +189,7 @@ impl Hybrid {
             controller.step(dt, articulated);
         }
 
+        // Solve for the free velocity of the system under no constraints
         let v_articulated: Vec<DVector<Float>> =
             izip!(self.articulated.iter_mut(), taus.into_iter())
                 .map(|(a, t)| a.free_velocity(dt, t, self.gravity_enabled))
@@ -203,7 +204,7 @@ impl Hybrid {
         let total_len = v_articulated.iter().map(|v| v.len()).sum::<usize>()
             + v_deformables.iter().map(|v| v.len()).sum::<usize>()
             + v_cloths.iter().map(|v| v.len()).sum::<usize>();
-        let v_star: DVector<Float> = DVector::from_iterator(
+        let v_free: DVector<Float> = DVector::from_iterator(
             total_len,
             v_articulated
                 .iter()
@@ -717,6 +718,18 @@ impl Hybrid {
             icol_arti += dof;
         }
 
+        // Set up and solve the optimization on the primal for the final velocity
+        // min_v,t 1/2 * (||v - v_free||_M)^2 + γ^T * t
+        //      s.t. Jv ∈ (K, ||Sv|| <= t)
+        //  where
+        //      v is the final velocity, t is the auxiliary variable for modeling static friction
+        //      γ is the non-zero static friction on each joint
+        //      v_free is free velocity under no constraints
+        //      M is the mass matrix
+        //      J is the Jacobian that maps system velocity to constraint space velocity
+        //      K is the velocity constraint cone
+        //      S is the selection matrix for non-zero static friction joints
+
         // Mass matrix needs to be computed per step because it depends on the current joint q
         let mut M: DMatrix<Float> = DMatrix::zeros(total_dof, total_dof);
 
@@ -749,7 +762,7 @@ impl Hybrid {
 
         // Solve convex optimization to resolve contact
         let P = CscMatrix::from(M.row_iter());
-        let g = -v_star.transpose() * M;
+        let g = -v_free.transpose() * M;
         let q: Vec<Float> = Vec::from(g.as_slice());
 
         let contact_dof: usize = contact_Js.len() * 3;

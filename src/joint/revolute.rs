@@ -27,6 +27,9 @@ pub struct RevoluteJoint {
     /// the joint but exerts no wrench on any body, so it adds to the joint's
     /// own diagonal of the mass matrix rather than to a body's spatial inertia.
     pub armature: Float,
+
+    /// Max static force that resists the motion of this joint, in Newtons
+    pub static_friction: Float,
 }
 
 impl RevoluteJoint {
@@ -38,6 +41,7 @@ impl RevoluteJoint {
             v: 0.,
             q: 0.,
             armature: 0.,
+            static_friction: 0.,
         }
     }
 
@@ -49,6 +53,7 @@ impl RevoluteJoint {
             v: 0.,
             q: 0.,
             armature: 0.,
+            static_friction: 0.,
         }
     }
 
@@ -61,6 +66,7 @@ impl RevoluteJoint {
             v: 0.,
             q: q,
             armature: 0.,
+            static_friction: 0.,
         }
     }
 

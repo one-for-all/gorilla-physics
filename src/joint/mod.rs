@@ -110,6 +110,20 @@ impl Joint {
         self
     }
 
+    /// Set the static friction (in Newtons) on this joint
+    pub fn with_static_friction(mut self, friction: Float) -> Self {
+        assert!(
+            friction >= 0.,
+            "static friction: {} must be non-negative",
+            friction
+        );
+        match &mut self {
+            Joint::RevoluteJoint(joint) => joint.static_friction = friction,
+            _ => panic!("armature is only supported on revolute joints"),
+        }
+        self
+    }
+
     pub fn new_revolute(transform: Transform3D, axis: UnitVector3<Float>) -> Self {
         Self::RevoluteJoint(RevoluteJoint::new(transform, axis))
     }
