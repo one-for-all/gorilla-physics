@@ -21,6 +21,12 @@ pub struct RevoluteJoint {
 
     pub v: Float, // velocity of this joint
     q: Float,     // position of this joint
+
+    /// Reflected inertia of the drivetrain driving this joint, i.e. the rotor
+    /// inertia seen through the gearbox (N^2 * J_rotor). It accelerates with
+    /// the joint but exerts no wrench on any body, so it adds to the joint's
+    /// own diagonal of the mass matrix rather than to a body's spatial inertia.
+    pub armature: Float,
 }
 
 impl RevoluteJoint {
@@ -31,6 +37,7 @@ impl RevoluteJoint {
             axis: Vector3::z_axis(),
             v: 0.,
             q: 0.,
+            armature: 0.,
         }
     }
 
@@ -41,6 +48,7 @@ impl RevoluteJoint {
             axis,
             v: 0.,
             q: 0.,
+            armature: 0.,
         }
     }
 
@@ -52,6 +60,7 @@ impl RevoluteJoint {
             axis,
             v: 0.,
             q: q,
+            armature: 0.,
         }
     }
 

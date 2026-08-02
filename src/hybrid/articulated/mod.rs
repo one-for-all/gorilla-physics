@@ -241,6 +241,11 @@ impl Articulated {
                 .view_mut((iindex, iindex), (idof, idof))
                 .copy_from(&Hii);
 
+            // A drivetrain's reflected rotor inertia accelerates with its own
+            // joint alone, so it couples to nothing else and only adds to that
+            // joint's diagonal. Armature is single-dof, hence the lone entry.
+            mass_matrix[(iindex, iindex)] += self.joints[i].armature();
+
             let mut j = i;
             let mut parent = self.parents[j];
             while parent != j {

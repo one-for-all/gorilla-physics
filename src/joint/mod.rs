@@ -91,6 +91,25 @@ impl Joint {
         }
     }
 
+    /// Reflected drivetrain inertia seen at this joint. Only single-dof joints
+    /// carry one, so it lands on a single diagonal entry of the mass matrix.
+    pub fn armature(&self) -> Float {
+        match self {
+            Joint::RevoluteJoint(joint) => joint.armature,
+            _ => 0.,
+        }
+    }
+
+    /// Attach a reflected drivetrain inertia to this joint, e.g. a servo's
+    /// motor rotor seen through its gearbox. Composes with any constructor.
+    pub fn with_armature(mut self, armature: Float) -> Self {
+        match &mut self {
+            Joint::RevoluteJoint(joint) => joint.armature = armature,
+            _ => panic!("armature is only supported on revolute joints"),
+        }
+        self
+    }
+
     pub fn new_revolute(transform: Transform3D, axis: UnitVector3<Float>) -> Self {
         Self::RevoluteJoint(RevoluteJoint::new(transform, axis))
     }
