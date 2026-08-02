@@ -725,7 +725,7 @@ impl Hybrid {
         for articulated in self.articulated.iter() {
             let offsets = articulated.offsets();
             for (i_joint, joint) in articulated.joints.iter().enumerate() {
-                let friction = joint.static_friction();
+                let friction = joint.dry_friction();
                 if friction > 0. {
                     // only single-dof joints carry friction, so one column each
                     friction_joints.push((icol_arti + offsets[i_joint], friction));
@@ -740,13 +740,13 @@ impl Hybrid {
         //      s.t. Jv ∈ K
         //           |Sv| <= t, elementwise
         //  where
-        //      v is the final velocity, t is the auxiliary variable for modeling static friction
-        //      γ is the non-zero static friction on each joint
+        //      v is the final velocity, t is the auxiliary variable for modeling dry friction
+        //      γ is the non-zero dry friction on each joint
         //      v_free is free velocity under no constraints
         //      M is the mass matrix
         //      J is the Jacobian that maps system velocity to constraint space velocity
         //      K is the velocity constraint cone
-        //      S is the selection matrix for non-zero static friction joints
+        //      S is the selection matrix for non-zero dry friction joints
         //
         // The friction term is the max-dissipation form of Coulomb friction: at the
         // optimum t = |Sv|, so it contributes dt * Σ γ_j*|v_j|, whose subgradient puts
@@ -1224,7 +1224,7 @@ mod hybrid_tests {
         let body = Rigid::new_sphere(m, r, frame);
         let joint =
             Joint::new_revolute(Transform3D::identity(frame, WORLD_FRAME), Vector3::z_axis())
-                .with_static_friction(friction);
+                .with_dry_friction(friction);
         let mut articulated = Articulated::new(vec![body], vec![joint]);
         articulated.set_joint_v(0, JointVelocity::Float(v0));
         state.add_articulated(articulated);
@@ -1275,7 +1275,7 @@ mod hybrid_tests {
             let body = Rigid::new_sphere_at(&vector![l, 0., 0.], m, r, frame);
             let joint =
                 Joint::new_revolute(Transform3D::identity(frame, WORLD_FRAME), Vector3::y_axis())
-                    .with_static_friction(friction);
+                    .with_dry_friction(friction);
             state.add_articulated(Articulated::new(vec![body], vec![joint]));
             state
         };

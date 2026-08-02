@@ -112,23 +112,23 @@ impl Joint {
 
     /// Dry friction limit resisting motion of this joint, i.e. the largest
     /// torque it can absorb before it starts to move.
-    pub fn static_friction(&self) -> Float {
+    pub fn dry_friction(&self) -> Float {
         match self {
-            Joint::RevoluteJoint(joint) => joint.static_friction,
+            Joint::RevoluteJoint(joint) => joint.dry_friction,
             _ => 0.,
         }
     }
 
-    /// Set the static friction (in N*m) on this joint
-    pub fn with_static_friction(mut self, friction: Float) -> Self {
+    /// Set the dry friction (in N*m) on this joint
+    pub fn with_dry_friction(mut self, friction: Float) -> Self {
         assert!(
             friction >= 0.,
-            "static friction: {} must be non-negative",
+            "dry friction: {} must be non-negative",
             friction
         );
         match &mut self {
-            Joint::RevoluteJoint(joint) => joint.static_friction = friction,
-            _ => panic!("static friction is only supported on revolute joints"),
+            Joint::RevoluteJoint(joint) => joint.dry_friction = friction,
+            _ => panic!("dry friction is only supported on revolute joints"),
         }
         self
     }

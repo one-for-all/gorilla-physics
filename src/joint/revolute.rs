@@ -31,7 +31,7 @@ pub struct RevoluteJoint {
     /// Max dry friction torque that resists the motion of this joint, in N*m.
     /// The joint stays put while the torque driving it stays under this, and
     /// gives up exactly this much torque to friction once it moves.
-    pub static_friction: Float,
+    pub dry_friction: Float,
 }
 
 impl RevoluteJoint {
@@ -43,7 +43,7 @@ impl RevoluteJoint {
             v: 0.,
             q: 0.,
             armature: 0.,
-            static_friction: 0.,
+            dry_friction: 0.,
         }
     }
 
@@ -55,7 +55,7 @@ impl RevoluteJoint {
             v: 0.,
             q: 0.,
             armature: 0.,
-            static_friction: 0.,
+            dry_friction: 0.,
         }
     }
 
@@ -68,7 +68,7 @@ impl RevoluteJoint {
             v: 0.,
             q: q,
             armature: 0.,
-            static_friction: 0.,
+            dry_friction: 0.,
         }
     }
 
