@@ -53,6 +53,16 @@ export class Simulator {
   wallTimeAccumulator: number = 0;
   realtimeRatio: number = 0;
   rtrSmoothingWindow: number = 0.5; // seconds of wall time to average over
+  // Wall time owed to the physics but not yet stepped. The step is fixed at
+  // 1/fps while frames arrive at whatever rate the display runs at, so the two
+  // only stay in step if the leftover is carried between frames.
+  stepAccumulator: number = 0;
+  // How far behind real time one frame is allowed to catch up. Without a cap, a
+  // frame that arrives late -- a backgrounded tab, a long compile -- owes more
+  // sim time than it can step before the next one is due, and every frame after
+  // it owes more still. Past this the backlog is dropped and realtimeRatio
+  // reports the shortfall.
+  maxCatchUpSteps: number = 5;
 
   constructor(simulator: InterfaceSimulator | null, showGrid: boolean = true) {
     this.simulator = simulator;
@@ -972,7 +982,9 @@ export class Simulator {
   ) {
     this.graphics.render();
 
-    // TODO: measure and use the actual time elapsed
+    // The physics step is fixed -- contacts are velocity-level and tolerances
+    // are tuned against it, so it is the frame count that varies with the wall
+    // clock below, never dt itself.
     const dt = 1 / this.fps;
 
     let control_input = new FloatArray(3);
@@ -1018,8 +1030,6 @@ export class Simulator {
     //   control_input[1] = 0.0;
     // }
 
-    // TODO: Currently some steps might take longer because of more computation.
-    // This results in inconsistent frame refresh rate. Make it consistent.
     let slow_motion_factor = 1; // create slow motion effect to better see the details of motion
 
     const wallElapsed =
@@ -1034,14 +1044,32 @@ export class Simulator {
       this.wallTimeAccumulator = 0;
     }
 
-    // if (timestamp - this.lastStepTime >= slow_motion_factor * 1000 * dt) {
-    if (true) {
-      this.simTimeAccumulator += dt;
+    // How much sim time this frame owes. Stepping dt per frame instead would tie
+    // the speed of the simulation to the refresh rate -- a 120 Hz display runs
+    // it at 2x, and realtimeRatio says so.
+    this.stepAccumulator += wallElapsed / slow_motion_factor;
+    const owed = Math.min(
+      Math.floor(this.stepAccumulator / dt),
+      this.maxCatchUpSteps,
+    );
+    // Whole steps only: the leftover stays on the accumulator for the next
+    // frame, which is what keeps the average right on a display whose frame
+    // interval is not a multiple of dt. Anything past the cap is time the
+    // simulation cannot buy back, so drop it rather than let it queue up.
+    this.stepAccumulator = Math.min(
+      this.stepAccumulator - owed * dt,
+      this.maxCatchUpSteps * dt,
+    );
+
+    if (owed > 0) {
+      this.simTimeAccumulator += owed * dt;
 
       if (this.hybrid) {
         let sub_dt = dt / n_substeps;
-        for (let i = 0; i < n_substeps; i++) {
-          this.hybrid.step(sub_dt, control_input as Float64Array);
+        for (let i = 0; i < owed; i++) {
+          for (let j = 0; j < n_substeps; j++) {
+            this.hybrid.step(sub_dt, control_input as Float64Array);
+          }
         }
         this.updateHybrid();
       }
