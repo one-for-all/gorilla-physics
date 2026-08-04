@@ -62,6 +62,15 @@ impl InterfaceHybrid {
         self.inner.controllers[0].send_uart(payload);
     }
 
+    /// Send `payload` to the controller running articulated `i`, as typing into
+    /// a serial monitor does.
+    ///
+    /// The counterpart of `get_uart_at`, and there for the same reason: a scene
+    /// that gains robots at runtime has to say which board it means.
+    pub fn send_uart_at(&mut self, i: usize, payload: &str) {
+        self.inner.controllers[i].send_uart(payload);
+    }
+
     pub fn reboot_code_controller(&mut self, i: usize, code: &str) {
         self.inner.controllers[i].reboot(code);
     }
