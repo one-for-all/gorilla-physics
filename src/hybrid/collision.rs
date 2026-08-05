@@ -448,18 +448,27 @@ pub fn mesh_halfspace_collide(
 
     // A polyhedron's deepest point below a plane is always a vertex, so testing
     // vertices alone finds every contact -- no face or edge pass needed.
-    for (index, vertex) in mesh.vertices.iter().enumerate() {
-        let offset = vertex - point;
-        let depth = offset.dot(&normal);
-        if depth > tol {
-            continue;
-        }
+    //
+    // Only the vertices inside the halfspace can score, and the BVH cuts the
+    // scan down to the faces reaching in: the slab a resting mesh has below the
+    // plane, rather than all of its vertices, which for a robot's visual mesh is
+    // tens of thousands. The faces it returns are a superset of the ones
+    // reaching in, and a vertex shared by several of them is simply scored more
+    // than once, so the support set is the same one the full scan finds.
+    for i_face in mesh.bvh.collect_below_plane(&normal, &point, tol) {
+        for index in mesh.faces[i_face] {
+            let offset = mesh.vertices[index] - point;
+            let depth = offset.dot(&normal);
+            if depth > tol {
+                continue;
+            }
 
-        keep_furthest(&mut support[0], index, -depth);
+            keep_furthest(&mut support[0], index, -depth);
 
-        let (along_t, along_b) = (offset.dot(&t), offset.dot(&b));
-        for (slot, (cos, sin)) in izip!(support[1..].iter_mut(), directions.iter()) {
-            keep_furthest(slot, index, along_t * cos + along_b * sin);
+            let (along_t, along_b) = (offset.dot(&t), offset.dot(&b));
+            for (slot, (cos, sin)) in izip!(support[1..].iter_mut(), directions.iter()) {
+                keep_furthest(slot, index, along_t * cos + along_b * sin);
+            }
         }
     }
 

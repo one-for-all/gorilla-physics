@@ -145,6 +145,59 @@ impl Bvh {
         }
         result
     }
+
+    /// Returns the indices of all faces reaching to within `tol` of the plane
+    /// through `point` with normal `normal`, on the side the normal points away
+    /// from -- i.e. every face that can hold a vertex inside that halfspace.
+    ///
+    /// The faces are a superset of the ones actually reaching in, since the test
+    /// is on AABBs, so a scan filtered through this stays exact.
+    pub fn collect_below_plane(
+        &self,
+        normal: &Vector3<Float>,
+        point: &Vector3<Float>,
+        tol: Float,
+    ) -> Vec<usize> {
+        let mut result = vec![];
+        if self.nodes.is_empty() {
+            return result;
+        }
+
+        // How far the deepest corner of an AABB reaches past the plane. That
+        // corner takes the min extent on the axes the normal points along and
+        // the max extent on the rest; if it clears the plane, the whole box does
+        let depth = |min: &Vector3<Float>, max: &Vector3<Float>| {
+            let mut corner = Vector3::zeros();
+            for axis in 0..3 {
+                corner[axis] = if normal[axis] >= 0. {
+                    min[axis]
+                } else {
+                    max[axis]
+                };
+            }
+            (corner - point).dot(normal)
+        };
+
+        let mut stack = vec![0];
+        while let Some(i) = stack.pop() {
+            let node = &self.nodes[i];
+            if depth(&node.aabb_min, &node.aabb_max) > tol {
+                continue;
+            }
+            if node.count > 0 {
+                for i_face in self.face_indices[node.start..node.start + node.count].iter() {
+                    let (min, max) = &self.face_aabbs[*i_face];
+                    if depth(min, max) <= tol {
+                        result.push(*i_face);
+                    }
+                }
+            } else {
+                stack.push(i + 1);
+                stack.push(node.right);
+            }
+        }
+        result
+    }
 }
 
 #[cfg(test)]
@@ -222,12 +275,90 @@ mod bvh_tests {
         }
     }
 
+    /// Plane queries return exactly the faces a brute-force test returns, and
+    /// in particular never drop a face holding a vertex below the plane
+    #[test]
+    fn plane_query_matches_brute_force() {
+        let mut rng = rng();
+
+        let num_faces = 200;
+        let mut vertices: Vec<Vector3<Float>> = vec![];
+        let mut faces = vec![];
+        for i in 0..num_faces {
+            let base = vector![
+                rng.random_range(-5.0..5.0),
+                rng.random_range(-5.0..5.0),
+                rng.random_range(-5.0..5.0)
+            ];
+            for _ in 0..3 {
+                vertices.push(
+                    base + vector![
+                        rng.random_range(-0.5..0.5),
+                        rng.random_range(-0.5..0.5),
+                        rng.random_range(-0.5..0.5)
+                    ],
+                );
+            }
+            faces.push([3 * i, 3 * i + 1, 3 * i + 2]);
+        }
+
+        let bvh = Bvh::build(&vertices, &faces);
+        let tol = 1e-8;
+
+        for _ in 0..100 {
+            let normal: Vector3<Float> = vector![
+                rng.random_range(-1.0..1.0),
+                rng.random_range(-1.0..1.0),
+                rng.random_range(-1.0..1.0)
+            ]
+            .normalize();
+            let point = vector![
+                rng.random_range(-6.0..6.0),
+                rng.random_range(-6.0..6.0),
+                rng.random_range(-6.0..6.0)
+            ];
+
+            let mut expected: Vec<usize> = faces
+                .iter()
+                .enumerate()
+                .filter(|(_, face)| {
+                    let min = vertices[face[0]].inf(&vertices[face[1]]).inf(&vertices[face[2]]);
+                    let max = vertices[face[0]].sup(&vertices[face[1]]).sup(&vertices[face[2]]);
+                    let mut corner = Vector3::zeros();
+                    for axis in 0..3 {
+                        corner[axis] = if normal[axis] >= 0. { min[axis] } else { max[axis] };
+                    }
+                    (corner - point).dot(&normal) <= tol
+                })
+                .map(|(i, _)| i)
+                .collect();
+
+            let mut actual = bvh.collect_below_plane(&normal, &point, tol);
+            expected.sort();
+            actual.sort();
+            assert_eq!(actual, expected);
+
+            // Every vertex below the plane is carried by a returned face
+            for (i, face) in faces.iter().enumerate() {
+                if face
+                    .iter()
+                    .any(|&v| (vertices[v] - point).dot(&normal) <= tol)
+                {
+                    assert!(actual.contains(&i));
+                }
+            }
+        }
+    }
+
     /// Building and querying an empty mesh does not panic
     #[test]
     fn empty_mesh() {
         let bvh = Bvh::build(&[], &[]);
         assert!(bvh
             .collect_overlapping(&Vector3::zeros(), &Vector3::zeros())
+            .is_empty());
+        assert!(bvh
+            .collect_below_plane(&Vector3::z(), &Vector3::zeros(), 1e-8)
             .is_empty());
     }
 }
