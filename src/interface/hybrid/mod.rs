@@ -33,6 +33,24 @@ impl InterfaceHybrid {
     pub fn hybrid_mut(&mut self) -> &mut Hybrid {
         &mut self.inner
     }
+
+    /// The material groups of a mesh visual, resolved against the visual's own
+    /// colour. Behind `visual_mesh_groups` and `visual_mesh_group_colors`, which
+    /// are two halves of this one answer and must not disagree about how many
+    /// groups there are.
+    fn mesh_draw_groups(
+        &self,
+        i: usize,
+        j: usize,
+        k: usize,
+    ) -> Vec<(usize, usize, Vector3<Float>)> {
+        let visual = &self.inner.articulated[i].bodies[j].visual[k];
+        let fallback = visual.2.unwrap_or(vector![1., 0., 0.]);
+        match &visual.0 {
+            Visual::RigidMesh(mesh) => mesh.draw_groups(fallback),
+            _ => panic!("visual is not a rigid mesh"),
+        }
+    }
 }
 
 #[wasm_bindgen]
@@ -174,6 +192,32 @@ impl InterfaceHybrid {
             }
             _ => panic!("visual is not a rigid mesh"),
         };
+    }
+
+    /// The mesh's material groups as `[start, count]` pairs, counted in *faces*.
+    ///
+    /// Empty for a mesh drawn in one colour -- i.e. anything but an OBJ that
+    /// named materials with `usemtl` -- in which case `visual_color` is the
+    /// whole story. When it is not empty the pairs cover every face, so the
+    /// renderer can hand each run its own material and still draw the mesh
+    /// whole. The mesh itself is undivided: one set of vertices, one collider.
+    pub fn visual_mesh_groups(&self, i: usize, j: usize, k: usize) -> Uint32Array {
+        let flat: Vec<usize> = self
+            .mesh_draw_groups(i, j, k)
+            .iter()
+            .flat_map(|(start, count, _color)| [*start, *count])
+            .collect();
+        toJsUint32Array!(flat)
+    }
+
+    /// The colour of each group `visual_mesh_groups` returned, as RGB triples.
+    pub fn visual_mesh_group_colors(&self, i: usize, j: usize, k: usize) -> Float32Array {
+        let flat: Vec<Float> = self
+            .mesh_draw_groups(i, j, k)
+            .iter()
+            .flat_map(|(_start, _count, color)| [color.x, color.y, color.z])
+            .collect();
+        toJsFloat32Array!(flat)
     }
 
     pub fn iso_visual_to_body(&self, i: usize, j: usize, k: usize) -> Float32Array {

@@ -28,7 +28,9 @@ declare module "./Simulator" {
       color: Float32Array,
       vertices: Float32Array,
       faces: Uint32Array,
-      offset: Matrix4,
+      offset?: Matrix4,
+      groups?: Uint32Array,
+      groupColors?: Float32Array,
     ): void;
   }
 }
@@ -77,6 +79,8 @@ Simulator.prototype.addHybrid = function (state: InterfaceHybrid) {
             vertices,
             faces,
             visual_offset,
+            state.visual_mesh_groups(i, j, k),
+            state.visual_mesh_group_colors(i, j, k),
           );
         } else if (visual_type == 3) {
           if (state.visual_show(i)) {
@@ -309,6 +313,8 @@ Simulator.prototype.addRigidMesh = function (
   vertices: Float32Array,
   faces: Uint32Array,
   offset: Matrix4 = new Matrix4(),
+  groups?: Uint32Array,
+  groupColors?: Float32Array,
 ) {
   const geometry = new BufferGeometry();
   geometry.setAttribute("position", new BufferAttribute(vertices, 3));
@@ -317,11 +323,36 @@ Simulator.prototype.addRigidMesh = function (
   geometry.setIndex(new BufferAttribute(faces, 1));
   geometry.computeVertexNormals();
 
-  let material = new MeshPhongMaterial({
-    side: DoubleSide, // Render both sides of faces
-    flatShading: true,
-  });
-  material.color.setRGB(color[0], color[1], color[2]);
+  const phong = (r: number, g: number, b: number) => {
+    const material = new MeshPhongMaterial({
+      side: DoubleSide, // Render both sides of faces
+      flatShading: true,
+    });
+    material.color.setRGB(r, g, b);
+    return material;
+  };
+
+  // A mesh that named its materials (an OBJ with `usemtl`, whose colours came
+  // out of the .mtl beside it) is drawn as one geometry split into groups, each
+  // with its own material. The geometry stays whole -- this is a drawing
+  // concern, and the mesh is still a single collider.
+  let material;
+  if (groups && groups.length > 0 && groupColors) {
+    material = [];
+    for (let g = 0; g < groups.length / 2; g++) {
+      // The groups count faces; addGroup counts indices, three to a face.
+      geometry.addGroup(groups[2 * g] * 3, groups[2 * g + 1] * 3, g);
+      material.push(
+        phong(
+          groupColors[3 * g],
+          groupColors[3 * g + 1],
+          groupColors[3 * g + 2],
+        ),
+      );
+    }
+  } else {
+    material = phong(color[0], color[1], color[2]);
+  }
 
   const mesh = new Mesh(geometry, material);
   mesh.frustumCulled = false; // prevent mesh from disappearing
