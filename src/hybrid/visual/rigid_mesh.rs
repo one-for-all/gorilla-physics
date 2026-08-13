@@ -50,6 +50,29 @@ fn close_group(groups: &mut [MeshGroup], faces: usize) {
     }
 }
 
+/// The next whitespace-delimited token at `p`, or `None` once the line has no
+/// more of them.
+///
+/// A `#` starts a comment, and it ends the line as far as the parser is
+/// concerned -- our own `.obj` assets annotate faces with them, as in
+/// `f 1 2 4 # front face`, so the comment words are emphatically not vertices.
+/// Hitting one leaves `p` where it was, so asking again keeps saying `None`.
+fn next_token(bytes: &[u8], p: &mut usize) -> Option<(usize, usize)> {
+    let n = bytes.len();
+    while *p < n && bytes[*p] == b' ' {
+        *p += 1;
+    }
+    let start = *p;
+    while *p < n && !matches!(bytes[*p], b' ' | b'\n' | b'\r') {
+        *p += 1;
+    }
+    if start == *p || bytes[start] == b'#' {
+        *p = start;
+        return None;
+    }
+    Some((start, *p))
+}
+
 impl RigidMesh {
     pub fn new_from_obj(content: &str) -> Self {
         let bytes = content.as_bytes();
@@ -74,24 +97,41 @@ impl RigidMesh {
                 let mut toks = [(0usize, 0usize); 3];
                 let mut t = 0;
                 while t < 3 {
-                    while p < n && bytes[p] == b' ' {
-                        p += 1;
+                    match next_token(bytes, &mut p) {
+                        Some(tok) => {
+                            toks[t] = tok;
+                            t += 1;
+                        }
+                        None => break,
                     }
-                    let start = p;
-                    while p < n && !matches!(bytes[p], b' ' | b'\n' | b'\r') {
-                        p += 1;
-                    }
-                    if p == start {
-                        break;
-                    }
-                    toks[t] = (start, p);
-                    t += 1;
                 }
 
                 if kind == b'v' {
                     let f = |(s, e): (usize, usize)| -> Float { content[s..e].parse().unwrap() };
                     vertices.push(vector![f(toks[0]), f(toks[1]), f(toks[2])]);
                 } else {
+                    // `faces` is triangles, and everything downstream of it --
+                    // the BVH, the contact path, the renderer -- reads it as
+                    // triangles. A quad or an n-gon has nowhere to go: taking
+                    // the first three tokens would quietly drop the rest of the
+                    // face and leave a hole in the mesh, which is far worse to
+                    // debug later than a refusal here. Triangulate first.
+                    let mut vertices_on_face = t;
+                    while next_token(bytes, &mut p).is_some() {
+                        vertices_on_face += 1;
+                    }
+                    if vertices_on_face != 3 {
+                        let mut end = i;
+                        while end < n && !matches!(bytes[end], b'\n' | b'\r') {
+                            end += 1;
+                        }
+                        panic!(
+                            "RigidMesh stores triangles, but this obj face has {} vertices: `{}`. Triangulate the mesh before loading it.",
+                            vertices_on_face,
+                            content[i..end].trim_end()
+                        );
+                    }
+
                     // TODO: Each element in face line in obj file could be of
                     // format x/y/z where x is vertex index, y is material
                     // index, and z is vertex normal index. Parse these as well.
@@ -289,6 +329,35 @@ f 1 2 4
         assert_eq!((mesh.groups[1].start, mesh.groups[1].count), (1, 2));
         // The OBJ names materials; it never says what colour they are.
         assert!(mesh.groups.iter().all(|group| group.color.is_none()));
+    }
+
+    /// A face with more than three vertices cannot be stored, only truncated,
+    /// so it is refused rather than silently losing part of the mesh.
+    #[test]
+    #[should_panic(expected = "this obj face has 4 vertices")]
+    fn new_from_obj_rejects_a_quad_face() {
+        RigidMesh::new_from_obj("v 0 0 0\nv 1 0 0\nv 1 1 0\nv 0 1 0\nf 1 2 3 4\n");
+    }
+
+    /// The same for a degenerate face, which would otherwise index vertex
+    /// `0 - 1` and wrap into nonsense.
+    #[test]
+    #[should_panic(expected = "this obj face has 2 vertices")]
+    fn new_from_obj_rejects_a_face_with_too_few_vertices() {
+        RigidMesh::new_from_obj("v 0 0 0\nv 1 0 0\nv 1 1 0\nf 1 2\n");
+    }
+
+    /// Our own `.obj` assets annotate faces with trailing comments, so a
+    /// comment must end the line rather than read as extra vertices -- every
+    /// face in `data/cube.obj` and `data/tetrahedron.obj` looks like this.
+    #[test]
+    fn new_from_obj_reads_a_triangle_annotated_with_a_comment() {
+        let mesh = RigidMesh::new_from_obj(
+            "v 0 0 0\nv 1 0 0\nv 1 1 0 # a corner\nf 1 2 3 # front face\n",
+        );
+
+        assert_eq!(mesh.vertices.len(), 3);
+        assert_eq!(mesh.faces, vec![[0, 1, 2]]);
     }
 
     /// An OBJ that names no materials is drawn in one colour, which is what an
