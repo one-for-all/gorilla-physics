@@ -38,6 +38,21 @@ pub trait ArticulatedController {
     }
 
     fn send_uart(&mut self, _payload: &str) {}
+
+    /// Press or release a switch wired to this controller's board, as a finger
+    /// on the real part would. Switches are numbered in the order the hardware
+    /// was assembled, which is the order the thing that built the controller
+    /// listed them in.
+    fn set_switch(&mut self, _switch: usize, _pressed: bool) {}
+
+    /// What is wrong with the hardware as it stands, if anything -- a wiring
+    /// fault that only the running firmware can reveal, such as a switch tied
+    /// to a pin the sketch has made an output. One message rather than a list,
+    /// for the same reason the wiring panel shows one: the next fault surfaces
+    /// as soon as this one is fixed.
+    fn hardware_warning(&self) -> Option<String> {
+        None
+    }
 }
 
 pub struct NullArticulatedController {}

@@ -71,6 +71,21 @@ impl InterfaceHybrid {
         self.inner.controllers[i].send_uart(payload);
     }
 
+    /// Press or release switch `switch` on the board running articulated `i`.
+    ///
+    /// The press is held until it is released: the controller drives the pin
+    /// from outside the chip, exactly as a finger holding a button down does.
+    pub fn set_switch_at(&mut self, i: usize, switch: usize, pressed: bool) {
+        self.inner.controllers[i].set_switch(switch, pressed);
+    }
+
+    /// What the hardware running articulated `i` has to warn about, if
+    /// anything. Polled: it depends on what the firmware has done to its pins,
+    /// so it changes as the sketch runs rather than at any one moment.
+    pub fn hardware_warning_at(&self, i: usize) -> Option<String> {
+        self.inner.controllers[i].hardware_warning()
+    }
+
     pub fn reboot_code_controller(&mut self, i: usize, code: &str) {
         self.inner.controllers[i].reboot(code);
     }
