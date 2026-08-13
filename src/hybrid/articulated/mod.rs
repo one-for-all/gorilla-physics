@@ -244,7 +244,12 @@ impl Articulated {
             // A drivetrain's reflected rotor inertia accelerates with its own
             // joint alone, so it couples to nothing else and only adds to that
             // joint's diagonal. Armature is single-dof, hence the lone entry.
-            mass_matrix[(iindex, iindex)] += self.joints[i].armature();
+            // A fixed joint has no row at all, and `indices` puts every one of
+            // them that follows the last moving joint at `dof` -- one past the
+            // end of the matrix -- so it has to be skipped rather than added 0.
+            if idof > 0 {
+                mass_matrix[(iindex, iindex)] += self.joints[i].armature();
+            }
 
             let mut j = i;
             let mut parent = self.parents[j];
