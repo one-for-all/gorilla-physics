@@ -5,6 +5,7 @@ use web_sys::js_sys::{Float32Array, Uint32Array};
 use crate::hybrid::articulated::Articulated;
 use crate::hybrid::builders::{build_cube_frenzy, build_gripper_cube, build_teddy};
 use crate::hybrid::control::{ArticulatedController, NullArticulatedController};
+use crate::hybrid::profile::PHASE_NAMES;
 use crate::hybrid::{visual::Visual, Deformable, Rigid};
 use crate::interface::util::read_web_file;
 use crate::joint::{Joint, JointPosition, JointVelocity};
@@ -61,6 +62,29 @@ impl InterfaceHybrid {
 
     pub fn time(&self) -> Float {
         self.inner.time
+    }
+
+    /// The names of the phases `profile_take` reports, comma-separated and in
+    /// the same order, so a caller never writes that order down a second time.
+    pub fn profile_labels(&self) -> String {
+        PHASE_NAMES.join(",")
+    }
+
+    /// What each phase of `step` has cost since this was last called: the
+    /// number of steps counted, then milliseconds per phase in `profile_labels`
+    /// order.
+    ///
+    /// Reading resets, so successive calls carve the run into windows -- poll
+    /// it on an interval and each answer describes the interval that just
+    /// ended. The step count leads because it is what makes the rest readable:
+    /// the same 8 ms means something different over 30 steps than over 3000,
+    /// and a window with no steps in it (a paused or backgrounded tab) is all
+    /// zeroes rather than a division by zero.
+    pub fn profile_take(&mut self) -> Float32Array {
+        let (totals, steps) = self.inner.profile.take();
+        let mut out = vec![steps as Float];
+        out.extend_from_slice(&totals);
+        toJsFloat32Array!(out)
     }
 
     pub fn get_uart(&self) -> String {

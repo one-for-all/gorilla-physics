@@ -19,6 +19,7 @@ use crate::{
         },
         control::{ArticulatedController, NullArticulatedController},
         deformable::deformable_deformable_ccd,
+        profile::{Phase, StepProfile},
         rigid::{rigid_cloth_ccd, rigid_deformable_cd},
         static_body::{StaticBody, StaticCuboid},
         visual::{sphere_collide, Visual},
@@ -41,6 +42,7 @@ pub mod control;
 pub mod deformable;
 pub mod experimental;
 pub mod mesh;
+pub mod profile;
 pub mod rigid;
 pub mod static_body;
 pub mod visual;
@@ -60,6 +62,10 @@ pub struct Hybrid {
     friction_mu: Float,
 
     solver: DefaultSolver,
+
+    /// What each phase of `step` is costing. Always accumulating; read and
+    /// reset through `InterfaceHybrid::profile_take`.
+    pub profile: StepProfile,
 
     pub time: Float, // total time since reset
 }
@@ -89,6 +95,7 @@ impl Hybrid {
             gravity_enabled: true,
             friction_mu: 1.0,
             solver,
+            profile: StepProfile::new(),
             time: 0.,
         }
     }
@@ -171,23 +178,29 @@ impl Hybrid {
 
     pub fn step(&mut self, dt: Float, input: &Vec<Float>) {
         self.time += dt;
+        // Each `mark` below closes one phase and opens the next, so the phases
+        // cover the whole of this function. See `hybrid::profile`.
+        self.profile.begin();
 
         // update jacobians and mass_matrix before-hand as cached result
         for articulated in self.articulated.iter_mut() {
             articulated.update_jacobians();
             articulated.update_mass_matrix();
         }
+        self.profile.mark(Phase::Kinematics);
 
         // Compute controller torques
         let taus: Vec<DVector<Float>> = izip!(self.controllers.iter_mut(), self.articulated.iter())
             .map(|(c, a)| c.control(a, input))
             .collect();
+        self.profile.mark(Phase::Control);
 
         // Step the controllers for time effect
         for (controller, articulated) in izip!(self.controllers.iter_mut(), self.articulated.iter())
         {
             controller.step(dt, articulated);
         }
+        self.profile.mark(Phase::Board);
 
         // Solve for the free velocity of the system under no constraints
         let v_articulated: Vec<DVector<Float>> =
@@ -222,6 +235,7 @@ impl Hybrid {
 
         let cloth_dof: usize = self.cloths.iter().map(|c| c.q.len()).sum();
         let total_dof = offset_cloth + cloth_dof;
+        self.profile.mark(Phase::FreeVelocity);
 
         // contact handling
         // reference: Contact Models in Robotics, 2024
@@ -605,6 +619,7 @@ impl Hybrid {
             }
             d1_offset += d1.dof();
         }
+        self.profile.mark(Phase::Collision);
 
         // Constraint handling
         let mut constraint_Js: Vec<DMatrix<Float>> = vec![]; // Jacobian from total v to constraint velocities (that need to be constrained to zero) in each constraint frame
@@ -734,6 +749,7 @@ impl Hybrid {
             icol_arti += articulated.dof();
         }
         let num_friction = friction_joints.len();
+        self.profile.mark(Phase::Constraints);
 
         // Set up and solve the optimization on the primal for the final velocity
         // min_v,t 1/2 * (||v - v_free||_M)^2 + dt * γ^T * t
@@ -855,6 +871,7 @@ impl Hybrid {
 
         self.solver =
             DefaultSolver::new(&P, &q, &A, &b, &cones, self.solver.settings().clone()).unwrap();
+        self.profile.mark(Phase::Assemble);
 
         let v_sol = if total_dof > 0 {
             self.solver.solve();
@@ -863,6 +880,7 @@ impl Hybrid {
         } else {
             DVector::zeros(0)
         };
+        self.profile.mark(Phase::Solve);
 
         // Update articulated velocities and poses
         let mut i = offset_articulated;
@@ -892,6 +910,8 @@ impl Hybrid {
             cloth.qdot = v;
             i += dof;
         }
+        self.profile.mark(Phase::Integrate);
+        self.profile.finish();
     }
 
     pub fn set_deformable_velocities(&mut self, vel: Vec<Vec<Vector3<Float>>>) {
