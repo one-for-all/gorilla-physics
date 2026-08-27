@@ -25,12 +25,12 @@ pub async fn createDesktop() -> InterfaceHybrid {
     let point = Articulated::new_point_at("point", 1.0, &vector![0.5, 0., 1.2]);
     state.add_articulated(point);
 
-    InterfaceHybrid { inner: state }
+    InterfaceHybrid::new(state)
 }
 
 #[wasm_bindgen]
 pub async fn createParallelBar() -> InterfaceHybrid {
     let state = build_parallel_bar_with_range_constraint();
 
-    InterfaceHybrid { inner: state }
+    InterfaceHybrid::new(state)
 }

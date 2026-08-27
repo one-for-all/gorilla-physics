@@ -63,6 +63,15 @@ export class Simulator {
   // it owes more still. Past this the backlog is dropped and realtimeRatio
   // reports the shortfall.
   maxCatchUpSteps: number = 5;
+  // Whether the physics is stopped. The scene still renders and still orbits --
+  // this is not a teardown -- but no sim time passes and nothing steps.
+  //
+  // It exists for work that has to share the main thread with the run loop. A
+  // scene with a robot in it spends most of each frame inside `hybrid.step`,
+  // and anything reading files or parsing a URDF between `await`s gets whatever
+  // is left over, which makes a job that took a second on an empty scene take
+  // ten on a busy one.
+  paused: boolean = false;
 
   constructor(simulator: InterfaceSimulator | null, showGrid: boolean = true) {
     this.simulator = simulator;
@@ -1035,6 +1044,18 @@ export class Simulator {
     const wallElapsed =
       this.lastWallTime === 0 ? 0 : (timestamp - this.lastWallTime) / 1000; // seconds
     this.lastWallTime = timestamp;
+
+    // Before the accumulators rather than after: paused time is time the
+    // simulation never owed, so it must not pile up on `stepAccumulator` to be
+    // caught up on resume, and it must not count against `realtimeRatio`.
+    // `lastWallTime` is up to date above, so the first frame back sees one
+    // frame's worth of elapsed time and no more.
+    if (this.paused) {
+      requestAnimationFrame((timestamp) =>
+        this.run(n_substeps, timestamp, keysPressed),
+      );
+      return;
+    }
 
     this.wallTimeAccumulator += wallElapsed;
     if (this.wallTimeAccumulator >= this.rtrSmoothingWindow) {

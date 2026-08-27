@@ -53,6 +53,92 @@ pub trait ArticulatedController {
     fn hardware_warning(&self) -> Option<String> {
         None
     }
+
+    /// The frame the emulated camera `camera` wants from the host right now,
+    /// or `None` while there is no camera there or its firmware has not
+    /// configured one. Cameras are numbered as the thing that built the
+    /// controller listed them, exactly as switches are.
+    ///
+    /// The request changes as the sketch runs -- `esp_camera_init` is what
+    /// programs a sensor -- so the host polls this rather than being told
+    /// once.
+    fn camera_request(&self, _camera: usize) -> Option<CameraFrameRequest> {
+        None
+    }
+
+    /// Hand camera `camera` its next picture, as tightly packed RGBA bytes
+    /// (`width * height * 4`, top row first) at the size the current
+    /// [`camera_request`](Self::camera_request) asked for. The controller owns
+    /// turning pixels into whatever its sensor puts on the wire.
+    fn supply_camera_frame(&mut self, _camera: usize, _rgba: &[u8]) {}
+
+    /// What the board's network wants of the host right now, taken away as
+    /// it is read.
+    ///
+    /// Polled like [`camera_request`](Self::camera_request), and for the same
+    /// reason: what a sketch does with a socket is the running firmware's
+    /// business, and there is no moment at which the host could be told once.
+    /// A board without a radio never asks for anything.
+    fn net_take_requests(&mut self) -> Vec<NetRequest> {
+        Vec::new()
+    }
+
+    /// Tell the board what became of connection `id`.
+    fn net_deliver(&mut self, _id: u32, _event: NetEvent) {}
+}
+
+/// What a board's firmware wants of the network.
+///
+/// The engine carries these without acting on them: it neither opens
+/// connections nor knows what one means. It is a conduit for the same reason
+/// [`CameraFrameRequest`] is -- the controller is a `Box<dyn>` inside a
+/// [`crate::hybrid::Hybrid`], so nothing downstream can reach the hardware it
+/// built.
+#[derive(Debug, Clone, PartialEq)]
+pub enum NetRequest {
+    /// Open a WebSocket to `ws://host:port/path`.
+    Open {
+        id: u32,
+        host: String,
+        port: u16,
+        path: String,
+    },
+    /// Send a message on connection `id`.
+    Send { id: u32, text: bool, data: Vec<u8> },
+    /// Close connection `id`.
+    Close { id: u32 },
+}
+
+/// What the host has to say back about a connection.
+#[derive(Debug, Clone, PartialEq)]
+pub enum NetEvent {
+    /// The connection is up, and not before: firmware told otherwise writes
+    /// into a hole.
+    Opened,
+    /// A message arrived.
+    Message { text: bool, data: Vec<u8> },
+    /// The connection is gone -- closed, refused, or never established.
+    Closed,
+}
+
+/// What an emulated camera is configured to produce -- everything a host
+/// needs to render and pack one frame for it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CameraFrameRequest {
+    pub format: CameraFrameFormat,
+    pub width: u32,
+    pub height: u32,
+    /// Frames per second the sensor is streaming at; supplying frames faster
+    /// than this is wasted work, since the stream picks up one per cycle.
+    pub fps: Float,
+}
+
+/// How the frame's pixels go on the wire.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum CameraFrameFormat {
+    Jpeg,
+    Rgb565,
+    Grayscale,
 }
 
 pub struct NullArticulatedController {}

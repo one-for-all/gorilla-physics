@@ -4,7 +4,7 @@ use web_sys::js_sys::{Float32Array, Uint32Array};
 
 use crate::hybrid::articulated::Articulated;
 use crate::hybrid::builders::{build_cube_frenzy, build_gripper_cube, build_teddy};
-use crate::hybrid::control::{ArticulatedController, NullArticulatedController};
+use crate::hybrid::control::{ArticulatedController, NetEvent, NetRequest, NullArticulatedController};
 use crate::hybrid::profile::PHASE_NAMES;
 use crate::hybrid::{visual::Visual, Deformable, Rigid};
 use crate::interface::util::read_web_file;
@@ -21,12 +21,18 @@ pub mod creator;
 #[wasm_bindgen]
 pub struct InterfaceHybrid {
     pub(crate) inner: Hybrid,
+    /// The network requests most recently taken off a controller, held so the
+    /// accessors below can read them apart. See `net_take_requests_at`.
+    net_staged: Vec<NetRequest>,
 }
 
 impl InterfaceHybrid {
     pub fn new(hybrid: Hybrid) -> Self {
         console_error_panic_hook::set_once(); // Make panic messages show up in console
-        Self { inner: hybrid }
+        Self {
+            inner: hybrid,
+            net_staged: Vec::new(),
+        }
     }
 
     /// Mutable access to the wrapped scene, so downstream crates can add bodies
@@ -126,6 +132,131 @@ impl InterfaceHybrid {
     /// so it changes as the sketch runs rather than at any one moment.
     pub fn hardware_warning_at(&self, i: usize) -> Option<String> {
         self.inner.controllers[i].hardware_warning()
+    }
+
+    /// What camera `camera` on the board running articulated `i` wants drawn
+    /// for it: `[format, width, height, fps]`, or empty while it wants
+    /// nothing. Format is 1 for JPEG, 2 for RGB565, 3 for grayscale.
+    ///
+    /// Polled, like `hardware_warning_at`: what a sensor is configured to
+    /// produce is the running firmware's doing, and changes when it calls
+    /// `esp_camera_init` -- or when a new sketch is flashed.
+    pub fn camera_request_at(&self, i: usize, camera: usize) -> Vec<u32> {
+        use crate::hybrid::control::CameraFrameFormat;
+        match self.inner.controllers[i].camera_request(camera) {
+            Some(request) => {
+                let format = match request.format {
+                    CameraFrameFormat::Jpeg => 1,
+                    CameraFrameFormat::Rgb565 => 2,
+                    CameraFrameFormat::Grayscale => 3,
+                };
+                vec![format, request.width, request.height, request.fps as u32]
+            }
+            None => vec![],
+        }
+    }
+
+    /// Hand camera `camera` on the board running articulated `i` its next
+    /// picture, as tightly packed RGBA (`width * height * 4`, top row first)
+    /// at the size the current request asked for. The controller packs it
+    /// into whatever its sensor puts on the wire; the firmware reads it out
+    /// through its own camera driver.
+    pub fn supply_camera_frame_at(&mut self, i: usize, camera: usize, rgba: &[u8]) {
+        self.inner.controllers[i].supply_camera_frame(camera, rgba);
+    }
+
+    /// Take everything the board running articulated `i` wants of the
+    /// network, and say how many things that was.
+    ///
+    /// A request is several values of different types -- a host, a port, a
+    /// payload -- so it is read back by the accessors below rather than
+    /// returned whole; `wasm_bindgen` has no way to hand over a list of
+    /// mixed records, and inventing a wire format for one caller would be a
+    /// second thing to keep in step. The requests stay here until the next
+    /// call takes their place.
+    pub fn net_take_requests_at(&mut self, i: usize) -> usize {
+        self.net_staged = self.inner.controllers[i].net_take_requests();
+        self.net_staged.len()
+    }
+
+    /// Which kind of request `n` is: 0 to open, 1 to send, 2 to close.
+    pub fn net_request_kind(&self, n: usize) -> u32 {
+        match self.net_staged[n] {
+            NetRequest::Open { .. } => 0,
+            NetRequest::Send { .. } => 1,
+            NetRequest::Close { .. } => 2,
+        }
+    }
+
+    /// The connection request `n` is about. Ids are never reused, so one the
+    /// host has forgotten stays forgotten.
+    pub fn net_request_id(&self, n: usize) -> u32 {
+        match self.net_staged[n] {
+            NetRequest::Open { id, .. } | NetRequest::Send { id, .. } | NetRequest::Close { id } => id,
+        }
+    }
+
+    /// The host to open, for a request of kind 0.
+    pub fn net_request_host(&self, n: usize) -> String {
+        match &self.net_staged[n] {
+            NetRequest::Open { host, .. } => host.clone(),
+            _ => String::new(),
+        }
+    }
+
+    /// The port to open, for a request of kind 0.
+    pub fn net_request_port(&self, n: usize) -> u32 {
+        match self.net_staged[n] {
+            NetRequest::Open { port, .. } => port as u32,
+            _ => 0,
+        }
+    }
+
+    /// The path to ask for, for a request of kind 0.
+    pub fn net_request_path(&self, n: usize) -> String {
+        match &self.net_staged[n] {
+            NetRequest::Open { path, .. } => path.clone(),
+            _ => String::new(),
+        }
+    }
+
+    /// Whether request `n`'s payload is text rather than binary.
+    pub fn net_request_is_text(&self, n: usize) -> bool {
+        match self.net_staged[n] {
+            NetRequest::Send { text, .. } => text,
+            _ => false,
+        }
+    }
+
+    /// The payload to send, for a request of kind 1.
+    pub fn net_request_data(&self, n: usize) -> Vec<u8> {
+        match &self.net_staged[n] {
+            NetRequest::Send { data, .. } => data.clone(),
+            _ => Vec::new(),
+        }
+    }
+
+    /// Connection `id` on articulated `i` is up. Not to be sent before it
+    /// really is: the firmware answers its own handshake on the strength of
+    /// this.
+    pub fn net_opened_at(&mut self, i: usize, id: u32) {
+        self.inner.controllers[i].net_deliver(id, NetEvent::Opened);
+    }
+
+    /// A message has arrived on connection `id` of articulated `i`.
+    pub fn net_message_at(&mut self, i: usize, id: u32, text: bool, data: &[u8]) {
+        self.inner.controllers[i].net_deliver(
+            id,
+            NetEvent::Message {
+                text,
+                data: data.to_vec(),
+            },
+        );
+    }
+
+    /// Connection `id` of articulated `i` is gone, however it went.
+    pub fn net_closed_at(&mut self, i: usize, id: u32) {
+        self.inner.controllers[i].net_deliver(id, NetEvent::Closed);
     }
 
     pub fn reboot_code_controller(&mut self, i: usize, code: &str) {
@@ -437,7 +568,7 @@ pub async fn createHybridSphereAndTetra() -> InterfaceHybrid {
     let v = vec![v, v, v, v];
     state.set_deformable_velocities(vec![v]);
 
-    InterfaceHybrid { inner: state }
+    InterfaceHybrid::new(state)
 }
 
 #[wasm_bindgen]
@@ -469,7 +600,7 @@ pub async fn createHybridCube() -> InterfaceHybrid {
     // let v = vec![v; 7];
     // state.set_deformable_velocities(vec![v]);
 
-    InterfaceHybrid { inner: state }
+    InterfaceHybrid::new(state)
 }
 
 #[wasm_bindgen]
@@ -490,7 +621,7 @@ pub async fn createPendulum() -> InterfaceHybrid {
 
     state.add_deformable(Deformable::new_cube(1e2));
 
-    InterfaceHybrid { inner: state }
+    InterfaceHybrid::new(state)
 }
 
 #[wasm_bindgen]
@@ -515,7 +646,7 @@ pub async fn createDoublePendulumAndCube() -> InterfaceHybrid {
 
     state.add_deformable(Deformable::new_cube(1e2));
 
-    InterfaceHybrid { inner: state }
+    InterfaceHybrid::new(state)
 }
 
 #[wasm_bindgen]
@@ -542,7 +673,7 @@ pub async fn createSphereCart() -> InterfaceHybrid {
     // let v = vec![v; 8];
     // state.set_deformable_velocities(vec![v]);
 
-    InterfaceHybrid { inner: state }
+    InterfaceHybrid::new(state)
 }
 
 #[wasm_bindgen]
@@ -587,14 +718,14 @@ pub async fn createCuboidCart() -> InterfaceHybrid {
     // let v = vec![v; 8];
     // state.set_deformable_velocities(vec![v]);
 
-    InterfaceHybrid { inner: state }
+    InterfaceHybrid::new(state)
 }
 
 #[wasm_bindgen]
 pub async fn createGripperHybrid() -> InterfaceHybrid {
     let state = build_gripper_cube();
 
-    InterfaceHybrid { inner: state }
+    InterfaceHybrid::new(state)
 }
 
 #[wasm_bindgen]
@@ -602,12 +733,12 @@ pub async fn createTeddy() -> InterfaceHybrid {
     let buf = read_web_file("teddy.vtk").await;
     let state = build_teddy(&buf);
 
-    InterfaceHybrid { inner: state }
+    InterfaceHybrid::new(state)
 }
 
 #[wasm_bindgen]
 pub async fn createCubeFrenzy() -> InterfaceHybrid {
     let state = build_cube_frenzy();
 
-    InterfaceHybrid { inner: state }
+    InterfaceHybrid::new(state)
 }
