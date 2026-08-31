@@ -199,9 +199,9 @@ pub fn mesh_sphere_collide(
     for (closest_point, diff, feature) in candidates.iter() {
         let covered = match feature {
             Feature::Face(_) => false,
-            Feature::Edge(i, j) => candidates.iter().any(|(_, _, f)| {
-                matches!(f, Feature::Face(vs) if vs.contains(i) && vs.contains(j))
-            }),
+            Feature::Edge(i, j) => candidates.iter().any(
+                |(_, _, f)| matches!(f, Feature::Face(vs) if vs.contains(i) && vs.contains(j)),
+            ),
             Feature::Vertex(i) => candidates.iter().any(|(_, _, f)| match f {
                 Feature::Face(vs) => vs.contains(i),
                 Feature::Edge(a, b) => a == i || b == i,
@@ -483,10 +483,7 @@ pub fn mesh_halfspace_collide(
             continue;
         }
         kept.push(vertex);
-        contacts.push((
-            (mesh_iso * Point3::from(vertex)).coords,
-            halfspace.normal,
-        ));
+        contacts.push(((mesh_iso * Point3::from(vertex)).coords, halfspace.normal));
     }
 
     contacts
@@ -593,7 +590,10 @@ mod collision_tests {
         let mut obj = String::new();
         for i in 0..=n {
             for j in 0..=n {
-                let (x, y) = (-0.5 + i as Float / n as Float, -0.5 + j as Float / n as Float);
+                let (x, y) = (
+                    -0.5 + i as Float / n as Float,
+                    -0.5 + j as Float / n as Float,
+                );
                 obj.push_str(&format!("v {x} {y} 0\n"));
             }
         }
@@ -661,8 +661,18 @@ mod collision_tests {
         let at = |i: usize, j: usize| i * (n + 1) + j + 1;
         for i in 0..n {
             for j in 0..n {
-                obj.push_str(&format!("f {} {} {}\n", at(i, j), at(i + 1, j), at(i + 1, j + 1)));
-                obj.push_str(&format!("f {} {} {}\n", at(i, j), at(i + 1, j + 1), at(i, j + 1)));
+                obj.push_str(&format!(
+                    "f {} {} {}\n",
+                    at(i, j),
+                    at(i + 1, j),
+                    at(i + 1, j + 1)
+                ));
+                obj.push_str(&format!(
+                    "f {} {} {}\n",
+                    at(i, j),
+                    at(i + 1, j + 1),
+                    at(i, j + 1)
+                ));
             }
         }
 
@@ -670,9 +680,15 @@ mod collision_tests {
         let m = 0.0157812;
         let com = vector![0.0025, -0.0256, 0.0102];
         let moment_com = Matrix3::new(
-            3.62346e-06, 7.4487e-08, -4.8746e-08,
-            7.4487e-08, 1.46159e-06, 4.94826e-07,
-            -4.8746e-08, 4.94826e-07, 4.45457e-06,
+            3.62346e-06,
+            7.4487e-08,
+            -4.8746e-08,
+            7.4487e-08,
+            1.46159e-06,
+            4.94826e-07,
+            -4.8746e-08,
+            4.94826e-07,
+            4.45457e-06,
         );
 
         let drift_of = |com: Vector3<Float>| {
@@ -689,7 +705,10 @@ mod collision_tests {
 
             let mut articulated = Articulated::new(
                 vec![body],
-                vec![Joint::new_floating(Transform3D::identity(frame, WORLD_FRAME))],
+                vec![Joint::new_floating(Transform3D::identity(
+                    frame,
+                    WORLD_FRAME,
+                ))],
             );
             // Set down a hair above the plane, the way a dropped robot is
             articulated.set_joint_q(
@@ -1057,6 +1076,3 @@ mod collision_tests {
         assert_vec_close!(cuboid_v.angular, Vector3::<Float>::zeros(), 1e-6);
     }
 }
-
-
-

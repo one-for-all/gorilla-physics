@@ -811,7 +811,9 @@ impl Hybrid {
         let P = if num_friction > 0 {
             // t only ever enters the objective linearly, so its block of P is zero
             let mut P_full: DMatrix<Float> = DMatrix::zeros(num_var, num_var);
-            P_full.view_mut((0, 0), (total_dof, total_dof)).copy_from(&M);
+            P_full
+                .view_mut((0, 0), (total_dof, total_dof))
+                .copy_from(&M);
             CscMatrix::from(P_full.row_iter())
         } else {
             CscMatrix::from(M.row_iter())

@@ -28,12 +28,14 @@ pub struct Rigid {
     pub pose: Pose,           // TODO: use Iso instead of Pose?
     pub twist: SpatialVector, // body velocity expressed in world frame
 
+    // TODO: re-organize this attribute to separate out visual and collider
     pub visual: Vec<(
-        Visual,
-        Isometry3<Float>,
-        Option<Vector3<Float>>,
-        Option<Float>,
-    )>, // geometry and the isometry from geometry frame to body frame, and RGB color, and friction coefficient
+        Visual,                 // geometry
+        Isometry3<Float>,       // isometry from geometry frame to body frame
+        Option<Vector3<Float>>, // RGB color
+        Option<Float>,          // friction coeffient
+        bool,                   // true if used in collision detection
+    )>,
 }
 
 impl Rigid {
