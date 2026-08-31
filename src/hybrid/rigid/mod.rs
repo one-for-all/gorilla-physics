@@ -201,7 +201,10 @@ pub fn rigid_deformable_cd(
     dt: Float,
 ) -> Vec<(Vector3<Float>, UnitVector3<Float>, Vec<(usize, Float)>)> {
     let mut result = vec![];
-    for (collider, iso_collider_to_body, _color, _mu, _collidable) in rigid.visual.iter() {
+    for (collider, iso_collider_to_body, _color, _mu, collidable) in rigid.visual.iter() {
+        if !collidable {
+            continue;
+        }
         let iso = rigid.pose.to_isometry() * iso_collider_to_body;
         let collider_pos = iso.translation.vector;
 
@@ -316,7 +319,10 @@ pub fn rigid_cloth_ccd(
     dt: Float,
 ) -> Vec<(Vector3<Float>, UnitVector3<Float>, Vec<(usize, Float)>)> {
     let mut result = vec![];
-    for (collider, iso_collider_to_body, _color, _mu, _collidable) in rigid.visual.iter() {
+    for (collider, iso_collider_to_body, _color, _mu, collidable) in rigid.visual.iter() {
+        if !collidable {
+            continue;
+        }
         let iso = rigid.pose.to_isometry() * iso_collider_to_body;
 
         match collider {

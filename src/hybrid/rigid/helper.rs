@@ -10,6 +10,8 @@ use na::{Isometry, Isometry3, Translation3, UnitQuaternion, Vector3};
 use nalgebra::{Matrix3, UnitVector3, Vector};
 use urdf_rs::Robot;
 
+/// Build the rigid body with meshes
+/// Note: the meshes are set as non-collidable
 pub fn build_rigid(frame: &str, link_name: &str, urdf: &Robot, meshes: &mut URDFMeshes) -> Rigid {
     let link_urdf = urdf.links.iter().find(|&l| l.name == link_name).unwrap();
 
@@ -38,8 +40,9 @@ pub fn build_rigid(frame: &str, link_name: &str, urdf: &Robot, meshes: &mut URDF
 
     if let Some(link_meshes) = meshes.meshes.remove(link_name) {
         for (mesh, iso, color) in link_meshes.into_iter() {
+            let collidable = false;
             body.visual
-                .push((Visual::RigidMesh(mesh), iso, Some(color), None, true, false));
+                .push((Visual::RigidMesh(mesh), iso, Some(color), None, collidable));
         }
     }
     body
