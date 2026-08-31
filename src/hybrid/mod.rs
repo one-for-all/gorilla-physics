@@ -274,7 +274,9 @@ impl Hybrid {
                     izip!(articulated.bodies.iter(), articulated.joints.iter()).enumerate()
                 {
                     let mut cp_normal_mu_list = vec![];
-                    for (collider, iso_collider_to_body, _color, mu) in rigid.visual.iter() {
+                    for (collider, iso_collider_to_body, _color, mu, _collidable) in
+                        rigid.visual.iter()
+                    {
                         let iso = rigid.pose.to_isometry() * iso_collider_to_body;
                         let collider_pos = iso.translation.vector;
 
@@ -343,11 +345,13 @@ impl Hybrid {
                         izip!(articulated2.bodies.iter(), articulated2.joints.iter()).enumerate()
                     {
                         let mut cp_normals_list = vec![];
-                        for (collider, iso_collider_to_body, _color, _mu) in rigid.visual.iter() {
+                        for (collider, iso_collider_to_body, _color, _mu, _collidable) in
+                            rigid.visual.iter()
+                        {
                             let iso = rigid.pose.to_isometry() * iso_collider_to_body;
                             let collider_pos = iso.translation.vector;
 
-                            for (collider2, iso_collider_to_body2, _color2, _mu2) in
+                            for (collider2, iso_collider_to_body2, _color2, _mu2, _collidable2) in
                                 rigid2.visual.iter()
                             {
                                 let iso2 = rigid2.pose.to_isometry() * iso_collider_to_body2;
@@ -413,7 +417,9 @@ impl Hybrid {
                 let dof = articulated.dof();
                 for (i_joint, rigid) in articulated.bodies.iter().enumerate() {
                     let mut cp_normal_list = vec![];
-                    for (collider, iso_collider_to_body, _color, _mu) in rigid.visual.iter() {
+                    for (collider, iso_collider_to_body, _color, _mu, _collidable) in
+                        rigid.visual.iter()
+                    {
                         let iso = rigid.pose.to_isometry() * iso_collider_to_body;
 
                         match collider {
@@ -462,7 +468,9 @@ impl Hybrid {
                 let dof = articulated.dof();
                 for (i_joint, rigid) in articulated.bodies.iter().enumerate() {
                     let mut cp_normal_list = vec![];
-                    for (collider, iso_collider_to_body, _color, _mu) in rigid.visual.iter() {
+                    for (collider, iso_collider_to_body, _color, _mu, _collidable) in
+                        rigid.visual.iter()
+                    {
                         let iso = rigid.pose.to_isometry() * iso_collider_to_body;
                         let collider_pos = iso.translation.vector;
 

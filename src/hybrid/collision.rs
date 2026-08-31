@@ -701,6 +701,7 @@ mod collision_tests {
                 Isometry3::identity(),
                 None,
                 None,
+                true,
             ));
 
             let mut articulated = Articulated::new(
