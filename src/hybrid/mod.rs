@@ -14,8 +14,8 @@ use crate::{
         articulated::Articulated,
         cloth::Cloth,
         collision::{
-            cuboid_point_collide, mesh_cuboid_collide, mesh_halfspace_collide, mesh_point_collide,
-            mesh_sphere_collide, sphere_cuboid_collide,
+            cuboid_cuboid_collide, cuboid_point_collide, mesh_cuboid_collide,
+            mesh_halfspace_collide, mesh_point_collide, mesh_sphere_collide, sphere_cuboid_collide,
         },
         control::{ArticulatedController, NullArticulatedController},
         deformable::deformable_deformable_ccd,
@@ -386,6 +386,14 @@ impl Hybrid {
                                             &iso2,
                                             &cuboid,
                                         ) {
+                                            cp_normals_list.push((cp, -n));
+                                        }
+                                    }
+                                    (Visual::Cuboid(cuboid), Visual::Cuboid(cuboid2)) => {
+                                        // the normal goes from 2 to 1
+                                        for (cp, n) in
+                                            cuboid_cuboid_collide(&iso, cuboid, &iso2, cuboid2)
+                                        {
                                             cp_normals_list.push((cp, -n));
                                         }
                                     }

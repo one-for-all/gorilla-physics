@@ -136,6 +136,359 @@ pub fn cuboid_point_collide(
     Some((*point, UnitVector3::new_normalize(normal_world)))
 }
 
+/// How far apart two cuboids can be and still count as touching.
+///
+/// Matches the tolerance `mesh_cuboid_collide` uses, so a body carrying a mesh
+/// and one carrying the equivalent cuboid make contact at the same distance.
+const CUBOID_CUBOID_CONTACT_TOLERANCE: Float = 1e-3;
+
+/// How much a face axis is favoured over an edge-edge axis of the same depth.
+///
+/// A cuboid resting squarely on another has a face axis and several edge-edge
+/// axes overlapping by exactly the same amount, and rounding alone decides
+/// between them. Only the face axis yields a polygon of contact points rather
+/// than a single one, so it has to win those ties.
+const CUBOID_CUBOID_EDGE_AXIS_BIAS: Float = 1e-6;
+
+/// Which pair of features the separating-axis test settled on.
+#[derive(Clone, Copy)]
+enum SatFeature {
+    /// A face of the first cuboid
+    Face1,
+    /// A face of the second cuboid
+    Face2,
+    /// An edge of the first cuboid along its axis `i`, against an edge of the
+    /// second along its axis `j`
+    Edge(usize, usize),
+}
+
+/// Collision detection between two cuboids
+/// Returns a list of (contact point, normal) where normal points from cuboid1 to cuboid2
+///
+/// The normal is the axis of least overlap found by the separating-axis test
+/// over the 15 candidate axes: the three face normals of each cuboid, and the
+/// nine cross products of their edge directions. Pairs nowhere near each other
+/// are dropped before that, by their bounding spheres and then their AABBs.
+///
+/// A face contact is reported as the polygon the two facing faces share, up to
+/// four points, so that a cuboid landing flat is held by its whole face instead
+/// of pivoting on one corner; an edge-edge contact is the single point where the
+/// two edges come closest.
+pub fn cuboid_cuboid_collide(
+    iso1: &Isometry3<Float>,
+    geometry1: &CuboidGeometry,
+    iso2: &Isometry3<Float>,
+    geometry2: &CuboidGeometry,
+) -> Vec<(Vector3<Float>, UnitVector3<Float>)> {
+    let tol = CUBOID_CUBOID_CONTACT_TOLERANCE;
+
+    let half1 = geometry1.half_extents();
+    let half2 = geometry2.half_extents();
+    let axes1 = cuboid_axes(iso1);
+    let axes2 = cuboid_axes(iso2);
+
+    // Between the centers, i.e. the direction from cuboid 1 towards cuboid 2
+    let d = iso2.translation.vector - iso1.translation.vector;
+
+    // Early-out: two cuboids too far apart to touch are the common case -- most
+    // pairs in a scene never come near each other -- so cut them with a single
+    // length comparison between their bounding spheres, before the axes below.
+    let reach = half1.norm() + half2.norm() + tol;
+    if d.norm_squared() > reach * reach {
+        return vec![];
+    }
+
+    // Early-out: and then with the world axes, which the 15 candidates below do
+    // not cover. A cuboid reaches |R| * half from its center along a world axis,
+    // so this is the overlap test of the two world-frame AABBs.
+    for axis in 0..3 {
+        let reach: Float = (0..3)
+            .map(|i| half1[i] * axes1[i][axis].abs() + half2[i] * axes2[i][axis].abs())
+            .sum();
+        if d[axis].abs() > reach + tol {
+            return vec![];
+        }
+    }
+
+    // The three face normals of each cuboid, then the nine cross products of
+    // their edge directions. Face axes come first: they separate far more pairs
+    // than the cross products do, and the test stops at the first axis that does.
+    let candidates: [(Vector3<Float>, SatFeature); 15] = core::array::from_fn(|c| match c {
+        0..=2 => (axes1[c], SatFeature::Face1),
+        3..=5 => (axes2[c - 3], SatFeature::Face2),
+        _ => {
+            let (i, j) = ((c - 6) / 3, (c - 6) % 3);
+            (axes1[i].cross(&axes2[j]), SatFeature::Edge(i, j))
+        }
+    });
+
+    let mut best_overlap = Float::MAX;
+    let mut best_axis = Vector3::zeros();
+    let mut best_feature = SatFeature::Face1;
+    for (axis, feature) in candidates {
+        // Parallel edges leave no cross product to test along, and the face
+        // axes already cover every direction that pair could separate along
+        let norm = axis.norm();
+        if norm < 1e-9 {
+            continue;
+        }
+        let axis = axis / norm;
+
+        // How far the two cuboids reach towards each other along the axis, less
+        // how far apart their centers are along it
+        let overlap = cuboid_radius(&half1, &axes1, &axis) + cuboid_radius(&half2, &axes2, &axis)
+            - d.dot(&axis).abs();
+        if overlap < -tol {
+            return vec![];
+        }
+
+        let biased = match feature {
+            SatFeature::Edge(_, _) => overlap + CUBOID_CUBOID_EDGE_AXIS_BIAS,
+            _ => overlap,
+        };
+        if biased < best_overlap {
+            best_overlap = biased;
+            // Orient every candidate axis from cuboid 1 towards cuboid 2
+            best_axis = if d.dot(&axis) >= 0. { axis } else { -axis };
+            best_feature = feature;
+        }
+    }
+
+    let normal = UnitVector3::new_normalize(best_axis);
+    let contacts = match best_feature {
+        SatFeature::Face1 => {
+            cuboid_face_contacts(iso1, &half1, &axes1, &normal, iso2, &half2, &axes2, tol)
+        }
+        // The reference face is on cuboid 2, so it faces back towards cuboid 1
+        SatFeature::Face2 => {
+            cuboid_face_contacts(iso2, &half2, &axes2, &(-normal), iso1, &half1, &axes1, tol)
+        }
+        SatFeature::Edge(i, j) => {
+            cuboid_edge_contacts(iso1, &half1, &axes1, i, iso2, &half2, &axes2, j, &normal)
+        }
+    };
+
+    contacts.into_iter().map(|cp| (cp, normal)).collect()
+}
+
+/// The cuboid's own axes, in world frame
+fn cuboid_axes(iso: &Isometry3<Float>) -> [Vector3<Float>; 3] {
+    let rotation = iso.rotation.to_rotation_matrix();
+    core::array::from_fn(|i| rotation.matrix().column(i).into_owned())
+}
+
+/// How far the cuboid reaches from its center along `direction`, a unit vector
+fn cuboid_radius(
+    half: &Vector3<Float>,
+    axes: &[Vector3<Float>; 3],
+    direction: &Vector3<Float>,
+) -> Float {
+    (0..3).map(|i| half[i] * axes[i].dot(direction).abs()).sum()
+}
+
+/// The face of the cuboid pointing the furthest along `direction`, as its
+/// center, its outward normal, and its two side axes each scaled to the half
+/// extent along it
+fn cuboid_support_face(
+    iso: &Isometry3<Float>,
+    half: &Vector3<Float>,
+    axes: &[Vector3<Float>; 3],
+    direction: &Vector3<Float>,
+) -> (Vector3<Float>, Vector3<Float>, [Vector3<Float>; 2]) {
+    let mut i_axis = 0;
+    for i in 1..3 {
+        if axes[i].dot(direction).abs() > axes[i_axis].dot(direction).abs() {
+            i_axis = i;
+        }
+    }
+
+    let sign = if axes[i_axis].dot(direction) >= 0. {
+        1.
+    } else {
+        -1.
+    };
+    let normal = sign * axes[i_axis];
+    let center = iso.translation.vector + half[i_axis] * normal;
+    let (j, k) = ((i_axis + 1) % 3, (i_axis + 2) % 3);
+
+    (center, normal, [half[j] * axes[j], half[k] * axes[k]])
+}
+
+/// The four corners of a face, in winding order
+fn face_corners(center: &Vector3<Float>, sides: &[Vector3<Float>; 2]) -> [Vector3<Float>; 4] {
+    [
+        center + sides[0] + sides[1],
+        center + sides[0] - sides[1],
+        center - sides[0] - sides[1],
+        center - sides[0] + sides[1],
+    ]
+}
+
+/// The part of the polygon inside the halfspace `{p : (p - point) . normal <= 0}`,
+/// with new corners where its edges cross the boundary
+fn clip_polygon(
+    polygon: &[Vector3<Float>],
+    normal: &Vector3<Float>,
+    point: &Vector3<Float>,
+) -> Vec<Vector3<Float>> {
+    let mut clipped = vec![];
+    for (i, a) in polygon.iter().enumerate() {
+        let b = &polygon[(i + 1) % polygon.len()];
+        let da = (a - point).dot(normal);
+        let db = (b - point).dot(normal);
+        if da <= 0. {
+            clipped.push(*a);
+        }
+        // The edge crosses the boundary; cut it there
+        if (da > 0.) != (db > 0.) {
+            clipped.push(a + (b - a) * (da / (da - db)));
+        }
+    }
+
+    clipped
+}
+
+/// The contact points of the reference cuboid's face pointing along `direction`
+/// against the incident cuboid, i.e. the corners of the incident cuboid's facing
+/// face that lie over the reference face and reach it
+fn cuboid_face_contacts(
+    ref_iso: &Isometry3<Float>,
+    ref_half: &Vector3<Float>,
+    ref_axes: &[Vector3<Float>; 3],
+    direction: &UnitVector3<Float>,
+    inc_iso: &Isometry3<Float>,
+    inc_half: &Vector3<Float>,
+    inc_axes: &[Vector3<Float>; 3],
+    tol: Float,
+) -> Vec<Vector3<Float>> {
+    let (ref_center, ref_normal, ref_sides) =
+        cuboid_support_face(ref_iso, ref_half, ref_axes, direction);
+    // The incident face is the one turned back towards the reference face
+    let (inc_center, _inc_normal, inc_sides) =
+        cuboid_support_face(inc_iso, inc_half, inc_axes, &(-direction.into_inner()));
+
+    // Cut the incident face down to the part of it lying over the reference
+    // face, against the reference face's four side planes
+    let mut polygon = face_corners(&inc_center, &inc_sides).to_vec();
+    for side in ref_sides.iter() {
+        for sign in [1., -1.] {
+            let normal = sign * side;
+            polygon = clip_polygon(&polygon, &normal, &(ref_center + normal));
+            if polygon.is_empty() {
+                return vec![];
+            }
+        }
+    }
+
+    // Keep the corners that reach the reference face, and put the contact
+    // halfway across the gap -- or the overlap -- so that it favours neither
+    // cuboid's surface
+    polygon
+        .into_iter()
+        .filter_map(|p| {
+            let depth = (p - ref_center).dot(&ref_normal);
+            (depth <= tol).then(|| p - 0.5 * depth * ref_normal)
+        })
+        .collect()
+}
+
+/// The cuboid's edge along its axis `i_axis` that reaches furthest along `direction`
+fn cuboid_support_edge(
+    iso: &Isometry3<Float>,
+    half: &Vector3<Float>,
+    axes: &[Vector3<Float>; 3],
+    i_axis: usize,
+    direction: &Vector3<Float>,
+) -> [Vector3<Float>; 2] {
+    let mut center = iso.translation.vector;
+    for i in 0..3 {
+        if i == i_axis {
+            continue;
+        }
+        let sign = if axes[i].dot(direction) >= 0. {
+            1.
+        } else {
+            -1.
+        };
+        center += sign * half[i] * axes[i];
+    }
+
+    let offset = half[i_axis] * axes[i_axis];
+    [center - offset, center + offset]
+}
+
+/// The closest pair of points on two segments, one on each
+fn segment_closest_points(
+    p1: &Vector3<Float>,
+    q1: &Vector3<Float>,
+    p2: &Vector3<Float>,
+    q2: &Vector3<Float>,
+) -> (Vector3<Float>, Vector3<Float>) {
+    let eps = 1e-12;
+
+    let d1 = q1 - p1;
+    let d2 = q2 - p2;
+    let r = p1 - p2;
+    let a = d1.dot(&d1);
+    let e = d2.dot(&d2);
+    let f = d2.dot(&r);
+
+    // Where along each segment, as a fraction of its length, the closest point sits
+    let mut s = 0.;
+    let mut t = 0.;
+    if a <= eps && e <= eps {
+        return (*p1, *p2);
+    } else if a <= eps {
+        t = (f / e).clamp(0., 1.);
+    } else {
+        let c = d1.dot(&r);
+        if e <= eps {
+            s = (-c / a).clamp(0., 1.);
+        } else {
+            let b = d1.dot(&d2);
+            let denom = a * e - b * b;
+            // Parallel segments leave s free; any point does, so take an end
+            s = if denom > eps {
+                ((b * f - c * e) / denom).clamp(0., 1.)
+            } else {
+                0.
+            };
+            t = (b * s + f) / e;
+            // Clamping t moves the closest point on the other segment too
+            if t < 0. {
+                t = 0.;
+                s = (-c / a).clamp(0., 1.);
+            } else if t > 1. {
+                t = 1.;
+                s = ((b - c) / a).clamp(0., 1.);
+            }
+        }
+    }
+
+    (p1 + d1 * s, p2 + d2 * t)
+}
+
+/// The single contact point where the two cuboids' closest edges, along the
+/// given axis of each, come nearest to each other
+fn cuboid_edge_contacts(
+    iso1: &Isometry3<Float>,
+    half1: &Vector3<Float>,
+    axes1: &[Vector3<Float>; 3],
+    i1: usize,
+    iso2: &Isometry3<Float>,
+    half2: &Vector3<Float>,
+    axes2: &[Vector3<Float>; 3],
+    i2: usize,
+    normal: &UnitVector3<Float>,
+) -> Vec<Vector3<Float>> {
+    let edge1 = cuboid_support_edge(iso1, half1, axes1, i1, &normal.into_inner());
+    let edge2 = cuboid_support_edge(iso2, half2, axes2, i2, &(-normal.into_inner()));
+    let (p1, p2) = segment_closest_points(&edge1[0], &edge1[1], &edge2[0], &edge2[1]);
+
+    // Halfway across the gap -- or the overlap -- between the two edges
+    vec![(p1 + p2) / 2.]
+}
+
 /// Collision detection between mesh and sphere
 /// Returns a list of (contact point, normal) where normal points from mesh to sphere
 pub fn mesh_sphere_collide(
@@ -1075,5 +1428,129 @@ mod collision_tests {
         let cuboid_v = state.articulated[1].body_twists()[0];
         assert_vec_close!(cuboid_v.linear, sphere_v.linear, 1e-2);
         assert_vec_close!(cuboid_v.angular, Vector3::<Float>::zeros(), 1e-6);
+    }
+
+    /// A cuboid resting flat on another is held by the four corners of the face
+    /// it lands on, and the normal is the face normal
+    #[test]
+    fn cuboid_cuboid_collide_rests_flat_on_four_corners() {
+        use na::Isometry3;
+
+        use crate::hybrid::{collision::cuboid_cuboid_collide, visual::CuboidGeometry};
+
+        let ground = CuboidGeometry {
+            w: 4.,
+            d: 4.,
+            h: 1.,
+        };
+        let ground_iso = Isometry3::translation(0., 0., -0.5);
+        let cube = CuboidGeometry {
+            w: 1.,
+            d: 1.,
+            h: 1.,
+        };
+        let cube_iso = Isometry3::translation(0., 0., 0.5);
+
+        let contacts = cuboid_cuboid_collide(&ground_iso, &ground, &cube_iso, &cube);
+        assert_eq!(contacts.len(), 4);
+        for (cp, normal) in contacts.iter() {
+            // On the shared face, at the corners of the smaller cuboid
+            assert!(cp.z.abs() < 1e-9);
+            assert!((cp.x.abs() - 0.5).abs() < 1e-9);
+            assert!((cp.y.abs() - 0.5).abs() < 1e-9);
+            // Pointing from the ground up to the cuboid resting on it
+            assert_vec_close!(**normal, vector![0., 0., 1.], 1e-9);
+        }
+
+        // Held the same way once the two overlap
+        let sunk = Isometry3::translation(0., 0., 0.5 - 1e-2);
+        assert_eq!(
+            cuboid_cuboid_collide(&ground_iso, &ground, &sunk, &cube).len(),
+            4
+        );
+
+        // And not at all once it clears the ground
+        let clear = Isometry3::translation(0., 0., 1.);
+        assert!(cuboid_cuboid_collide(&ground_iso, &ground, &clear, &cube).is_empty());
+
+        // Nor when it is alongside rather than above
+        let beside = Isometry3::translation(3., 0., 0.5);
+        assert!(cuboid_cuboid_collide(&ground_iso, &ground, &beside, &cube).is_empty());
+    }
+
+    /// Two cuboids meeting edge to edge contact at the single point where the
+    /// edges cross, with the normal along the cross product of the two edges
+    #[test]
+    fn cuboid_cuboid_collide_finds_the_edge_edge_point() {
+        use na::{Isometry3, Translation3};
+
+        use crate::{
+            hybrid::{collision::cuboid_cuboid_collide, visual::CuboidGeometry},
+            PI,
+        };
+
+        let cube = CuboidGeometry {
+            w: 1.,
+            d: 1.,
+            h: 1.,
+        };
+
+        // A cube tipped 45 degrees about x, so that its lowest feature is the
+        // edge running along x, hanging sqrt(2)/2 below its center
+        let tipped = Isometry3::from_parts(
+            Translation3::new(0., 0., (2. as Float).sqrt() / 2.),
+            UnitQuaternion::from_axis_angle(&Vector3::x_axis(), PI / 4.),
+        );
+        // And another tipped the same way about y, so its lowest edge runs along
+        // y: the two cross at the origin
+        let crossing = Isometry3::from_parts(
+            Translation3::new(0., 0., -(2. as Float).sqrt() / 2.),
+            UnitQuaternion::from_axis_angle(&Vector3::y_axis(), PI / 4.),
+        );
+
+        let contacts = cuboid_cuboid_collide(&crossing, &cube, &tipped, &cube);
+        assert_eq!(contacts.len(), 1);
+        let (cp, normal) = contacts[0];
+        assert_vec_close!(cp, Vector3::<Float>::zeros(), 1e-9);
+        assert_vec_close!(*normal, vector![0., 0., 1.], 1e-9);
+
+        // Sliding the upper cube along its own edge leaves the two edges
+        // crossing where they did
+        let along = tipped * Translation3::new(0.25, 0., 0.);
+        let contacts = cuboid_cuboid_collide(&crossing, &cube, &along, &cube);
+        assert_eq!(contacts.len(), 1);
+        assert_vec_close!(contacts[0].0, Vector3::<Float>::zeros(), 1e-9);
+
+        // Lifting it off separates them
+        let lifted = Translation3::new(0., 0., 0.1) * tipped;
+        assert!(cuboid_cuboid_collide(&crossing, &cube, &lifted, &cube).is_empty());
+    }
+
+    /// The contact points of two cuboids overlapping only partly are the corners
+    /// of the overlap, whichever cuboid's face they come from
+    #[test]
+    fn cuboid_cuboid_collide_clips_to_the_shared_face() {
+        use na::Isometry3;
+
+        use crate::hybrid::{collision::cuboid_cuboid_collide, visual::CuboidGeometry};
+
+        let cube = CuboidGeometry {
+            w: 1.,
+            d: 1.,
+            h: 1.,
+        };
+        let lower = Isometry3::translation(0., 0., 0.);
+        // Overlapping the lower cube's top face over a quarter of it
+        let upper = Isometry3::translation(0.5, 0.5, 1.);
+
+        let contacts = cuboid_cuboid_collide(&lower, &cube, &upper, &cube);
+        assert_eq!(contacts.len(), 4);
+        for (cp, normal) in contacts.iter() {
+            assert!((cp.z - 0.5).abs() < 1e-9);
+            // The overlap runs from 0 to 0.5 along both x and y
+            assert!(cp.x > -1e-9 && cp.x < 0.5 + 1e-9);
+            assert!(cp.y > -1e-9 && cp.y < 0.5 + 1e-9);
+            assert_vec_close!(**normal, vector![0., 0., 1.], 1e-9);
+        }
     }
 }
