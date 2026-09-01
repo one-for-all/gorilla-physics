@@ -62,7 +62,7 @@ export class Simulator {
   // sim time than it can step before the next one is due, and every frame after
   // it owes more still. Past this the backlog is dropped and realtimeRatio
   // reports the shortfall.
-  maxCatchUpSteps: number = 5;
+  maxCatchUpSteps: number = 1; // setting higher than 1 would cause the simulator interaction to be sluggish
   // Whether the physics is stopped. The scene still renders and still orbits --
   // this is not a teardown -- but no sim time passes and nothing steps.
   //
