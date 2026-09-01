@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use itertools::izip;
 use na::{Isometry3, Point3, UnitVector3, Vector3};
 
@@ -106,17 +108,30 @@ pub fn cuboid_point_collide(
     cuboid_geometry: &CuboidGeometry,
     point: &Vector3<Float>,
 ) -> Option<(Vector3<Float>, UnitVector3<Float>)> {
-    let half = cuboid_geometry.half_extents();
+    cuboid_point_contact(cuboid_iso, &cuboid_geometry.half_extents(), point, 0.)
+}
 
+/// Return the contact point, and contact normal outward from the cuboid, for a
+/// point inside the cuboid or within `tol` of its surface
+///
+/// The normal is the one of the face the point is nearest to, i.e. the face it
+/// takes the least movement to push the point back out through.
+fn cuboid_point_contact(
+    cuboid_iso: &Isometry3<Float>,
+    half: &Vector3<Float>,
+    point: &Vector3<Float>,
+    tol: Float,
+) -> Option<(Vector3<Float>, UnitVector3<Float>)> {
     // Transform point into cuboid-local space
     let local_point = cuboid_iso
         .inverse_transform_point(&Point3::from(*point))
         .coords;
 
     // Early-out AABB check
-    if local_point.x.abs() > half.x || local_point.y.abs() > half.y || local_point.z.abs() > half.z
-    {
-        return None;
+    for axis in 0..3 {
+        if local_point[axis].abs() > half[axis] + tol {
+            return None;
+        }
     }
 
     // Point is inside the cuboid; find the face of least penetration
@@ -633,17 +648,22 @@ pub fn mesh_point_collide(
 
 /// Collision detection between a mesh and a cuboid
 /// Returns a list of (contact point, normal) where normal points from mesh to cuboid
+///
+/// Two kinds of contact are found: a corner of the cuboid resting on a mesh
+/// face, and a vertex of the mesh poking into a cuboid face. Neither pass
+/// covers the other -- a cuboid can swallow the tip of a spike with every one
+/// of its own corners far from the mesh, and it can rest a corner on a broad
+/// mesh face with no mesh vertex anywhere inside it.
 pub fn mesh_cuboid_collide(
     mesh: &RigidMesh,
     cuboid_iso: &Isometry3<Float>,
     cuboid_geometry: &CuboidGeometry,
 ) -> Vec<(Vector3<Float>, UnitVector3<Float>)> {
-    let mut cp_normal_list = vec![];
     let tol = 1e-3;
 
-    // Early-out: contact requires a cuboid corner within tol of a mesh face,
-    // so the cuboid's world-frame AABB must overlap the mesh AABB inflated by
-    // tol. The cuboid's AABB half-extent along each world axis is |R| * half.
+    // Early-out: contact requires the cuboid to come within tol of the mesh, so
+    // the cuboid's world-frame AABB must overlap the mesh AABB inflated by tol.
+    // The cuboid's AABB half-extent along each world axis is |R| * half.
     let half = cuboid_geometry.half_extents();
     let extent = cuboid_iso.rotation.to_rotation_matrix().matrix().abs() * half;
     let center = cuboid_iso.translation.vector;
@@ -651,13 +671,33 @@ pub fn mesh_cuboid_collide(
         if center[axis] - extent[axis] > mesh.aabb_max[axis] + tol
             || center[axis] + extent[axis] < mesh.aabb_min[axis] - tol
         {
-            return cp_normal_list;
+            return vec![];
         }
     }
 
+    let mut cp_normal_list =
+        cuboid_corner_mesh_face_contacts(mesh, cuboid_iso, cuboid_geometry, tol);
+    cp_normal_list.extend(cuboid_face_mesh_vertex_contacts(
+        mesh, cuboid_iso, &half, &center, &extent, tol,
+    ));
+
+    // TODO: edge - edge
+
+    cp_normal_list
+}
+
+/// The contacts of the cuboid's corners against the mesh's faces, i.e. the
+/// corners lying over a mesh face and within `tol` of it, each with that face's
+/// outward normal
+fn cuboid_corner_mesh_face_contacts(
+    mesh: &RigidMesh,
+    cuboid_iso: &Isometry3<Float>,
+    cuboid_geometry: &CuboidGeometry,
+    tol: Float,
+) -> Vec<(Vector3<Float>, UnitVector3<Float>)> {
+    let mut cp_normal_list = vec![];
     let vertices = &mesh.vertices;
 
-    // cuboid point - mesh face
     // Only corners within tol of the mesh AABB can contact a face; filter the
     // rest out once instead of testing them against every face
     let tol_sq = tol * tol;
@@ -713,8 +753,60 @@ pub fn mesh_cuboid_collide(
         }
     }
 
-    // TODO: cuboid face - mesh point
-    // TODO: edge - edge
+    cp_normal_list
+}
+
+/// The contacts of the mesh's vertices against the cuboid's faces, i.e. the
+/// mesh vertices inside the cuboid -- or within `tol` of its surface -- each
+/// pushed back out through the face of the cuboid nearest to it
+///
+/// `center` and `extent` are the cuboid's world-frame AABB, as its center and
+/// its half-extent along each world axis.
+fn cuboid_face_mesh_vertex_contacts(
+    mesh: &RigidMesh,
+    cuboid_iso: &Isometry3<Float>,
+    half: &Vector3<Float>,
+    center: &Vector3<Float>,
+    extent: &Vector3<Float>,
+    tol: Float,
+) -> Vec<(Vector3<Float>, UnitVector3<Float>)> {
+    let mut cp_normal_list: Vec<(Vector3<Float>, UnitVector3<Float>)> = vec![];
+
+    // Only faces whose AABB overlaps the tol-inflated AABB of the cuboid can
+    // carry a vertex inside it
+    let tol_vec = Vector3::repeat(tol);
+    let candidates = mesh
+        .bvh
+        .collect_overlapping(&(center - extent - tol_vec), &(center + extent + tol_vec));
+
+    let mut tested = HashSet::new();
+    for i_face in candidates {
+        for index in mesh.faces[i_face] {
+            // Every face around a vertex reports it; test it once
+            if !tested.insert(index) {
+                continue;
+            }
+
+            let vertex = mesh.vertices[index];
+            let contact = cuboid_point_contact(cuboid_iso, half, &vertex, tol);
+            let Some((cp, outward)) = contact else {
+                continue;
+            };
+
+            // Skip duplicate contacts from vertices repeated at one position,
+            // as a mesh whose faces do not share their vertices has
+            if cp_normal_list
+                .iter()
+                .any(|(p, _)| (p - cp).norm_squared() < 1e-12)
+            {
+                continue;
+            }
+
+            // `outward` points out of the cuboid, hence towards the mesh; the
+            // contact normal runs the other way, from the mesh to the cuboid
+            cp_normal_list.push((cp, -outward));
+        }
+    }
 
     cp_normal_list
 }
@@ -1130,6 +1222,60 @@ mod collision_tests {
                 (l, w) => panic!("variants disagree: local={:?} world={:?}", l, w),
             }
         }
+    }
+
+    /// A mesh vertex poking into a cuboid face contacts it, even with every
+    /// corner of the cuboid far from the mesh
+    #[test]
+    fn mesh_cuboid_collide_finds_the_mesh_vertex_in_a_cuboid_face() {
+        use na::Isometry3;
+
+        use crate::hybrid::{
+            collision::mesh_cuboid_collide,
+            visual::{rigid_mesh::RigidMesh, CuboidGeometry},
+        };
+
+        // A pyramid on a 0.4 m square base, its apex 1 m up
+        let spike = RigidMesh::new_from_obj(
+            "v 0 0 1\nv -0.2 -0.2 0\nv 0.2 -0.2 0\nv 0.2 0.2 0\nv -0.2 0.2 0\n\
+             f 1 2 3\nf 1 3 4\nf 1 4 5\nf 1 5 2\nf 2 3 4\nf 2 4 5\n",
+        );
+        // A slab far wider than the pyramid, so that none of its own corners
+        // come anywhere near the mesh: only the apex is in contact
+        let slab = CuboidGeometry {
+            w: 4.,
+            d: 4.,
+            h: 1.,
+        };
+
+        // Bottom face at z = 0.9, with the apex 0.1 m through it
+        let over = Isometry3::translation(0., 0., 1.4);
+        let contacts = mesh_cuboid_collide(&spike, &over, &slab);
+        assert_eq!(contacts.len(), 1);
+        let (cp, normal) = contacts[0];
+        assert_vec_close!(cp, vector![0., 0., 1.], 1e-9);
+        // Out of the mesh and into the slab, i.e. the way the slab is pushed
+        assert_vec_close!(*normal, vector![0., 0., 1.], 1e-9);
+
+        // The apex touching the bottom face still counts
+        let touching = Isometry3::translation(0., 0., 1.5);
+        assert_eq!(mesh_cuboid_collide(&spike, &touching, &slab).len(), 1);
+
+        // Clear of the apex, nothing
+        let clear = Isometry3::translation(0., 0., 1.6);
+        assert!(mesh_cuboid_collide(&spike, &clear, &slab).is_empty());
+
+        // Swallowed whole, the apex leaves through the face it is nearest to,
+        // which is now the slab's -x side rather than its bottom: the slab's
+        // own x half extent of 2 puts that face 0.1 m away, its bottom 0.5 m
+        let around = Isometry3::translation(1.9, 0., 1.);
+        let contacts = mesh_cuboid_collide(&spike, &around, &slab);
+        let (cp, normal) = contacts
+            .iter()
+            .find(|(cp, _)| (cp - vector![0., 0., 1.]).norm() < 1e-9)
+            .expect("the apex is inside the slab");
+        assert_vec_close!(*cp, vector![0., 0., 1.], 1e-9);
+        assert_vec_close!(**normal, vector![1., 0., 0.], 1e-9);
     }
 
     /// collision between a halfspace and an articulated with point contacts
