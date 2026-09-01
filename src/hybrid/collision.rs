@@ -439,6 +439,18 @@ fn segment_closest_points(
     p2: &Vector3<Float>,
     q2: &Vector3<Float>,
 ) -> (Vector3<Float>, Vector3<Float>) {
+    let (s, t) = segment_closest_params(p1, q1, p2, q2);
+    (p1 + (q1 - p1) * s, p2 + (q2 - p2) * t)
+}
+
+/// How far along each segment, as a fraction of its length, its end of the
+/// closest pair of points sits
+fn segment_closest_params(
+    p1: &Vector3<Float>,
+    q1: &Vector3<Float>,
+    p2: &Vector3<Float>,
+    q2: &Vector3<Float>,
+) -> (Float, Float) {
     let eps = 1e-12;
 
     let d1 = q1 - p1;
@@ -452,7 +464,7 @@ fn segment_closest_points(
     let mut s = 0.;
     let mut t = 0.;
     if a <= eps && e <= eps {
-        return (*p1, *p2);
+        return (0., 0.);
     } else if a <= eps {
         t = (f / e).clamp(0., 1.);
     } else {
@@ -480,7 +492,7 @@ fn segment_closest_points(
         }
     }
 
-    (p1 + d1 * s, p2 + d2 * t)
+    (s, t)
 }
 
 /// The single contact point where the two cuboids' closest edges, along the
@@ -649,11 +661,13 @@ pub fn mesh_point_collide(
 /// Collision detection between a mesh and a cuboid
 /// Returns a list of (contact point, normal) where normal points from mesh to cuboid
 ///
-/// Two kinds of contact are found: a corner of the cuboid resting on a mesh
-/// face, and a vertex of the mesh poking into a cuboid face. Neither pass
-/// covers the other -- a cuboid can swallow the tip of a spike with every one
-/// of its own corners far from the mesh, and it can rest a corner on a broad
-/// mesh face with no mesh vertex anywhere inside it.
+/// Three kinds of contact are found: a corner of the cuboid resting on a mesh
+/// face, a vertex of the mesh poking into a cuboid face, and an edge of the
+/// cuboid crossing an edge of the mesh. No pass covers another -- a cuboid can
+/// swallow the tip of a spike with every one of its own corners far from the
+/// mesh, it can rest a corner on a broad mesh face with no mesh vertex anywhere
+/// inside it, and it can lie across a ridge of the mesh with neither a corner
+/// on a face nor a vertex inside it.
 pub fn mesh_cuboid_collide(
     mesh: &RigidMesh,
     cuboid_iso: &Isometry3<Float>,
@@ -680,8 +694,14 @@ pub fn mesh_cuboid_collide(
     cp_normal_list.extend(cuboid_face_mesh_vertex_contacts(
         mesh, cuboid_iso, &half, &center, &extent, tol,
     ));
-
-    // TODO: edge - edge
+    cp_normal_list.extend(cuboid_edge_mesh_edge_contacts(
+        mesh,
+        cuboid_iso,
+        cuboid_geometry,
+        &center,
+        &extent,
+        tol,
+    ));
 
     cp_normal_list
 }
@@ -805,6 +825,117 @@ fn cuboid_face_mesh_vertex_contacts(
             // `outward` points out of the cuboid, hence towards the mesh; the
             // contact normal runs the other way, from the mesh to the cuboid
             cp_normal_list.push((cp, -outward));
+        }
+    }
+
+    cp_normal_list
+}
+
+/// How far from either end of the two segments their closest points have to
+/// sit to count as an edge-edge contact.
+///
+/// A closest point sitting on an endpoint is a cuboid corner against the mesh,
+/// or a mesh vertex against the cuboid, which the other two passes already
+/// report -- and report with the normal of the face the point rests on, rather
+/// than with the common perpendicular of the two edges, which is meaningless
+/// there.
+const MESH_CUBOID_EDGE_END_MARGIN: Float = 1e-6;
+
+/// How far from parallel, as the sine of the angle between them, two edges have
+/// to be for their common perpendicular to be a usable contact normal.
+const MESH_CUBOID_EDGE_PARALLEL_SINE: Float = 1e-6;
+
+/// The contacts of the cuboid's edges against the mesh's edges, i.e. the pairs
+/// of edges crossing within `tol` of each other, contacting halfway across the
+/// gap -- or the overlap -- between them, along their common perpendicular
+///
+/// `center` and `extent` are the cuboid's world-frame AABB, as its center and
+/// its half-extent along each world axis.
+fn cuboid_edge_mesh_edge_contacts(
+    mesh: &RigidMesh,
+    cuboid_iso: &Isometry3<Float>,
+    cuboid_geometry: &CuboidGeometry,
+    center: &Vector3<Float>,
+    extent: &Vector3<Float>,
+    tol: Float,
+) -> Vec<(Vector3<Float>, UnitVector3<Float>)> {
+    let mut cp_normal_list: Vec<(Vector3<Float>, UnitVector3<Float>)> = vec![];
+
+    // Only faces whose AABB overlaps the tol-inflated AABB of the cuboid can
+    // have an edge reaching one of the cuboid's
+    let tol_vec = Vector3::repeat(tol);
+    let candidates = mesh
+        .bvh
+        .collect_overlapping(&(center - extent - tol_vec), &(center + extent + tol_vec));
+    if candidates.is_empty() {
+        return cp_normal_list;
+    }
+
+    let cuboid_edges = cuboid_geometry.edges(cuboid_iso);
+    let tol_sq = tol * tol;
+    let margin = MESH_CUBOID_EDGE_END_MARGIN;
+
+    for i_face in candidates {
+        let face = mesh.faces[i_face];
+        let v1 = mesh.vertices[face[0]];
+        let v2 = mesh.vertices[face[1]];
+        let v3 = mesh.vertices[face[2]];
+        let face_normal = (v2 - v1).cross(&(v3 - v1)); // outward normal of the face
+
+        for (a, b) in [(v1, v2), (v2, v3), (v3, v1)] {
+            let mesh_direction = b - a;
+            for edge in cuboid_edges.iter() {
+                let cuboid_direction = edge[1] - edge[0];
+
+                // Parallel edges have no common perpendicular to contact along,
+                // and touch along the whole of their overlap rather than at a
+                // point; the corners at the ends of that overlap are what holds
+                // them apart, and the other two passes report those
+                let perpendicular = cuboid_direction.cross(&mesh_direction);
+                if perpendicular.norm_squared()
+                    < MESH_CUBOID_EDGE_PARALLEL_SINE
+                        * MESH_CUBOID_EDGE_PARALLEL_SINE
+                        * cuboid_direction.norm_squared()
+                        * mesh_direction.norm_squared()
+                {
+                    continue;
+                }
+
+                let (s, t) = segment_closest_params(&edge[0], &edge[1], &a, &b);
+                if s < margin || s > 1. - margin || t < margin || t > 1. - margin {
+                    continue;
+                }
+
+                let on_cuboid = edge[0] + cuboid_direction * s;
+                let on_mesh = a + mesh_direction * t;
+                if (on_cuboid - on_mesh).norm_squared() > tol_sq {
+                    continue;
+                }
+
+                // The common perpendicular runs either way; take the way out of
+                // the mesh, i.e. the side the face carrying the edge faces, so
+                // that the normal stays put once the cuboid is through the
+                // surface rather than merely touching it
+                let mut orientation = perpendicular.dot(&face_normal);
+                if orientation.abs() < 1e-12 {
+                    orientation = perpendicular.dot(&(on_cuboid - on_mesh));
+                }
+                let normal = UnitVector3::new_normalize(if orientation < 0. {
+                    -perpendicular
+                } else {
+                    perpendicular
+                });
+
+                // Both of the faces sharing a mesh edge report it; keep it once
+                let cp = (on_cuboid + on_mesh) / 2.;
+                if cp_normal_list
+                    .iter()
+                    .any(|(p, _)| (p - cp).norm_squared() < 1e-12)
+                {
+                    continue;
+                }
+                cp_normal_list.push((cp, normal));
+            }
         }
     }
 
@@ -1276,6 +1407,67 @@ mod collision_tests {
             .expect("the apex is inside the slab");
         assert_vec_close!(*cp, vector![0., 0., 1.], 1e-9);
         assert_vec_close!(**normal, vector![1., 0., 0.], 1e-9);
+    }
+
+    /// A cuboid edge laid across a ridge of the mesh contacts it at the point
+    /// where the two edges cross, with neither a cuboid corner on a mesh face
+    /// nor a mesh vertex inside the cuboid
+    #[test]
+    fn mesh_cuboid_collide_finds_the_edge_edge_point() {
+        use na::{Isometry3, Translation3};
+
+        use crate::{
+            hybrid::{
+                collision::mesh_cuboid_collide,
+                visual::{rigid_mesh::RigidMesh, CuboidGeometry},
+            },
+            PI,
+        };
+
+        // A roof: a triangular prism whose ridge runs along x at z = 1, from
+        // x = -1 to x = 1, over a base 2 m square in the z = 0 plane
+        let roof = RigidMesh::new_from_obj(
+            "v -1 0 1\nv 1 0 1\nv -1 -1 0\nv 1 -1 0\nv -1 1 0\nv 1 1 0\n\
+             f 1 3 4\nf 1 4 2\nf 2 6 5\nf 2 5 1\nf 3 6 4\nf 3 5 6\n\
+             f 2 4 6\nf 1 5 3\n",
+        );
+        let cube = CuboidGeometry {
+            w: 1.,
+            d: 1.,
+            h: 1.,
+        };
+
+        // The cube tipped 45 degrees about y, so that its lowest feature is the
+        // edge running along y, hanging sqrt(2)/2 below its center: laid at
+        // z = 1 it crosses the ridge at right angles, over the origin
+        let sqrt2 = (2. as Float).sqrt();
+        let across = Isometry3::from_parts(
+            Translation3::new(0., 0., 1. + sqrt2 / 2.),
+            UnitQuaternion::from_axis_angle(&Vector3::y_axis(), PI / 4.),
+        );
+
+        let contacts = mesh_cuboid_collide(&roof, &across, &cube);
+        assert_eq!(contacts.len(), 1);
+        let (cp, normal) = contacts[0];
+        assert_vec_close!(cp, vector![0., 0., 1.], 1e-9);
+        // Out of the mesh and into the cube, i.e. the way the cube is pushed
+        assert_vec_close!(*normal, vector![0., 0., 1.], 1e-9);
+
+        // Sliding the cube along its own edge leaves the crossing where it was
+        let along = Translation3::new(0., 0.25, 0.) * across;
+        let contacts = mesh_cuboid_collide(&roof, &along, &cube);
+        assert_eq!(contacts.len(), 1);
+        assert_vec_close!(contacts[0].0, vector![0., 0., 1.], 1e-9);
+
+        // Sliding it along the ridge carries the crossing with it
+        let over = Translation3::new(0.25, 0., 0.) * across;
+        let contacts = mesh_cuboid_collide(&roof, &over, &cube);
+        assert_eq!(contacts.len(), 1);
+        assert_vec_close!(contacts[0].0, vector![0.25, 0., 1.], 1e-9);
+
+        // Lifting it off separates them
+        let lifted = Translation3::new(0., 0., 0.1) * across;
+        assert!(mesh_cuboid_collide(&roof, &lifted, &cube).is_empty());
     }
 
     /// collision between a halfspace and an articulated with point contacts
