@@ -1012,11 +1012,7 @@ pub fn mesh_halfspace_collide(
     // ground. So keep the support polygon instead -- the deepest vertex plus the
     // outermost one along each of a ring of tangential directions.
     let (t, b) = tangentials(&UnitVector3::new_normalize(normal));
-    let directions: [(Float, Float); MESH_HALFSPACE_SUPPORT_DIRECTIONS] =
-        core::array::from_fn(|i| {
-            let angle = 2. * PI * (i as Float) / (MESH_HALFSPACE_SUPPORT_DIRECTIONS as Float);
-            (angle.cos(), angle.sin())
-        });
+    let directions = support_directions::<MESH_HALFSPACE_SUPPORT_DIRECTIONS>();
 
     // Best (vertex index, score) for depth, then for each direction
     let mut support: [Option<(usize, Float)>; MESH_HALFSPACE_SUPPORT_DIRECTIONS + 1] =
@@ -1073,6 +1069,17 @@ fn keep_furthest(best: &mut Option<(usize, Float)>, index: usize, score: Float) 
     }
 }
 
+/// `N` directions spread evenly around the unit circle, as (cos, sin) pairs
+///
+/// These are the tangential directions a contact patch is sampled along to find
+/// the corners of its support polygon.
+fn support_directions<const N: usize>() -> [(Float, Float); N] {
+    core::array::from_fn(|i| {
+        let angle = 2. * PI * (i as Float) / (N as Float);
+        (angle.cos(), angle.sin())
+    })
+}
+
 /// How far apart two meshes can be and still count as touching.
 ///
 /// Matches the tolerance `mesh_cuboid_collide` uses, so a body carrying a mesh
@@ -1102,6 +1109,19 @@ const MESH_MESH_EDGE_PARALLEL_SINE: Float = 1e-6;
 /// Below this, a face has no area, hence no outward direction to contact along.
 const MESH_MESH_DEGENERATE_FACE_AREA: Float = 1e-12;
 
+/// Tangential directions each contact patch is sampled along, on top of its
+/// deepest point. See [`reduce_to_support_polygons`].
+const MESH_MESH_SUPPORT_DIRECTIONS: usize = 8;
+
+/// How closely two contact normals have to agree, as the cosine of the angle
+/// between them, for their contacts to belong to the same patch.
+///
+/// About eight degrees, which is wide enough to gather the normals of one flat
+/// patch -- they differ only by the rounding in normalizing each face -- and of
+/// the gently varying ones a curved surface makes, while still splitting the two
+/// walls of a groove into the separate patches they are.
+const MESH_MESH_NORMAL_CLUSTER_COSINE: Float = 0.99;
+
 /// Collision detection between two meshes
 /// Returns a list of (contact point, normal) in world frame, where the normal
 /// points from mesh 1 to mesh 2
@@ -1126,6 +1146,11 @@ const MESH_MESH_DEGENERATE_FACE_AREA: Float = 1e-12;
 /// in one step -- far enough that no feature is left near a surface -- reports
 /// nothing. The contact has to be caught on approach rather than recovered from
 /// afterwards.
+///
+/// Two faces meeting flat put every vertex and every edge crossing in the
+/// overlap into contact at once, which is a row of the contact QP each, so the
+/// contacts are reduced to the corners of the patches they form -- see
+/// [`reduce_to_support_polygons`].
 pub fn mesh_mesh_collide(
     mesh1: &RigidMesh,
     iso1: &Isometry3<Float>,
@@ -1165,15 +1190,15 @@ pub fn mesh_mesh_collide(
     let faces1 = candidate_faces(mesh1, &i_faces1, None);
     let faces2 = candidate_faces(mesh2, &i_faces2, Some(&mesh2_to_1));
 
-    let mut cp_normal_list = vec![];
+    let mut contacts = vec![];
     // A face of mesh 1 faces out of mesh 1, i.e. from mesh 1 towards mesh 2
-    mesh_vertex_face_contacts(&faces2, &faces1, 1., tol, &mut cp_normal_list);
+    mesh_vertex_face_contacts(&faces2, &faces1, 1., tol, &mut contacts);
     // A face of mesh 2 faces the other way, so its normal is flipped
-    mesh_vertex_face_contacts(&faces1, &faces2, -1., tol, &mut cp_normal_list);
-    mesh_edge_edge_contacts(&faces1, &faces2, tol, &mut cp_normal_list);
+    mesh_vertex_face_contacts(&faces1, &faces2, -1., tol, &mut contacts);
+    mesh_edge_edge_contacts(&faces1, &faces2, tol, &mut contacts);
 
     // Back out to world frame; rotating a unit normal leaves it a unit normal
-    cp_normal_list
+    reduce_to_support_polygons(contacts)
         .into_iter()
         .map(|(cp, normal)| ((iso1 * Point3::from(cp)).coords, iso1.rotation * normal))
         .collect()
@@ -1297,19 +1322,28 @@ fn edge_outward_normals(faces: &[CandidateFace]) -> HashMap<(usize, usize), Vect
     normals
 }
 
+/// A contact between the two meshes, in the working frame
+///
+/// The depth is how far the two have been driven into each other along the
+/// normal, negative while they are merely within tolerance of touching. It is
+/// what [`reduce_to_support_polygons`] ranks the patch's contacts by, and is
+/// dropped once that has run.
+type MeshContact = (Vector3<Float>, UnitVector3<Float>, Float);
+
 /// Add the contact, unless one has already been found at the same point
 fn push_welded(
-    cp_normal_list: &mut Vec<(Vector3<Float>, UnitVector3<Float>)>,
+    contacts: &mut Vec<MeshContact>,
     cp: Vector3<Float>,
     normal: UnitVector3<Float>,
+    depth: Float,
 ) {
-    if cp_normal_list
+    if contacts
         .iter()
-        .any(|(p, _)| (p - cp).norm_squared() < MESH_MESH_WELD_DISTANCE * MESH_MESH_WELD_DISTANCE)
+        .any(|(p, _, _)| (p - cp).norm_squared() < MESH_MESH_WELD_DISTANCE * MESH_MESH_WELD_DISTANCE)
     {
         return;
     }
-    cp_normal_list.push((cp, normal));
+    contacts.push((cp, normal, depth));
 }
 
 /// The contacts of the corners of `faces` against `against`, i.e. the vertices
@@ -1323,7 +1357,7 @@ fn mesh_vertex_face_contacts(
     against: &[CandidateFace],
     sign: Float,
     tol: Float,
-    cp_normal_list: &mut Vec<(Vector3<Float>, UnitVector3<Float>)>,
+    contacts: &mut Vec<MeshContact>,
 ) {
     let vertices = candidate_vertices(faces);
     let tol_sq = tol * tol;
@@ -1347,8 +1381,12 @@ fn mesh_vertex_face_contacts(
 
             // check if point is close to the face
             // TODO: do ccd to avoid the passing through case
-            if (point - closest_point).norm_squared() < tol_sq {
-                push_welded(cp_normal_list, *point, normal);
+            let offset = point - closest_point;
+            if offset.norm_squared() < tol_sq {
+                // `normal` is the face's own outward normal turned by `sign`, so
+                // turning the offset back by `sign` measures it against the face
+                // itself: a vertex below the face is one inside the other mesh
+                push_welded(contacts, *point, normal, -sign * offset.dot(&normal));
             }
         }
     }
@@ -1363,7 +1401,7 @@ fn mesh_edge_edge_contacts(
     faces1: &[CandidateFace],
     faces2: &[CandidateFace],
     tol: Float,
-    cp_normal_list: &mut Vec<(Vector3<Float>, UnitVector3<Float>)>,
+    contacts: &mut Vec<MeshContact>,
 ) {
     let outward1 = edge_outward_normals(faces1);
     let tol_sq = tol * tol;
@@ -1419,12 +1457,98 @@ fn mesh_edge_edge_contacts(
                         perpendicular
                     });
 
-                    // Both of the faces sharing an edge report it; keep it once
-                    push_welded(cp_normal_list, (on1 + on2) / 2., normal);
+                    // Both of the faces sharing an edge report it; keep it once.
+                    // The normal runs out of mesh 1, so the second edge sitting
+                    // back along it is the two crossed rather than merely close.
+                    let gap = on2 - on1;
+                    push_welded(contacts, (on1 + on2) / 2., normal, -gap.dot(&normal));
                 }
             }
         }
     }
+}
+
+/// Cut each patch of contacts down to the corners of the polygon supporting it
+///
+/// Two meshes meeting face to face touch at every vertex in the overlap and at
+/// every crossing of their edges, which for anything but the coarsest mesh is
+/// hundreds of contacts, each of them three rows of the contact QP. The patch
+/// they form is held just as well by its corners, so only those are kept.
+///
+/// Cutting the set by depth instead does not work, for the reason
+/// [`mesh_halfspace_collide`] gives: tilt a flat contact by a hundredth of a
+/// degree and its deepest points all lie along one edge of the patch, leaving
+/// the body free to pivot about that edge and screw itself into the other mesh.
+/// So the deepest contact is kept, and with it the outermost one along each of a
+/// ring of directions across the patch.
+///
+/// The contacts are grouped by normal first. A single patch would do for two
+/// meshes meeting on one pair of faces, but a mesh sitting in a groove or a
+/// corner of another rests on two or three faces at once, and reducing those
+/// together would keep the corners of the union and drop whole faces' worth of
+/// contact -- the ones holding the body sideways. Each group is reduced in its
+/// own tangent plane, so every face that is in contact keeps its own support
+/// polygon.
+fn reduce_to_support_polygons(
+    contacts: Vec<MeshContact>,
+) -> Vec<(Vector3<Float>, UnitVector3<Float>)> {
+    // Too few to be worth grouping: nothing can be dropped anyway
+    if contacts.len() <= MESH_MESH_SUPPORT_DIRECTIONS + 1 {
+        return contacts.into_iter().map(|(cp, normal, _)| (cp, normal)).collect();
+    }
+
+    // Group by normal. The running sum of a group's normals is what a candidate
+    // is compared against, rather than the first normal to land in it, so that
+    // the direction a group stands for is the middle of the ones it holds.
+    let mut patches: Vec<(Vector3<Float>, Vec<usize>)> = vec![];
+    for (i, (_, normal, _)) in contacts.iter().enumerate() {
+        let found = patches.iter_mut().find(|(sum, _)| {
+            sum.dot(normal) > MESH_MESH_NORMAL_CLUSTER_COSINE * sum.norm()
+        });
+        match found {
+            Some((sum, members)) => {
+                *sum += normal.into_inner();
+                members.push(i);
+            }
+            None => patches.push((normal.into_inner(), vec![i])),
+        }
+    }
+
+    let directions = support_directions::<MESH_MESH_SUPPORT_DIRECTIONS>();
+    let mut reduced = vec![];
+    for (sum, members) in patches.iter() {
+        if members.len() <= MESH_MESH_SUPPORT_DIRECTIONS + 1 {
+            reduced.extend(members.iter().map(|&i| (contacts[i].0, contacts[i].1)));
+            continue;
+        }
+
+        // Best (contact index, score) for depth, then for each direction
+        let (t, b) = tangentials(&UnitVector3::new_normalize(*sum));
+        let mut support: [Option<(usize, Float)>; MESH_MESH_SUPPORT_DIRECTIONS + 1] =
+            [None; MESH_MESH_SUPPORT_DIRECTIONS + 1];
+        for &i in members.iter() {
+            let (cp, _, depth) = contacts[i];
+            keep_furthest(&mut support[0], i, depth);
+
+            let (along_t, along_b) = (cp.dot(&t), cp.dot(&b));
+            for (slot, (cos, sin)) in izip!(support[1..].iter_mut(), directions.iter()) {
+                keep_furthest(slot, i, along_t * cos + along_b * sin);
+            }
+        }
+
+        // Neighbouring directions routinely pick the same corner, and the
+        // deepest contact is usually a corner too
+        let mut kept: Vec<usize> = vec![];
+        for &(i, _score) in support.iter().flatten() {
+            if kept.contains(&i) {
+                continue;
+            }
+            kept.push(i);
+            reduced.push((contacts[i].0, contacts[i].1));
+        }
+    }
+
+    reduced
 }
 
 #[cfg(test)]
@@ -1852,6 +1976,144 @@ mod collision_tests {
         // Lifted clear of the lower bar, nothing
         let lifted = Isometry3::translation(0., 0., 0.12);
         assert!(mesh_mesh_collide(&along_x, &Isometry3::identity(), &along_y, &lifted).is_empty());
+    }
+
+    /// A mesh of flat square plates, each subdivided into an `n` by `n` grid of
+    /// quads and wound so that its normals point along +z before `iso` puts it
+    /// in place
+    ///
+    /// One face of a mesh only ever holds a handful of contacts, so it takes a
+    /// tessellated one -- which is what a mesh off a CAD or scan pipeline is --
+    /// for a flat contact to report the hundreds the reduction exists to cut.
+    fn plates_mesh(
+        plates: &[(Float, usize, na::Isometry3<Float>)],
+    ) -> crate::hybrid::visual::rigid_mesh::RigidMesh {
+        let mut vertices = String::new();
+        let mut faces = String::new();
+        let mut offset = 0;
+        for &(size, n, iso) in plates.iter() {
+            let at = |k: usize| size * (k as Float / n as Float - 0.5);
+            for i in 0..=n {
+                for j in 0..=n {
+                    let p = iso * na::Point3::new(at(i), at(j), 0.);
+                    vertices += &format!("v {} {} {}\n", p.x, p.y, p.z);
+                }
+            }
+
+            // Wound anticlockwise seen from +z, so that both triangles of each
+            // quad face the way the plate does
+            let corner = |i: usize, j: usize| offset + i * (n + 1) + j + 1;
+            for i in 0..n {
+                for j in 0..n {
+                    let (a, b) = (corner(i, j), corner(i + 1, j));
+                    let (c, d) = (corner(i + 1, j + 1), corner(i, j + 1));
+                    faces += &format!("f {a} {b} {c}\nf {a} {c} {d}\n");
+                }
+            }
+            offset += (n + 1) * (n + 1);
+        }
+
+        crate::hybrid::visual::rigid_mesh::RigidMesh::new_from_obj(&(vertices + &faces))
+    }
+
+    /// A tessellated plate landing flat on a face touches it at every one of its
+    /// vertices, which is far more contact than the patch needs; what comes back
+    /// is the corners of that patch, and the whole of it, not just the middle
+    #[test]
+    fn mesh_mesh_collide_reduces_a_flat_patch_to_its_support_polygon() {
+        use na::Isometry3;
+
+        use crate::hybrid::collision::{mesh_mesh_collide, MESH_MESH_SUPPORT_DIRECTIONS};
+
+        // 121 vertices, every one of them landing on the slab
+        let plate = plates_mesh(&[(1., 10, Isometry3::identity())]);
+        // Far wider than the plate, so that none of its own corners are near it
+        let slab = box_mesh(4., 4., 1.);
+
+        // The plate resting on the slab's top face at z = 0.5
+        let contacts = mesh_mesh_collide(
+            &slab,
+            &Isometry3::identity(),
+            &plate,
+            &Isometry3::translation(0., 0., 0.5),
+        );
+
+        assert!(!contacts.is_empty());
+        assert!(
+            contacts.len() <= MESH_MESH_SUPPORT_DIRECTIONS + 1,
+            "{} contacts survived the reduction",
+            contacts.len()
+        );
+
+        // All one patch, so all one normal: out of the slab and into the plate
+        for (_cp, normal) in contacts.iter() {
+            assert_vec_close!(**normal, vector![0., 0., 1.], 1e-9);
+        }
+
+        // The corners of the plate are what stops it rocking, so they are the
+        // contacts that have to survive
+        for corner in [
+            vector![0.5, 0.5, 0.5],
+            vector![0.5, -0.5, 0.5],
+            vector![-0.5, 0.5, 0.5],
+            vector![-0.5, -0.5, 0.5],
+        ] {
+            assert!(
+                contacts.iter().any(|(cp, _)| (cp - corner).norm() < 1e-9),
+                "no contact at {corner:?}"
+            );
+        }
+    }
+
+    /// A mesh in contact on two faces at once is reduced a patch at a time, so
+    /// the face holding it sideways survives the face holding it up
+    #[test]
+    fn mesh_mesh_collide_reduces_each_contact_patch_separately() {
+        use na::{Isometry3, Translation3, UnitQuaternion};
+
+        use crate::{
+            hybrid::collision::{mesh_mesh_collide, MESH_MESH_SUPPORT_DIRECTIONS},
+            PI,
+        };
+
+        // A floor at z = 0 and a wall at x = -0.5 facing along +x, both
+        // tessellated finely enough to swamp either patch on their own
+        let corner = plates_mesh(&[
+            (2., 6, Isometry3::identity()),
+            (
+                2.,
+                6,
+                Isometry3::from_parts(
+                    Translation3::new(-0.5, 0., 0.5),
+                    UnitQuaternion::from_axis_angle(&Vector3::y_axis(), PI / 2.),
+                ),
+            ),
+        ]);
+
+        // A box filling the corner: its underside on the floor, its left face
+        // against the wall
+        let block = box_mesh(1., 2., 1.);
+        let contacts = mesh_mesh_collide(
+            &corner,
+            &Isometry3::identity(),
+            &block,
+            &Isometry3::translation(0., 0., 0.5),
+        );
+
+        // Reduced, but to a support polygon per patch rather than one overall
+        assert!(
+            contacts.len() <= 2 * (MESH_MESH_SUPPORT_DIRECTIONS + 1),
+            "{} contacts survived the reduction",
+            contacts.len()
+        );
+        for held in [vector![0., 0., 1.], vector![1., 0., 0.]] {
+            assert!(
+                contacts
+                    .iter()
+                    .any(|(_cp, normal)| (**normal - held).norm() < 1e-6),
+                "nothing left holding the block along {held:?}"
+            );
+        }
     }
 
     /// A mesh vertex poking into a cuboid face contacts it, even with every
