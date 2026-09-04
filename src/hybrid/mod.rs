@@ -397,6 +397,9 @@ impl Hybrid {
                                             cp_normals_list.push((cp, -n));
                                         }
                                     }
+                                    (Visual::RigidMesh(mesh), Visual::RigidMesh(mesh2)) => {
+                                        // TODO: mesh - mesh collision detection
+                                    }
                                     (Visual::Point(point), Visual::Cuboid(cuboid)) => {
                                         // TODO: Point - cuboid collision detection
                                     }
