@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use itertools::izip;
 use na::{Isometry3, Point3, UnitVector3, Vector3};
@@ -1073,6 +1073,360 @@ fn keep_furthest(best: &mut Option<(usize, Float)>, index: usize, score: Float) 
     }
 }
 
+/// How far apart two meshes can be and still count as touching.
+///
+/// Matches the tolerance `mesh_cuboid_collide` uses, so a body carrying a mesh
+/// makes contact at the same distance whichever kind of collider it meets.
+const MESH_MESH_CONTACT_TOLERANCE: Float = 1e-3;
+
+/// Distance below which two mesh-mesh contact points count as the same one.
+///
+/// A vertex shared by several faces is reported once per face, and a mesh whose
+/// faces do not share their vertices -- an STL-derived one -- repeats the vertex
+/// itself; duplicated contact points are duplicated rows in the solve.
+const MESH_MESH_WELD_DISTANCE: Float = 1e-6;
+
+/// How far from either end of the two edges their closest points have to sit to
+/// count as an edge-edge contact.
+///
+/// A closest point sitting on an endpoint is a vertex of one mesh against the
+/// other, which the vertex-face passes already report -- and report with the
+/// normal of the face the vertex rests on, rather than with the common
+/// perpendicular of the two edges, which is meaningless there.
+const MESH_MESH_EDGE_END_MARGIN: Float = 1e-6;
+
+/// How far from parallel, as the sine of the angle between them, two edges have
+/// to be for their common perpendicular to be a usable contact normal.
+const MESH_MESH_EDGE_PARALLEL_SINE: Float = 1e-6;
+
+/// Below this, a face has no area, hence no outward direction to contact along.
+const MESH_MESH_DEGENERATE_FACE_AREA: Float = 1e-12;
+
+/// Collision detection between two meshes
+/// Returns a list of (contact point, normal) in world frame, where the normal
+/// points from mesh 1 to mesh 2
+///
+/// `iso1` and `iso2` take each mesh from its own frame to world. Everything runs
+/// in mesh 1's frame: only the handful of mesh 2's faces that come near mesh 1
+/// are brought into it, rather than transforming (and re-BVH-ing) either mesh,
+/// the same way `mesh_halfspace_collide` moves the plane instead of the mesh.
+///
+/// Three kinds of contact are found, none of which covers another: a vertex of
+/// mesh 2 resting on a face of mesh 1, a vertex of mesh 1 resting on a face of
+/// mesh 2, and an edge of one crossing an edge of the other. Two boxes meeting
+/// face to face touch only at vertices, one resting a corner on the other's
+/// broad face touches at that one vertex with no vertex of the other anywhere
+/// near it, and two bars laid across each other touch at neither -- only where
+/// their edges cross.
+///
+/// Contact is a proximity test, as it is for the cuboid corners in
+/// `mesh_cuboid_collide`: a feature counts once it comes within
+/// `MESH_MESH_CONTACT_TOLERANCE` of the other mesh's surface. Neither mesh has
+/// the cheap inside test a cuboid does, so a mesh driven clean through another
+/// in one step -- far enough that no feature is left near a surface -- reports
+/// nothing. The contact has to be caught on approach rather than recovered from
+/// afterwards.
+pub fn mesh_mesh_collide(
+    mesh1: &RigidMesh,
+    iso1: &Isometry3<Float>,
+    mesh2: &RigidMesh,
+    iso2: &Isometry3<Float>,
+) -> Vec<(Vector3<Float>, UnitVector3<Float>)> {
+    let tol = MESH_MESH_CONTACT_TOLERANCE;
+    let tol_vec = Vector3::repeat(tol);
+
+    // Mesh 2's frame to mesh 1's, which is the frame the rest of this works in
+    let mesh2_to_1 = iso1.inverse() * iso2;
+
+    // Early-out: contact requires the two AABBs, inflated by tol, to overlap.
+    // What they overlap in is also the only region worth looking at, since every
+    // contact point is within tol of both surfaces.
+    let (min2, max2) = transformed_aabb(&mesh2_to_1, &mesh2.aabb_min, &mesh2.aabb_max);
+    let lo = (mesh1.aabb_min - tol_vec).sup(&(min2 - tol_vec));
+    let hi = (mesh1.aabb_max + tol_vec).inf(&(max2 + tol_vec));
+    for axis in 0..3 {
+        if lo[axis] > hi[axis] {
+            return vec![];
+        }
+    }
+
+    // Only the faces reaching into that region can be in contact. Mesh 2's BVH
+    // is in mesh 2's frame, so the region goes there to ask.
+    let i_faces1 = mesh1.bvh.collect_overlapping(&lo, &hi);
+    if i_faces1.is_empty() {
+        return vec![];
+    }
+    let (lo2, hi2) = transformed_aabb(&mesh2_to_1.inverse(), &lo, &hi);
+    let i_faces2 = mesh2.bvh.collect_overlapping(&lo2, &hi2);
+    if i_faces2.is_empty() {
+        return vec![];
+    }
+
+    let faces1 = candidate_faces(mesh1, &i_faces1, None);
+    let faces2 = candidate_faces(mesh2, &i_faces2, Some(&mesh2_to_1));
+
+    let mut cp_normal_list = vec![];
+    // A face of mesh 1 faces out of mesh 1, i.e. from mesh 1 towards mesh 2
+    mesh_vertex_face_contacts(&faces2, &faces1, 1., tol, &mut cp_normal_list);
+    // A face of mesh 2 faces the other way, so its normal is flipped
+    mesh_vertex_face_contacts(&faces1, &faces2, -1., tol, &mut cp_normal_list);
+    mesh_edge_edge_contacts(&faces1, &faces2, tol, &mut cp_normal_list);
+
+    // Back out to world frame; rotating a unit normal leaves it a unit normal
+    cp_normal_list
+        .into_iter()
+        .map(|(cp, normal)| ((iso1 * Point3::from(cp)).coords, iso1.rotation * normal))
+        .collect()
+}
+
+/// The axis-aligned box containing the box `[min, max]` after `iso` has moved it
+fn transformed_aabb(
+    iso: &Isometry3<Float>,
+    min: &Vector3<Float>,
+    max: &Vector3<Float>,
+) -> (Vector3<Float>, Vector3<Float>) {
+    let center = iso.transform_point(&Point3::from((min + max) / 2.)).coords;
+    // A box of half-extent `half` reaches |R| * half along each axis of the
+    // frame it is rotated into
+    let extent = iso.rotation.to_rotation_matrix().matrix().abs() * ((max - min) / 2.);
+
+    (center - extent, center + extent)
+}
+
+/// A face of a mesh that came near the other one, in the working frame
+struct CandidateFace {
+    /// Its three corners
+    points: [Vector3<Float>; 3],
+    /// The mesh's own indices for those corners, which name its edges
+    indices: [usize; 3],
+    /// Its outward normal, of the length the cross product gives it
+    normal: Vector3<Float>,
+}
+
+impl CandidateFace {
+    /// Its three edges, each as its two ends and the key naming it
+    fn edges(&self) -> [(Vector3<Float>, Vector3<Float>, (usize, usize)); 3] {
+        core::array::from_fn(|i| {
+            let j = (i + 1) % 3;
+            (
+                self.points[i],
+                self.points[j],
+                edge_key(self.indices[i], self.indices[j]),
+            )
+        })
+    }
+}
+
+/// Names an edge whichever way round its two ends are given
+fn edge_key(i: usize, j: usize) -> (usize, usize) {
+    if i <= j {
+        (i, j)
+    } else {
+        (j, i)
+    }
+}
+
+/// The given faces of the mesh, brought into the working frame by `transform` if
+/// the mesh is not already in it, with the degenerate ones dropped
+fn candidate_faces(
+    mesh: &RigidMesh,
+    i_faces: &[usize],
+    transform: Option<&Isometry3<Float>>,
+) -> Vec<CandidateFace> {
+    i_faces
+        .iter()
+        .filter_map(|&i_face| {
+            let indices = mesh.faces[i_face];
+            let points = indices.map(|index| match transform {
+                Some(iso) => (iso * Point3::from(mesh.vertices[index])).coords,
+                None => mesh.vertices[index],
+            });
+            let normal = (points[1] - points[0]).cross(&(points[2] - points[0]));
+
+            // A face with no area has no outward direction to report, and no
+            // room on it for a vertex to land either
+            (normal.norm_squared() > MESH_MESH_DEGENERATE_FACE_AREA
+                * MESH_MESH_DEGENERATE_FACE_AREA)
+                .then_some(CandidateFace {
+                    points,
+                    indices,
+                    normal,
+                })
+        })
+        .collect()
+}
+
+/// The distinct corners of the given faces
+///
+/// Every face around a vertex carries it, so the indices are deduplicated here;
+/// vertices repeated at one position, as a mesh whose faces do not share them
+/// has, are left to the weld in `push_welded`.
+fn candidate_vertices(faces: &[CandidateFace]) -> Vec<Vector3<Float>> {
+    let mut seen = HashSet::new();
+    let mut vertices = vec![];
+    for face in faces.iter() {
+        for (point, index) in izip!(face.points.iter(), face.indices.iter()) {
+            if seen.insert(*index) {
+                vertices.push(*point);
+            }
+        }
+    }
+
+    vertices
+}
+
+/// Which way each edge of the given faces points out of its mesh, as the sum of
+/// the unit normals of the faces carrying it
+///
+/// A single face's normal will not do on its own: an edge of a box belongs to
+/// two faces at right angles, and whichever of them the loop happens to reach
+/// first leaves the contact normal below either square on the edge or flat along
+/// it. Their sum is square on neither, so it settles the direction whichever
+/// face raised the edge. An edge that only one candidate face carries -- because
+/// its neighbour is out of range, or because the mesh repeats its vertices
+/// rather than sharing them -- keeps that face's normal alone.
+fn edge_outward_normals(faces: &[CandidateFace]) -> HashMap<(usize, usize), Vector3<Float>> {
+    let mut normals: HashMap<(usize, usize), Vector3<Float>> = HashMap::new();
+    for face in faces.iter() {
+        let unit = face.normal.normalize();
+        for (_a, _b, key) in face.edges() {
+            *normals.entry(key).or_insert_with(Vector3::zeros) += unit;
+        }
+    }
+
+    normals
+}
+
+/// Add the contact, unless one has already been found at the same point
+fn push_welded(
+    cp_normal_list: &mut Vec<(Vector3<Float>, UnitVector3<Float>)>,
+    cp: Vector3<Float>,
+    normal: UnitVector3<Float>,
+) {
+    if cp_normal_list
+        .iter()
+        .any(|(p, _)| (p - cp).norm_squared() < MESH_MESH_WELD_DISTANCE * MESH_MESH_WELD_DISTANCE)
+    {
+        return;
+    }
+    cp_normal_list.push((cp, normal));
+}
+
+/// The contacts of the corners of `faces` against `against`, i.e. the vertices
+/// lying over one of those faces and within `tol` of it, each with that face's
+/// normal
+///
+/// `sign` is +1 when the outward normals of `against` already point the way the
+/// reported normal should, and -1 when they point back the other way.
+fn mesh_vertex_face_contacts(
+    faces: &[CandidateFace],
+    against: &[CandidateFace],
+    sign: Float,
+    tol: Float,
+    cp_normal_list: &mut Vec<(Vector3<Float>, UnitVector3<Float>)>,
+) {
+    let vertices = candidate_vertices(faces);
+    let tol_sq = tol * tol;
+
+    for face in against.iter() {
+        let [v1, v2, v3] = face.points;
+        let edge1 = v2 - v1;
+        let edge2 = v3 - v1;
+        let normal = UnitVector3::new_normalize(sign * face.normal);
+
+        for point in vertices.iter() {
+            let (w1, w2, w3) = projected_barycentric_coord(point, &v1, &edge1, &edge2);
+
+            // Check if closest point is inside the face
+            if w1 < 0. || w2 < 0. || w3 < 0. {
+                continue;
+            }
+
+            // Projected point
+            let closest_point = w1 * v1 + w2 * v2 + w3 * v3;
+
+            // check if point is close to the face
+            // TODO: do ccd to avoid the passing through case
+            if (point - closest_point).norm_squared() < tol_sq {
+                push_welded(cp_normal_list, *point, normal);
+            }
+        }
+    }
+}
+
+/// The contacts of the first mesh's edges against the second's, i.e. the pairs
+/// of edges crossing within `tol` of each other, contacting halfway across the
+/// gap -- or the overlap -- between them, along their common perpendicular
+///
+/// The normal points out of the first mesh, i.e. from it towards the second.
+fn mesh_edge_edge_contacts(
+    faces1: &[CandidateFace],
+    faces2: &[CandidateFace],
+    tol: Float,
+    cp_normal_list: &mut Vec<(Vector3<Float>, UnitVector3<Float>)>,
+) {
+    let outward1 = edge_outward_normals(faces1);
+    let tol_sq = tol * tol;
+    let margin = MESH_MESH_EDGE_END_MARGIN;
+
+    for face1 in faces1.iter() {
+        for (a, b, key) in face1.edges() {
+            let direction1 = b - a;
+            let outward = outward1[&key];
+
+            for face2 in faces2.iter() {
+                for (c, d, _key2) in face2.edges() {
+                    let direction2 = d - c;
+
+                    // Parallel edges have no common perpendicular to contact
+                    // along, and touch along the whole of their overlap rather
+                    // than at a point; the vertices at the ends of that overlap
+                    // are what holds them apart, and the passes above report those
+                    let perpendicular = direction1.cross(&direction2);
+                    if perpendicular.norm_squared()
+                        < MESH_MESH_EDGE_PARALLEL_SINE
+                            * MESH_MESH_EDGE_PARALLEL_SINE
+                            * direction1.norm_squared()
+                            * direction2.norm_squared()
+                    {
+                        continue;
+                    }
+
+                    let (s, t) = segment_closest_params(&a, &b, &c, &d);
+                    if s < margin || s > 1. - margin || t < margin || t > 1. - margin {
+                        continue;
+                    }
+
+                    let on1 = a + direction1 * s;
+                    let on2 = c + direction2 * t;
+                    if (on1 - on2).norm_squared() > tol_sq {
+                        continue;
+                    }
+
+                    // The common perpendicular runs either way; take the way out
+                    // of the first mesh, so that the normal stays put once the
+                    // two are through each other rather than merely touching.
+                    // Only a mesh folded flat along the edge leaves that
+                    // undecided, and then the way the second mesh lies is all
+                    // there is to go on.
+                    let mut orientation = perpendicular.dot(&outward);
+                    if orientation.abs() < 1e-12 {
+                        orientation = perpendicular.dot(&(on2 - on1));
+                    }
+                    let normal = UnitVector3::new_normalize(if orientation < 0. {
+                        -perpendicular
+                    } else {
+                        perpendicular
+                    });
+
+                    // Both of the faces sharing an edge report it; keep it once
+                    push_welded(cp_normal_list, (on1 + on2) / 2., normal);
+                }
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod collision_tests {
     use na::{vector, UnitQuaternion, UnitVector3, Vector3};
@@ -1353,6 +1707,151 @@ mod collision_tests {
                 (l, w) => panic!("variants disagree: local={:?} world={:?}", l, w),
             }
         }
+    }
+
+    /// A box mesh of the given full extents, centred on its own origin, wound
+    /// so that every face normal points out of it
+    fn box_mesh(w: Float, d: Float, h: Float) -> crate::hybrid::visual::rigid_mesh::RigidMesh {
+        let (x, y, z) = (w / 2., d / 2., h / 2.);
+        let obj = format!(
+            "v {mx} {my} {mz}\nv {x} {my} {mz}\nv {x} {y} {mz}\nv {mx} {y} {mz}\n\
+             v {mx} {my} {z}\nv {x} {my} {z}\nv {x} {y} {z}\nv {mx} {y} {z}\n\
+             f 1 3 2\nf 1 4 3\nf 5 6 7\nf 5 7 8\nf 1 2 6\nf 1 6 5\n\
+             f 2 3 7\nf 2 7 6\nf 3 4 8\nf 3 8 7\nf 4 1 5\nf 4 5 8\n",
+            mx = -x,
+            my = -y,
+            mz = -z
+        );
+        crate::hybrid::visual::rigid_mesh::RigidMesh::new_from_obj(&obj)
+    }
+
+    /// A pyramid on a 0.4 m square base, its apex 1 m up, wound outward
+    fn spike_mesh() -> crate::hybrid::visual::rigid_mesh::RigidMesh {
+        crate::hybrid::visual::rigid_mesh::RigidMesh::new_from_obj(
+            "v 0 0 1\nv -0.2 -0.2 0\nv 0.2 -0.2 0\nv 0.2 0.2 0\nv -0.2 0.2 0\n\
+             f 1 2 3\nf 1 3 4\nf 1 4 5\nf 1 5 2\nf 2 3 4\nf 2 4 5\n",
+        )
+    }
+
+    /// A mesh vertex reaching a face of the other mesh contacts it, with the
+    /// normal running from the first mesh to the second, reported in world frame
+    #[test]
+    fn mesh_mesh_collide_finds_the_vertex_on_a_face() {
+        use na::Isometry3;
+
+        use crate::hybrid::collision::mesh_mesh_collide;
+
+        let spike = spike_mesh();
+        // A slab far wider than the pyramid, so that none of its own corners
+        // come anywhere near the mesh: only the apex is in contact
+        let slab = box_mesh(4., 4., 1.);
+
+        // The apex off the diagonal the slab's bottom face is split along, so
+        // that it lands squarely inside one triangle of it
+        let spike_iso = Isometry3::translation(0.5, 0., 0.);
+        let apex = vector![0.5, 0., 1.];
+
+        // Bottom face at z = 1, i.e. resting on the apex
+        let touching = Isometry3::translation(0., 0., 1.5);
+        let contacts = mesh_mesh_collide(&spike, &spike_iso, &slab, &touching);
+        assert_eq!(contacts.len(), 1);
+        let (cp, normal) = contacts[0];
+        assert_vec_close!(cp, apex, 1e-9);
+        // Out of the spike and into the slab, i.e. the way the slab is pushed
+        assert_vec_close!(*normal, vector![0., 0., 1.], 1e-9);
+
+        // The apex just through the face still counts
+        let sunk = Isometry3::translation(0., 0., 1.4995);
+        assert_eq!(mesh_mesh_collide(&spike, &spike_iso, &slab, &sunk).len(), 1);
+
+        // Clear of the apex, nothing
+        let clear = Isometry3::translation(0., 0., 1.51);
+        assert!(mesh_mesh_collide(&spike, &spike_iso, &slab, &clear).is_empty());
+
+        // Nowhere near, nothing
+        let away = Isometry3::translation(20., 0., 1.5);
+        assert!(mesh_mesh_collide(&spike, &spike_iso, &slab, &away).is_empty());
+
+        // The normal runs the other way round when the meshes are swapped
+        let contacts = mesh_mesh_collide(&slab, &touching, &spike, &spike_iso);
+        assert_eq!(contacts.len(), 1);
+        let (cp, normal) = contacts[0];
+        assert_vec_close!(cp, apex, 1e-9);
+        assert_vec_close!(*normal, vector![0., 0., -1.], 1e-9);
+    }
+
+    /// The contact is the same one wherever in the world the pair sits: moving
+    /// both meshes together carries the contact point and normal along with them
+    #[test]
+    fn mesh_mesh_collide_reports_contacts_in_world_frame() {
+        use na::{Isometry3, Translation3, UnitQuaternion};
+
+        use crate::{hybrid::collision::mesh_mesh_collide, PI};
+
+        let spike = spike_mesh();
+        let slab = box_mesh(4., 4., 1.);
+        let spike_iso = Isometry3::translation(0.5, 0., 0.);
+        let slab_iso = Isometry3::translation(0., 0., 1.5);
+
+        // Both meshes turned a quarter turn about x and moved off the origin
+        let world = Isometry3::from_parts(
+            Translation3::new(-3., 7., 2.),
+            UnitQuaternion::from_axis_angle(&Vector3::x_axis(), PI / 2.),
+        );
+        let contacts = mesh_mesh_collide(
+            &spike,
+            &(world * spike_iso),
+            &slab,
+            &(world * slab_iso),
+        );
+        assert_eq!(contacts.len(), 1);
+        let (cp, normal) = contacts[0];
+        assert_vec_close!(cp, (world * na::Point3::new(0.5, 0., 1.)).coords, 1e-9);
+        assert_vec_close!(*normal, world.rotation * Vector3::z(), 1e-9);
+    }
+
+    /// Two bars laid across each other touch only where their edges cross:
+    /// neither one has a vertex over a face of the other
+    #[test]
+    fn mesh_mesh_collide_finds_the_edge_edge_points() {
+        use na::Isometry3;
+
+        use crate::hybrid::collision::mesh_mesh_collide;
+
+        // A bar along x, its top face at z = 0.05
+        let along_x = box_mesh(2., 0.1, 0.1);
+        // A bar along y, laid across it with its bottom face 0.5 mm through
+        let along_y = box_mesh(0.1, 2., 0.1);
+        let across = Isometry3::translation(0., 0., 0.0995);
+
+        let contacts = mesh_mesh_collide(&along_x, &Isometry3::identity(), &along_y, &across);
+
+        // The four crossings of the bars' long top and bottom edges, plus the
+        // five the diagonals the two faces are triangulated along make: each
+        // diagonal crosses the other bar's two long edges, and they cross each
+        // other over the middle
+        assert_eq!(contacts.len(), 9);
+        for corner in [
+            vector![0.05, 0.05, 0.04975],
+            vector![0.05, -0.05, 0.04975],
+            vector![-0.05, 0.05, 0.04975],
+            vector![-0.05, -0.05, 0.04975],
+        ] {
+            assert!(
+                contacts
+                    .iter()
+                    .any(|(cp, _)| (cp - corner).norm() < 1e-9),
+                "no contact at {corner:?}"
+            );
+        }
+        // Every one of them pushes the upper bar up
+        for (_cp, normal) in contacts.iter() {
+            assert_vec_close!(**normal, vector![0., 0., 1.], 1e-9);
+        }
+
+        // Lifted clear of the lower bar, nothing
+        let lifted = Isometry3::translation(0., 0., 0.12);
+        assert!(mesh_mesh_collide(&along_x, &Isometry3::identity(), &along_y, &lifted).is_empty());
     }
 
     /// A mesh vertex poking into a cuboid face contacts it, even with every

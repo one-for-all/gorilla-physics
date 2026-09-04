@@ -15,7 +15,8 @@ use crate::{
         cloth::Cloth,
         collision::{
             cuboid_cuboid_collide, cuboid_point_collide, mesh_cuboid_collide,
-            mesh_halfspace_collide, mesh_point_collide, mesh_sphere_collide, sphere_cuboid_collide,
+            mesh_halfspace_collide, mesh_mesh_collide, mesh_point_collide, mesh_sphere_collide,
+            sphere_cuboid_collide,
         },
         control::{ArticulatedController, NullArticulatedController},
         deformable::deformable_deformable_ccd,
@@ -398,7 +399,12 @@ impl Hybrid {
                                         }
                                     }
                                     (Visual::RigidMesh(mesh), Visual::RigidMesh(mesh2)) => {
-                                        // TODO: mesh - mesh collision detection
+                                        // the normal goes from 2 to 1
+                                        for (cp, n) in
+                                            mesh_mesh_collide(mesh, &iso, mesh2, &iso2)
+                                        {
+                                            cp_normals_list.push((cp, -n));
+                                        }
                                     }
                                     (Visual::Point(point), Visual::Cuboid(cuboid)) => {
                                         // TODO: Point - cuboid collision detection
