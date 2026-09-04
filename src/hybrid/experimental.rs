@@ -9,7 +9,11 @@ use itertools::izip;
 use na::{DMatrix, DVector, Matrix1xX, Matrix3, Matrix3xX};
 
 use crate::{
-    hybrid::{collision::mesh_halfspace_collide, visual::Visual, Hybrid},
+    hybrid::{
+        collision::{mesh_halfspace_collide, Contact},
+        visual::Visual,
+        Hybrid,
+    },
     types::Float,
     util::{
         dual_friction_cone_multipler, friction_cone_multipler,
@@ -72,7 +76,7 @@ impl Hybrid {
                 for (i_joint, (rigid, _joint)) in
                     izip!(articulated.bodies.iter(), articulated.joints.iter()).enumerate()
                 {
-                    let mut cp_normal_list = vec![];
+                    let mut contacts = vec![];
                     for (collider, iso_collider_to_body, _color, _mu, collidable) in
                         rigid.visual.iter()
                     {
@@ -85,39 +89,38 @@ impl Hybrid {
                         match collider {
                             Visual::Point(_point) => {
                                 if halfspace.has_inside(&collider_pos) {
-                                    cp_normal_list.push((collider_pos, *n));
+                                    contacts.push(Contact::new(collider_pos, *n));
                                 }
                             }
                             Visual::Sphere(sphere) => {
                                 if let Some(cp) =
                                     halfspace.intersect_sphere(&collider_pos, sphere.r)
                                 {
-                                    cp_normal_list.push((cp, *n));
+                                    contacts.push(Contact::new(cp, *n));
                                 }
                             }
                             Visual::Cuboid(cuboid) => {
                                 for point in cuboid.points(&iso) {
                                     if halfspace.has_inside(&point) {
-                                        cp_normal_list.push((point, *n));
+                                        contacts.push(Contact::new(point, *n));
                                     }
                                 }
                             }
 
                             Visual::RigidMesh(mesh) => {
-                                cp_normal_list
-                                    .extend(mesh_halfspace_collide(mesh, &iso, halfspace));
+                                contacts.extend(mesh_halfspace_collide(mesh, &iso, halfspace));
                             }
                         }
                     }
 
                     // Assemble all the contact constraint joint jacobians for this body
-                    for (cp, n) in cp_normal_list.iter() {
-                        let C = friction_cone_multipler(&n, mu);
+                    for contact in contacts.iter() {
+                        let C = friction_cone_multipler(&contact.normal, mu);
                         As.push(-C);
 
                         let mut J = Matrix3xX::zeros(total_dof);
                         let H = articulated.total_jacobian_to_body(i_joint);
-                        let X = spatial_to_linear_velocity_multiplier(&cp);
+                        let X = spatial_to_linear_velocity_multiplier(&contact.point);
                         J.view_mut((0, icol_arti), (3, dof)).copy_from(&(X * H));
 
                         Js.push(J);
@@ -226,7 +229,7 @@ impl Hybrid {
                 for (i_joint, (rigid, _joint)) in
                     izip!(articulated.bodies.iter(), articulated.joints.iter()).enumerate()
                 {
-                    let mut cp_normal_list = vec![];
+                    let mut contacts = vec![];
                     for (collider, iso_collider_to_body, _color, _mu, collidable) in
                         rigid.visual.iter()
                     {
@@ -239,37 +242,36 @@ impl Hybrid {
                         match collider {
                             Visual::Point(_point) => {
                                 if halfspace.has_inside(&collider_pos) {
-                                    cp_normal_list.push((collider_pos, *n));
+                                    contacts.push(Contact::new(collider_pos, *n));
                                 }
                             }
                             Visual::Sphere(sphere) => {
                                 if let Some(cp) =
                                     halfspace.intersect_sphere(&collider_pos, sphere.r)
                                 {
-                                    cp_normal_list.push((cp, *n));
+                                    contacts.push(Contact::new(cp, *n));
                                 }
                             }
                             Visual::Cuboid(cuboid) => {
                                 for point in cuboid.points(&iso) {
                                     if halfspace.has_inside(&point) {
-                                        cp_normal_list.push((point, *n));
+                                        contacts.push(Contact::new(point, *n));
                                     }
                                 }
                             }
 
                             Visual::RigidMesh(mesh) => {
-                                cp_normal_list
-                                    .extend(mesh_halfspace_collide(mesh, &iso, halfspace));
+                                contacts.extend(mesh_halfspace_collide(mesh, &iso, halfspace));
                             }
                         }
                     }
 
                     // Assemble all the contact constraint joint jacobians for this body
-                    for (cp, n) in cp_normal_list.iter() {
-                        let C = dual_friction_cone_multipler(&n, mu);
+                    for contact in contacts.iter() {
+                        let C = dual_friction_cone_multipler(&contact.normal, mu);
 
                         let H = articulated.total_jacobian_to_body(i_joint);
-                        let X = spatial_to_linear_velocity_multiplier(&cp);
+                        let X = spatial_to_linear_velocity_multiplier(&contact.point);
                         let J: Matrix3xX<Float> = C * X * H;
                         Js.push(J);
                     }

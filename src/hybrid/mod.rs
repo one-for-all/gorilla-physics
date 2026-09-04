@@ -16,7 +16,7 @@ use crate::{
         collision::{
             cuboid_cuboid_collide, cuboid_point_collide, mesh_cuboid_collide,
             mesh_halfspace_collide, mesh_mesh_collide, mesh_point_collide, mesh_sphere_collide,
-            sphere_cuboid_collide,
+            sphere_cuboid_collide, Contact,
         },
         control::{ArticulatedController, NullArticulatedController},
         deformable::deformable_deformable_ccd,
@@ -274,7 +274,7 @@ impl Hybrid {
                 for (i_joint, (rigid, _joint)) in
                     izip!(articulated.bodies.iter(), articulated.joints.iter()).enumerate()
                 {
-                    let mut cp_normal_mu_list = vec![];
+                    let mut contact_mu_list = vec![];
                     for (collider, iso_collider_to_body, _color, mu, collidable) in
                         rigid.visual.iter()
                     {
@@ -284,46 +284,38 @@ impl Hybrid {
                         let iso = rigid.pose.to_isometry() * iso_collider_to_body;
                         let collider_pos = iso.translation.vector;
 
-                        match collider {
-                            Visual::Point(_point) => {
-                                if halfspace.has_inside(&collider_pos) {
-                                    cp_normal_mu_list.push((collider_pos, *n, *mu));
-                                }
-                            }
-                            Visual::Sphere(sphere) => {
-                                if let Some(cp) =
-                                    halfspace.intersect_sphere(&collider_pos, sphere.r)
-                                {
-                                    cp_normal_mu_list.push((cp, *n, *mu));
-                                    // console_log(&format!(
-                                    //     "collision normal: {:?}, \ncp: {}",
-                                    //     n, cp
-                                    // ));
-                                }
-                            }
-                            Visual::Cuboid(cuboid) => {
-                                for point in cuboid.points(&iso) {
-                                    if halfspace.has_inside(&point) {
-                                        cp_normal_mu_list.push((point, *n, *mu));
-                                    }
-                                }
-                            }
-
+                        let contacts = match collider {
+                            Visual::Point(_point) => halfspace
+                                .has_inside(&collider_pos)
+                                .then(|| Contact::new(collider_pos, *n))
+                                .into_iter()
+                                .collect(),
+                            Visual::Sphere(sphere) => halfspace
+                                .intersect_sphere(&collider_pos, sphere.r)
+                                .map(|cp| Contact::new(cp, *n))
+                                .into_iter()
+                                .collect(),
+                            Visual::Cuboid(cuboid) => cuboid
+                                .points(&iso)
+                                .into_iter()
+                                .filter(|point| halfspace.has_inside(point))
+                                .map(|point| Contact::new(point, *n))
+                                .collect(),
                             Visual::RigidMesh(mesh) => {
-                                for (cp, normal) in mesh_halfspace_collide(mesh, &iso, halfspace) {
-                                    cp_normal_mu_list.push((cp, normal, *mu));
-                                }
+                                mesh_halfspace_collide(mesh, &iso, halfspace)
                             }
-                        }
+                        };
+
+                        contact_mu_list.extend(contacts.into_iter().map(|c| (c, *mu)));
                     }
 
                     // Assemble all the contact constraint joint jacobians for this body
-                    for (cp, n, custom_mu) in cp_normal_mu_list.iter() {
+                    for (contact, custom_mu) in contact_mu_list.iter() {
                         let mu = custom_mu.unwrap_or(mu);
-                        let C = dual_friction_cone_multipler(&n, mu);
+                        let C = dual_friction_cone_multipler(&contact.normal, mu);
                         let mut J = Matrix3xX::zeros(total_dof);
                         let H = articulated.total_jacobian_to_body(i_joint);
-                        let X = spatial_to_linear_velocity_multiplier(&cp);
+                        let X = spatial_to_linear_velocity_multiplier(&contact.point);
                         J.view_mut((0, icol_arti), (3, dof)).copy_from(&(C * X * H));
 
                         contact_Js.push(J);
@@ -348,7 +340,7 @@ impl Hybrid {
                     for (i_joint2, (rigid2, _joint2)) in
                         izip!(articulated2.bodies.iter(), articulated2.joints.iter()).enumerate()
                     {
-                        let mut cp_normals_list = vec![];
+                        let mut contacts = vec![];
                         for (collider, iso_collider_to_body, _color, _mu, collidable) in
                             rigid.visual.iter()
                         {
@@ -367,62 +359,62 @@ impl Hybrid {
                                 let iso2 = rigid2.pose.to_isometry() * iso_collider_to_body2;
                                 let collider_pos2 = iso2.translation.vector;
 
-                                match (collider, collider2) {
+                                // Each of these reports normals running from the
+                                // first collider named to the second; what goes
+                                // into the solve runs from body 2 to body 1
+                                let found: Vec<Contact> = match (collider, collider2) {
                                     (Visual::Sphere(sphere), Visual::Sphere(sphere2)) => {
                                         // swap 2 and 1, so that normal goes from 2 to 1
-                                        if let Some((cp, n)) = sphere_collide(
+                                        sphere_collide(
                                             &collider_pos2,
                                             sphere2.r,
                                             &collider_pos,
                                             sphere.r,
-                                        ) {
-                                            cp_normals_list.push((cp, n));
-                                        }
+                                        )
+                                        .map(|(cp, n)| Contact::new(cp, n))
+                                        .into_iter()
+                                        .collect()
                                     }
                                     // TODO: Cuboid - Sphere as well
                                     (Visual::Sphere(sphere), Visual::Cuboid(cuboid)) => {
-                                        if let Some((cp, n)) = sphere_cuboid_collide(
-                                            &collider_pos,
-                                            &sphere,
-                                            &iso2,
-                                            &cuboid,
-                                        ) {
-                                            cp_normals_list.push((cp, -n));
-                                        }
+                                        sphere_cuboid_collide(&collider_pos, sphere, &iso2, cuboid)
+                                            .into_iter()
+                                            .map(Contact::flipped)
+                                            .collect()
                                     }
                                     (Visual::Cuboid(cuboid), Visual::Cuboid(cuboid2)) => {
-                                        // the normal goes from 2 to 1
-                                        for (cp, n) in
-                                            cuboid_cuboid_collide(&iso, cuboid, &iso2, cuboid2)
-                                        {
-                                            cp_normals_list.push((cp, -n));
-                                        }
+                                        cuboid_cuboid_collide(&iso, cuboid, &iso2, cuboid2)
+                                            .into_iter()
+                                            .map(Contact::flipped)
+                                            .collect()
                                     }
                                     (Visual::RigidMesh(mesh), Visual::RigidMesh(mesh2)) => {
-                                        // the normal goes from 2 to 1
-                                        for (cp, n) in
-                                            mesh_mesh_collide(mesh, &iso, mesh2, &iso2)
-                                        {
-                                            cp_normals_list.push((cp, -n));
-                                        }
+                                        mesh_mesh_collide(mesh, &iso, mesh2, &iso2)
+                                            .into_iter()
+                                            .map(Contact::flipped)
+                                            .collect()
                                     }
-                                    (Visual::Point(point), Visual::Cuboid(cuboid)) => {
+                                    (Visual::Point(_point), Visual::Cuboid(_cuboid)) => {
                                         // TODO: Point - cuboid collision detection
+                                        vec![]
                                     }
                                     _ => {
-                                        // only handle sphere-sphere collision for now
+                                        // only handle the pairs above for now
+                                        vec![]
                                     }
-                                }
+                                };
+
+                                contacts.extend(found);
                             }
                         }
-                        for (cp, n) in cp_normals_list.iter() {
-                            let C = dual_friction_cone_multipler(&n, mu);
+                        for contact in contacts.iter() {
+                            let C = dual_friction_cone_multipler(&contact.normal, mu);
 
                             let mut J = Matrix3xX::zeros(total_dof);
                             let H = articulated.total_jacobian_to_body(i_joint);
                             let H2 = articulated2.total_jacobian_to_body(i_joint2);
 
-                            let X = spatial_to_linear_velocity_multiplier(&cp);
+                            let X = spatial_to_linear_velocity_multiplier(&contact.point);
 
                             J.view_mut((0, icol_arti), (3, dof)).copy_from(&(C * X * H));
                             J.view_mut((0, icol_arti2), (3, dof2))
@@ -442,7 +434,7 @@ impl Hybrid {
             for articulated in self.articulated.iter() {
                 let dof = articulated.dof();
                 for (i_joint, rigid) in articulated.bodies.iter().enumerate() {
-                    let mut cp_normal_list = vec![];
+                    let mut contacts = vec![];
                     for (collider, iso_collider_to_body, _color, _mu, collidable) in
                         rigid.visual.iter()
                     {
@@ -450,38 +442,34 @@ impl Hybrid {
                             continue;
                         }
                         let iso = rigid.pose.to_isometry() * iso_collider_to_body;
+                        let collider_pos = iso.translation.vector;
 
-                        match collider {
+                        // The normals all run from the static mesh to the body
+                        let found = match collider {
                             Visual::Sphere(sphere) => {
-                                let sphere_center = iso.translation.vector;
-                                cp_normal_list.extend(mesh_sphere_collide(
-                                    &static_body.mesh,
-                                    &sphere_center,
-                                    sphere.r,
-                                ));
+                                mesh_sphere_collide(&static_body.mesh, &collider_pos, sphere.r)
                             }
                             Visual::Point(_point) => {
-                                let point = iso.translation.vector;
-                                cp_normal_list
-                                    .extend(mesh_point_collide(&static_body.mesh, &point));
+                                mesh_point_collide(&static_body.mesh, &collider_pos)
                             }
-                            Visual::Cuboid(cuboid) => cp_normal_list.extend(mesh_cuboid_collide(
-                                &static_body.mesh,
-                                &iso,
-                                cuboid,
-                            )),
+                            Visual::Cuboid(cuboid) => {
+                                mesh_cuboid_collide(&static_body.mesh, &iso, cuboid)
+                            }
                             _ => {
                                 // panic!("not implemented yet");
+                                vec![]
                             }
-                        }
+                        };
+
+                        contacts.extend(found);
                     }
 
                     // Add contact constraint jacobians
-                    for (cp, n) in cp_normal_list.iter() {
-                        let C = dual_friction_cone_multipler(&n, mu);
+                    for contact in contacts.iter() {
+                        let C = dual_friction_cone_multipler(&contact.normal, mu);
                         let mut J = Matrix3xX::zeros(total_dof);
                         let H = articulated.total_jacobian_to_body(i_joint);
-                        let X = spatial_to_linear_velocity_multiplier(&cp);
+                        let X = spatial_to_linear_velocity_multiplier(&contact.point);
                         J.view_mut((0, icol_arti), (3, dof)).copy_from(&(C * X * H));
 
                         contact_Js.push(J);
@@ -496,7 +484,7 @@ impl Hybrid {
             for articulated in self.articulated.iter() {
                 let dof = articulated.dof();
                 for (i_joint, rigid) in articulated.bodies.iter().enumerate() {
-                    let mut cp_normal_list = vec![];
+                    let mut contacts = vec![];
                     for (collider, iso_collider_to_body, _color, _mu, collidable) in
                         rigid.visual.iter()
                     {
@@ -506,38 +494,37 @@ impl Hybrid {
                         let iso = rigid.pose.to_isometry() * iso_collider_to_body;
                         let collider_pos = iso.translation.vector;
 
-                        match collider {
-                            Visual::Sphere(sphere) => {
-                                if let Some((cp, n)) = sphere_cuboid_collide(
-                                    &collider_pos,
-                                    &sphere,
-                                    &static_cuboid.iso,
-                                    &static_cuboid.geom,
-                                ) {
-                                    cp_normal_list.push((cp, -n));
-                                }
-                            }
-                            Visual::Point(_point) => {
-                                if let Some((cp, n)) = cuboid_point_collide(
-                                    &static_cuboid.iso,
-                                    &static_cuboid.geom,
-                                    &collider_pos,
-                                ) {
-                                    cp_normal_list.push((cp, n));
-                                }
-                            }
+                        // The normals all run from the static cuboid to the body
+                        let found = match collider {
+                            Visual::Sphere(sphere) => sphere_cuboid_collide(
+                                &collider_pos,
+                                sphere,
+                                &static_cuboid.iso,
+                                &static_cuboid.geom,
+                            )
+                            .into_iter()
+                            .map(Contact::flipped)
+                            .collect(),
+                            Visual::Point(_point) => cuboid_point_collide(
+                                &static_cuboid.iso,
+                                &static_cuboid.geom,
+                                &collider_pos,
+                            ),
                             _ => {
                                 // panic!("not implemented yet");
+                                vec![]
                             }
-                        }
+                        };
+
+                        contacts.extend(found);
                     }
-                    // console_log(&format!("number of contacts: {}", cp_normal_list.len()));
+                    // console_log(&format!("number of contacts: {}", contacts.len()));
                     // Add contact constraint jacobians
-                    for (cp, n) in cp_normal_list.iter() {
-                        let C = dual_friction_cone_multipler(&n, mu);
+                    for contact in contacts.iter() {
+                        let C = dual_friction_cone_multipler(&contact.normal, mu);
                         let mut J = Matrix3xX::zeros(total_dof);
                         let H = articulated.total_jacobian_to_body(i_joint);
-                        let X = spatial_to_linear_velocity_multiplier(&cp);
+                        let X = spatial_to_linear_velocity_multiplier(&contact.point);
                         J.view_mut((0, icol_arti), (3, dof)).copy_from(&(C * X * H));
 
                         contact_Js.push(J);
