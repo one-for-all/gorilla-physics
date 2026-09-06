@@ -45,6 +45,16 @@ pub trait ArticulatedController {
     /// listed them in.
     fn set_switch(&mut self, _switch: usize, _pressed: bool) {}
 
+    /// Hold joystick `joystick` at `x`, `y` -- each in [-1, 1], with 0
+    /// released -- and press or release the switch under its cap.
+    ///
+    /// One call rather than three, because that is what the host has: a
+    /// pointer on a pad knows where the stick is and whether the button is
+    /// down, all at once, and nothing downstream cares which of the three
+    /// changed. Joysticks are numbered as switches are, in the order the
+    /// thing that built the controller listed them.
+    fn set_joystick(&mut self, _joystick: usize, _x: Float, _y: Float, _pressed: bool) {}
+
     /// What is wrong with the hardware as it stands, if anything -- a wiring
     /// fault that only the running firmware can reveal, such as a switch tied
     /// to a pin the sketch has made an output. One message rather than a list,

@@ -127,6 +127,23 @@ impl InterfaceHybrid {
         self.inner.controllers[i].set_switch(switch, pressed);
     }
 
+    /// Hold joystick `joystick` on the board running articulated `i` at
+    /// `x`, `y`, with its cap switch pressed or not.
+    ///
+    /// The whole state of the stick every time, unlike `set_switch_at`'s one
+    /// bit: a pointer dragging a pad reports where it is rather than what
+    /// changed, and the controller is what works out which pins that moves.
+    pub fn set_joystick_at(
+        &mut self,
+        i: usize,
+        joystick: usize,
+        x: Float,
+        y: Float,
+        pressed: bool,
+    ) {
+        self.inner.controllers[i].set_joystick(joystick, x, y, pressed);
+    }
+
     /// What the hardware running articulated `i` has to warn about, if
     /// anything. Polled: it depends on what the firmware has done to its pins,
     /// so it changes as the sketch runs rather than at any one moment.
