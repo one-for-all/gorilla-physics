@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use itertools::izip;
-use na::{vector, DMatrix, DVector, Matrix6xX, UnitQuaternion};
+use na::{vector, DMatrix, DVector, Matrix6xX, UnitQuaternion, Vector3};
 
 use crate::{
     hybrid::rigid::Rigid,
@@ -22,6 +22,18 @@ use crate::{
 
 pub mod helper;
 
+/// A force pushed onto one body from outside the simulation, held until it is
+/// replaced or cleared.
+///
+/// It is a force and not an impulse: a step does not spend it, so whoever set it
+/// is the one who takes it away. Nothing in here generates one -- it is for a
+/// caller that is not part of the physics, such as a cursor dragging a link.
+pub struct AppliedForce {
+    pub body: usize,               // index into `Articulated::bodies`
+    pub point: Vector3<Float>,     // where it acts, in world coordinates
+    pub force: Vector3<Float>,     // world frame, newtons
+}
+
 /// bodies connected to each other through joints
 pub struct Articulated {
     pub bodies: Vec<Rigid>, // all the rigid bodies in it
@@ -37,6 +49,12 @@ pub struct Articulated {
     pub constraints: Vec<Constraint>, // Joint constraints for kinematic loops
     pub relative_range_constraints: Vec<RelativeRangeConstraint>, // range constraint between two q
     pub range_constraints: Vec<RangeConstraint>, // range constraint on a single q
+
+    /// An outside force on one of the bodies, if there is one. It travels with
+    /// this articulated rather than being held against its index somewhere
+    /// above, so re-ordering a `Hybrid`'s articulated cannot leave it pointing
+    /// at the wrong robot.
+    pub applied_force: Option<AppliedForce>,
 }
 
 impl Articulated {
@@ -66,10 +84,26 @@ impl Articulated {
             constraints: vec![],
             relative_range_constraints: vec![],
             range_constraints: vec![],
+            applied_force: None,
         };
 
         state.update_body_states();
         state
+    }
+
+    /// Push a force onto one body from outside, replacing whatever was there.
+    /// It stays until it is cleared -- see [`AppliedForce`].
+    pub fn set_applied_force(
+        &mut self,
+        body: usize,
+        point: Vector3<Float>,
+        force: Vector3<Float>,
+    ) {
+        self.applied_force = Some(AppliedForce { body, point, force });
+    }
+
+    pub fn clear_applied_force(&mut self) {
+        self.applied_force = None;
     }
 
     pub fn add_constraints(&mut self, constraints: Vec<Constraint>) {
@@ -188,11 +222,37 @@ impl Articulated {
         let c = DVector::from_vec(torques); // dynamics bias
 
         // Solve for velocity
-        let total_tau = tau - c;
+        let total_tau = tau + self.applied_generalized_force() - c;
         let mass_matrix = self.mass_matrix.clone();
         let vdot = mass_matrix.cholesky().unwrap().solve(&total_tau);
 
         self.v() + vdot * dt
+    }
+
+    /// What `applied_force` amounts to at the joints, zero if there is none.
+    ///
+    /// A force f acting at world point p is the wrench (p x f, f) about the
+    /// world origin -- the same construction contact.rs makes for a contact
+    /// force -- and the body's own Jacobian carries it back to the joints as
+    /// J^T w, which is where a generalized force belongs. Only the bodies
+    /// between the world and the one pushed have a row that is not zero, since
+    /// that is all `total_jacobian_to_body` fills in.
+    ///
+    /// A `body` past the end is ignored rather than a panic: it can only come
+    /// from outside the simulation, and dropping a force is a better answer
+    /// there than taking the caller down with it.
+    fn applied_generalized_force(&self) -> DVector<Float> {
+        let Some(applied) = self.applied_force.as_ref() else {
+            return DVector::zeros(self.dof());
+        };
+        if applied.body >= self.bodies.len() {
+            return DVector::zeros(self.dof());
+        }
+
+        let torque = applied.point.cross(&applied.force);
+        let f = &applied.force;
+        let wrench = vector![torque[0], torque[1], torque[2], f[0], f[1], f[2]];
+        self.total_jacobian_to_body(applied.body).transpose() * wrench
     }
 
     pub fn update_mass_matrix(&mut self) {
@@ -473,7 +533,7 @@ mod articulated_tests {
         hybrid::{articulated::Articulated, rigid::Rigid},
         joint::{Joint, JointVelocity},
         spatial::transform::Transform3D,
-        PI, WORLD_FRAME,
+        GRAVITY, PI, WORLD_FRAME,
     };
 
     #[test]
@@ -567,5 +627,80 @@ mod articulated_tests {
 
         // Assert
         assert_close!(total_energy, state.total_energy(), 1e-1);
+    }
+
+    /// A force through the centre of mass, along the one axis a cart can move
+    /// on, is f = ma and nothing else.
+    #[test]
+    fn an_applied_force_accelerates_a_body_at_f_over_m() {
+        // Arrange
+        let m = 1.0;
+        let bodies = vec![Rigid::new_cuboid_at(
+            &vector![0., 0., 0.],
+            m,
+            1.,
+            0.1,
+            0.1,
+            "cart",
+        )];
+        let cart_to_world = Transform3D::identity("cart", WORLD_FRAME);
+        let joints = vec![Joint::new_prismatic(cart_to_world, Vector3::x_axis())];
+        let mut state = Articulated::new(bodies, joints);
+
+        // Act
+        let f = 2.0;
+        state.set_applied_force(0, vector![0., 0., 0.], vector![f, 0., 0.]);
+        let final_time = 1.0;
+        let dt = 1e-3;
+        let num_steps = (final_time / dt) as usize;
+        for _s in 0..num_steps {
+            state.step(dt);
+        }
+
+        // Assert
+        let a = f / m;
+        assert_vec_close!(state.v(), vec![a * final_time], 1e-3);
+        assert_vec_close!(state.q(), vec![0.5 * a * final_time * final_time], 1e-2);
+    }
+
+    /// The lever arm is the half that is easy to get wrong, and the cheapest
+    /// way to pin it is to cancel gravity with it: a force of m*g straight up
+    /// at the bob is the same wrench gravity puts there and the opposite sign,
+    /// so a pendulum that would otherwise swing to PI does not move at all.
+    /// Get `point x force` backwards and it swings twice as fast instead.
+    #[test]
+    fn an_applied_force_at_a_point_cancels_gravity_there() {
+        // Arrange
+        let l = 1.0;
+        let m = 1.0;
+        let bodies = vec![Rigid::new_sphere_at(&vector![l, 0., 0.], m, 1., "pendulum")];
+        let sphere_to_world = Transform3D::identity("pendulum", WORLD_FRAME);
+        let joints = vec![Joint::new_revolute(sphere_to_world, Vector3::y_axis())];
+        let mut state = Articulated::new(bodies, joints);
+
+        // Act
+        state.set_applied_force(0, vector![l, 0., 0.], vector![0., 0., m * GRAVITY]);
+        let final_time = 2.0;
+        let dt = 1e-3;
+        let num_steps = (final_time / dt) as usize;
+        for _s in 0..num_steps {
+            state.step(dt);
+        }
+
+        // Assert
+        assert_vec_close!(state.q(), vec![0.], 1e-6);
+        assert_vec_close!(state.v(), vec![0.], 1e-6);
+
+        // And it is the force doing that, not the joint standing still on its
+        // own: taken away, the pendulum swings as `pendulum` above says it does.
+        state.clear_applied_force();
+        let mut max_angle = 0.;
+        for _s in 0..num_steps {
+            state.step(dt);
+            if state.q()[0] > max_angle {
+                max_angle = state.q()[0];
+            }
+        }
+        assert_close!(max_angle, PI, 1e-3);
     }
 }

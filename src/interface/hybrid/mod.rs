@@ -144,6 +144,37 @@ impl InterfaceHybrid {
         self.inner.controllers[i].set_joystick(joystick, x, y, pressed);
     }
 
+    /// Push a force onto body `body` of articulated `i`, acting at world point
+    /// `p` and held until it is replaced or cleared.
+    ///
+    /// For a caller outside the physics -- a cursor dragging a link -- which is
+    /// why it is a plain force and not a constraint: what the body does with it
+    /// is still the solve's answer, so a link held by its servos barely moves
+    /// and a loose one swings.
+    pub fn set_applied_force_at(
+        &mut self,
+        i: usize,
+        body: usize,
+        px: Float,
+        py: Float,
+        pz: Float,
+        fx: Float,
+        fy: Float,
+        fz: Float,
+    ) {
+        self.inner.articulated[i].set_applied_force(
+            body,
+            vector![px, py, pz],
+            vector![fx, fy, fz],
+        );
+    }
+
+    /// Take the force above off articulated `i`. A step does not spend one, so
+    /// this is the only thing that ends it.
+    pub fn clear_applied_force_at(&mut self, i: usize) {
+        self.inner.articulated[i].clear_applied_force();
+    }
+
     /// What the hardware running articulated `i` has to warn about, if
     /// anything. Polled: it depends on what the firmware has done to its pins,
     /// so it changes as the sketch runs rather than at any one moment.
