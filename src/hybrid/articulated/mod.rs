@@ -16,22 +16,40 @@ use crate::{
         spatial_vector::SpatialVector,
     },
     types::Float,
-    util::{inertia_mul, quaternion_derivative, spatial_force_cross, spatial_motion_cross},
+    util::{
+        inertia_mul, quaternion_derivative, spatial_force_cross, spatial_motion_cross,
+        spatial_to_linear_velocity,
+    },
     GRAVITY, WORLD_FRAME,
 };
 
 pub mod helper;
 
-/// A force pushed onto one body from outside the simulation, held until it is
-/// replaced or cleared.
+/// A hand laid on one body from outside the simulation: a damped spring pulling
+/// a point on that body towards wherever the hand is asking for it, held until
+/// it is replaced or cleared.
 ///
-/// It is a force and not an impulse: a step does not spend it, so whoever set it
-/// is the one who takes it away. Nothing in here generates one -- it is for a
-/// caller that is not part of the physics, such as a cursor dragging a link.
-pub struct AppliedForce {
-    pub body: usize,               // index into `Articulated::bodies`
-    pub point: Vector3<Float>,     // where it acts, in world coordinates
-    pub force: Vector3<Float>,     // world frame, newtons
+/// It is a spring the solve evaluates rather than a force handed over ready-made
+/// because **both of its ends have to be the ones this step has**. The caller is
+/// not part of the physics -- a cursor dragging a link -- and it runs at the
+/// display's frame rate, which at `run(60, 0)` is sixty steps behind. A force
+/// worked out up there is a sixty-step-old answer to where the body was and how
+/// fast it was going, and on a light body free to turn that pumps energy in
+/// rather than taking it out: a 20 g part grabbed a centimetre off its centre
+/// spins up to a NaN inside a second. So the caller says where it is holding and
+/// where it is pulling to, and the force is worked out here, every step.
+///
+/// A step does not spend it, so whoever set it is the one who takes it away.
+pub struct AppliedSpring {
+    pub body: usize,            // index into `Articulated::bodies`
+    /// Where the hand holds the body, in that body's own frame -- so it stays
+    /// the same material point as the body turns under it, without the caller
+    /// having to say so again. Set from a world point by `set_applied_spring`.
+    pub point: Vector3<Float>,
+    pub target: Vector3<Float>, // where it is pulling `point` to, world frame
+    pub stiffness: Float,       // N/m
+    pub damping: Float,         // N s/m, against the velocity of `point`
+    pub max_force: Float,       // N, the cap on the two of them together
 }
 
 /// bodies connected to each other through joints
@@ -50,11 +68,11 @@ pub struct Articulated {
     pub relative_range_constraints: Vec<RelativeRangeConstraint>, // range constraint between two q
     pub range_constraints: Vec<RangeConstraint>, // range constraint on a single q
 
-    /// An outside force on one of the bodies, if there is one. It travels with
+    /// An outside hand on one of the bodies, if there is one. It travels with
     /// this articulated rather than being held against its index somewhere
     /// above, so re-ordering a `Hybrid`'s articulated cannot leave it pointing
     /// at the wrong robot.
-    pub applied_force: Option<AppliedForce>,
+    pub applied_spring: Option<AppliedSpring>,
 }
 
 impl Articulated {
@@ -84,26 +102,56 @@ impl Articulated {
             constraints: vec![],
             relative_range_constraints: vec![],
             range_constraints: vec![],
-            applied_force: None,
+            applied_spring: None,
         };
 
         state.update_body_states();
         state
     }
 
-    /// Push a force onto one body from outside, replacing whatever was there.
-    /// It stays until it is cleared -- see [`AppliedForce`].
-    pub fn set_applied_force(
+    /// Take hold of one body from outside at world point `point`, replacing
+    /// whatever was there. It stays until it is cleared -- see
+    /// [`AppliedSpring`].
+    ///
+    /// `point` is read against the pose the body is in now and kept as the
+    /// material point it lands on, so this is called once at the taking hold
+    /// and not again; `aim_applied_spring` is what follows a cursor. A `body`
+    /// past the end takes hold of nothing rather than panicking, since the
+    /// caller is outside the simulation.
+    pub fn set_applied_spring(
         &mut self,
         body: usize,
         point: Vector3<Float>,
-        force: Vector3<Float>,
+        target: Vector3<Float>,
+        stiffness: Float,
+        damping: Float,
+        max_force: Float,
     ) {
-        self.applied_force = Some(AppliedForce { body, point, force });
+        let Some(rigid) = self.bodies.get(body) else {
+            self.applied_spring = None;
+            return;
+        };
+        let iso = rigid.pose.to_isometry();
+        self.applied_spring = Some(AppliedSpring {
+            body,
+            point: iso.rotation.inverse() * (point - iso.translation.vector),
+            target,
+            stiffness,
+            damping,
+            max_force,
+        });
     }
 
-    pub fn clear_applied_force(&mut self) {
-        self.applied_force = None;
+    /// Pull whatever is being held towards a different world point. Nothing
+    /// held, nothing to aim.
+    pub fn aim_applied_spring(&mut self, target: Vector3<Float>) {
+        if let Some(applied) = self.applied_spring.as_mut() {
+            applied.target = target;
+        }
+    }
+
+    pub fn clear_applied_spring(&mut self) {
+        self.applied_spring = None;
     }
 
     pub fn add_constraints(&mut self, constraints: Vec<Constraint>) {
@@ -222,35 +270,61 @@ impl Articulated {
         let c = DVector::from_vec(torques); // dynamics bias
 
         // Solve for velocity
-        let total_tau = tau + self.applied_generalized_force() - c;
+        let total_tau = tau + self.applied_generalized_force(dt) - c;
         let mass_matrix = self.mass_matrix.clone();
         let vdot = mass_matrix.cholesky().unwrap().solve(&total_tau);
 
         self.v() + vdot * dt
     }
 
-    /// What `applied_force` amounts to at the joints, zero if there is none.
+    /// What `applied_spring` amounts to at the joints, zero if there is none.
     ///
-    /// A force f acting at world point p is the wrench (p x f, f) about the
+    /// The force is the spring's, worked out here rather than passed in: the
+    /// held point is carried into the world by the pose the body is in *this
+    /// step*, the stretch is from there to where the hand is pulling, and the
+    /// damping is against the velocity that point has -- which is the whole
+    /// reason this lives in the solve, see [`AppliedSpring`]. The cap is on the
+    /// two of them together, so the damping half can hold the body back as hard
+    /// as the spring half can pull it.
+    ///
+    /// A force f acting at world point p is then the wrench (p x f, f) about the
     /// world origin -- the same construction contact.rs makes for a contact
     /// force -- and the body's own Jacobian carries it back to the joints as
     /// J^T w, which is where a generalized force belongs. Only the bodies
     /// between the world and the one pushed have a row that is not zero, since
     /// that is all `total_jacobian_to_body` fills in.
     ///
+    /// The damping is also bounded here, and by the step: a damper of
+    /// coefficient c takes c*v*dt of momentum out of a body that has m*v, so
+    /// past c = m/dt it removes more than is there and the next step gets it
+    /// back with the sign flipped -- which is not damping but a pump, and the
+    /// lighter the body the sooner it starts. The quarter is margin for the
+    /// hand being off the centre of mass, where the mass a push at a point sees
+    /// is a fraction of the body's own.
+    ///
     /// A `body` past the end is ignored rather than a panic: it can only come
     /// from outside the simulation, and dropping a force is a better answer
     /// there than taking the caller down with it.
-    fn applied_generalized_force(&self) -> DVector<Float> {
-        let Some(applied) = self.applied_force.as_ref() else {
+    fn applied_generalized_force(&self, dt: Float) -> DVector<Float> {
+        let Some(applied) = self.applied_spring.as_ref() else {
             return DVector::zeros(self.dof());
         };
         if applied.body >= self.bodies.len() {
             return DVector::zeros(self.dof());
         }
 
-        let torque = applied.point.cross(&applied.force);
-        let f = &applied.force;
+        let rigid = &self.bodies[applied.body];
+        let iso = rigid.pose.to_isometry();
+        let p = iso.rotation * applied.point + iso.translation.vector;
+        let v = spatial_to_linear_velocity(&rigid.twist, &p);
+        let damping = applied.damping.min(rigid.inertia.mass / (4. * dt));
+        let mut f = (applied.target - p) * applied.stiffness - v * damping;
+        let magnitude = f.norm();
+        if magnitude > applied.max_force {
+            f *= applied.max_force / magnitude;
+        }
+
+        let torque = p.cross(&f);
         let wrench = vector![torque[0], torque[1], torque[2], f[0], f[1], f[2]];
         self.total_jacobian_to_body(applied.body).transpose() * wrench
     }
@@ -533,6 +607,7 @@ mod articulated_tests {
         hybrid::{articulated::Articulated, rigid::Rigid},
         joint::{Joint, JointVelocity},
         spatial::transform::Transform3D,
+        types::Float,
         GRAVITY, PI, WORLD_FRAME,
     };
 
@@ -629,10 +704,10 @@ mod articulated_tests {
         assert_close!(total_energy, state.total_energy(), 1e-1);
     }
 
-    /// A force through the centre of mass, along the one axis a cart can move
-    /// on, is f = ma and nothing else.
+    /// A spring on the centre of mass, along the one axis a cart can move on,
+    /// takes it to where it was asked for and leaves it there.
     #[test]
-    fn an_applied_force_accelerates_a_body_at_f_over_m() {
+    fn an_applied_spring_pulls_a_body_to_where_it_is_asked_for() {
         // Arrange
         let m = 1.0;
         let bodies = vec![Rigid::new_cuboid_at(
@@ -648,9 +723,9 @@ mod articulated_tests {
         let mut state = Articulated::new(bodies, joints);
 
         // Act
-        let f = 2.0;
-        state.set_applied_force(0, vector![0., 0., 0.], vector![f, 0., 0.]);
-        let final_time = 1.0;
+        let x = 0.05;
+        state.set_applied_spring(0, vector![0., 0., 0.], vector![x, 0., 0.], 200., 8., 20.);
+        let final_time = 5.0;
         let dt = 1e-3;
         let num_steps = (final_time / dt) as usize;
         for _s in 0..num_steps {
@@ -658,9 +733,8 @@ mod articulated_tests {
         }
 
         // Assert
-        let a = f / m;
-        assert_vec_close!(state.v(), vec![a * final_time], 1e-3);
-        assert_vec_close!(state.q(), vec![0.5 * a * final_time * final_time], 1e-2);
+        assert_vec_close!(state.q(), vec![x], 1e-3);
+        assert_vec_close!(state.v(), vec![0.], 1e-3);
     }
 
     /// The lever arm is the half that is easy to get wrong, and the cheapest
@@ -668,8 +742,12 @@ mod articulated_tests {
     /// at the bob is the same wrench gravity puts there and the opposite sign,
     /// so a pendulum that would otherwise swing to PI does not move at all.
     /// Get `point x force` backwards and it swings twice as fast instead.
+    ///
+    /// A spring of stiffness k asked for the bob m*g/k above where it already
+    /// is pulls with exactly that force for as long as the bob does not move --
+    /// which, if the cancellation holds, it does not.
     #[test]
-    fn an_applied_force_at_a_point_cancels_gravity_there() {
+    fn an_applied_spring_at_a_point_cancels_gravity_there() {
         // Arrange
         let l = 1.0;
         let m = 1.0;
@@ -679,7 +757,15 @@ mod articulated_tests {
         let mut state = Articulated::new(bodies, joints);
 
         // Act
-        state.set_applied_force(0, vector![l, 0., 0.], vector![0., 0., m * GRAVITY]);
+        let k = 100.;
+        state.set_applied_spring(
+            0,
+            vector![l, 0., 0.],
+            vector![l, 0., m * GRAVITY / k],
+            k,
+            0.,
+            100.,
+        );
         let final_time = 2.0;
         let dt = 1e-3;
         let num_steps = (final_time / dt) as usize;
@@ -691,9 +777,9 @@ mod articulated_tests {
         assert_vec_close!(state.q(), vec![0.], 1e-6);
         assert_vec_close!(state.v(), vec![0.], 1e-6);
 
-        // And it is the force doing that, not the joint standing still on its
+        // And it is the spring doing that, not the joint standing still on its
         // own: taken away, the pendulum swings as `pendulum` above says it does.
-        state.clear_applied_force();
+        state.clear_applied_spring();
         let mut max_angle = 0.;
         for _s in 0..num_steps {
             state.step(dt);
@@ -702,5 +788,48 @@ mod articulated_tests {
             }
         }
         assert_close!(max_angle, PI, 1e-3);
+    }
+
+    /// A 20 g printed part held by one corner -- a dropped object being nudged
+    /// -- settles where the hand asks for it instead of spinning up.
+    ///
+    /// The arrangement is the browser's: the hand is taken hold of and aimed
+    /// from up in the page, and the solve steps sixty times per animation frame
+    /// underneath it. That is why neither end of the spring can be the caller's
+    /// to work out. Against a sixty-step-old point and velocity it pumps energy
+    /// in rather than taking it out, and the part reaches a NaN mass matrix
+    /// within a second of being touched (roadmap#10).
+    #[test]
+    fn a_light_body_held_by_a_corner_does_not_spin_up() {
+        // Arrange
+        let m = 0.02;
+        let w = 0.05;
+        let corner = vector![w / 2., w / 2., 0.];
+        let mut state = Articulated::new_cube_at("block", m, w, &vector![0., 0., 0.5]);
+        let held = |state: &Articulated| {
+            let iso = state.bodies[0].pose.to_isometry();
+            iso.rotation * corner + iso.translation.vector
+        };
+        let target = held(&state) + vector![0.05, 0., 0.];
+
+        // Act -- the gains and the cap are the page's own, from www/src/nudge.ts
+        let dt = 1. / 3600.;
+        state.set_applied_spring(0, held(&state), target, 200., 8., 20.);
+        let mut fastest: Float = 0.;
+        for _frame in 0..120 {
+            for _substep in 0..60 {
+                state.step(dt);
+            }
+            fastest = fastest.max(state.bodies[0].twist.angular.norm());
+        }
+
+        // Assert - the hand has the corner where it asked for it, to a millimetre
+        assert_vec_close!(held(&state), target, 5e-3);
+        // Assert - and the part is turning no faster than the swing of a thing
+        // hanging by a corner, rather than winding up without limit. It does
+        // swing: a rotation about the point being held moves that point not at
+        // all, so there is nothing for the damping to take the energy out
+        // through, exactly as with a real hand pinching one corner.
+        assert!(fastest < 40., "wound up to {} rad/s", fastest);
     }
 }

@@ -144,35 +144,53 @@ impl InterfaceHybrid {
         self.inner.controllers[i].set_joystick(joystick, x, y, pressed);
     }
 
-    /// Push a force onto body `body` of articulated `i`, acting at world point
-    /// `p` and held until it is replaced or cleared.
+    /// Take hold of body `body` of articulated `i` at world point `p`, pulling
+    /// it towards world point `t` with a damped spring, and keep hold until it
+    /// is aimed somewhere else or let go.
     ///
     /// For a caller outside the physics -- a cursor dragging a link -- which is
-    /// why it is a plain force and not a constraint: what the body does with it
-    /// is still the solve's answer, so a link held by its servos barely moves
-    /// and a loose one swings.
-    pub fn set_applied_force_at(
+    /// why it is a spring and not a constraint: what the body does with it is
+    /// still the solve's answer, so a link held by its servos barely moves and a
+    /// loose one swings. The gains and the cap come from that caller, since it
+    /// is the one deciding how firm a hand this is. What the solve owns is the
+    /// force, and it has to: the caller runs at the display's frame rate, and
+    /// both where the body is and how fast it is going are sixty steps different
+    /// by the time it says anything. Hence a point *taken hold of* here, kept as
+    /// a material point, rather than one pushed in every frame.
+    pub fn set_applied_spring_at(
         &mut self,
         i: usize,
         body: usize,
         px: Float,
         py: Float,
         pz: Float,
-        fx: Float,
-        fy: Float,
-        fz: Float,
+        tx: Float,
+        ty: Float,
+        tz: Float,
+        stiffness: Float,
+        damping: Float,
+        max_force: Float,
     ) {
-        self.inner.articulated[i].set_applied_force(
+        self.inner.articulated[i].set_applied_spring(
             body,
             vector![px, py, pz],
-            vector![fx, fy, fz],
+            vector![tx, ty, tz],
+            stiffness,
+            damping,
+            max_force,
         );
     }
 
-    /// Take the force above off articulated `i`. A step does not spend one, so
-    /// this is the only thing that ends it.
-    pub fn clear_applied_force_at(&mut self, i: usize) {
-        self.inner.articulated[i].clear_applied_force();
+    /// Pull what articulated `i` is being held by towards a different world
+    /// point -- a cursor that has moved. Nothing held, nothing to aim.
+    pub fn aim_applied_spring_at(&mut self, i: usize, tx: Float, ty: Float, tz: Float) {
+        self.inner.articulated[i].aim_applied_spring(vector![tx, ty, tz]);
+    }
+
+    /// Let go of articulated `i`. A step does not spend a hold, so this is the
+    /// only thing that ends it.
+    pub fn clear_applied_spring_at(&mut self, i: usize) {
+        self.inner.articulated[i].clear_applied_spring();
     }
 
     /// What the hardware running articulated `i` has to warn about, if
