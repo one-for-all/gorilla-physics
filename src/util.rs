@@ -161,9 +161,19 @@ pub fn tangentials(n: &UnitVector3<Float>) -> (UnitVector3<Float>, UnitVector3<F
 }
 
 /// Multiplying the point velocity to obtain the dual friction cone constraint
+///
+/// The cone is `|v_t| <= v_n / mu`, i.e. the rows `[n/mu, t, b]`. They are scaled
+/// by `mu` here instead: the constraint is a cone membership against a zero
+/// right-hand side, so multiplying every row of it by a positive number leaves
+/// the feasible set exactly as it was. What it does change is `mu = 0`, where
+/// `n/mu` is a row of infinities and the solve answers with a velocity of
+/// exactly zero -- a body glued to the ground rather than free to slide on it.
+/// Scaled, that case reads `|0| <= v_n`, which is frictionless contact and
+/// nothing else. It is also the better conditioned of the two: no entry grows
+/// as the coefficient falls.
 pub fn dual_friction_cone_multipler(n: &UnitVector3<Float>, mu: Float) -> Matrix3<Float> {
     let (t, b) = tangentials(&n);
-    Matrix3::from_rows(&[1. / mu * n.transpose(), t.transpose(), b.transpose()])
+    Matrix3::from_rows(&[n.transpose(), mu * t.transpose(), mu * b.transpose()])
 }
 
 /// Friction cone multiplier used to form a friction cone constraint in clarable

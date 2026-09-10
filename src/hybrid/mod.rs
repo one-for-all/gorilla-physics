@@ -980,6 +980,7 @@ mod hybrid_tests {
 
     use crate::{
         assert_close, assert_vec_close,
+        collision::halfspace::HalfSpace,
         hybrid::{
             articulated::Articulated,
             builders::{
@@ -1344,6 +1345,49 @@ mod hybrid_tests {
         assert_close!(stuck.articulated[0].v()[0], 0., 1e-6);
         assert_close!(stuck.articulated[0].q()[0], 0., 1e-6);
         assert!(slipping.articulated[0].q()[0].abs() > 0.1);
+    }
+
+    /// A body whose visual asks for no friction at all slides along the ground
+    /// instead of being pinned to the spot.
+    ///
+    /// Zero is what the simulator's placement panel writes for an object the user
+    /// wants frictionless (roadmap#13). The dual cone's normal row used to be
+    /// `n / mu`, so such a contact reached the solve as a row of infinities and it
+    /// answered with a velocity of exactly zero -- a body glued down, which is the
+    /// opposite of what was asked for, and with nothing anywhere to say so.
+    #[test]
+    fn a_frictionless_body_slides_along_the_ground() {
+        // Arrange
+        let v0 = 0.2;
+        let w = 0.05;
+        let slide = |mu: Float| {
+            let mut state = Hybrid::empty();
+            state.add_halfspace(HalfSpace::new(Vector3::z_axis(), 0.));
+            let mut cube = Articulated::new_cube_at("block", 0.02, w, &vector![0., 0., w / 2.]);
+            cube.bodies[0].visual[0].3 = Some(mu);
+            cube.set_joint_v(
+                0,
+                JointVelocity::Spatial(SpatialVector::linear(vector![v0, 0., 0.])),
+            );
+            state.add_articulated(cube);
+
+            // Act - one second, at the rate the page steps the scene at
+            let dt = 1. / 3600.;
+            for _s in 0..3600 {
+                state.step(dt, &vec![]);
+            }
+            state.articulated[0].bodies[0].pose.to_isometry().translation
+        };
+
+        // Assert - it has gone a second's travel at the speed it was pushed off
+        // at, having neither slowed down nor sunk into the floor
+        let free = slide(0.);
+        assert_close!(free.x, v0, 1e-3);
+        assert_close!(free.z, w / 2., 1e-3);
+        // Assert - and it is the coefficient doing that, not the contact having
+        // stopped working: the same block on ABS's own 0.35 stops within a
+        // centimetre of where it started.
+        assert!(slide(0.35).x < 0.01);
     }
 
     #[test]
