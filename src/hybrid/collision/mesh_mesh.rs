@@ -426,15 +426,16 @@ mod tests {
     /// Which way an edge faces out of its mesh is the sum of the normals of the
     /// faces carrying it, and reaching both of them means recognising that two
     /// faces name the same edge. Off the face's own vertex indices that fails on
-    /// a mesh like this one, and each visit to an edge keeps a single face's
-    /// normal: on the edge of the bar's top face, either the top face's normal
-    /// -- which is right -- or the side face's, which is square on the
-    /// perpendicular the two edges contact along and so leaves the sign of the
-    /// contact normal to the gap between them. Two bodies already through each
-    /// other by half a millimetre, which is what a resting contact is, then get
-    /// a normal pointing *into* the mesh, and the friction cone of a contact
-    /// pointing one way and one pointing the other admits no relative velocity
-    /// at all: the two bodies weld, and hang wherever they touched.
+    /// a mesh like this one -- neither face refers to the shared corners by the
+    /// index the other used -- so each visit to an edge keeps a single face's
+    /// normal. Where that is the side face's rather than the top face's it is
+    /// square on the perpendicular the two edges contact along and says nothing
+    /// about which way the contact pushes, leaving the sign to the gap between
+    /// the edges: and two bodies already through each other, which is what a
+    /// resting contact is, get a normal pointing *into* the mesh. The friction
+    /// cone of a contact pointing one way and one pointing the other admits no
+    /// relative velocity at all, so the two bodies weld and hang wherever they
+    /// touched.
     ///
     /// The URDF this came off is a CAD export whose meshes repeat about half
     /// their vertices, and a printed block dropped on the corner of one of its

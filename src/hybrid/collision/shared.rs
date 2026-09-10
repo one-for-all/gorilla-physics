@@ -356,12 +356,27 @@ pub fn edge_edge_contact(
 
     // The common perpendicular runs either way; take the way out of the first
     // body, so that the normal stays put once the two are through each other
-    // rather than merely touching. Only a body folded flat along the edge leaves
-    // that undecided, and then the way the second edge lies is all there is to
-    // go on.
-    let mut orientation = perpendicular.dot(outward1);
-    if orientation.abs() < 1e-12 {
-        orientation = perpendicular.dot(&gap);
+    // rather than merely touching. Only an edge whose outward direction lies
+    // square on that perpendicular leaves it undecided, and then the way the
+    // second edge lies is all there is to go on.
+    //
+    // Both sides are normalized before they are compared, so that the
+    // undecided case is recognised by the *angle* between them rather than by
+    // the size of a product of two unnormalized vectors. It matters: a
+    // millimetre-long perpendicular against a unit normal square on it lands
+    // around 1e-9 rather than at zero, which is the sign of a rounding error
+    // deciding which way a contact pushes.
+    //
+    // The parallel test above leaves `perpendicular` with a length to normalize.
+    // `outward1` is a sum of unit normals, so it only loses its own when an edge
+    // carries two exactly opposing faces -- a fin of no thickness, which is
+    // undecided in the same way and takes the same way out.
+    let along = perpendicular.normalize();
+    let mut orientation = outward1
+        .try_normalize(0.)
+        .map_or(0., |unit| along.dot(&unit));
+    if orientation.abs() < 1e-9 {
+        orientation = along.dot(&gap);
     }
     let normal = UnitVector3::new_normalize(if orientation < 0. {
         -perpendicular
