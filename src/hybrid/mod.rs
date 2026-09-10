@@ -48,6 +48,24 @@ pub mod rigid;
 pub mod static_body;
 pub mod visual;
 
+/// The coefficient of friction between two surfaces, from what each of them
+/// slides at on its own.
+///
+/// Friction belongs to a *pair* of surfaces rather than to one of them, and a
+/// visual carries only its own coefficient -- what that material slides at
+/// against a plain surface, which is what the halfspace pass reads it as. The
+/// geometric mean is the usual way to make a pair out of two such numbers: two
+/// bodies of the same material meet at exactly the coefficient they each carry,
+/// and a slippery one on a grippy one lands between the two rather than taking
+/// whichever body was listed first.
+///
+/// A visual that names no coefficient falls back to the scene's own, exactly as
+/// it does against the halfspace. Zero on either side is honoured rather than
+/// averaged away: a frictionless surface is frictionless against anything.
+fn pair_friction(mu1: Option<Float>, mu2: Option<Float>, scene: Float) -> Float {
+    (mu1.unwrap_or(scene) * mu2.unwrap_or(scene)).sqrt()
+}
+
 pub struct Hybrid {
     pub articulated: Vec<Articulated>,
     pub deformables: Vec<Deformable>,
@@ -340,8 +358,8 @@ impl Hybrid {
                     for (i_joint2, (rigid2, _joint2)) in
                         izip!(articulated2.bodies.iter(), articulated2.joints.iter()).enumerate()
                     {
-                        let mut contacts = vec![];
-                        for (collider, iso_collider_to_body, _color, _mu, collidable) in
+                        let mut contact_mu_list = vec![];
+                        for (collider, iso_collider_to_body, _color, mu1, collidable) in
                             rigid.visual.iter()
                         {
                             if !collidable {
@@ -350,7 +368,7 @@ impl Hybrid {
                             let iso = rigid.pose.to_isometry() * iso_collider_to_body;
                             let collider_pos = iso.translation.vector;
 
-                            for (collider2, iso_collider_to_body2, _color2, _mu2, collidable2) in
+                            for (collider2, iso_collider_to_body2, _color2, mu2, collidable2) in
                                 rigid2.visual.iter()
                             {
                                 if !collidable2 {
@@ -404,11 +422,12 @@ impl Hybrid {
                                     }
                                 };
 
-                                contacts.extend(found);
+                                let pair_mu = pair_friction(*mu1, *mu2, mu);
+                                contact_mu_list.extend(found.into_iter().map(|c| (c, pair_mu)));
                             }
                         }
-                        for contact in contacts.iter() {
-                            let C = dual_friction_cone_multipler(&contact.normal, mu);
+                        for (contact, pair_mu) in contact_mu_list.iter() {
+                            let C = dual_friction_cone_multipler(&contact.normal, *pair_mu);
 
                             let mut J = Matrix3xX::zeros(total_dof);
                             let H = articulated.total_jacobian_to_body(i_joint);
@@ -1388,6 +1407,64 @@ mod hybrid_tests {
         // stopped working: the same block on ABS's own 0.35 stops within a
         // centimetre of where it started.
         assert!(slide(0.35).x < 0.01);
+    }
+
+    /// Two bodies slide on each other at the coefficient the pair of them makes,
+    /// rather than at the scene's own.
+    ///
+    /// A visual has always carried its own coefficient and the halfspace pass has
+    /// always read it; the articulated-articulated pass took `friction_mu`
+    /// instead, so *whatever* two bodies were made of they met at the scene-wide
+    /// 1.0 -- rubber on rubber. That is not merely too grippy. The dual cone
+    /// constrains a contact's relative velocity into a cone of half-angle
+    /// `atan(1/mu)` about its normal, so two contacts whose normals are further
+    /// apart than twice that leave only zero: at 1.0 that is 90 degrees, which
+    /// any two faces meeting at a sharper edge than a right angle exceed. A
+    /// dropped part landing on the corner of another was welded to it in mid-air,
+    /// with nothing in the scene to say why.
+    #[test]
+    fn two_bodies_slide_on_each_other_at_their_own_friction() {
+        // Arrange
+        let v0 = 0.2;
+        let w = 0.05;
+        let slide = |mu: Float| {
+            let mut state = Hybrid::empty();
+            state.add_halfspace(HalfSpace::new(Vector3::z_axis(), 0.));
+
+            // A heavy slab resting on the ground, and the block on top of it, so
+            // that the only contact under the moving body is body-on-body -- and
+            // far wider than a second's travel, so the block stays on it
+            let slab = 1.0;
+            let mut below = Articulated::new_cube_at("slab", 100., slab, &vector![0., 0., slab / 2.]);
+            below.bodies[0].visual[0].3 = Some(mu);
+            state.add_articulated(below);
+
+            let mut block =
+                Articulated::new_cube_at("block", 0.02, w, &vector![0., 0., slab + w / 2.]);
+            block.bodies[0].visual[0].3 = Some(mu);
+            block.set_joint_v(
+                0,
+                JointVelocity::Spatial(SpatialVector::linear(vector![v0, 0., 0.])),
+            );
+            state.add_articulated(block);
+
+            // Act - one second, at the rate the page steps the scene at
+            let dt = 1. / 3600.;
+            for _s in 0..3600 {
+                state.step(dt, &vec![]);
+            }
+            state.articulated[1].bodies[0].pose.to_isometry().translation
+        };
+
+        // Assert - frictionless, it keeps the speed it was pushed off at rather
+        // than being held by a coefficient belonging to the scene and not to it
+        let free = slide(0.);
+        assert_close!(free.x, v0, 1e-2);
+        // Assert - and the contact is still working: on ABS's own 0.35 the same
+        // block stops within a centimetre, and stays up on the one below it
+        let gripped = slide(0.35);
+        assert!(gripped.x < 0.01);
+        assert_close!(gripped.z, 1. + w / 2., 1e-3);
     }
 
     #[test]
