@@ -471,7 +471,12 @@ fn support_directions<const N: usize>() -> [(Float, Float); N] {
 pub struct CandidateFace {
     /// Its three corners
     pub points: [Vector3<Float>; 3],
-    /// The mesh's own indices for those corners, which name its edges
+    /// Which of the mesh's vertex positions those corners are, which is what
+    /// names its edges: `RigidMesh::canonical`'s index rather than the face's
+    /// own, so that two faces meeting along an edge name it the same way even
+    /// when the mesh gives each of them its own copy of both ends. See
+    /// [`distinct_edges`], whose outward direction depends on gathering both
+    /// visits to an edge.
     pub indices: [usize; 3],
     /// Its outward normal, of the length the cross product gives it
     pub normal: Vector3<Float>,
@@ -510,8 +515,9 @@ pub fn candidate_faces(
     i_faces
         .iter()
         .filter_map(|&i_face| {
-            let indices = mesh.faces[i_face];
-            let points = indices.map(|index| match transform {
+            let corners = mesh.faces[i_face];
+            let indices = corners.map(|index| mesh.canonical[index]);
+            let points = corners.map(|index| match transform {
                 Some(iso) => (iso * Point3::from(mesh.vertices[index])).coords,
                 None => mesh.vertices[index],
             });
@@ -532,9 +538,10 @@ pub fn candidate_faces(
 
 /// The distinct corners of the given faces
 ///
-/// Every face around a vertex carries it, so the indices are deduplicated here;
-/// vertices repeated at one position, as a mesh whose faces do not share them
-/// has, are left to the weld in [`push_welded`].
+/// Every face around a vertex carries it, so the indices are deduplicated here.
+/// They are canonical indices, so a vertex several faces keep their own copy of
+/// is one vertex here too, rather than being reported once per copy and left to
+/// the weld in [`push_welded`].
 pub fn candidate_vertices(faces: &[CandidateFace]) -> Vec<Vector3<Float>> {
     let mut seen = HashSet::new();
     let mut vertices = vec![];
@@ -567,10 +574,13 @@ pub struct MeshEdge {
 /// Gathering the two visits is also what settles the outward direction. A single
 /// face's normal will not do on its own: an edge of a box belongs to two faces
 /// at right angles, and whichever of them the loop happened to reach first would
-/// leave the contact normal below either square on the edge or flat along it.
-/// Their sum is square on neither. An edge that only one candidate face carries
-/// -- because its neighbour is out of range, or because the mesh repeats its
-/// vertices rather than sharing them -- keeps that face's normal alone.
+/// leave the contact normal below either square on the edge or flat along it --
+/// and where that normal ends up pointing *into* the mesh instead of out of it,
+/// the pair of contacts is a weld rather than a rough one. So the key is
+/// `CandidateFace`'s canonical index rather than the face's own, which is what
+/// makes this hold for a mesh that repeats its corners instead of sharing them.
+/// An edge that only one candidate face carries -- because its neighbour is out
+/// of the region being looked at -- keeps that face's normal alone.
 pub fn distinct_edges(faces: &[CandidateFace]) -> Vec<MeshEdge> {
     // Kept in the order the faces raise them, so that the contacts a pass
     // reports -- and hence which of two coincident ones the weld keeps -- do not

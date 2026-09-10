@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use na::{vector, Vector3};
 
 use crate::{collision::bvh::Bvh, types::Float};
@@ -40,6 +42,29 @@ pub struct RigidMesh {
     /// AABB tree over the faces, used to prune per-face collision tests.
     /// Kept in sync with the vertices by `recompute_aabb` as well.
     pub bvh: Bvh,
+
+    /// For each vertex, the index of the first vertex sitting at the same
+    /// position -- itself, for a mesh whose faces share their corners.
+    ///
+    /// The contact path names an *edge* by the pair of vertex indices at its
+    /// ends, which is what lets it recognise that two faces carry the same edge
+    /// and settle which way it faces out of the mesh from both of their normals.
+    /// A mesh whose faces do not share their corners -- an STL-derived one, or
+    /// an OBJ that splits a vertex per material or per shading group, which is
+    /// most CAD exports -- names each visit to one edge differently, so every
+    /// edge looks like a boundary edge carried by one face alone. See
+    /// [`crate::hybrid::collision`]'s `distinct_edges` for what that costs.
+    ///
+    /// Positions are matched *exactly*, on the bits, save that a negative zero
+    /// is read as a zero -- which is a coordinate a file can honestly write
+    /// either way round. A split vertex is otherwise the same number written
+    /// twice by whatever wrote the file -- the same decimal in an OBJ, the same
+    /// f32 in a binary STL -- so it parses to the same bits, and a tolerance
+    /// here would need a spatial index and would risk merging the genuinely
+    /// distinct corners of a fine mesh.
+    ///
+    /// Kept in sync with the vertices by `recompute_aabb`.
+    pub canonical: Vec<usize>,
 }
 
 /// Close the group being read: it runs from where it started to the face the
@@ -191,6 +216,7 @@ impl RigidMesh {
             aabb_min: Vector3::zeros(),
             aabb_max: Vector3::zeros(),
             bvh: Bvh::default(),
+            canonical: vec![],
         };
         mesh.recompute_aabb();
         mesh
@@ -226,8 +252,9 @@ impl RigidMesh {
         drawn
     }
 
-    /// Recompute the cached axis-aligned bounding box and rebuild the face
-    /// BVH from the vertices. Call after any mutation of `vertices`.
+    /// Recompute the cached axis-aligned bounding box, rebuild the face BVH,
+    /// and rebuild the map of coincident vertices. Call after any mutation of
+    /// `vertices`.
     pub fn recompute_aabb(&mut self) {
         let mut min = Vector3::repeat(Float::MAX);
         let mut max = Vector3::repeat(Float::MIN);
@@ -238,6 +265,25 @@ impl RigidMesh {
         self.aabb_min = min;
         self.aabb_max = max;
         self.bvh = Bvh::build(&self.vertices, &self.faces);
+
+        // See `canonical`: the first vertex at each position stands for all of
+        // them, so that an edge two faces carry is named the same way by both
+        // even on a mesh that repeats its corners rather than sharing them.
+        let mut first = HashMap::with_capacity(self.vertices.len());
+        self.canonical = self
+            .vertices
+            .iter()
+            .enumerate()
+            .map(|(i, v)| {
+                // `+ 0.` only to fold -0. onto 0., which have different bits
+                let bits = [
+                    (v.x + 0.).to_bits(),
+                    (v.y + 0.).to_bits(),
+                    (v.z + 0.).to_bits(),
+                ];
+                *first.entry(bits).or_insert(i)
+            })
+            .collect();
     }
 
     // Old more readable implemenation

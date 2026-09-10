@@ -295,6 +295,28 @@ mod tests {
         RigidMesh::new_from_obj(&(vertices + &faces))
     }
 
+    /// The same mesh with every face given its own copy of its three corners,
+    /// sharing none of them
+    ///
+    /// Which is how a binary STL stores a mesh, and how a CAD exporter writes an
+    /// OBJ that splits a vertex per material or per shading group -- an Onshape
+    /// export of a two-tone part repeats about half of its vertices. The solid
+    /// is exactly the same one: same faces, in the same order, over the same
+    /// positions.
+    fn split_vertices(mesh: &RigidMesh) -> RigidMesh {
+        let mut split = mesh.clone();
+        split.vertices = mesh
+            .faces
+            .iter()
+            .flat_map(|face| face.map(|index| mesh.vertices[index]))
+            .collect();
+        split.faces = (0..mesh.faces.len())
+            .map(|i| [3 * i, 3 * i + 1, 3 * i + 2])
+            .collect();
+        split.recompute_aabb();
+        split
+    }
+
     /// A mesh vertex reaching a face of the other mesh contacts it, with the
     /// normal running from the first mesh to the second, reported in world frame
     #[test]
@@ -396,6 +418,58 @@ mod tests {
         // Lifted clear of the lower bar, nothing
         let lifted = Isometry3::translation(0., 0., 0.12);
         assert!(mesh_mesh_collide(&along_x, &Isometry3::identity(), &along_y, &lifted).is_empty());
+    }
+
+    /// A mesh that repeats its corners rather than sharing them contacts exactly
+    /// as the same solid does when its faces share them
+    ///
+    /// Which way an edge faces out of its mesh is the sum of the normals of the
+    /// faces carrying it, and reaching both of them means recognising that two
+    /// faces name the same edge. Off the face's own vertex indices that fails on
+    /// a mesh like this one, and each visit to an edge keeps a single face's
+    /// normal: on the edge of the bar's top face, either the top face's normal
+    /// -- which is right -- or the side face's, which is square on the
+    /// perpendicular the two edges contact along and so leaves the sign of the
+    /// contact normal to the gap between them. Two bodies already through each
+    /// other by half a millimetre, which is what a resting contact is, then get
+    /// a normal pointing *into* the mesh, and the friction cone of a contact
+    /// pointing one way and one pointing the other admits no relative velocity
+    /// at all: the two bodies weld, and hang wherever they touched.
+    ///
+    /// The URDF this came off is a CAD export whose meshes repeat about half
+    /// their vertices, and a printed block dropped on the corner of one of its
+    /// links stuck to it in mid-air. Dropping the same block on the same part
+    /// exported with its vertices shared did not.
+    #[test]
+    fn mesh_mesh_collide_reads_a_mesh_that_repeats_its_vertices_the_same_way() {
+        // The crossed bars of `mesh_mesh_collide_finds_the_edge_edge_points`,
+        // which touch only where their edges cross -- so every contact here is
+        // one whose normal an edge's outward direction settles
+        let along_x = box_mesh(2., 0.1, 0.1);
+        let along_y = box_mesh(0.1, 2., 0.1);
+        let across = Isometry3::translation(0., 0., 0.0995);
+
+        let shared = mesh_mesh_collide(&along_x, &Isometry3::identity(), &along_y, &across);
+        let repeated = mesh_mesh_collide(
+            &split_vertices(&along_x),
+            &Isometry3::identity(),
+            &split_vertices(&along_y),
+            &across,
+        );
+
+        assert_eq!(repeated.len(), shared.len());
+        for contact in shared.iter() {
+            let found = repeated
+                .iter()
+                .find(|it| (it.point - contact.point).norm() < 1e-9)
+                .unwrap_or_else(|| panic!("no contact at {:?}", contact.point));
+            assert_vec_close!(*found.normal, *contact.normal, 1e-9);
+        }
+        // Every one of them holds the upper bar up, rather than some of them
+        // pulling it down through the lower one
+        for contact in repeated.iter() {
+            assert_vec_close!(*contact.normal, vector![0., 0., 1.], 1e-9);
+        }
     }
 
     /// A tessellated plate landing flat on a face touches it at every one of its
