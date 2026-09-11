@@ -46,6 +46,29 @@ pub const EDGE_END_MARGIN: Float = 1e-6;
 /// to be for their common perpendicular to be a usable contact normal.
 pub const EDGE_PARALLEL_SINE: Float = 1e-6;
 
+/// How far an edge's outward direction has to be from square on a contact's
+/// common perpendicular, as the cosine of the angle between them, for it to say
+/// which way along that perpendicular the contact pushes.
+///
+/// Three degrees, which is a real angle rather than a tolerance, and that is the
+/// point. The outward direction is the only thing that knows which way is *out
+/// of* the first body; where it lies square on the perpendicular it knows
+/// nothing, and the edge cannot hold the other body off along that direction
+/// either -- the contact would run *along* the surface at that edge rather than
+/// out of it. So there is no contact to report, rather than one whose direction
+/// is a guess.
+///
+/// That is not a rare degeneracy. It is the ordinary case of an edge on a wall,
+/// whose two faces share a normal lying in the wall's plane, reached by the
+/// horizontal edge of a body resting on the surface the wall rises from. On the
+/// robot arm this repo imports, such a wall stood 0.7 degrees off square and
+/// answered 1.25e-2 -- so any threshold small enough to look like a tolerance
+/// lets it through, and the *sign* of that meaningless number then decides which
+/// way the contact pushes. One contact on a resting patch pointing back into the
+/// body it is holding up is 180 degrees of normal spread, which no friction cone
+/// admits any relative velocity in at all: the two bodies weld.
+pub const EDGE_OUTWARD_COSINE: Float = 0.05;
+
 /// Below this, a face has no area, hence no outward direction to contact along.
 pub const DEGENERATE_FACE_AREA: Float = 1e-12;
 
@@ -356,33 +379,24 @@ pub fn edge_edge_contact(
 
     // The common perpendicular runs either way; take the way out of the first
     // body, so that the normal stays put once the two are through each other
-    // rather than merely touching. Only an edge whose outward direction lies
-    // square on that perpendicular leaves it undecided, and then the way the
-    // second edge lies is all there is to go on.
+    // rather than merely touching -- which is what a body at rest on another
+    // is, so the gap between them is exactly what cannot say which way is out.
     //
-    // Both sides are normalized before they are compared, so that the
-    // undecided case is recognised by the *angle* between them rather than by
-    // the size of a product of two unnormalized vectors. It matters: a
-    // millimetre-long perpendicular against a unit normal square on it lands
-    // around 1e-9 rather than at zero, which is the sign of a rounding error
-    // deciding which way a contact pushes.
-    //
-    // The parallel test above leaves `perpendicular` with a length to normalize.
-    // `outward1` is a sum of unit normals, so it only loses its own when an edge
-    // carries two exactly opposing faces -- a fin of no thickness, which is
-    // undecided in the same way and takes the same way out.
+    // Both sides are compared as directions rather than as the product of two
+    // unnormalized vectors, and an edge whose outward direction is square on the
+    // perpendicular reports nothing at all: see [`EDGE_OUTWARD_COSINE`].
+    // `perpendicular` has a length to normalize -- the parallel test above is
+    // what guarantees it -- while `outward1`, a sum of unit normals, loses its
+    // own only on an edge carrying two exactly opposing faces, a fin of no
+    // thickness, which is square on everything and so falls out here too.
     let along = perpendicular.normalize();
-    let mut orientation = outward1
+    let orientation = outward1
         .try_normalize(0.)
-        .map_or(0., |unit| along.dot(&unit));
-    if orientation.abs() < 1e-9 {
-        orientation = along.dot(&gap);
+        .map_or(0., |outward| along.dot(&outward));
+    if orientation.abs() < EDGE_OUTWARD_COSINE {
+        return None;
     }
-    let normal = UnitVector3::new_normalize(if orientation < 0. {
-        -perpendicular
-    } else {
-        perpendicular
-    });
+    let normal = UnitVector3::new_unchecked(if orientation < 0. { -along } else { along });
 
     Some(DeepContact {
         contact: Contact::new((on1 + on2) / 2., normal),
@@ -622,4 +636,90 @@ pub fn distinct_edges(faces: &[CandidateFace]) -> Vec<MeshEdge> {
         .into_iter()
         .filter_map(|key| edges.remove(&key))
         .collect()
+}
+
+#[cfg(test)]
+mod shared_tests {
+    use na::vector;
+
+    use crate::{
+        assert_vec_close,
+        hybrid::collision::shared::{edge_edge_contact, CONTACT_TOLERANCE},
+        types::Float,
+    };
+
+    /// Which way an edge-edge contact pushes comes from which way the first
+    /// edge faces out of its own mesh, and an edge that faces square on the
+    /// contact direction reports no contact rather than one whose direction is
+    /// a guess
+    ///
+    /// The case is a body resting on a surface with a wall standing beside it:
+    /// the wall's own edges run horizontally, so they face horizontally too,
+    /// and the vertical perpendicular they make with the resting body's
+    /// horizontal edge is a direction the wall cannot hold anything off along.
+    /// Signing it from a residue of that square dot product -- which is what
+    /// comparing two unnormalized vectors against a near-zero tolerance does --
+    /// puts a downward normal on a patch that is holding the body up, and one
+    /// of those against the correct ones is a weld. See `EDGE_OUTWARD_COSINE`.
+    #[test]
+    fn an_edge_facing_square_on_the_contact_direction_reports_no_contact() {
+        let tol_sq = CONTACT_TOLERANCE * CONTACT_TOLERANCE;
+        // A horizontal edge of the first body, running along x
+        let (a, b) = (vector![-1., 0., 0.], vector![1., 0., 0.]);
+        // A horizontal edge of the second, running along y a hair above it, so
+        // the two cross within tolerance and their perpendicular is vertical
+        let gap = CONTACT_TOLERANCE / 2.;
+        let (c, d) = (vector![0., -1., gap], vector![0., 1., gap]);
+
+        // Facing up out of its mesh, the edge holds the other one off upwards
+        let up = edge_edge_contact((&a, &b), &vector![0., 0., 1.], (&c, &d), tol_sq).unwrap();
+        assert_vec_close!(*up.contact.normal, vector![0., 0., 1.], 1e-9);
+
+        // Facing down, it holds it off downwards -- the same edge, on a body
+        // the other way up
+        let down = edge_edge_contact((&a, &b), &vector![0., 0., -1.], (&c, &d), tol_sq).unwrap();
+        assert_vec_close!(*down.contact.normal, vector![0., 0., -1.], 1e-9);
+
+        // A box edge leans out of both of its faces and is decisive too
+        let corner = edge_edge_contact((&a, &b), &vector![0., -1., 1.], (&c, &d), tol_sq).unwrap();
+        assert_vec_close!(*corner.contact.normal, vector![0., 0., 1.], 1e-9);
+
+        // Facing square on it -- the wall -- reports nothing, whichever way
+        // round the wall faces and however the rounding falls out
+        for wall in [
+            vector![0., -1., 0.],
+            vector![0., 1., 0.],
+            vector![-1., 0., 0.],
+            // A wall a fraction of a degree off square is still a wall: this is
+            // what the imported arm's own geometry answered
+            vector![0., -1., 0.0125],
+            vector![0., -1., -0.0125],
+            // And an edge with no outward direction at all
+            vector![0., 0., 0.],
+        ] {
+            assert!(
+                edge_edge_contact((&a, &b), &wall, (&c, &d), tol_sq).is_none(),
+                "a wall facing {wall:?} reported a contact"
+            );
+        }
+    }
+
+    /// The reported depth is positive once the two edges are through each other
+    /// and negative while they are merely within tolerance, whichever way the
+    /// edge faces
+    #[test]
+    fn an_edge_edge_contact_is_deep_only_once_the_two_are_through_each_other() {
+        let tol_sq = CONTACT_TOLERANCE * CONTACT_TOLERANCE;
+        let (a, b) = (vector![-1., 0., 0.], vector![1., 0., 0.]);
+        let up = vector![0., 0., 1.];
+        let at = |z: Float| {
+            let (c, d) = (vector![0., -1., z], vector![0., 1., z]);
+            edge_edge_contact((&a, &b), &up, (&c, &d), tol_sq).unwrap().depth
+        };
+
+        // Above: not yet touching, so the depth is the gap, negative
+        assert!(at(CONTACT_TOLERANCE / 2.) < 0.);
+        // Below: through it, so positive
+        assert!(at(-CONTACT_TOLERANCE / 2.) > 0.);
+    }
 }
