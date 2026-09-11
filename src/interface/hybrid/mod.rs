@@ -193,6 +193,27 @@ impl InterfaceHybrid {
         self.inner.articulated[i].clear_applied_spring();
     }
 
+    /// Weld body `body` of articulated `i` to the world where it stands.
+    ///
+    /// The other thing a caller outside the physics can do to a body, and the
+    /// opposite of `set_applied_spring_at` in every respect: that one is a force
+    /// and so only ever holds a body approximately, while this is a constraint
+    /// and holds it exactly. Which is why it takes no pose -- the body is
+    /// already in the one it is being fixed in, and a body whose velocity is
+    /// held at zero stays there.
+    pub fn fix_body_at(&mut self, i: usize, body: usize) {
+        self.inner.articulated[i].fix_to_world(body);
+    }
+
+    /// Let body `body` of articulated `i` go again, back under gravity.
+    pub fn release_body_at(&mut self, i: usize, body: usize) {
+        self.inner.articulated[i].release_from_world(body);
+    }
+
+    pub fn is_body_fixed_at(&self, i: usize, body: usize) -> bool {
+        self.inner.articulated[i].is_fixed_to_world(body)
+    }
+
     /// What the hardware running articulated `i` has to warn about, if
     /// anything. Polled: it depends on what the firmware has done to its pins,
     /// so it changes as the sketch runs rather than at any one moment.

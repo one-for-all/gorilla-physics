@@ -701,6 +701,32 @@ impl Hybrid {
                     .copy_from(&(C * X * (H1 - H2)));
                 constraint_Js.push(J);
             }
+
+            // Bodies welded to the world. Holding the body's own spatial
+            // velocity at zero is the whole of the weld: it cannot move, so it
+            // stays in the pose it was fixed in, and there is no position error
+            // to stabilise and nothing to drift.
+            for &body in articulated.fixed_to_world.iter() {
+                let H = articulated.total_jacobian_to_body(body);
+                // A row of H that is identically zero says 0 = 0 -- a direction
+                // the body could not move in anyway, its path to the world being
+                // fixed joints. Keeping it would only leave A rank deficient for
+                // no statement. What is left may still be redundant -- six rows
+                // on a two-joint path, or a second body of the same robot welded
+                // as well -- and that is fine: the rows agree, and the solve
+                // answers with the zero they all ask for.
+                let moving: Vec<usize> = (0..6)
+                    .filter(|&row| H.row(row).iter().any(|&entry| entry != 0.))
+                    .collect();
+                if moving.is_empty() {
+                    continue;
+                }
+                let mut J = DMatrix::zeros(moving.len(), total_dof);
+                for (i, &row) in moving.iter().enumerate() {
+                    J.view_mut((i, icol_arti), (1, dof)).copy_from(&H.row(row));
+                }
+                constraint_Js.push(J);
+            }
             icol_arti += dof;
         }
 
@@ -1465,6 +1491,56 @@ mod hybrid_tests {
         let gripped = slide(0.35);
         assert!(gripped.x < 0.01);
         assert_close!(gripped.z, 1. + w / 2., 1e-3);
+    }
+
+    /// A body welded to the world stays exactly where it was fixed, and what
+    /// hangs off it still answers to gravity.
+    ///
+    /// This is a robot arm bolted to the bench: without it a free-rooted URDF is
+    /// pushed around the floor by its own servos' reaction torques, and the only
+    /// way in from outside was `applied_spring`, which is a force and so holds a
+    /// body approximately at best.
+    #[test]
+    fn a_body_fixed_to_the_world_does_not_move() {
+        // Arrange - a base free to move, carrying an arm that gravity swings
+        let l = 0.2;
+        let w = 0.05;
+        let m = 0.5;
+        let run = |fixed: bool| {
+            let mut state = Hybrid::empty();
+            let base = Rigid::new_cuboid(m, w, w, w, "base");
+            let base_joint = Joint::new_floating(Transform3D::identity("base", WORLD_FRAME));
+            let arm = Rigid::new_cuboid_at(&vector![l / 2., 0., 0.], m, l, w, w, "arm");
+            let arm_joint =
+                Joint::new_revolute(Transform3D::identity("arm", "base"), Vector3::y_axis());
+            let mut robot = Articulated::new(vec![base, arm], vec![base_joint, arm_joint]);
+            if fixed {
+                robot.fix_to_world(0);
+            }
+            state.add_articulated(robot);
+
+            // Act - one second, at the rate the page steps the scene at. The arm
+            // is a pendulum with a period well inside that, so how far it got is
+            // the furthest it reached rather than where it ended up.
+            let dt = 1. / 3600.;
+            let mut swung: Float = 0.;
+            for _s in 0..3600 {
+                state.step(dt, &vec![]);
+                swung = swung.max(state.articulated[0].q()[7].abs());
+            }
+            let base = state.articulated[0].bodies[0].pose.to_isometry().translation;
+            (vector![base.x, base.y, base.z], swung)
+        };
+
+        // Assert - fixed, the base has not moved at all, while the arm on it
+        // swung a quarter turn or better under its own weight
+        let (held, swung) = run(true);
+        assert_vec_close!(held, vector![0., 0., 0.], 1e-5);
+        assert!(swung > PI / 4.);
+        // Assert - and it is the weld doing that, not the scene: released, the
+        // same base is a second's free fall lower
+        let (dropped, _) = run(false);
+        assert_close!(dropped.z, -0.5 * GRAVITY, 1e-2);
     }
 
     #[test]

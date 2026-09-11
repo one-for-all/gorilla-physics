@@ -73,6 +73,16 @@ pub struct Articulated {
     /// above, so re-ordering a `Hybrid`'s articulated cannot leave it pointing
     /// at the wrong robot.
     pub applied_spring: Option<AppliedSpring>,
+
+    /// The bodies welded to the world where they stand, as indices into
+    /// `bodies`. Held here for the same reason `applied_spring` is.
+    ///
+    /// A weld is a constraint rather than a swapped-in `FixedJoint`, which is
+    /// what lets *any* body carry one rather than only a floating root, and what
+    /// makes it reversible: `dof`, `offsets` and the mass matrix keep their
+    /// shapes, so nothing keyed by joint index has to be rebuilt when a body is
+    /// fixed or released. `Hybrid::step` is where it is enforced.
+    pub fixed_to_world: Vec<usize>,
 }
 
 impl Articulated {
@@ -103,6 +113,7 @@ impl Articulated {
             relative_range_constraints: vec![],
             range_constraints: vec![],
             applied_spring: None,
+            fixed_to_world: vec![],
         };
 
         state.update_body_states();
@@ -152,6 +163,30 @@ impl Articulated {
 
     pub fn clear_applied_spring(&mut self) {
         self.applied_spring = None;
+    }
+
+    /// Weld body `body` to the world where it stands, and hold it there until it
+    /// is released -- see [`Articulated::fixed_to_world`].
+    ///
+    /// The pose is not recorded anywhere, because it does not have to be: what
+    /// the solve is given is that the body's velocity is zero, and a body that
+    /// never moves is still in the pose it was fixed in. A `body` past the end,
+    /// or one already fixed, welds nothing rather than panicking, since the
+    /// caller is outside the simulation.
+    pub fn fix_to_world(&mut self, body: usize) {
+        if body < self.bodies.len() && !self.fixed_to_world.contains(&body) {
+            self.fixed_to_world.push(body);
+        }
+    }
+
+    /// Let body `body` go again. A step does not spend a weld, so this is the
+    /// only thing that ends one.
+    pub fn release_from_world(&mut self, body: usize) {
+        self.fixed_to_world.retain(|&fixed| fixed != body);
+    }
+
+    pub fn is_fixed_to_world(&self, body: usize) -> bool {
+        self.fixed_to_world.contains(&body)
     }
 
     pub fn add_constraints(&mut self, constraints: Vec<Constraint>) {
