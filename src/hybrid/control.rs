@@ -141,6 +141,9 @@ pub struct CameraFrameRequest {
     /// Frames per second the sensor is streaming at; supplying frames faster
     /// than this is wasted work, since the stream picks up one per cycle.
     pub fps: Float,
+    /// Whether the sensor reverses the order of its scan lines before they
+    /// reach the board. The host must apply this before supplying pixels.
+    pub vertical_flip: bool,
 }
 
 /// How the frame's pixels go on the wire.

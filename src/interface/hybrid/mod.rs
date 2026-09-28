@@ -222,8 +222,9 @@ impl InterfaceHybrid {
     }
 
     /// What camera `camera` on the board running articulated `i` wants drawn
-    /// for it: `[format, width, height, fps]`, or empty while it wants
-    /// nothing. Format is 1 for JPEG, 2 for RGB565, 3 for grayscale.
+    /// for it: `[format, width, height, fps, vertical_flip]`, or empty while
+    /// it wants nothing. Format is 1 for JPEG, 2 for RGB565, 3 for grayscale;
+    /// `vertical_flip` is 1 when the sensor reverses scan lines.
     ///
     /// Polled, like `hardware_warning_at`: what a sensor is configured to
     /// produce is the running firmware's doing, and changes when it calls
@@ -237,7 +238,13 @@ impl InterfaceHybrid {
                     CameraFrameFormat::Rgb565 => 2,
                     CameraFrameFormat::Grayscale => 3,
                 };
-                vec![format, request.width, request.height, request.fps as u32]
+                vec![
+                    format,
+                    request.width,
+                    request.height,
+                    request.fps as u32,
+                    request.vertical_flip as u32,
+                ]
             }
             None => vec![],
         }
